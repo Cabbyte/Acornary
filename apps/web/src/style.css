@@ -358,6 +358,17 @@ summary {
   overflow-wrap: anywhere;
 }
 .session-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
   padding: 8px 24px;
-  text-align: right;
+}
+.session-bar span {
+  flex: 1;
+}
+.session-bar a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }

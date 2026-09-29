@@ -22,6 +22,7 @@ import {
 import { DomainError } from '../../../packages/domain/src/index.js';
 import { execute, type Context } from './service.js';
 import { pool, query } from './db.js';
+import { webSnapshot } from './web.js';
 export async function buildApp(
   ctx: Context,
   token: string,
@@ -96,7 +97,10 @@ export async function buildApp(
         'Content-Security-Policy',
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
       );
-    if (auth && /^\/api\/(context|read(?:\/|$)|debug(?:\?|$))/.test(req.url)) {
+    if (
+      auth &&
+      /^\/api\/(context|read(?:\/|$)|write(?:\/|$)|ui(?:\/|$)|debug(?:\?|$))/.test(req.url)
+    ) {
       const session = await auth.api.getSession({ headers: headersFor(req) });
       const context = session && (await ownerContext(session.user.id));
       if (!context)
@@ -109,7 +113,15 @@ export async function buildApp(
   app.setErrorHandler((error: any, _req, reply) => {
     if (error instanceof DomainError)
       return reply
-        .code(error.code === 'NOT_FOUND' ? 404 : error.code === 'FORBIDDEN' ? 403 : 400)
+        .code(
+          error.code === 'NOT_FOUND'
+            ? 404
+            : error.code === 'FORBIDDEN'
+              ? 403
+              : ['REVISION_CONFLICT', 'IDEMPOTENCY_CONFLICT'].includes(error.code)
+                ? 409
+                : 400,
+        )
         .send({ error: { code: error.code, message: error.message, details: error.details } });
     app.log.error({ code: error.code ?? 'INTERNAL_ERROR' }, 'Request failed');
     return reply
@@ -122,10 +134,21 @@ export async function buildApp(
     return { status: 'ok', version: release.version, commit: release.commit };
   });
   app.get('/api/session', async (req) => {
-    if (!auth) return { mode: 'local', authenticated: true };
+    if (!auth)
+      return {
+        mode: 'local',
+        authenticated: true,
+        cache_key: `local:${ctx.household_id}:${ctx.actor_id}`,
+      };
     const session = await auth.api.getSession({ headers: headersFor(req) });
     const allowed = session && (await ownerContext(session.user.id));
-    return { mode: 'cloud', authenticated: !!allowed };
+    return {
+      mode: 'cloud',
+      authenticated: !!allowed,
+      ...(allowed && session
+        ? { cache_key: `${session.user.id}:${allowed.household_id}`, email: session.user.email }
+        : {}),
+    };
   });
   if (auth) {
     app.addContentTypeParser(
@@ -180,6 +203,24 @@ export async function buildApp(
     }
     return execute({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }, name, input);
   });
+  app.get('/api/ui/snapshot', (req) => webSnapshot(webContexts.get(req) ?? ctx, req.query));
+  app.get(
+    '/api/ui/groups',
+    async (req) => (await webSnapshot(webContexts.get(req) ?? ctx, req.query)).groups,
+  );
+  app.post('/api/write/:operation', async (req) => {
+    // Browser-only same-origin JSON commands. Reject absent/null Origin as well as cross-site requests.
+    if (
+      req.headers.origin !== (cloud?.origin ?? `http://${req.headers.host}`) ||
+      req.headers['x-acornary-request'] !== 'web' ||
+      !req.headers['content-type']?.startsWith('application/json')
+    )
+      throw new DomainError('FORBIDDEN', 'Same-origin Web request required.');
+    const name = (req.params as { operation: Operation }).operation;
+    if (!Object.hasOwn(schemas, name) || reads.has(name))
+      throw new DomainError('FORBIDDEN', 'Unknown write command.');
+    return execute({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }, name, req.body);
+  });
   app.get('/api/debug', async (req) => {
     let input: unknown;
     try {
@@ -194,7 +235,7 @@ export async function buildApp(
       { name: 'acornary', version: '0.1.0' },
       {
         instructions:
-          'Acornary 管理具体物品。先查询 UUID、属性和 revision，再进行明确的写操作。已知差异影响选择时先澄清；在用户确认范围内没有已知差异时可选择并报告实际 UUID。不得猜测缺失事实；推荐不自动变为库存写入。写操作携带幂等键与 expected_revisions；超时重试保留原键和参数。版本冲突后重新查询并判断原操作是否仍成立，不自动替换 revision 强行重试。未记录状态不等于 ACTIVE。Web 只读。模板字段与单位通过 list_attribute_templates/get_attribute_template 发现。',
+          'Acornary 管理具体物品。先查询 UUID、属性和 revision，再进行明确的写操作。已知差异影响选择时先澄清；在用户确认范围内没有已知差异时可选择并报告实际 UUID。不得猜测缺失事实；推荐不自动变为库存写入。写操作携带幂等键与 expected_revisions；超时重试保留原键和参数。版本冲突后重新查询并判断原操作是否仍成立，不自动替换 revision 强行重试。未记录状态不等于 ACTIVE。Web 与 MCP 通过相同领域命令写入，检查器只读。模板字段与单位通过 list_attribute_templates/get_attribute_template 发现。',
       },
     );
     for (const name of Object.keys(schemas) as Operation[])
@@ -306,6 +347,14 @@ export async function buildApp(
     await app.register(staticFiles, { root: resolve('apps/web/dist'), prefix: '/' });
     app.get('/login', (_req, reply) => reply.sendFile('index.html'));
     app.get('/consent', (_req, reply) => reply.sendFile('index.html'));
+    app.setNotFoundHandler((req, reply) => {
+      if (
+        req.method === 'GET' &&
+        /^\/(items|places|catalog|settings|inspect)(\/|$)/.test(req.url.split('?')[0])
+      )
+        return reply.sendFile('index.html');
+      return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Not found.' } });
+    });
   }
   return app;
 }
