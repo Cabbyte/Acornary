@@ -4,7 +4,7 @@
 
 本流程允许短暂停服。业务模型、数据库卷、所有者、OAuth 签名密钥及授权记录保持持久；不会自动升级 PostgreSQL、重建 Caddy 或修改 Runbuoy。实际配置与测试结果见 [发布验证记录](./release-verification.md)。
 
-截至 2026-09-23，一次性配置已经完成，手动构建发布和隔离故障验证均通过，正式 tag 尚未推送。现有服务器无需再次执行 bootstrap；下一步是选择版本并完成首次生产自动部署及双客户端读取核对。阶段总览见 [项目进度](./progress.md)。
+截至 2026-09-29，首个正式标签 `v0.1.0` 已完成自动部署和公网读取核对，详见 [正式发布验收](./release-v0.1.0.md)。现有服务器无需再次执行 bootstrap。阶段总览见 [项目进度](./progress.md)。
 
 ## 工作流
 
@@ -70,4 +70,4 @@ journalctl -u acornary-release-<job_id>.service
 
 备份在 `/var/lib/acornary/backups/releases/<job_id>/`，仅保存在本机。日常定时备份仍关闭。恢复命令使用现有 [云端运行](./cloud-runtime.md) 的独立数据库流程，并核对 archive 校验和；不得对正在运行的正式库直接 restore。
 
-首次正式标签后的真实验收仍需核对 Actions、线上版本及 Codex／ChatGPT 读取。CI／手动构建成功不等于该正式自动部署闭环已经发生。
+每次正式标签发布后仍需核对 Actions、线上版本及既有 OAuth／MCP 读取。`v0.1.0` 已完成首次闭环；CI／手动构建成功本身不等于生产部署。

@@ -10,15 +10,15 @@
 
 Stage2 已完成双端预验收、整库迁移、生产入口切换及正式 Codex／ChatGPT 授权和读取核对。正式地址为 [acornary.protium.top](https://acornary.protium.top)，MCP 为 `https://acornary.protium.top/mcp`；本地原库存已停写，云端为唯一正式库存。日常备份默认关闭，保留一次迁移前快照。实际通过项和验证边界见 [Stage2 验证记录](./docs/stage2-verification.md)，操作说明见 [云端运行](./docs/cloud-runtime.md)。核心模型仍为三张表；004 migration 增加认证支撑表，检查器仍只展示原有业务表。历史结果保留在 [Stage1 验证记录](./docs/stage1-verification.md)。
 
-版本发布设施已落地：GitHub Actions 测试、公开 GHCR 镜像和服务器受限部署命令均已验证。**首次正式 tag 自动部署仍待执行，线上继续运行原 Stage2 镜像。** 普通 main push 只触发 CI；正式 `vX.Y.Z` 才自动更新生产，有新增 migration 时先备份。当前阶段、代码与线上差异、下一步统一见 [项目进度](./docs/progress.md)。
+版本发布设施已落地：GitHub Actions 测试、公开 GHCR 镜像和服务器受限部署命令均已验证。**首个正式版本 `v0.1.0` 已通过 GitHub Actions 部署上线。** 版本、digest 与公网验收见 [v0.1.0 发布记录](./docs/release-v0.1.0.md)。 普通 main push 只触发 CI；正式 `vX.Y.Z` 才自动更新生产，有新增 migration 时先备份。当前阶段、代码与线上差异、下一步统一见 [项目进度](./docs/progress.md)。
 
 **本地开发模式**在独立库运行：产品界面负责业务读写，检查器只读展示两棵树及业务表的实际记录，分开呈现派生结果和 API 响应。**云模式**增加所有者登录与双客户端 OAuth；两种模式共用领域规则。图片附件、模板升级、FEFO、多用户和后台提醒继续后置。
 
 沿用 TypeScript / Node.js 24 LTS、Fastify 5、官方 MCP TypeScript SDK v2、PostgreSQL 18、Drizzle、Zod 4、React / Vite；Stage2 增加 Better Auth 1.7.5 的 MCP／CIMD／JWT 和共享 Caddy HTTPS 入口。`local` 模式使用回环地址与个人凭证，`cloud` 模式只接受 OAuth，不回退为个人凭证。完整边界见 [架构](./docs/architecture.md)。
 
-## Web 产品界面（本轮实现，尚未部署）
+## Web 产品界面（v0.1.0 已上线）
 
-手机优先的「物品、位置、目录、设置」已实现，支持通过页面执行现有业务命令、离线查看缓存、断网保留草稿、幂等重试与冲突核对。原只读检查器移至 `/inspect`，从设置进入并共用会话。`/login` 与 `/consent` 使用产品的公共认证组件；生产共用一个域名与 HTTPS 443。设计来源、接口映射、隔离演示环境和实机验收边界见 [Web UI 实现说明](./docs/webui.md)。上文 Stage2 线上状态是历史部署记录，不代表本次 Web 改动已上线。
+手机优先的「物品、位置、目录、设置」已实现，支持通过页面执行现有业务命令、离线查看缓存、断网保留草稿、幂等重试与冲突核对。原只读检查器移至 `/inspect`，从设置进入并共用会话。`/login` 与 `/consent` 使用产品的公共认证组件；生产共用一个域名与 HTTPS 443。设计来源、接口映射、隔离演示环境和实机验收边界见 [Web UI 实现说明](./docs/webui.md)。本机隔离预览继续保留，正式库存与原停写本地库存的数据不变。
 
 ## 本地启动
 
