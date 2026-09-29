@@ -1,3 +1,4 @@
+import { AccountSettings, HouseholdSettings } from './accounts';
 import { useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
@@ -872,12 +873,24 @@ export function Catalog({ id, open }: { id?: string; open: OpenAction }) {
     </>
   );
 }
-export function Settings() {
+export function Settings({ section }: { section?: string }) {
   const { session, online, logout, storageError } = useSession();
   const { data, refresh, cacheWarning } = useInventory();
   const [install, setInstall] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  if (session.mode === 'cloud' && (section === 'account' || section === 'households'))
+    return (
+      <>
+        <header className="page-header">
+          <a href="/settings">‹ 设置</a>
+          <h1>{section === 'account' ? '账号与安全' : '家庭'}</h1>
+        </header>
+        <div className="content">
+          {section === 'account' ? <AccountSettings /> : <HouseholdSettings />}
+        </div>
+      </>
+    );
   return (
     <>
       <header className="page-header large">
@@ -892,6 +905,15 @@ export function Settings() {
             <p>{session.email ?? '本地所有者'}</p>
           </div>
         </section>
+        {session.mode === 'cloud' && (
+          <>
+            <p className="section-label">账号与家庭</p>
+            <div className="grouped">
+              <Row title="账号与安全" subtitle="通行密钥、密码与身份验证" to="/settings/account" />
+              <Row title="家庭" subtitle="成员、邀请与家庭切换" to="/settings/households" />
+            </div>
+          </>
+        )}
         <p className="section-label">本机缓存</p>
         <div className="grouped">
           <Row title="上次更新" detail={time(data.cached_at)} />

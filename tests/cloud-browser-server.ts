@@ -4,11 +4,13 @@ import { readFileSync } from 'node:fs';
 import { initialize } from '../apps/server/src/initialize.js';
 import { manageOwner } from '../apps/server/src/owner.js';
 import { pool, query } from '../apps/server/src/db.js';
+import { testMailbox } from '../apps/server/src/mail.js';
 import { buildApp } from '../apps/server/src/app.js';
 if (!process.env.DATABASE_URL?.match(/\/acornary_e2e_\d+$/))
   throw new Error('Isolated E2E database required.');
 const ctx = { ...(await initialize()), source: 'E2E' };
-await manageOwner('create', 'browser@example.test', 'Browser-test-password-123!');
+if (!(await query(pool, 'SELECT 1 FROM auth_owners')).rowCount)
+  await manageOwner('create', 'browser@example.test', 'Browser-test-password-123!');
 // Pre-registered public fixture client in the isolated database only. The server
 // and browser exercise the real provider; CIMD transport is covered in cloud-auth.
 await query(
@@ -27,21 +29,26 @@ await query(
 await query(
   pool,
   `INSERT INTO "oauthResource" (id,identifier,name,"allowedScopes")
-  VALUES ('browser-resource','https://127.0.0.1:3210/mcp','Browser fixture','["openid","offline_access","inventory:read","inventory:write"]')
+  VALUES ('browser-resource','https://localhost:3210/mcp','Browser fixture','["openid","offline_access","inventory:read","inventory:write"]')
   ON CONFLICT (identifier) DO NOTHING`,
 );
 await query(
   pool,
   `INSERT INTO "oauthClientResource" (id,"clientId","resourceId")
-  VALUES ('browser-link','browser-client','https://127.0.0.1:3210/mcp') ON CONFLICT (id) DO NOTHING`,
+  VALUES ('browser-link','browser-client','https://localhost:3210/mcp') ON CONFLICT (id) DO NOTHING`,
 );
 const app = await buildApp(ctx, '', true, {
   mode: 'cloud',
-  origin: 'https://127.0.0.1:3210',
-  resource: 'https://127.0.0.1:3210/mcp',
+  accounts: { mail: { transport: 'test' }, registration: true, recovery: true },
+  origin: 'https://localhost:3210',
+  resource: 'https://localhost:3210/mcp',
   trustedProxy: '127.0.0.1',
   secret: 'isolated-browser-only-secret-at-least-32-characters',
 });
+// This endpoint exists only in this isolated test fixture, never in buildApp or production.
+app.get('/__test/mail', async (req) =>
+  testMailbox.filter((m) => m.to === (req.query as any).email).slice(-1),
+);
 await app.listen({ host: '127.0.0.1', port: 3211 });
 createServer(
   {
@@ -57,7 +64,7 @@ createServer(
         method: req.method,
         headers: {
           ...req.headers,
-          host: '127.0.0.1:3210',
+          host: 'localhost:3210',
           'x-forwarded-proto': 'https',
           'x-real-ip': '127.0.0.1',
         },

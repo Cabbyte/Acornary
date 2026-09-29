@@ -152,6 +152,47 @@ it('migrates nonempty 001 records in one transaction, preserving identities, his
     await c.query(await readFile('migrations/004_cloud_auth.sql', 'utf8'));
     await c.query('COMMIT');
     expect(await businessSnapshot()).toEqual(beforeAuth);
+    const owner = 'legacy-owner';
+    const installation = (await c.query('SELECT * FROM installations')).rows[0];
+    await c.query(
+      'INSERT INTO "user"(id,name,email,"emailVerified") VALUES($1,\'Owner\',\'owner@example.test\',true)',
+      [owner],
+    );
+    await c.query(
+      'INSERT INTO account(id,"accountId","providerId","userId",password,"updatedAt") VALUES(\'legacy-password\',$1,\'credential\',$1,\'preserved-hash\',now())',
+      [owner],
+    );
+    await c.query('INSERT INTO auth_owners(user_id,household_id,actor_id) VALUES($1,$2,$3)', [
+      owner,
+      installation.household_id,
+      installation.actor_id,
+    ]);
+    await c.query(
+      'INSERT INTO "oauthClient"(id,"clientId","redirectUris") VALUES(\'legacy-client\',\'legacy-client\',\'["https://client.example.test/callback"]\')',
+    );
+    await c.query(
+      'INSERT INTO "oauthRefreshToken"(id,token,"clientId","userId","expiresAt","createdAt",scopes) VALUES(\'legacy-refresh\',\'opaque-refresh-hash\',\'legacy-client\',$1,now()+interval \'1 day\',now(),\'["inventory:read"]\')',
+      [owner],
+    );
+    await c.query('BEGIN');
+    await c.query(await readFile('migrations/005_accounts.sql', 'utf8'));
+    await c.query('COMMIT');
+    expect(await businessSnapshot()).toEqual(beforeAuth);
+    expect(
+      (await c.query('SELECT * FROM household_members WHERE user_id=$1', [owner])).rows[0],
+    ).toMatchObject({
+      id: 'member_' + owner,
+      household_id: installation.household_id,
+      actor_id: installation.actor_id,
+    });
+    expect(
+      (await c.query('SELECT password FROM account WHERE "userId"=$1', [owner])).rows[0].password,
+    ).toBe('preserved-hash');
+    expect((await c.query('SELECT "referenceId",token FROM "oauthRefreshToken"')).rows[0]).toEqual({
+      referenceId: 'member_' + owner + ':0',
+      token: 'opaque-refresh-hash',
+    });
+
     await expect(c.query("UPDATE events SET source='changed'")).rejects.toThrow('append-only');
   } finally {
     await c?.end();

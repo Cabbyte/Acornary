@@ -1,8 +1,22 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { request } from './api';
-import { clearPrivateData, invalidatePendingStorage, persist, stored } from './storage';
+import {
+  clearPrivateData,
+  clearHouseholdData,
+  invalidatePendingStorage,
+  persist,
+  stored,
+} from './storage';
 import { authPost, loginURL, Redirect, serverRedirect } from './auth';
+import {
+  accountRequest,
+  signInPasskey,
+  authError,
+  enrollmentReturnSearch,
+  type Capabilities,
+} from './accounts';
+import { FamilySetup } from '../accounts';
 import { Button, Field, Notice, Sheet } from '../ui/components';
 
 export interface Session {
@@ -10,6 +24,10 @@ export interface Session {
   authenticated: boolean;
   cache_key?: string;
   email?: string;
+  user_id?: string;
+  household_id?: string;
+  login_methods?: { password: boolean; passkey_count: number };
+  households?: { id: string; household_id: string; name: string }[];
 }
 const Context = createContext<{
   session: Session;
@@ -18,53 +36,125 @@ const Context = createContext<{
   requestLogin: () => void;
   logout: () => Promise<void>;
   storageError: string;
+  switchHousehold: (id: string) => Promise<void>;
 }>(null!);
 export const useSession = () => useContext(Context);
 export function Login({
   onDone,
   oauthQuery,
+  expectedEmail,
 }: {
   onDone: () => Promise<void>;
   oauthQuery?: string;
+  expectedEmail?: string;
 }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [passwordMode, setPasswordMode] = useState(false);
+  const [cap, setCap] = useState<Capabilities>();
+  useEffect(() => {
+    void accountRequest<Capabilities>('account/capabilities')
+      .then(setCap)
+      .catch(() => {});
+  }, []);
+  async function done() {
+    if (expectedEmail) {
+      const current = await request<Session>('/api/session');
+      if (current.email !== expectedEmail) {
+        await clearPrivateData();
+        location.replace('/login');
+        return;
+      }
+    }
+    if (oauthQuery) {
+      serverRedirect(
+        await authPost('oauth2/continue', { selected: true, oauth_query: oauthQuery }),
+      );
+      return;
+    }
+    await onDone();
+  }
   return (
-    <form
-      className="stack"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        if (busy) return;
-        setBusy(true);
-        setError('');
-        const f = new FormData(e.currentTarget);
-        try {
-          const result = await authPost('sign-in/email', {
-            email: f.get('email'),
-            password: f.get('password'),
-            ...(oauthQuery ? { oauth_query: oauthQuery } : {}),
-          });
-          if (oauthQuery) {
-            serverRedirect(result);
-            return;
+    <div className="stack">
+      <Button
+        type="button"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setError('');
+          try {
+            await signInPasskey();
+            await done();
+          } catch (e) {
+            setError(authError(e));
+          } finally {
+            setBusy(false);
           }
-          await onDone();
-        } catch (err) {
-          setError(err instanceof Error ? err.message : '登录失败，请重试。');
-        } finally {
-          setBusy(false);
-        }
-      }}
-    >
-      <Field label="邮箱">
-        <input name="email" type="email" autoComplete="username" required />
-      </Field>
-      <Field label="密码">
-        <input name="password" type="password" autoComplete="current-password" required />
-      </Field>
+        }}
+      >
+        使用通行密钥登录
+      </Button>
+      <Button
+        type="button"
+        variant="secondary"
+        disabled={busy}
+        onClick={() => setPasswordMode(!passwordMode)}
+      >
+        使用邮箱和密码
+      </Button>
+      {passwordMode && (
+        <form
+          className="stack"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (busy) return;
+            setBusy(true);
+            setError('');
+            const f = new FormData(e.currentTarget);
+            try {
+              const result = await authPost('sign-in/email', {
+                email: f.get('email'),
+                password: f.get('password'),
+                ...(oauthQuery ? { oauth_query: oauthQuery } : {}),
+              });
+              if (oauthQuery) {
+                serverRedirect(result);
+                return;
+              }
+              await done();
+            } catch (err) {
+              setError(err instanceof Error ? err.message : '登录失败，请重试。');
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <Field label="邮箱">
+            <input
+              name="email"
+              type="email"
+              autoComplete="username"
+              defaultValue={expectedEmail}
+              readOnly={!!expectedEmail}
+              required
+            />
+          </Field>
+          <Field label="密码">
+            <input name="password" type="password" autoComplete="current-password" required />
+          </Field>
+          <Button disabled={busy}>{busy ? '正在登录…' : '登录'}</Button>
+        </form>
+      )}
       {error && <Notice danger>{error}</Notice>}
-      <Button disabled={busy}>{busy ? '正在登录…' : '登录'}</Button>
-    </form>
+      {!expectedEmail && (
+        <>
+          <a href={'/register' + enrollmentReturnSearch()}>
+            {cap?.registration ? '创建账号' : '查看注册状态'}
+          </a>
+          <a href={'/recover' + enrollmentReturnSearch()}>找回账号</a>
+        </>
+      )}
+    </div>
   );
 }
 export function SessionGate({
@@ -99,14 +189,33 @@ export function SessionGate({
     const current = await request<Session>('/api/session');
     if (version !== generation.current) return;
     if (current.authenticated && current.cache_key) {
+      if (session?.cache_key && session.cache_key !== current.cache_key) {
+        await client.cancelQueries();
+        invalidatePendingStorage();
+        client.clear();
+      }
+      if (session?.user_id === current.user_id && current.user_id) {
+        for (const old of session?.households ?? [])
+          if (!current.households?.some((h) => h.household_id === old.household_id))
+            await clearHouseholdData(current.user_id, old.household_id);
+      }
       const prior = localStorage.getItem('acornary-account');
-      if (prior && prior !== current.cache_key) {
+      if (
+        prior &&
+        prior !== (current.user_id ?? current.cache_key) &&
+        prior !== current.cache_key
+      ) {
         await clearPrivateData();
         client.clear();
       }
-      localStorage.setItem('acornary-account', current.cache_key);
+      localStorage.setItem('acornary-account', current.user_id ?? current.cache_key);
+      if (current.household_id) {
+        sessionStorage.setItem('acornary-household', current.household_id);
+        localStorage.setItem('acornary-last-household', current.household_id);
+      } else sessionStorage.removeItem('acornary-household');
       try {
         await persist('session', current);
+        if (current.household_id) await persist('session:' + current.household_id, current);
       } catch {
         setStorageError('浏览器无法保存本地缓存；关闭页面后的离线内容可能不可用。');
       }
@@ -126,11 +235,14 @@ export function SessionGate({
   useEffect(() => {
     void check().catch(async () => {
       try {
-        const cached = await stored<Session>('session');
+        const household =
+          sessionStorage.getItem('acornary-household') ??
+          localStorage.getItem('acornary-last-household');
+        const cached = await stored<Session>(household ? 'session:' + household : 'session');
         if (
           view === 'product' &&
           cached?.cache_key &&
-          localStorage.getItem('acornary-account') === cached.cache_key
+          localStorage.getItem('acornary-account') === (cached.user_id ?? cached.cache_key)
         ) {
           setSession(cached);
           setOnline(false);
@@ -168,6 +280,7 @@ export function SessionGate({
         void check().catch(() => setOnline(false));
     }, 30000);
     window.addEventListener('online', connected);
+    window.addEventListener('acornary-refresh-session', connected);
     window.addEventListener('offline', disconnected);
     window.addEventListener('acornary-session-expired', invalid);
     window.addEventListener('storage', crossTab);
@@ -175,6 +288,7 @@ export function SessionGate({
     return () => {
       window.clearInterval(timer);
       window.removeEventListener('online', connected);
+      window.removeEventListener('acornary-refresh-session', connected);
       window.removeEventListener('offline', disconnected);
       window.removeEventListener('acornary-session-expired', invalid);
       window.removeEventListener('storage', crossTab);
@@ -192,12 +306,10 @@ export function SessionGate({
       });
       client.clear();
       await clearPrivateData();
-      setSession({ mode: 'cloud', authenticated: false });
-      setExpired(false);
-      setShowLogin(false);
       window.location.replace('/login');
-    } finally {
+    } catch (error) {
       loggingOut.current = false;
+      throw error;
     }
   }
   if (!session)
@@ -235,16 +347,25 @@ export function SessionGate({
         requestLogin: () => setShowLogin(true),
         logout,
         storageError,
+        switchHousehold: async (id) => {
+          await client.cancelQueries();
+          invalidatePendingStorage();
+          client.clear();
+          sessionStorage.setItem('acornary-household', id);
+          window.location.assign('/items');
+        },
       }}
     >
-      {view === 'inspector' && !online ? (
+      {session.mode === 'cloud' && !session.household_id && (view !== 'auth' || !!oauthQuery) ? (
+        <FamilySetup onDone={check} />
+      ) : view === 'inspector' && !online ? (
         <main className="auth-panel">
           <h1>数据库检查器需要联网</h1>
           <p>此处不保存离线记录。</p>
           <a href="/items">返回松仓</a>
         </main>
       ) : (
-        children
+        <div key={session.cache_key}>{children}</div>
       )}
       {view === 'product' && expired && showLogin && (
         <Sheet title="重新登录" onClose={() => setShowLogin(false)}>

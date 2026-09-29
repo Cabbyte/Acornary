@@ -1,7 +1,15 @@
+import { accountConfig, type AccountConfig } from './mail.js';
 import { isIP } from 'node:net';
 export type RuntimeConfig =
   | { mode: 'local' }
-  | { mode: 'cloud'; origin: string; resource: string; secret: string; trustedProxy: string };
+  | {
+      mode: 'cloud';
+      origin: string;
+      resource: string;
+      secret: string;
+      trustedProxy: string;
+      accounts?: AccountConfig;
+    };
 
 // Cloud configuration is deliberately fail-closed: no PAT or localhost fallback.
 export function runtimeConfig(env: NodeJS.ProcessEnv = process.env): RuntimeConfig {
@@ -20,5 +28,12 @@ export function runtimeConfig(env: NodeJS.ProcessEnv = process.env): RuntimeConf
     throw new Error('ACORNARY_ORIGIN must be an HTTPS origin without a path.');
   if (isIP(trustedProxy) !== 4)
     throw new Error('ACORNARY_TRUSTED_PROXY must be the exact private IPv4 address of Caddy.');
-  return { mode, origin, resource: `${origin}/mcp`, secret, trustedProxy };
+  return {
+    mode,
+    origin,
+    resource: `${origin}/mcp`,
+    secret,
+    trustedProxy,
+    accounts: accountConfig(env),
+  };
 }

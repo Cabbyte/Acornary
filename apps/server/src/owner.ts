@@ -35,6 +35,10 @@ export async function manageOwner(action: OwnerAction, email: string, password?:
         install.household_id,
         install.actor_id,
       ]);
+      await c.query(
+        'INSERT INTO household_members(id,user_id,household_id,actor_id) VALUES($1,$2,$3,$4)',
+        ['member_' + id, id, install.household_id, install.actor_id],
+      );
       return;
     }
     const user = (
@@ -49,12 +53,20 @@ export async function manageOwner(action: OwnerAction, email: string, password?:
         user.id,
         action === 'enable',
       ]);
+    if (action === 'disable' || action === 'enable')
+      await c.query('UPDATE \"user\" SET enabled=$2 WHERE id=$1', [user.id, action === 'enable']);
     if (action === 'reset-password') {
+      await c.query('UPDATE \"user\" SET auth_version=auth_version+1 WHERE id=$1', [user.id]);
+      await c.query('DELETE FROM passkey WHERE \"userId\"=$1', [user.id]);
       const updated = await c.query(
         'UPDATE account SET password=$2,"updatedAt"=now() WHERE "userId"=$1 AND "providerId"=\'credential\'',
         [user.id, hashed],
       );
-      if (updated.rowCount !== 1) throw new Error('Owner credential account is missing.');
+      if (updated.rowCount !== 1)
+        await c.query(
+          'INSERT INTO account(id,"accountId","providerId","userId",password,"updatedAt") VALUES($1,$2,\'credential\',$2,$3,now())',
+          [randomUUID(), user.id, hashed],
+        );
     }
     if (action !== 'enable') {
       await c.query('DELETE FROM "oauthAccessToken" WHERE "userId"=$1', [user.id]);

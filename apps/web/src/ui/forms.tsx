@@ -360,7 +360,12 @@ export function ActionSheet({
       setDraft(pending);
       // Persist the exact key and payload before dispatch: even a reload after a lost response is a safe retry.
       await persist(draftKey, pending);
-      const result = await write(attempt.operation, attempt.payload);
+      const result = await write(
+        attempt.operation,
+        attempt.payload,
+        session.household_id,
+        session.user_id,
+      );
       const committed = { ...pending, result };
       setDraft(committed);
       await persist(draftKey, committed);

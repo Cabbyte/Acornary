@@ -46,11 +46,37 @@ export function invalidatePendingStorage() {
 export async function clearPrivateData() {
   invalidatePendingStorage();
   localStorage.removeItem('acornary-account');
+  localStorage.removeItem('acornary-last-household');
+  sessionStorage.removeItem('acornary-household');
   const db = await openDB();
   try {
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction('records', 'readwrite');
       tx.objectStore('records').clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+export async function clearHouseholdData(userId: string, householdId: string) {
+  invalidatePendingStorage();
+  const db = await openDB();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction('records', 'readwrite'),
+        store = tx.objectStore('records');
+      const cursor = store.openCursor();
+      cursor.onsuccess = () => {
+        const row = cursor.result;
+        if (!row) return;
+        const key = String(row.key);
+        if (key.startsWith(`${userId}:${householdId}:`) || key === `session:${householdId}`)
+          row.delete();
+        row.continue();
+      };
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });

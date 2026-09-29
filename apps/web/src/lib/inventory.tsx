@@ -20,7 +20,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   const [cacheWarning, setCacheWarning] = useState('');
   const q = useQuery({
     queryKey: ['inventory', key],
-    queryFn: snapshot,
+    queryFn: ({ signal }) => snapshot(session.household_id, signal),
     enabled: online,
     retry: false,
     staleTime: 30000,
@@ -37,7 +37,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     };
   }, [key]);
   useEffect(() => {
-    if (!q.data || localStorage.getItem('acornary-account') !== key) return;
+    if (!q.data || localStorage.getItem('acornary-account') !== (session.user_id ?? key)) return;
     setCached({ key, data: q.data });
     void persist(`${key}:snapshot`, q.data).catch(() =>
       setCacheWarning('缓存空间不足，本次数据尚未保存在设备上。'),

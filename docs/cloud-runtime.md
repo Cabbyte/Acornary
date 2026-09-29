@@ -2,13 +2,13 @@
 
 目标地址：`https://acornary.protium.top`，MCP：`https://acornary.protium.top/mcp`。美国服务器 `47.77.197.236`。当前正式切换状态以 [验证记录](./stage2-verification.md) 为准，不能把预验收环境当成正式库存。
 
-正式切换已完成，云端为唯一正式库存。后续自动发布设施已配置，但首次正式 tag 部署尚未执行；目前运行的仍是 Stage2 镜像。代码、构建镜像与线上状态的对应关系见 [项目进度](./progress.md)，不要将下文初次部署步骤重复执行到现有正式库。
+正式切换已完成，云端为唯一正式库存。版本标签自动发布已经通过 v0.1.0 验收。代码、构建镜像与线上状态的对应关系见 [项目进度](./progress.md)，不要将下文初次部署步骤重复执行到现有正式库。
 
 ## 运行模式与数据
 
 `local` 保留回环地址、个人凭证与只读本地检查器。`cloud` 必须配置 HTTPS origin、32 字符以上 Better Auth secret、精确 Caddy 代理 IP、数据库连接；只接受 OAuth，Web 也必须登录。云应用启动不执行 migration，不自动创建 Household；缺少安装记录或所有者绑定时拒绝启动。
 
-001–003 不修改。004 只增加认证表：user、session、account、verification、jwks、oauthClient、oauthResource、oauthClientResource、oauthRefreshToken、oauthAccessToken、oauthConsent、oauthClientAssertion、rateLimit、auth_owners。核心仍为 items、catalog_nodes、attribute_templates；原业务表十一张，加认证表十四张，共二十五张。检查器仅展示原十一张白名单表。
+001–004 保持不变。005 增加 Passkey、家庭成员关系、邀请和邮箱验证／恢复记录，保留原用户、家庭与 actor，详见 [账号系统](./accounts.md)。核心仍为 items、catalog_nodes、attribute_templates；检查器仅展示原十一张白名单表，全部按已授权家庭隔离。
 
 所有者绑定复用 `installations.slot=local` 中原有 Actor、Household，不因部署位置改变槽位。账号、客户端、scope 不由工具输入指定。授权检查发生在查询／写入／幂等重放之前。MCP 读写工具名称、参数、结果保持兼容。
 
@@ -45,7 +45,7 @@ acornary production owner disable
 acornary production owner enable
 ```
 
-撤销会删除授权同意和刷新令牌；访问 JWT 最多继续有效到原 5 分钟期限。停用账号会在每次请求的绑定检查中立即阻止后续访问。密码重置同时撤销会话和授权。公开注册、邮件恢复、多用户管理均关闭。
+撤销会删除授权同意和刷新令牌；访问 JWT 最多继续有效到原 5 分钟期限。停用账号会在每次请求的绑定检查中立即阻止后续访问。密码重置同时撤销会话和授权。公开注册与邮箱恢复默认关闭，配置真实 SMTP 并验收收信后分别开放；已有账号可以管理登录方式和家庭。密码重置也更新凭据版本，使旧 JWT 立即失效。
 
 Codex 全局连接（保留其他 MCP 配置）：
 
@@ -59,7 +59,7 @@ node scripts/codex-cloud.mjs disconnect
 
 Codex 也可能同时看到从 ChatGPT 同步的同名 Plugin；它与全局 MCP 使用独立授权。`server=acornary` 是直接 MCP，`server=codex_apps` 是同步连接。同步连接提示 `oauth_token_invalid_grant` 时在 ChatGPT 重新授权；元数据网络请求失败则先检查到本站的网络／代理，不能把网络失败当成账号错误。诊断可以仅对该次进程将本站加入 NO_PROXY，避免修改其他服务的代理配置。
 
-授权码使用 PKCE S256，动态客户端注册关闭；客户端元数据由 Better Auth 的 CIMD 安全抓取器解析，限制重定向、私有地址和 DNS 重新绑定。签名密钥由 JWT 插件持久保存。访问令牌 5 分钟；刷新令牌 30 天、每次轮换，旧刷新令牌不能重用。Web 使用 Secure／HttpOnly Cookie，没有业务写表单。服务日志只关联已验证的 OAuth client ID、工具名和 operation_id，不记录 OAuth URL、Cookie 或令牌。
+授权码使用 PKCE S256，动态客户端注册关闭；客户端元数据由 Better Auth 的 CIMD 安全抓取器解析，限制重定向、私有地址和 DNS 重新绑定。签名密钥由 JWT 插件持久保存。访问令牌 5 分钟；刷新令牌 30 天、每次轮换，旧刷新令牌不能重用。Web 使用 Secure／HttpOnly Cookie，产品页面通过受成员关系校验的业务接口读写，检查器只读。服务日志只关联已验证的 OAuth client ID、工具名和 operation_id，不记录 OAuth URL、Cookie 或令牌。
 
 ## 预验收与正式切换
 

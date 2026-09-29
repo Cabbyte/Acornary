@@ -23,7 +23,7 @@ export async function webSnapshot(ctx: Context, rawFilter: unknown) {
       await query(c, 'SELECT id,name FROM households WHERE id=$1', [ctx.household_id])
     ).rows[0];
     const installation = (
-      await query(c, 'SELECT container_catalog_id FROM installations WHERE household_id=$1', [
+      await query(c, 'SELECT container_catalog_id FROM household_settings WHERE household_id=$1', [
         ctx.household_id,
       ])
     ).rows[0];
