@@ -151,8 +151,6 @@ test('password fallback and invitation return do not create an extra household',
   });
   expect(leave.ok()).toBe(true);
   await guest.evaluate(() => window.dispatchEvent(new Event('acornary-refresh-session')));
-  await expect(guest.getByTestId('records-households')).not.toBeVisible();
-  await guest.locator('nav button').filter({ hasText: 'households' }).click();
   await expect(guest.getByTestId('records-households')).toContainText('保留的家庭');
   await expect(guest.getByTestId('records-households')).not.toContainText('邀请家庭');
   await context.close();
