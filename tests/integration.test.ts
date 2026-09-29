@@ -377,7 +377,13 @@ describe('PostgreSQL domain transactions', () => {
       expect(
         JSON.stringify(list.tools.find((t) => t.name === 'consume_items')?.inputSchema),
       ).not.toContain('selection');
-      const args = { kind: 'SKU', name: 'MCP transport fixture', idempotency_key: key() };
+      for (const name of ['create_catalog_node', 'update_catalog_node'])
+        expect(list.tools.find((t) => t.name === name)?.inputSchema.properties?.name).toEqual({
+          type: 'string',
+          minLength: 1,
+          maxLength: 500,
+        });
+      const args = { kind: 'SKU', name: '冰淇淋 MCP transport fixture', idempotency_key: key() };
       const result: any = await client.callTool({ name: 'create_catalog_node', arguments: args });
       expect(result.isError).not.toBe(true);
       expect(
@@ -388,9 +394,50 @@ describe('PostgreSQL domain transactions', () => {
         arguments: { ...args, selection: 'FEFO' },
       });
       expect(invalid.isError).toBe(true);
+      expect((await run('query_catalog_nodes', { name: args.name })).matching_count).toBe(1);
+      const catalog_node_id = result.structuredContent.affected_objects[0].id;
+      const rename = {
+        catalog_node_id,
+        name: '  香草冰淇淋  ',
+        expected_revisions: rev(catalog_node_id, 1),
+        idempotency_key: key(),
+      };
+      const renamed: any = await client.callTool({
+        name: 'update_catalog_node',
+        arguments: rename,
+      });
+      expect(renamed.isError).not.toBe(true);
       expect(
-        (await run('query_catalog_nodes', { name: 'MCP transport fixture' })).matching_count,
-      ).toBe(1);
+        (await client.callTool({ name: 'update_catalog_node', arguments: rename }))
+          .structuredContent,
+      ).toEqual(renamed.structuredContent);
+      for (const name of ['', ' \t\n', '\u3000']) {
+        expect(
+          (
+            await client.callTool({
+              name: 'create_catalog_node',
+              arguments: { ...args, name, idempotency_key: key() },
+            })
+          ).isError,
+        ).toBe(true);
+        expect(
+          (
+            await client.callTool({
+              name: 'update_catalog_node',
+              arguments: {
+                ...rename,
+                name,
+                expected_revisions: rev(catalog_node_id, 2),
+                idempotency_key: key(),
+              },
+            })
+          ).isError,
+        ).toBe(true);
+      }
+      expect(await run('get_catalog_node', { catalog_node_id })).toMatchObject({
+        name: rename.name,
+        revision: 2,
+      });
     } finally {
       await client.close();
       await app.close();

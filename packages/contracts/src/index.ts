@@ -5,6 +5,9 @@ import { DomainError } from '../../domain/src/index.js';
 const text = z.string().min(1).max(500),
   id = entityId('catalog_node'),
   uuid = entityId('item');
+// Keep the nonblank check on the server: some connectors misinterpret an exported /\S/ pattern.
+// Do not trim names; parsed input is also used for idempotency fingerprints.
+const catalogName = text.refine((value) => /\S/.test(value), 'Name must not be blank.');
 const decimal = z
   .string()
   .max(80)
@@ -218,11 +221,11 @@ export const schemas = {
   create_catalog_node: z.strictObject({
     ...write,
     kind: z.enum(['GROUP', 'SKU']),
-    name: text.regex(/\S/),
+    name: catalogName,
     parent_id: id.nullable().default(null),
     initial_attributes: initial,
   }),
-  update_catalog_node: z.strictObject({ ...write, catalog_node_id: id, name: text.regex(/\S/) }),
+  update_catalog_node: z.strictObject({ ...write, catalog_node_id: id, name: catalogName }),
   move_catalog_node: z.strictObject({ ...write, catalog_node_id: id, parent_id: id.nullable() }),
   query_items: z.strictObject({
     ...page,
