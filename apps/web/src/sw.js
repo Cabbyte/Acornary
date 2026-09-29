@@ -39,7 +39,8 @@ self.addEventListener('fetch', (event) => {
     url.pathname.startsWith('/mcp') ||
     url.pathname.startsWith('/inspect') ||
     url.pathname.startsWith('/consent') ||
-    url.pathname.startsWith('/login')
+    url.pathname.startsWith('/login') ||
+    ['/register', '/recover', '/join', '/choose-household'].some((p) => url.pathname.startsWith(p))
   )
     return;
   if (event.request.mode === 'navigate') {

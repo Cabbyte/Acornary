@@ -7,8 +7,29 @@ test('cloud login, private records and logout', async ({ page, context }) => {
   expect((await page.request.get('/api/context')).status()).toBe(401);
   await login(page);
   await expect(page.getByRole('heading', { name: '我的物品' })).toBeVisible();
-  expect((await page.request.get('/api/context')).status()).toBe(200);
-  expect((await page.request.post('/api/read/create_items', { data: {} })).status()).toBe(404);
+  expect(
+    (
+      await page.request.get('/api/context', {
+        headers: {
+          'X-Acornary-Household': await page.evaluate(
+            () => sessionStorage.getItem('acornary-household') ?? '',
+          ),
+        },
+      })
+    ).status(),
+  ).toBe(200);
+  expect(
+    (
+      await page.request.post('/api/read/create_items', {
+        data: {},
+        headers: {
+          'X-Acornary-Household': await page.evaluate(
+            () => sessionStorage.getItem('acornary-household') ?? '',
+          ),
+        },
+      })
+    ).status(),
+  ).toBe(404);
   const inspector = await context.newPage();
   await inspector.goto('/inspect');
   await expect(inspector.getByRole('link', { name: '返回松仓' })).toBeVisible();

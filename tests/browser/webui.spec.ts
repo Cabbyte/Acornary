@@ -19,7 +19,13 @@ test.beforeEach(async ({ page, context }) => {
 });
 async function command(page: Page, name: string, input: Record<string, unknown>) {
   const response = await page.request.post(`/api/write/${name}`, {
-    headers: { Origin: new URL(page.url()).origin, 'X-Acornary-Request': 'web' },
+    headers: {
+      Origin: new URL(page.url()).origin,
+      'X-Acornary-Request': 'web',
+      'X-Acornary-Household': await page.evaluate(
+        () => sessionStorage.getItem('acornary-household') ?? '',
+      ),
+    },
     data: { idempotency_key: crypto.randomUUID(), ...input },
   });
   expect(response.status(), await response.text()).toBe(200);
@@ -245,7 +251,15 @@ test('mobile and desktop layouts, long names and accessible touch targets', asyn
 test('moving a container keeps child identities and updates their displayed paths', async ({
   page,
 }) => {
-  const snapshot = await (await page.request.get('/api/ui/snapshot')).json();
+  const snapshot = await (
+    await page.request.get('/api/ui/snapshot', {
+      headers: {
+        'X-Acornary-Household': await page.evaluate(
+          () => sessionStorage.getItem('acornary-household') ?? '',
+        ),
+      },
+    })
+  ).json();
   const container = async (name: string, parent_id: string | null = null) =>
     (
       await command(page, 'create_items', {
@@ -276,7 +290,15 @@ test('moving a container keeps child identities and updates their displayed path
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.goto(`/items/${f.ids[0]}`);
   await expect(page.locator('.page-header')).toContainText(`书房 ${suffix} / 收纳箱 ${suffix}`);
-  const after = await (await page.request.get('/api/ui/snapshot')).json();
+  const after = await (
+    await page.request.get('/api/ui/snapshot', {
+      headers: {
+        'X-Acornary-Household': await page.evaluate(
+          () => sessionStorage.getItem('acornary-household') ?? '',
+        ),
+      },
+    })
+  ).json();
   expect(after.items.find((i: any) => i.id === f.ids[0])).toMatchObject({
     parent_id: box,
     revision: 2,
@@ -327,6 +349,7 @@ test('session expiry preserves the exact pending edit and logout clears private 
     .getByRole('dialog')
     .filter({ has: page.getByRole('heading', { name: '重新登录', exact: true }) });
   await expect(login).toBeVisible();
+  await login.getByRole('button', { name: '使用邮箱和密码' }).click();
   await login.getByLabel('邮箱').fill('browser@example.test');
   await login.getByLabel('密码').fill('Browser-test-password-123!');
   await login.getByRole('button', { name: '登录', exact: true }).click();

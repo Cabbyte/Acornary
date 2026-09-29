@@ -46,7 +46,11 @@ const inject = (options: any) =>
   app.inject({
     ...options,
     remoteAddress: config.trustedProxy,
-    headers: { ...headers, ...options.headers },
+    headers: {
+      ...headers,
+      ...(ctx ? { 'x-acornary-household': ctx.household_id } : {}),
+      ...options.headers,
+    },
   });
 const jsonPost = (url: string, payload: any, extra = {}) =>
   inject({
@@ -112,7 +116,10 @@ afterAll(async () => {
   await pool.end();
 });
 
-async function grant(scope = 'openid offline_access inventory:read inventory:write') {
+async function grant(
+  scope = 'openid offline_access inventory:read inventory:write',
+  householdId?: string,
+) {
   const client_id = `https://client.example.test/${randomUUID()}.json`;
   const verifier = randomUUID() + randomUUID();
   const params = new URLSearchParams({
@@ -130,11 +137,24 @@ async function grant(scope = 'openid offline_access inventory:read inventory:wri
     headers: { cookie, accept: 'text/html' },
   });
   expect(authorize.statusCode, authorize.body).toBe(302);
-  const location = new URL(authorize.headers.location!, config.origin);
+  let location = new URL(authorize.headers.location!, config.origin);
+  if (location.pathname === '/choose-household') {
+    const selection = await jsonPost(
+      '/api/auth/oauth2/continue',
+      { postLogin: true, household_id: householdId, oauth_query: location.search.slice(1) },
+      { cookie },
+    );
+    expect(selection.statusCode, selection.body).toBe(200);
+    location = new URL(selection.json().redirect_uri ?? selection.json().url, config.origin);
+  }
   expect(location.pathname).toBe('/consent');
   const consent = await jsonPost(
     '/api/auth/oauth2/consent',
-    { accept: true, oauth_query: location.search.slice(1) },
+    {
+      accept: true,
+      ...(householdId ? { household_id: householdId } : {}),
+      oauth_query: location.search.slice(1),
+    },
     { cookie },
   );
   expect(consent.statusCode, consent.body).toBe(200);
@@ -337,5 +357,58 @@ describe('cloud OAuth and private inspector', () => {
     await manageOwner('disable', email);
     expect((await jsonPost('/api/write/create_catalog_node', payload, extra)).statusCode).toBe(401);
     await manageOwner('enable', email);
+  });
+  it('binds separate OAuth grants to separate households and rejects credentials after password replacement', async () => {
+    const login = await jsonPost('/api/auth/sign-in/email', { email, password });
+    expect(login.statusCode, login.body).toBe(200);
+    cookie = (login.headers['set-cookie'] as string[]).map((s) => s.split(';')[0]).join('; ');
+    const created = await jsonPost(
+      '/api/auth/account/household',
+      { action: 'create', name: 'Second OAuth household' },
+      { cookie },
+    );
+    expect(created.statusCode, created.body).toBe(200);
+    const second = created.json().household_id;
+    const a = await grant(undefined, ctx.household_id),
+      b = await grant(undefined, second);
+    const write = await call(a.access_token, 'create_catalog_node', {
+      kind: 'SKU',
+      name: 'OAuth household A',
+      idempotency_key: randomUUID(),
+    });
+    const id = write.json().result.structuredContent.affected_objects[0].id;
+    const denied = await call(b.access_token, 'get_catalog_node', { catalog_node_id: id });
+    expect(denied.json().result.isError).toBe(true);
+    // A Web family selection cannot change an already-issued OAuth credential.
+    expect(
+      (
+        await inject({
+          url: '/api/ui/snapshot',
+          headers: { cookie, 'x-acornary-household': second },
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(
+      (await call(a.access_token, 'get_catalog_node', { catalog_node_id: id })).json().result
+        .isError,
+    ).not.toBe(true);
+    const changed = await jsonPost(
+      '/api/auth/account/password',
+      { password: password + '-new' },
+      { cookie },
+    );
+    expect(changed.statusCode, changed.body).toBe(200);
+    expect((await call(a.access_token)).statusCode).toBe(403);
+    expect((await call(b.access_token)).statusCode).toBe(403);
+    expect(
+      (
+        await tokenPost({
+          grant_type: 'refresh_token',
+          client_id: a.client_id,
+          refresh_token: a.refresh_token,
+          resource: config.resource,
+        })
+      ).statusCode,
+    ).not.toBe(200);
   });
 });

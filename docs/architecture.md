@@ -4,7 +4,7 @@
 
 Stage2 云模式的当前约定见下述 1.6 节，部署操作与验收事实分别见 [云端运行](./cloud-runtime.md)、[Stage2 验证](./stage2-verification.md)。Stage1 段落仍定义本地模式；当前原本地库存已迁移并保持停写，云端是唯一正式库存。
 
-阶段进度统一见 [项目进度](./progress.md)。版本发布工作流及服务器控制器已实现并通过初始化验证，但首次正式 tag 更新生产尚未执行；下述新版本健康接口契约不能当作当前旧镜像已经上线的证据。
+阶段进度统一见 [项目进度](./progress.md)。版本标签发布及公网验收已随 v0.1.0 完成；后续账号系统的实现与迁移见 [账号系统](./accounts.md)，生产版本以发布记录为准。
 
 ## 1. 交付形态与技术选择
 
@@ -65,7 +65,7 @@ Compose、初始化、Codex 包装脚本与操作说明已提供，见 [本地�
 - 条码唯一映射使用同事务维护的派生索引表及唯一约束；属性仍是事实来源，索引不提供独立编辑入口。
 - 保留已有命令名称、set / unset、affected_objects 和错误语义；技术选型不改变领域契约。
 
-核心模型是 items、catalog_nodes、attribute_templates 三张表；原有业务及支撑表共十一张，004 migration 另加十四张认证表，总计二十五张。认证记录不进入检查器。属性绑定按 template_id 排序，缺省为 []，成员为 template_id、template_version、values、created_at、updated_at。
+核心模型是 items、catalog_nodes、attribute_templates 三张表；原有业务及支撑表共十一张，004 增加认证基础表，005 增加账号及家庭成员支撑表。认证记录不进入检查器。属性绑定按 template_id 排序，缺省为 []，成员为 template_id、template_version、values、created_at、updated_at。
 
 属性约束主要由共享领域服务保证：检查成员结构、同家庭模板版本、适用对象、同模板唯一及完整值。数据库仅对 attributes 检查非 null 和数组形状；核心关系约束保持。不存在属性模板引用触发器、模板外键或绑定唯一索引，直接 SQL 修改数组可绕过领域校验。所有正常写入口仍统一校验、加锁和记录事件。
 
@@ -91,13 +91,13 @@ Compose、初始化、Codex 包装脚本与操作说明已提供，见 [本地�
 
 正式域名为 `https://acornary.protium.top`，MCP 为 `/mcp`。Caddy 与 Runbuoy 共享 HTTPS 入口，Acornary 应用和 PostgreSQL 不发布宿主机端口。入口网络与数据库网络分开；应用精确校验代理地址、Host 和 Origin。`ACORNARY_MODE=cloud` 缺少必要配置或既有安装／所有者绑定时拒绝启动，运行账号不执行迁移。
 
-仅预置一个所有者，禁止公开注册。Better Auth 的用户通过 `auth_owners` 唯一映射到既有 Actor 和 Household；Codex 与 ChatGPT 的客户端身份不改变业务 Actor，也不改变旧幂等作用域。Web 使用安全会话 Cookie；所有业务读取与调试端点要求所有者登录。远程 MCP 使用授权码＋PKCE S256、CIMD 和显式授权同意，DCR 关闭；按工具校验 inventory:read／inventory:write。账号启用状态和绑定在每次请求检查，且发生在幂等重放之前。
+Better Auth 用户与 Household 通过成员关系关联，每个成员映射到家庭内的 actor，原所有者身份与幂等作用域保留。Web 使用安全会话 Cookie；每次业务及调试请求显式选择家庭并由后端检查成员关系。远程 MCP 使用授权码＋PKCE S256、CIMD 和显式授权同意，DCR 关闭；按工具校验 inventory:read／inventory:write。授权固定到成员关系和凭据版本，Web 切换家庭不会改变它；账号启用状态、成员关系和版本检查均先于幂等重放。邮箱、Passkey、可选密码及默认关闭的注册／恢复开关见账号系统说明。
 
-访问 JWT 校验签名、issuer、audience、有效期和 scope，有效期 5 分钟；刷新令牌 30 天并轮换、拒绝旧令牌重用。撤销授权停止续期，已签发 JWT 最多继续有效 5 分钟；停用账号立即阻止后续请求。所有者创建、密码恢复、停用和授权撤销通过交互式运维命令完成，不依赖邮件服务。认证记录及秘密不进入业务结果或检查器。
+访问 JWT 校验签名、issuer、audience、有效期和 scope，有效期 5 分钟；刷新令牌 30 天并轮换、拒绝旧令牌重用。撤销授权停止续期，已签发 JWT 最多继续有效 5 分钟；停用账号立即阻止后续请求。原所有者保留交互式运维命令。凭据恢复会撤销会话和 OAuth 授权并更新凭据版本，使旧 JWT 立即失效；邮箱恢复依赖已验收的真实邮件服务。认证记录及秘密不进入业务结果或检查器。
 
 所有工具仍要求明确对象 ID；助手负责查询和解析。已知差异影响选择时先澄清；在用户确认范围内无已知差异时可以选取并报告实际 UUID。超时重试保留幂等键和参数；版本冲突后重新查询并判断意图，不直接替换 revision 强行重试。推荐不会自动写库存。
 
-云端通过真实 Codex 和 ChatGPT 的隔离库存预验收后，才停止本地正式应用、生成一次性迁移快照并整库切换。云端正式写入前可回退原库；写入后须先保全云端最新数据。日常备份功能默认关闭，不启用定时或异机备份。多用户、公开上架、附件、OCR、提醒和离线同步后置。
+云端通过真实 Codex 和 ChatGPT 的隔离库存预验收后，才停止本地正式应用、生成一次性迁移快照并整库切换。云端正式写入前可回退原库；写入后须先保全云端最新数据。日常备份功能默认关闭，不启用定时或异机备份。公开上架、附件、OCR、提醒和离线同步后置。
 
 后续更新采用 [版本标签发布](./releases.md)：main 中的正式语义版本标签触发 GitHub Actions、公开 GHCR 和受限 SSH 部署，服务器固定镜像 digest。更新允许短暂停服，仅有新增 migration 时生成发布前备份；迁移与运行角色授权在同一事务中完成。迁移已提交或提交状态不明时禁止自动回退旧应用。共享 Caddy、PostgreSQL 版本、正式数据卷与认证配置不随应用发布重建。健康接口公开 `status`、`version`、`commit`，同时检查所需迁移已登记，不返回业务或认证数据。
 
@@ -105,10 +105,10 @@ Compose、初始化、Codex 包装脚本与操作说明已提供，见 [本地�
 flowchart LR
     Codex -->|OAuth + MCP| Caddy
     ChatGPT -->|OAuth + MCP| Caddy
-    Browser[浏览器] -->|会话 Cookie + 只读 API| Caddy
+    Browser[浏览器] -->|会话 Cookie + 家庭业务 API| Caddy
     Caddy -->|独立入口网络| App[Acornary]
     Caddy --> Runbuoy[既有 Runbuoy]
-    App --> Identity[认证用户映射到既有 Actor / Household]
+    App --> Identity[认证用户通过成员关系映射到 Actor / Household]
     Identity --> Service[共享领域服务]
     Service -->|私有数据库网络| PG[(PostgreSQL 18)]
 ```

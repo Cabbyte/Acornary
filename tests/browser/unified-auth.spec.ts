@@ -16,7 +16,7 @@ test('one session, inspector return path, read boundary and cross-tab inspector 
   // /inspect initially loads its own shell, but the unified login does not load it.
   scripts.length = 0;
   await page.reload();
-  await expect(page.getByLabel('邮箱')).toBeVisible();
+  await expect(page.getByRole('button', { name: '使用通行密钥登录' })).toBeVisible();
   expect(scripts.some((s) => /\/inspector-/.test(s))).toBe(false);
   await login(page);
   await expect(page.getByRole('heading', { name: 'CatalogNode 目录树' })).toBeVisible();
@@ -72,7 +72,7 @@ test('OAuth login, existing session, deny, expired session recovery, PKCE and un
     response_type: 'code',
     redirect_uri: 'http://127.0.0.1:45219/callback',
     scope: 'openid offline_access inventory:read',
-    resource: 'https://127.0.0.1:3210/mcp',
+    resource: 'https://localhost:3210/mcp',
     state: 'browser-state',
     prompt: 'consent',
     code_challenge_method: 'S256',
@@ -114,7 +114,7 @@ test('OAuth login, existing session, deny, expired session recovery, PKCE and un
       code: callback.searchParams.get('code')!,
       code_verifier: verifier,
       redirect_uri: 'http://127.0.0.1:45219/callback',
-      resource: 'https://127.0.0.1:3210/mcp',
+      resource: 'https://localhost:3210/mcp',
     },
   });
   expect(token.status(), await token.text()).toBe(200);

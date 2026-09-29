@@ -12,7 +12,7 @@ Stage2 已完成双端预验收、整库迁移、生产入口切换及正式 Cod
 
 版本发布设施已落地：GitHub Actions 测试、公开 GHCR 镜像和服务器受限部署命令均已验证。**首个正式版本 `v0.1.0` 已通过 GitHub Actions 部署上线。** 版本、digest 与公网验收见 [v0.1.0 发布记录](./docs/release-v0.1.0.md)。 普通 main push 只触发 CI；正式 `vX.Y.Z` 才自动更新生产，有新增 migration 时先备份。当前阶段、代码与线上差异、下一步统一见 [项目进度](./docs/progress.md)。
 
-**本地开发模式**在独立库运行：产品界面负责业务读写，检查器只读展示两棵树及业务表的实际记录，分开呈现派生结果和 API 响应。**云模式**增加所有者登录与双客户端 OAuth；两种模式共用领域规则。图片附件、模板升级、FEFO、多用户和后台提醒继续后置。
+**本地开发模式**在独立库运行：产品界面负责业务读写，检查器只读展示两棵树及业务表的实际记录，分开呈现派生结果和 API 响应。**云模式**提供邮箱、Passkey、可选密码及多家庭成员关系，双客户端 OAuth 复用同一账号；公开注册和邮箱找回默认关闭，真实邮件配置与收信验收后分别开启。实现与迁移说明见 [账号系统](./docs/accounts.md)，线上版本以发布记录为准。图片附件、模板升级、FEFO 和后台提醒继续后置。
 
 沿用 TypeScript / Node.js 24 LTS、Fastify 5、官方 MCP TypeScript SDK v2、PostgreSQL 18、Drizzle、Zod 4、React / Vite；Stage2 增加 Better Auth 1.7.5 的 MCP／CIMD／JWT 和共享 Caddy HTTPS 入口。`local` 模式使用回环地址与个人凭证，`cloud` 模式只接受 OAuth，不回退为个人凭证。完整边界见 [架构](./docs/architecture.md)。
 

@@ -3,6 +3,8 @@ import { expect, type Page, test } from '@playwright/test';
 // shared isolated proxy reaches five logins; never bypass or relax the limiter.
 export async function login(page: Page) {
   test.setTimeout(120000);
+  if (!(await page.getByLabel('邮箱', { exact: true }).isVisible()))
+    await page.getByRole('button', { name: '使用邮箱和密码', exact: true }).click();
   await page.getByLabel('邮箱').fill('browser@example.test');
   await page.getByLabel('密码').fill('Browser-test-password-123!');
   for (let attempt = 0; attempt < 2; attempt++) {

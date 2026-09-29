@@ -44,6 +44,13 @@ test('database rows, foreign keys, derived paths, APIs, notes and fixed registry
   const response = await page.request.get(
     '/api/debug?input=' +
       encodeURIComponent(JSON.stringify({ view: 'system', table: 'items', limit: 200 })),
+    {
+      headers: {
+        'X-Acornary-Household': await page.evaluate(
+          () => sessionStorage.getItem('acornary-household') ?? '',
+        ),
+      },
+    },
   );
   const db = (await response.json()).rows;
   const raw = JSON.parse((await core.locator('.record > .json pre').textContent())!);

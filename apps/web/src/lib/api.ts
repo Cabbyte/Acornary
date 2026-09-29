@@ -35,7 +35,18 @@ export const messages: Record<string, string> = {
 export async function request<T>(url: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', ...init });
+    const headers = new Headers(init?.headers);
+    const household =
+      sessionStorage.getItem('acornary-household') ??
+      localStorage.getItem('acornary-last-household');
+    if (household && !headers.has('X-Acornary-Household'))
+      headers.set('X-Acornary-Household', household);
+    response = await fetch(url, {
+      credentials: 'same-origin',
+      cache: 'no-store',
+      ...init,
+      headers,
+    });
   } catch {
     throw new ApiError('NETWORK', messages.NETWORK);
   }
@@ -47,6 +58,7 @@ export async function request<T>(url: string, init?: RequestInit): Promise<T> {
   }
   if (!response.ok) {
     const code = data.error?.code ?? (response.status === 401 ? 'UNAUTHORIZED' : 'INTERNAL_ERROR');
+    if (response.status === 403) window.dispatchEvent(new Event('acornary-refresh-session'));
     if (response.status === 401) window.dispatchEvent(new Event('acornary-session-expired'));
     throw new ApiError(
       code,
@@ -59,11 +71,19 @@ export async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 export const read = <T>(name: Operation, input: unknown) =>
   request<T>(`/api/read/${name}?input=${encodeURIComponent(JSON.stringify(input))}`);
-export const snapshot = () => request<InventorySnapshot>('/api/ui/snapshot');
-export const write = (name: Operation, payload: unknown) =>
+export const snapshot = (household?: string) =>
+  request<InventorySnapshot>('/api/ui/snapshot', {
+    headers: household ? { 'X-Acornary-Household': household } : {},
+  });
+export const write = (name: Operation, payload: unknown, household?: string, userId?: string) =>
   request<WriteResult>(`/api/write/${name}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Acornary-Request': 'web' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Acornary-Request': 'web',
+      ...(household ? { 'X-Acornary-Household': household } : {}),
+      ...(userId ? { 'X-Acornary-Account': userId } : {}),
+    },
     body: JSON.stringify(payload),
   });
 export const history = (id: string, kind: 'ITEM' | 'CATALOG_NODE', cursor?: string) =>

@@ -10,7 +10,16 @@ import { Readable } from 'node:stream';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { requireMcpAuth } from '@better-auth/mcp';
 import { createInsufficientScopeError } from 'better-auth/oauth2';
-import { createAuth, ownerContext, inventoryScopes } from './auth.js';
+import { createAuth, inventoryScopes } from './auth.js';
+import {
+  activeUser,
+  memberships,
+  memberContext,
+  tokenContext,
+  oauthRequest,
+  oauthFlow,
+  selectOAuthHousehold,
+} from './memberships.js';
 import { runtimeConfig, type RuntimeConfig } from './config.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import {
@@ -102,11 +111,22 @@ export async function buildApp(
       /^\/api\/(context|read(?:\/|$)|write(?:\/|$)|ui(?:\/|$)|debug(?:\?|$))/.test(req.url)
     ) {
       const session = await auth.api.getSession({ headers: headersFor(req) });
-      const context = session && (await ownerContext(session.user.id));
-      if (!context)
+      const user = session && (await activeUser(session.user.id));
+      if (!user)
         return reply
           .code(401)
-          .send({ error: { code: 'UNAUTHORIZED', message: 'Owner login required.' } });
+          .send({ error: { code: 'UNAUTHORIZED', message: 'Login required.' } });
+      if (req.headers['x-acornary-account'] && req.headers['x-acornary-account'] !== user.id)
+        return reply
+          .code(401)
+          .send({ error: { code: 'UNAUTHORIZED', message: 'Account changed.' } });
+      const household = req.headers['x-acornary-household'];
+      const context =
+        typeof household === 'string' ? await memberContext(user.id, household) : null;
+      if (!context)
+        return reply
+          .code(403)
+          .send({ error: { code: 'FORBIDDEN', message: 'Household membership required.' } });
       webContexts.set(req, context);
     }
   });
@@ -141,13 +161,20 @@ export async function buildApp(
         cache_key: `local:${ctx.household_id}:${ctx.actor_id}`,
       };
     const session = await auth.api.getSession({ headers: headersFor(req) });
-    const allowed = session && (await ownerContext(session.user.id));
+    const user = session && (await activeUser(session.user.id));
+    if (!user || !session) return { mode: 'cloud', authenticated: false };
+    const households = await memberships(user.id);
+    const selected =
+      households.find((m) => m.household_id === req.headers['x-acornary-household']) ??
+      households[0];
     return {
       mode: 'cloud',
-      authenticated: !!allowed,
-      ...(allowed && session
-        ? { cache_key: `${session.user.id}:${allowed.household_id}`, email: session.user.email }
-        : {}),
+      authenticated: true,
+      user_id: user.id,
+      email: user.email,
+      households,
+      household_id: selected?.household_id,
+      cache_key: `${user.id}:${selected?.household_id ?? 'onboarding'}`,
     };
   });
   if (auth) {
@@ -158,6 +185,20 @@ export async function buildApp(
     );
     const publicAuthPaths = new Set([
       '/sign-in/email',
+      '/passkey/generate-authenticate-options',
+      '/passkey/verify-authentication',
+      '/account/capabilities',
+      '/account/email/start',
+      '/account/email/verify',
+      '/account/complete-password',
+      '/account/passkey/options',
+      '/account/passkey/complete',
+      '/account/credentials',
+      '/account/password',
+      '/account/passkey/update',
+      '/account/households',
+      '/account/household',
+      '/account/invitation',
       '/sign-out',
       '/get-session',
       '/jwks',
@@ -175,7 +216,25 @@ export async function buildApp(
       const path = req.url.split('?')[0];
       if (path.startsWith('/api/auth/') && !publicAuthPaths.has(path.slice('/api/auth'.length)))
         return reply.code(404).send({ error: 'not_found' });
-      return sendResponse(reply, await auth.handler(requestFor(req)));
+      const body =
+        typeof req.body === 'object' && req.body ? (req.body as Record<string, unknown>) : {};
+      const flow = oauthFlow(
+        typeof body.oauth_query === 'string' ? body.oauth_query : (req.url.split('?')[1] ?? ''),
+      );
+      if (
+        typeof body.household_id === 'string' &&
+        ['/api/auth/oauth2/continue', '/api/auth/oauth2/consent'].includes(path)
+      ) {
+        if (req.headers.origin !== cloud!.origin)
+          return reply.code(403).send({ error: 'forbidden' });
+        const session = await auth.api.getSession({ headers: headersFor(req) });
+        if (!session || !(await activeUser(session.user.id)))
+          return reply.code(401).send({ error: 'unauthorized' });
+        await selectOAuthHousehold(session.session.id, session.user.id, flow, body.household_id);
+      }
+      return oauthRequest.run({ flow }, async () =>
+        sendResponse(reply, await auth.handler(requestFor(req))),
+      );
     };
     app.route({ method: ['GET', 'POST'], url: '/api/auth/*', handler });
     app.get('/.well-known/*', handler);
@@ -186,9 +245,11 @@ export async function buildApp(
       await query(pool, 'SELECT * FROM households WHERE id=$1', [context.household_id])
     ).rows[0];
     const install = (
-      await query(pool, 'SELECT container_catalog_id FROM installations WHERE household_id=$1', [
-        context.household_id,
-      ])
+      await query(
+        pool,
+        'SELECT container_catalog_id FROM household_settings WHERE household_id=$1',
+        [context.household_id],
+      )
     ).rows[0];
     return { household, container_catalog_id: install?.container_catalog_id };
   });
@@ -304,7 +365,15 @@ export async function buildApp(
       ? requireMcpAuth(
           auth,
           async (request, claims) => {
-            const context = typeof claims.sub === 'string' ? await ownerContext(claims.sub) : null;
+            const context =
+              typeof claims.sub === 'string'
+                ? await tokenContext(
+                    claims.sub,
+                    typeof claims.acornary_reference === 'string'
+                      ? claims.acornary_reference
+                      : undefined,
+                  )
+                : null;
             if (!context || typeof claims.client_id !== 'string')
               return Response.json({ error: 'forbidden' }, { status: 403 });
             const scopes = new Set(typeof claims.scope === 'string' ? claims.scope.split(' ') : []);
@@ -350,7 +419,9 @@ export async function buildApp(
     app.setNotFoundHandler((req, reply) => {
       if (
         req.method === 'GET' &&
-        /^\/(items|places|catalog|settings|inspect)(\/|$)/.test(req.url.split('?')[0])
+        /^\/(items|places|catalog|settings|inspect|register|recover|join|choose-household)(\/|$)/.test(
+          req.url.split('?')[0],
+        )
       )
         return reply.sendFile('index.html');
       return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Not found.' } });

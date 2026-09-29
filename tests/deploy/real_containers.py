@@ -23,6 +23,7 @@ env_file = root / 'deploy.env'
 env_file.write_text('ACORNARY_IMAGE=' + base + '\n')
 url = 'postgres://acornary_migrator:isolated-release-ci@postgres:5432/acornary'
 image_map = {}
+household_id = ''
 
 def run(args, stdin=None):
     return r.command(args, stdin=stdin)
@@ -76,11 +77,12 @@ def fixture(version, migrations, broken=False):
 def app_fetch(path, cookie='', body=None):
     js = """const headers={host:'release.example.test','x-forwarded-proto':'https',origin:'https://release.example.test'};
     const body=JSON.parse(process.env.TEST_REQUEST);if(body.cookie)headers.cookie=body.cookie;
-    if(body.payload)headers['content-type']='application/json';
+    if(body.payload!==null)headers['content-type']='application/json';
+    if(body.household)headers['x-acornary-household']=body.household;
     const req=require('node:http').request({hostname:'127.0.0.1',port:3210,path:body.path,method:body.payload?'POST':'GET',headers},r=>{
       let text='';r.on('data',c=>text+=c);r.on('end',()=>console.log(JSON.stringify({status:r.statusCode,data:JSON.parse(text),cookies:(r.headers['set-cookie']||[]).map(x=>x.split(';')[0]).join('; ')})));
     });req.on('error',()=>process.exit(1));req.end(body.payload?JSON.stringify(body.payload):undefined);"""
-    env = dict(os.environ, TEST_REQUEST=json.dumps({'path': path, 'cookie': cookie, 'payload': body}))
+    env = dict(os.environ, TEST_REQUEST=json.dumps({'path': path, 'cookie': cookie, 'payload': body, 'household': household_id}))
     output = subprocess.check_output(compose + ['exec', '-T', '-e', 'TEST_REQUEST', 'app', 'node', '-e', js], env=env)
     return json.loads(output)
 
@@ -109,8 +111,12 @@ try:
     auth = app_fetch('/api/auth/sign-in/email', body={'email': 'release@example.test', 'password': 'Release-fixture-password-123!'})
     assert auth['status'] == 200, {'status': auth['status'], 'data': auth['data']}
     cookie = auth['cookies']
+    household_id = app_fetch('/api/session', cookie)['data']['household_id']
     identity = app_fetch('/api/context', cookie)
     assert identity['status'] == 200
+    assert app_fetch('/api/auth/account/household', cookie, {'action':'create','name':'Runtime role family'})['status'] == 200
+    assert app_fetch('/api/auth/account/passkey/options', cookie, {})['status'] == 200
+    assert app_fetch('/api/auth/account/capabilities', cookie)['data']['registration'] is False
     metadata = json.loads(run(['docker', 'run', '--rm', '--entrypoint', 'cat', base, '/app/release.json']))
     controller = r.Controller(config, backend)
     r.save_json(controller.root / 'current.json', dict(metadata, image=base))
@@ -134,7 +140,8 @@ try:
     await execute(c,'create_items',{catalog_node_id:c.container_catalog_id,count:1,idempotency_key:'fixture-create',expected_revisions:{}});
     await pool.end();"""
     run(compose + ['run', '--rm', '-T', 'admin', 'node', '--input-type=module'], stdin=replay.encode())
-    added = {'005_release_probe.sql': 'CREATE TABLE release_probe(id integer PRIMARY KEY);'}
+    next_migration = max(int(n.split('_')[0]) for n in metadata['migrations']) + 1
+    added = {f'{next_migration:03}_release_probe.sql': 'CREATE TABLE release_probe(id integer PRIMARY KEY);'}
     upgraded = deploy('v9.0.2', added)
     assert upgraded['phase'] == 'succeeded' and upgraded.get('backup'), upgraded
     assert app_fetch('/api/context', cookie)['data'] == identity['data']
@@ -147,13 +154,13 @@ try:
     with open(upgraded['backup'], 'rb') as stream:
         run(['docker', 'exec', '-i', database_container, 'pg_restore', '-U', 'acornary_migrator', '-d', 'acornary_restore_release', '--no-owner', '--no-privileges'], stdin=stream)
     restored = run(['docker', 'exec', database_container, 'psql', '-X', '-t', '-A', '-U', 'acornary_migrator', '-d', 'acornary_restore_release', '-c', 'SELECT count(*) FROM migrations']).strip()
-    assert restored == '4'  # Snapshot precedes 005; never overwrote the upgraded database.
-    rolled_back = deploy('v9.0.3', dict(added, **{'006_bad.sql': 'CREATE TABLE should_rollback(id int); SELECT 1/0;'}))
+    assert int(restored) == len(metadata['migrations'])  # Snapshot precedes the probe migration.
+    rolled_back = deploy('v9.0.3', dict(added, **{f'{next_migration+1:03}_bad.sql': 'CREATE TABLE should_rollback(id int); SELECT 1/0;'}))
     assert rolled_back['phase'] == 'failed' and rolled_back['recovered'], rolled_back
     assert backend.database("SELECT to_regclass('public.should_rollback')").strip() == ''
     failed_start = deploy('v9.0.4', added, broken=True)
     assert failed_start['phase'] == 'failed' and failed_start['recovered'], failed_start
-    committed = deploy('v9.0.5', dict(added, **{'006_committed.sql': 'CREATE TABLE committed_probe(id int);'}), broken=True)
+    committed = deploy('v9.0.5', dict(added, **{f'{next_migration+1:03}_committed.sql': 'CREATE TABLE committed_probe(id int);'}), broken=True)
     assert committed['phase'] == 'needs_attention', committed
     assert backend.database("SELECT to_regclass('public.committed_probe')").strip() == 'committed_probe'
     assert not run(compose + ['ps', '--status', 'running', '-q', 'app']).strip()

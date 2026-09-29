@@ -85,7 +85,7 @@ function Workspace() {
       ) : (
         <Catalog id={id} open={open} />
       );
-  else if (section === 'settings') page = <Settings />;
+  else if (section === 'settings') page = <Settings section={id} />;
   else if (section === 'login') page = <Home open={open} />;
   else
     page = (

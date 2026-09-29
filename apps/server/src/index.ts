@@ -14,7 +14,7 @@ if (config.mode === 'local') {
 } else {
   // The runtime role has no DDL permissions. Migration/provisioning is an
   // explicit administrative step, never an implicit empty-household fallback.
-  const migrated = await query(pool, "SELECT 1 FROM migrations WHERE name='004_cloud_auth.sql'");
+  const migrated = await query(pool, "SELECT 1 FROM migrations WHERE name='005_accounts.sql'");
   installed = (await query(pool, "SELECT * FROM installations WHERE slot='local'")).rows[0];
   const owner = (await query(pool, 'SELECT 1 FROM auth_owners')).rowCount;
   if (!migrated.rowCount || !installed || !owner)
