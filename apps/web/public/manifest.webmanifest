@@ -1,0 +1,12 @@
+{
+  "id": "/",
+  "name": "松仓 · Acornary",
+  "short_name": "松仓",
+  "lang": "zh-CN",
+  "start_url": "/items",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f2f2f7",
+  "theme_color": "#f2f2f7",
+  "icons": [{ "src": "/app-icon.png", "sizes": "476x458", "type": "image/png", "purpose": "any" }]
+}

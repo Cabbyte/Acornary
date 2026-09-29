@@ -54,6 +54,70 @@ beforeEach(async () => {
   containerSku = await sku('容器');
 });
 afterAll(() => pool.end());
+describe('Web product interface', () => {
+  it('preserves HTTP command identity, revision conflicts and full household totals', async () => {
+    const catalog = await sku('六瓶牛奶');
+    const ids = await create(catalog, 6, [
+      attrs('contents', { remaining: { value: '1000', unit: 'mL' }, accuracy: 'MEASURED' }),
+    ]);
+    const room = (await create(containerSku, 1, [attrs('container', { can_contain: true })]))[0];
+    const app = await buildApp(ctx, 'a'.repeat(64), false);
+    const headers = { host: 'localhost', origin: 'http://localhost', 'x-acornary-request': 'web' };
+    try {
+      const input = {
+        item_id: ids[0],
+        amount: { value: '200', unit: 'mL' },
+        accuracy: 'MEASURED',
+        expected_revisions: rev(ids[0], 1),
+        idempotency_key: key(),
+      };
+      const post = (payload: Record<string, unknown>, extra = {}) =>
+        app.inject({
+          method: 'POST',
+          url: '/api/write/consume_item_content',
+          headers: Object.fromEntries(
+            Object.entries({ ...headers, ...extra }).filter(([, v]) => v !== undefined),
+          ),
+          payload,
+        });
+      expect((await post(input, { origin: undefined })).statusCode).toBe(403);
+      expect((await post(input, { 'x-acornary-request': undefined })).statusCode).toBe(403);
+      expect((await post(input, { origin: 'https://foreign.example' })).statusCode).toBe(403);
+      const first = await post(input);
+      expect(first.statusCode, first.body).toBe(200);
+      expect((await post(input)).json()).toEqual(first.json());
+      expect((await post({ ...input, idempotency_key: key() })).statusCode).toBe(409);
+      expect((await post({ ...input, amount: { value: '300', unit: 'mL' } })).statusCode).toBe(409);
+      const snapshot = (await app.inject('/api/ui/snapshot')).json();
+      expect(snapshot.items).toHaveLength(7);
+      expect(snapshot.groups).toHaveLength(1);
+      expect(snapshot.groups[0]).toMatchObject({
+        count: 6,
+        current_count: 6,
+        unknown_lifecycle: 6,
+        unknown_opening: 6,
+        totals: [{ unit: 'mL', value: '5800' }],
+      });
+      expect(snapshot.groups[0].item_ids).not.toContain(room);
+      expect((await app.inject('/api/ui/groups?search=不存在')).json()).toEqual([]);
+      expect((await app.inject('/api/ui/snapshot?state=invalid')).statusCode).toBe(400);
+      expect(
+        (await app.inject({ method: 'POST', url: '/api/write/__proto__', headers, payload: {} }))
+          .statusCode,
+      ).toBe(403);
+      const event = (
+        await query(
+          pool,
+          'SELECT source FROM events WHERE target_id=$1 ORDER BY after_revision DESC',
+          [ids[0]],
+        )
+      ).rows[0];
+      expect(event.source).toBe('WEB');
+    } finally {
+      await app.close();
+    }
+  });
+});
 describe('PostgreSQL domain transactions', () => {
   it('creates six identities, opens and consumes only one, preserves unknown inventory', async () => {
     const milk = await sku();

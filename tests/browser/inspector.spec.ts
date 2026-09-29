@@ -1,10 +1,9 @@
+import { login } from './login.js';
 import { test, expect } from '@playwright/test';
 test.beforeEach(async ({ page }) => {
   if (!process.env.ACORNARY_E2E_CLOUD) return;
-  await page.goto('/');
-  await page.getByLabel('邮箱').fill('browser@example.test');
-  await page.getByLabel('密码').fill('Browser-test-password-123!');
-  await page.getByRole('button', { name: '登录', exact: true }).click();
+  await page.goto('/inspect');
+  await login(page);
   await expect(page.getByRole('button', { name: '退出登录' })).toBeVisible();
 });
 test('database rows, foreign keys, derived paths, APIs, notes and fixed registry views', async ({
@@ -22,7 +21,7 @@ test('database rows, foreign keys, derived paths, APIs, notes and fixed registry
   page.on('dialog', () => {
     throw new Error('Unsafe note HTML');
   });
-  await page.goto('/');
+  await page.goto('/inspect');
   await expect(page.getByRole('heading', { name: 'CatalogNode 目录树' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Item 容纳树' })).toBeVisible();
   await page.getByLabel('搜索名称').fill('牛奶');
@@ -114,7 +113,7 @@ test('polling, focus and manual refresh remain read-only', async ({ page }) => {
   page.on('request', (r) => {
     if (r.url().includes('/api/')) seen.push(r.url());
   });
-  await page.goto('/');
+  await page.goto('/inspect');
   await expect(page.getByTestId('records-households').locator('.record')).toHaveCount(1);
   await page.waitForLoadState('networkidle');
   const count = seen.length;

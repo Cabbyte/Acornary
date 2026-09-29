@@ -309,4 +309,33 @@ describe('cloud OAuth and private inspector', () => {
       expect((await call(signed.token)).statusCode).toBe(401);
     }
   });
+  it('protects Web snapshots and writes with the owner session, including idempotent replays', async () => {
+    const login = await jsonPost('/api/auth/sign-in/email', { email, password });
+    expect(login.statusCode, login.body).toBe(200);
+    cookie = (login.headers['set-cookie'] as string[]).map((s) => s.split(';')[0]).join('; ');
+    const payload = { kind: 'SKU', name: 'Web session SKU', idempotency_key: randomUUID() };
+    expect((await inject({ url: '/api/ui/snapshot' })).statusCode).toBe(401);
+    expect(
+      (await jsonPost('/api/write/create_catalog_node', payload, { 'x-acornary-request': 'web' }))
+        .statusCode,
+    ).toBe(401);
+    const extra = { cookie, 'x-acornary-request': 'web' };
+    const first = await jsonPost('/api/write/create_catalog_node', payload, extra);
+    expect(first.statusCode, first.body).toBe(200);
+    expect((await jsonPost('/api/write/create_catalog_node', payload, extra)).json()).toEqual(
+      first.json(),
+    );
+    expect((await inject({ url: '/api/ui/snapshot', headers: { cookie } })).statusCode).toBe(200);
+    expect(
+      (
+        await jsonPost('/api/write/create_catalog_node', payload, {
+          ...extra,
+          origin: 'https://foreign.example',
+        })
+      ).statusCode,
+    ).toBe(403);
+    await manageOwner('disable', email);
+    expect((await jsonPost('/api/write/create_catalog_node', payload, extra)).statusCode).toBe(401);
+    await manageOwner('enable', email);
+  });
 });

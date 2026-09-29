@@ -1,149 +1,88 @@
-import { useState, type ReactNode } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
+import { authPost, Redirect, safeReturnTo, serverRedirect } from './lib/auth';
+import { useSession } from './lib/session';
+import { Button, Notice } from './ui/components';
 
-async function authPost(path: string, body: unknown) {
-  const response = await fetch(`/api/auth/${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.message ?? data.error_description ?? '认证失败');
-  return data;
-}
-export function AuthGate({ children }: { children: ReactNode }) {
-  const client = useQueryClient();
+export function AuthScreen() {
+  const { session } = useSession();
+  const params = new URLSearchParams(location.search);
+  const oauthQuery = params.has('client_id') ? location.search.slice(1) : undefined;
+  const consent = location.pathname === '/consent';
+  const started = useRef(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const session = useQuery({
-    queryKey: ['session'],
-    queryFn: async () => {
-      const r = await fetch('/api/session');
-      if (!r.ok) throw new Error('无法验证登录状态');
-      return r.json();
-    },
-    refetchInterval: 5000,
-  });
-  if (!session.data)
-    return (
-      <main className="auth-panel">
-        {session.error ? '无法验证登录状态，请刷新重试。' : '正在验证登录状态…'}
-      </main>
-    );
-  if (session.data.mode === 'local') return children;
-  const params = new URLSearchParams(window.location.search);
-  const oauthQuery = params.has('client_id') ? window.location.search.slice(1) : undefined;
-  async function action(fn: () => Promise<void>) {
+  async function act(path: string, body: object) {
     setBusy(true);
     setError('');
     try {
-      await fn();
+      serverRedirect(await authPost(path, { ...body, oauth_query: oauthQuery }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : '认证失败');
-    } finally {
+      setError(e instanceof Error ? e.message : '授权失败，请重试。');
       setBusy(false);
     }
   }
-  if (!session.data.authenticated || window.location.pathname === '/login')
-    return (
-      <main className="auth-panel">
-        <h1>Acornary 登录</h1>
-        <p>仅限预置的所有者账号。</p>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const form = new FormData(e.currentTarget);
-            void action(async () => {
-              const result = await authPost('sign-in/email', {
-                email: form.get('email'),
-                password: form.get('password'),
-                ...(oauthQuery ? { oauth_query: oauthQuery } : {}),
-              });
-              // A redirect comes only from the server's validated OAuth flow, never
-              // directly from the untrusted redirect_uri query parameter.
-              window.location.assign(result.redirect_uri ?? result.url ?? '/');
-            });
-          }}
-        >
-          <label>
-            邮箱
-            <input name="email" type="email" autoComplete="username" required />
-          </label>
-          <label>
-            密码
-            <input name="password" type="password" autoComplete="current-password" required />
-          </label>
-          <button disabled={busy} type="submit">
-            登录
-          </button>
-        </form>
-        {error && <p role="alert">{error}</p>}
-      </main>
-    );
-  if (window.location.pathname === '/consent')
-    return (
-      <main className="auth-panel">
-        <h1>授权访问 Acornary</h1>
-        <p>以下客户端请求访问同一份家庭库存：</p>
-        <code>{params.get('client_id')}</code>
-        <p>请求的权限：</p>
-        <ul>
-          {(params.get('scope') ?? '')
-            .split(' ')
-            .filter(Boolean)
-            .map((scope) => (
-              <li key={scope}>
-                {scope === 'inventory:read'
-                  ? '读取库存、笔记及历史'
-                  : scope === 'inventory:write'
-                    ? '修改库存与文字笔记'
-                    : scope === 'offline_access'
-                      ? '保持连接（刷新授权最长 30 天）'
-                      : scope}
-              </li>
-            ))}
-        </ul>
-        <p>只在你刚刚从 Codex 或 ChatGPT 发起连接时授权。</p>
-        {['拒绝', '允许'].map((label, i) => (
-          <button
-            key={label}
-            disabled={busy || !oauthQuery}
-            onClick={() =>
-              void action(async () => {
-                const result = await authPost('oauth2/consent', {
-                  accept: !!i,
-                  oauth_query: oauthQuery,
-                });
-                if (!result.redirect_uri && !result.url) throw new Error('授权结果缺少重定向地址');
-                window.location.assign(result.redirect_uri ?? result.url);
-              })
-            }
-          >
-            {label}
-          </button>
-        ))}
-        {error && <p role="alert">{error}</p>}
-      </main>
-    );
+  useEffect(() => {
+    if (oauthQuery && !consent && !started.current) {
+      started.current = true;
+      // The provider verifies the signed context and rechecks session, client,
+      // callback, PKCE and explicit prompt/max_age requirements.
+      void act('oauth2/continue', { selected: true });
+    }
+  }, []);
+  if (!oauthQuery && !consent) return <Redirect to={safeReturnTo(params.get('returnTo'))} />;
+  const scopes: Record<string, string> = {
+    openid: '确认账号身份',
+    profile: '读取账号资料',
+    email: '读取账号邮箱',
+    'inventory:read': '读取库存、笔记及历史',
+    'inventory:write': '修改库存与文字笔记',
+    offline_access: '保持连接（刷新授权最长 30 天）',
+  };
   return (
-    <>
-      <div className="session-bar">
-        云端库存 · 只读检查器{' '}
-        <button
-          disabled={busy}
-          onClick={() =>
-            void action(async () => {
-              await authPost('sign-out', {});
-              client.clear();
-              window.location.assign('/login');
-            })
-          }
-        >
-          退出登录
-        </button>
-        {error && <span role="alert">{error}</span>}
-      </div>
-      {children}
-    </>
+    <main className="login auth-consent">
+      <img src="/app-icon.png" width="76" height="76" alt="松仓" />
+      <h1>{consent ? '授权访问松仓' : '继续连接松仓'}</h1>
+      <p>{session.email}</p>
+      {consent && oauthQuery ? (
+        <>
+          <p>以下客户端请求访问你的家庭库存：</p>
+          <code className="oauth-client">{params.get('client_id')}</code>
+          <ul>
+            {(params.get('scope') ?? '')
+              .split(' ')
+              .filter(Boolean)
+              .map((scope) => (
+                <li key={scope}>{scopes[scope] ?? scope}</li>
+              ))}
+          </ul>
+          <p>仅在你刚从 Codex、ChatGPT 或其他受信任客户端发起连接时允许。</p>
+          <div className="stack">
+            <Button
+              type="button"
+              disabled={busy}
+              onClick={() => void act('oauth2/consent', { accept: true })}
+            >
+              允许
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => void act('oauth2/consent', { accept: false })}
+            >
+              拒绝
+            </Button>
+          </div>
+        </>
+      ) : (
+        <Notice>
+          {oauthQuery ? '正在验证授权请求…' : '缺少授权请求，请从客户端重新发起连接。'}
+        </Notice>
+      )}
+      {error && <Notice danger>{error}</Notice>}
+      <a className="button secondary" href="/items">
+        返回松仓
+      </a>
+    </main>
   );
 }

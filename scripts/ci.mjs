@@ -118,6 +118,8 @@ try {
     '-e',
     'ACORNARY_E2E_CLOUD=1',
     '-e',
+    'ACORNARY_TEST_TLS_DIR=/tmp',
+    '-e',
     'ACORNARY_E2E_ORIGIN=https://127.0.0.1:3210',
     worker,
     'pnpm',

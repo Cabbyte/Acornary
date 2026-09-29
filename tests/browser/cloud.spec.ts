@@ -1,16 +1,20 @@
+import { login } from './login.js';
 import { test, expect } from '@playwright/test';
-test('cloud login, private records and logout', async ({ page }) => {
+test('cloud login, private records and logout', async ({ page, context }) => {
   test.skip(!process.env.ACORNARY_E2E_CLOUD, 'Cloud-only access boundary');
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Acornary 登录' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '欢迎回到松仓' })).toBeVisible();
   expect((await page.request.get('/api/context')).status()).toBe(401);
-  await page.getByLabel('邮箱').fill('browser@example.test');
-  await page.getByLabel('密码').fill('Browser-test-password-123!');
-  await page.getByRole('button', { name: '登录', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'CatalogNode 目录树' })).toBeVisible();
+  await login(page);
+  await expect(page.getByRole('heading', { name: '我的物品' })).toBeVisible();
   expect((await page.request.get('/api/context')).status()).toBe(200);
   expect((await page.request.post('/api/read/create_items', { data: {} })).status()).toBe(404);
-  await page.getByRole('button', { name: '退出登录' }).click();
-  await expect(page.getByRole('heading', { name: 'Acornary 登录' })).toBeVisible();
+  const inspector = await context.newPage();
+  await inspector.goto('/inspect');
+  await expect(inspector.getByRole('link', { name: '返回松仓' })).toBeVisible();
+  await page.goto('/settings');
+  await page.getByRole('button', { name: '退出登录并清除本机缓存' }).click();
+  await expect(page.getByRole('heading', { name: '欢迎回到松仓' })).toBeVisible();
   expect((await page.request.get('/api/context')).status()).toBe(401);
+  await expect(inspector.getByRole('heading', { name: '欢迎回到松仓' })).toBeVisible();
 });
