@@ -64,6 +64,7 @@ async function register() {
   const session = (await b.call('/api/session')).json();
   expect(session.authenticated).toBe(true);
   expect(session.households).toEqual([]);
+  expect(session.login_methods).toEqual({ password: true, passkey_count: 0 });
   return { b, email, userId: session.user_id };
 }
 beforeAll(async () => {

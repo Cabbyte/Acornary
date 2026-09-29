@@ -167,12 +167,22 @@ export async function buildApp(
     const selected =
       households.find((m) => m.household_id === req.headers['x-acornary-household']) ??
       households[0];
+    const loginMethods = (
+      await query(
+        pool,
+        `SELECT
+      EXISTS(SELECT 1 FROM account WHERE "userId"=$1 AND "providerId"='credential' AND password IS NOT NULL) AS password,
+      (SELECT count(*)::integer FROM passkey WHERE "userId"=$1) AS passkey_count`,
+        [user.id],
+      )
+    ).rows[0];
     return {
       mode: 'cloud',
       authenticated: true,
       user_id: user.id,
       email: user.email,
       households,
+      login_methods: loginMethods,
       household_id: selected?.household_id,
       cache_key: `${user.id}:${selected?.household_id ?? 'onboarding'}`,
     };

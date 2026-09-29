@@ -26,6 +26,7 @@ export interface Session {
   email?: string;
   user_id?: string;
   household_id?: string;
+  login_methods?: { password: boolean; passkey_count: number };
   households?: { id: string; household_id: string; name: string }[];
 }
 const Context = createContext<{
@@ -188,6 +189,11 @@ export function SessionGate({
     const current = await request<Session>('/api/session');
     if (version !== generation.current) return;
     if (current.authenticated && current.cache_key) {
+      if (session?.cache_key && session.cache_key !== current.cache_key) {
+        await client.cancelQueries();
+        invalidatePendingStorage();
+        client.clear();
+      }
       if (session?.user_id === current.user_id && current.user_id) {
         for (const old of session?.households ?? [])
           if (!current.households?.some((h) => h.household_id === old.household_id))

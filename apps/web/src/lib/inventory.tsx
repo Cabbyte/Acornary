@@ -20,7 +20,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   const [cacheWarning, setCacheWarning] = useState('');
   const q = useQuery({
     queryKey: ['inventory', key],
-    queryFn: () => snapshot(session.household_id),
+    queryFn: ({ signal }) => snapshot(session.household_id, signal),
     enabled: online,
     retry: false,
     staleTime: 30000,

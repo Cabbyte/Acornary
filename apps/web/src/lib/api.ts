@@ -71,9 +71,10 @@ export async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 export const read = <T>(name: Operation, input: unknown) =>
   request<T>(`/api/read/${name}?input=${encodeURIComponent(JSON.stringify(input))}`);
-export const snapshot = (household?: string) =>
+export const snapshot = (household?: string, signal?: AbortSignal) =>
   request<InventorySnapshot>('/api/ui/snapshot', {
     headers: household ? { 'X-Acornary-Household': household } : {},
+    signal,
   });
 export const write = (name: Operation, payload: unknown, household?: string, userId?: string) =>
   request<WriteResult>(`/api/write/${name}`, {

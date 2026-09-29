@@ -134,6 +134,27 @@ test('password fallback and invitation return do not create an extra household',
   await expect(guest.getByRole('heading', { name: '我的物品' })).toBeVisible();
   const session = await (await guest.request.get(new URL('/api/session', link).toString())).json();
   expect(session.households).toHaveLength(1);
+  const household = session.households[0].household_id;
+  const headers = { Origin: new URL(link).origin };
+  const second = await guest.request.post('/api/auth/account/household', {
+    headers,
+    data: { action: 'create', name: '保留的家庭' },
+  });
+  expect(second.ok()).toBe(true);
+  await guest.goto(new URL('/inspect', link).toString());
+  await guest.locator('nav button').filter({ hasText: 'households' }).click();
+  await expect(guest.getByTestId('records-households')).toContainText('邀请家庭');
+  // Same-account membership changes can arrive while another tab is inspecting the old family.
+  const leave = await guest.request.post('/api/auth/account/household', {
+    headers,
+    data: { action: 'leave', household_id: household },
+  });
+  expect(leave.ok()).toBe(true);
+  await guest.evaluate(() => window.dispatchEvent(new Event('acornary-refresh-session')));
+  await expect(guest.getByTestId('records-households')).not.toBeVisible();
+  await guest.locator('nav button').filter({ hasText: 'households' }).click();
+  await expect(guest.getByTestId('records-households')).toContainText('保留的家庭');
+  await expect(guest.getByTestId('records-households')).not.toContainText('邀请家庭');
   await context.close();
 });
 

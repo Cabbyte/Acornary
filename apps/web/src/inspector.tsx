@@ -31,15 +31,18 @@ const titles: Record<string, string> = {
 };
 const label = (o: any) => o.display_name ?? o.name ?? o.catalog_name ?? o.id;
 const attr = (o: any, id: string) => o.attributes?.find((a: any) => a.template_id === id)?.values;
-async function request(path: string, input: unknown) {
-  return sharedRequest<any>(`${path}?input=${encodeURIComponent(JSON.stringify(input))}`);
+async function request(path: string, input: unknown, signal?: AbortSignal) {
+  return sharedRequest<any>(`${path}?input=${encodeURIComponent(JSON.stringify(input))}`, {
+    signal,
+  });
 }
-const api = (op: string, input: unknown = {}) => request(`/api/read/${op}`, input);
-async function all(op: string, input: object = {}) {
+const api = (op: string, input: unknown = {}, signal?: AbortSignal) =>
+  request(`/api/read/${op}`, input, signal);
+async function all(op: string, input: object = {}, signal?: AbortSignal) {
   const data: any[] = [];
   let cursor: string | undefined;
   do {
-    const r = await api(op, { ...input, limit: 200, ...(cursor ? { cursor } : {}) });
+    const r = await api(op, { ...input, limit: 200, ...(cursor ? { cursor } : {}) }, signal);
     data.push(...r.data);
     cursor = r.next_cursor ?? undefined;
   } while (cursor);
@@ -151,7 +154,11 @@ function Records({
     limit,
     cursor: pages.at(-1),
   };
-  const q = useQuery({ queryKey: ['debug', input], queryFn: () => request('/api/debug', input) });
+  const { session } = useSession();
+  const q = useQuery({
+    queryKey: ['debug', session.cache_key, input],
+    queryFn: ({ signal }) => request('/api/debug', input, signal),
+  });
   return (
     <section className="panel records" data-testid={`records-${table}`}>
       <div className="section-title">
@@ -302,6 +309,7 @@ function Tree({
   );
 }
 function Inspector() {
+  const { session } = useSession();
   const cache = useQueryClient();
   const [destination, setDestination] = useState<Destination>({ table: 'households' });
   const [tab, setTab] = useState('core');
@@ -317,10 +325,13 @@ function Inspector() {
   };
   const target = 'target' in destination ? destination.target : undefined;
   const catalogs = useQuery({
-    queryKey: ['catalogs'],
-    queryFn: () => all('query_catalog_nodes', { include_hidden: true }),
+    queryKey: ['catalogs', session.cache_key],
+    queryFn: ({ signal }) => all('query_catalog_nodes', { include_hidden: true }, signal),
   });
-  const items = useQuery({ queryKey: ['items'], queryFn: () => all('query_items') });
+  const items = useQuery({
+    queryKey: ['items', session.cache_key],
+    queryFn: ({ signal }) => all('query_items', {}, signal),
+  });
   const resultInput = {
     ...filters,
     limit: 10,
@@ -331,22 +342,22 @@ function Inspector() {
     ],
   };
   const results = useQuery({
-    queryKey: ['results', resultInput],
-    queryFn: () => api('query_items', resultInput),
+    queryKey: ['results', session.cache_key, resultInput],
+    queryFn: ({ signal }) => api('query_items', resultInput, signal),
     enabled: showList,
   });
   const detailInput =
     target?.kind === 'ITEM' ? { item_id: target.id } : { catalog_node_id: target?.id };
   const operation = target?.kind === 'ITEM' ? 'get_item' : 'get_catalog_node';
   const detail = useQuery({
-    queryKey: ['detail', target],
+    queryKey: ['detail', session.cache_key, target],
     enabled: !!target,
-    queryFn: () => api(operation, detailInput),
+    queryFn: ({ signal }) => api(operation, detailInput, signal),
   });
   const derived = useQuery({
-    queryKey: ['derived', target],
+    queryKey: ['derived', session.cache_key, target],
     enabled: !!target && tab === 'derived',
-    queryFn: () => api(operation, { ...detailInput, include_path: true }),
+    queryFn: ({ signal }) => api(operation, { ...detailInput, include_path: true }, signal),
   });
   const selectedRow = [...(catalogs.data ?? []), ...(items.data ?? [])].find(
     (o) => o.id === target?.id,
