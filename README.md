@@ -10,7 +10,7 @@
 
 Stage2 已完成双端预验收、整库迁移、生产入口切换及正式 Codex／ChatGPT 授权和读取核对。正式地址为 [acornary.protium.top](https://acornary.protium.top)，MCP 为 `https://acornary.protium.top/mcp`；本地原库存已停写，云端为唯一正式库存。日常备份默认关闭，保留一次迁移前快照。实际通过项和验证边界见 [Stage2 验证记录](./docs/stage2-verification.md)，操作说明见 [云端运行](./docs/cloud-runtime.md)。核心模型仍为三张表；004 migration 增加认证支撑表，检查器仍只展示原有业务表。历史结果保留在 [Stage1 验证记录](./docs/stage1-verification.md)。
 
-版本发布设施已落地：GitHub Actions 测试、公开 GHCR 镜像和服务器受限部署命令均已验证。**首个正式版本 `v0.1.0` 已通过 GitHub Actions 部署上线。** 版本、digest 与公网验收见 [v0.1.0 发布记录](./docs/release-v0.1.0.md)。 普通 main push 只触发 CI；正式 `vX.Y.Z` 才自动更新生产，有新增 migration 时先备份。当前阶段、代码与线上差异、下一步统一见 [项目进度](./docs/progress.md)。
+版本发布设施已落地：GitHub Actions 测试、公开 GHCR 镜像和服务器受限部署命令均已验证。**当前正式版本 `v0.2.0` 已通过 GitHub Actions 部署上线。** 账号系统、迁移和公网验收见 [v0.2.0 发布记录](./docs/release-v0.2.0.md)；首版 Web UI 历史见 [v0.1.0](./docs/release-v0.1.0.md)。 普通 main push 只触发 CI；正式 `vX.Y.Z` 才自动更新生产，有新增 migration 时先备份。当前阶段、代码与线上差异、下一步统一见 [项目进度](./docs/progress.md)。
 
 **本地开发模式**在独立库运行：产品界面负责业务读写，检查器只读展示两棵树及业务表的实际记录，分开呈现派生结果和 API 响应。**云模式**提供邮箱、Passkey、可选密码及多家庭成员关系，双客户端 OAuth 复用同一账号；公开注册和邮箱找回默认关闭，真实邮件配置与收信验收后分别开启。实现与迁移说明见 [账号系统](./docs/accounts.md)，线上版本以发布记录为准。图片附件、模板升级、FEFO 和后台提醒继续后置。
 
