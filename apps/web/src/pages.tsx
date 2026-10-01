@@ -1,6 +1,6 @@
 import { AccountSettings, HouseholdSettings } from './accounts';
 import { useEffect, useState } from 'react';
-import { Link } from '@tanstack/react-router';
+import { Link, useLocation } from '@tanstack/react-router';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import Markdown from 'react-markdown';
 import {
@@ -34,6 +34,8 @@ import {
 import { Button, Empty, Field, Notice, Row, Sheet } from './ui/components';
 import { definitions, fieldValues, templateLabels } from './ui/fields';
 import type { Action } from './ui/forms';
+import { LocationPath, PhysicalRow, PageEnd, useBrowseState } from './ui/browser';
+import { PAGE_SIZE, specification, categoryPath } from './lib/browse';
 
 export type OpenAction = (action: Action) => void;
 function groupSubtitle(
@@ -228,10 +230,14 @@ export function PageHeader({
   subtitle?: string;
   back?: string;
 }) {
+  const location = useLocation();
+  const requested = new URLSearchParams(location.searchStr).get('returnTo');
+  const destination =
+    requested && /^\/(items|places|catalog|search)(\/|\?|$)/.test(requested) ? requested : back;
   return (
     <header className="page-header">
       <div className="toolbar">
-        <Link to={back} className="icon-button" aria-label="返回">
+        <Link to={destination} className="icon-button" aria-label="返回">
           ‹
         </Link>
         <h1>{title}</h1>
@@ -259,15 +265,21 @@ export function Product({ id, open }: { id: string; open: OpenAction }) {
   const sku = data.catalog.find((c) => c.id === id);
   const [selection, setSelection] = useState<string[]>([]);
   const [selecting, setSelecting] = useState(false);
-  const [showPast, setShowPast] = useState(false);
+  const [view, updateView] = useBrowseState(`product:${id}`);
+  const showPast = view.state === 'all';
+  const setShowPast = (value: boolean) => updateView({ state: value ? 'all' : 'current' });
+  const limit = view.limit;
+  const setLimit = (value: number) => updateView({ limit: value });
   if (!sku) return <Empty title="商品不可用">请返回物品列表刷新。</Empty>;
   const group = productGroups(data, inventoryFilterSchema.parse({})).find((g) => g.id === id);
   const items = data.items.filter((i) => i.catalog_node_id === id && (showPast || !isTerminal(i)));
-  const paths = [...new Set(items.map((i) => locationName(i, data)))];
+  const visible = items.slice(0, limit);
+  const paths = [...new Set(visible.map((i) => locationName(i, data)))];
   return (
     <>
       <PageHeader
         title={sku.name}
+        back="/catalog"
         subtitle={`商品汇总 · ${attr(sku, 'product')?.specification ?? '包装规格未记录'}`}
       />
       <div className="content">
@@ -314,7 +326,7 @@ export function Product({ id, open }: { id: string; open: OpenAction }) {
           <section key={path}>
             <p className="section-label">{path}</p>
             <div className="grouped">
-              {items
+              {visible
                 .filter((i) => locationName(i, data) === path)
                 .map((item) => (
                   <div className="selectable-row" key={item.id}>
@@ -330,12 +342,18 @@ export function Product({ id, open }: { id: string; open: OpenAction }) {
                         }
                       />
                     )}
-                    <ItemRow item={item} />
+                    <PhysicalRow item={item} path />
                   </div>
                 ))}
             </div>
           </section>
         ))}
+        <PageEnd
+          shown={visible.length}
+          total={items.length}
+          unit="件实物"
+          onMore={() => setLimit(limit + PAGE_SIZE)}
+        />
         {!items.length && <Empty title="这里还没有实物">入库后，每件实物会分别出现在这里。</Empty>}
         {selecting && (
           <Button
@@ -373,8 +391,22 @@ export function ItemDetail({ id, open }: { id: string; open: OpenAction }) {
       <div className="content detail-grid">
         <div className="stack">
           <section className="card">
-            <h2>这件的情况</h2>
+            <h2>当前剩余</h2>
             <p className="quantity">剩余 {remaining(item)}</p>
+            <p>
+              {specification(data.catalog.find((c) => c.id === item.catalog_node_id)) ||
+                '包装规格未记录'}
+            </p>
+            <LocationPath id={item.parent_id} />
+            <p className="caption">
+              商品分类：
+              {data.catalog.find((c) => c.id === item.catalog_node_id)
+                ? categoryPath(
+                    data.catalog.find((c) => c.id === item.catalog_node_id)!,
+                    data,
+                  )
+                : '未分类'}
+            </p>
             <dl>
               <div>
                 <dt>开封状态</dt>
@@ -400,7 +432,7 @@ export function ItemDetail({ id, open }: { id: string; open: OpenAction }) {
                 <dd>{label(life?.condition)}</dd>
               </div>
             </dl>
-            <small className="identity">实物编号 {item.id.slice(-8)}</small>
+            <small className="identity">实物编号 {item.id}</small>
           </section>
           {!isTerminal(item) && (
             <>

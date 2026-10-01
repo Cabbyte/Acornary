@@ -14,15 +14,16 @@ import type { TemplateId } from '../../../packages/contracts/src/index';
 import { SessionGate, useSession } from './lib/session';
 import { InventoryProvider, useInventory } from './lib/inventory';
 import { time } from './lib/presentation';
-import { Home, Product, ItemDetail, Places, Catalog, Settings, History, Notes } from './pages';
+import { Home, Product, ItemDetail, Catalog, Settings, History, Notes } from './pages';
 import { ActionSheet, type Action } from './ui/forms';
 import { Button, Empty, Notice } from './ui/components';
 import './product.css';
+import { InventoryBrowser, InventorySearch, ProductCatalog } from './ui/browser';
 
 const nav = [
-  ['items', '物品'],
-  ['places', '位置'],
-  ['catalog', '目录'],
+  ['items', '我的物品'],
+  ['catalog', '商品目录'],
+  ['search', '搜索'],
   ['settings', '设置'],
 ];
 function Workspace() {
@@ -47,18 +48,26 @@ function Workspace() {
         from: params.get('from') ?? undefined,
       }
     : undefined;
+  const actionKeys = ['dialog', 'target', 'template', 'note', 'parent', 'ids', 'from'];
+  const browseParams = Object.fromEntries([...params].filter(([key]) => !actionKeys.includes(key)));
   const open = (a: Action) =>
     void navigate({
       to: location.pathname,
-      search: Object.fromEntries(
-        Object.entries({ dialog: a.kind, ...a }).filter(
-          ([k, v]) => k !== 'kind' && v !== undefined,
+      search: {
+        ...browseParams,
+        ...Object.fromEntries(
+          Object.entries({ dialog: a.kind, ...a }).filter(
+            ([k, v]) => k !== 'kind' && v !== undefined,
+          ),
         ),
-      ),
+      },
     });
-  const close = () => void navigate({ to: location.pathname, search: {}, replace: true });
+  const close = () => {
+    const remaining = new URLSearchParams(location.searchStr);
+    actionKeys.forEach((k) => remaining.delete(k));
+    void navigate({ to: location.pathname, search: Object.fromEntries(remaining), replace: true });
+  };
   useEffect(() => {
-    window.scrollTo(0, 0);
     setMessage('');
   }, [location.pathname]);
   let page;
@@ -75,15 +84,18 @@ function Workspace() {
           <ItemDetail id={id} open={open} />
         )
       ) : (
-        <Home open={open} />
+        <InventoryBrowser open={open} />
       );
-  else if (section === 'places') page = <Places id={id} open={open} />;
+  else if (section === 'places') page = <InventoryBrowser key={id ?? 'root'} id={id} open={open} />;
+  else if (section === 'search') page = <InventorySearch />;
   else if (section === 'catalog')
     page =
       parts[2] === 'history' ? (
         <History id={id} kind="CATALOG_NODE" />
+      ) : id ? (
+        <Catalog id={id === 'manage' ? undefined : id} open={open} />
       ) : (
-        <Catalog id={id} open={open} />
+        <ProductCatalog />
       );
   else if (section === 'settings') page = <Settings section={id} />;
   else if (section === 'login') page = <Home open={open} />;
@@ -94,34 +106,29 @@ function Workspace() {
       </Empty>
     );
   return (
-    <div className="app-shell">
+    <div className="app-shell soft-shell">
       <a href="#main" className="skip-link">
         跳到内容
       </a>
-      <aside className="sidebar">
+      <header className="soft-topbar">
         <Link to="/items" className="brand">
-          <img src="/app-icon.png" alt="松仓" width="44" height="44" />
           <span>
             <strong>松仓</strong>
-            <small>ACORNARY</small>
           </span>
         </Link>
         <nav aria-label="主导航">
           {nav.map(([key, title]) => (
-            <Link key={key} to={`/${key}`} className={section === key ? 'active' : ''}>
+            <Link
+              key={key}
+              to={`/${key}`}
+              aria-current={section === key ? 'page' : undefined}
+              className={section === key ? 'active' : ''}
+            >
               {title}
             </Link>
           ))}
         </nav>
-        <div className="sidebar-context">
-          <strong>{data.household.name}</strong>
-          <small>
-            {stale ? '离线缓存' : '云端库存'}
-            <br />
-            上次更新 {time(data.cached_at)}
-          </small>
-        </div>
-      </aside>
+      </header>
       <main id="main" className="app-main">
         {expired && (
           <div className="status-banner">
@@ -160,7 +167,7 @@ function Workspace() {
           </div>
         )}
       </main>
-      <nav className="tabbar" aria-label="底部导航">
+      <nav className="soft-mobile-nav" aria-label="底部导航">
         {nav.map(([key, title]) => (
           <Link
             key={key}
@@ -168,7 +175,6 @@ function Workspace() {
             className={section === key ? 'active' : ''}
             aria-current={section === key ? 'page' : undefined}
           >
-            <img src={`/design/${key}.svg`} alt="" />
             <span>{title}</span>
           </Link>
         ))}
@@ -222,7 +228,10 @@ const rootRoute = createRootRoute({
 });
 const index = createRoute({ getParentRoute: () => rootRoute, path: '/', component: () => null });
 const catchAll = createRoute({ getParentRoute: () => rootRoute, path: '$', component: () => null });
-const router = createRouter({ routeTree: rootRoute.addChildren([index, catchAll]) });
+const router = createRouter({
+  routeTree: rootRoute.addChildren([index, catchAll]),
+  scrollRestoration: true,
+});
 createRoot(document.getElementById('root')!).render(
   <QueryClientProvider client={client}>
     <RouterProvider router={router} />

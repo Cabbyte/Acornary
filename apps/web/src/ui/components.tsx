@@ -81,10 +81,12 @@ export function Field({
   label,
   children,
   hint,
+  error,
 }: {
   label: string;
   children: ReactNode;
   hint?: ReactNode;
+  error?: string;
 }) {
   const id = useId();
   const annotate = (nodes: ReactNode): ReactNode =>
@@ -94,7 +96,8 @@ export function Field({
       if (['input', 'select', 'textarea'].includes(String(element.type)))
         return cloneElement(element, {
           'aria-label': element.props['aria-label'] ?? label,
-          ...(hint ? { 'aria-describedby': id } : {}),
+          ...(hint || error ? { 'aria-describedby': id } : {}),
+          ...(error ? { 'aria-invalid': true } : {}),
         });
       return element.props.children
         ? cloneElement(element, { children: annotate(element.props.children as ReactNode) })
@@ -104,7 +107,11 @@ export function Field({
     <div className="field">
       <span>{label}</span>
       {annotate(children)}
-      {hint && <small id={id}>{hint}</small>}
+      {(hint || error) && (
+        <small id={id} className={error ? 'field-error' : undefined}>
+          {error || hint}
+        </small>
+      )}
     </div>
   );
 }
@@ -115,6 +122,7 @@ export function Sheet({
   busy = false,
   desktopPage = false,
   context,
+  core = false,
 }: {
   title: string;
   children: ReactNode;
@@ -122,6 +130,7 @@ export function Sheet({
   busy?: boolean;
   desktopPage?: boolean;
   context?: ReactNode;
+  core?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -157,7 +166,7 @@ export function Sheet({
   }, [page]);
   if (page)
     return (
-      <section className="editor-page" aria-labelledby={titleId}>
+      <section className={`editor-page ${core ? 'core-editor' : ''}`} aria-labelledby={titleId}>
         <header className="page-header">
           <h1 id={titleId}>{title}</h1>
           <button className="icon-button" aria-label="关闭" disabled={busy} onClick={onClose}>

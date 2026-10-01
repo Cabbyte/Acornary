@@ -12,6 +12,8 @@ self.addEventListener('install', (event) => {
         '/manifest.webmanifest',
         '/app-icon.png',
         '/design/search.svg',
+        '/design/soft-search.svg',
+        '/design/soft-clear.svg',
         '/design/items.svg',
         '/design/places.svg',
         '/design/catalog.svg',
