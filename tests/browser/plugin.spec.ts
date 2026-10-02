@@ -189,9 +189,13 @@ test('workbench search, query inspector and atomic editing share the sandbox mod
     .toBe(f.id);
   await view(page).getByRole('button', { name: '编辑', exact: true }).click();
   await view(page)
+    .getByRole('dialog')
     .getByLabel('名称', { exact: true })
     .fill(f.name + '已核对');
-  await view(page).getByLabel('备注', { exact: true }).fill('工作台原子保存的备注');
+  await view(page)
+    .getByRole('dialog')
+    .getByLabel('备注', { exact: true })
+    .fill('工作台原子保存的备注');
   await view(page).getByRole('button', { name: '保存修改', exact: true }).click();
   await expect(view(page).getByRole('dialog')).toHaveCount(0);
   await expect(
