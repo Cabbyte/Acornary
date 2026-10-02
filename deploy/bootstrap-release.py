@@ -45,7 +45,7 @@ for filename, target in [('release.py', 'acornary-release'), ('release-ssh.py', 
     os.chmod('/usr/local/sbin/' + target, 0o755)
 save(config_path, {
     'state_dir': str(root), 'backup_dir': '/var/lib/acornary/backups/releases',
-    'image_repository': 'ghcr.io/tang617/acornary',
+    'image_repository': 'ghcr.io/cabbyte/acornary',
     'compose_file': '/etc/acornary/compose.cloud.yaml',
     'env_file': '/etc/acornary/production/deploy.env',
     'database_container': 'acornary-production-postgres-1',

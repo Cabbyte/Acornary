@@ -12,9 +12,11 @@
 - `Release`：推送 `v*` 标签。拒绝无效版本及不在 `main` 历史中的提交。正式 `vX.Y.Z` 自动部署；`vX.Y.Z-rc.1` 等预发布版本只测试与发布镜像。
 - 手动 `workflow_dispatch` 始终只测试、构建和推送 `build-<commit前12位>` 镜像，不部署。初始化使用此入口，不创建正式标签。
 
-镜像为公开的 `ghcr.io/tang617/acornary`，目标 `linux/amd64`。OCI 标签及 `/app/release.json` 保存版本、完整 Git commit，后者包含 migration 文件 SHA256。服务器只部署 `@sha256:…`；相同版本重复构建复用已发布且身份匹配的 digest，不覆盖已有版本。第三方 Actions 固定完整提交 SHA，升级需评审。
+镜像为公开的 `ghcr.io/cabbyte/acornary`，目标 `linux/amd64`。OCI 标签及 `/app/release.json` 保存版本、完整 Git commit，后者包含 migration 文件 SHA256。服务器只部署 `@sha256:…`；相同版本重复构建复用已发布且身份匹配的 digest，不覆盖已有版本。第三方 Actions 固定完整提交 SHA，升级需评审。
 
 工作流串行执行发布且不取消正在运行的发布。GitHub 并发队列并非持久的逐版本交付队列，密集推送多个标签可能替换尚未运行的待处理工作流；不要把逐标签执行用于数据库正确性。每个新镜像包含全部累计 migrations，服务器仍拒绝版本倒退。需要发布每个标签时，应等待上一轮结束再推送。
+
+仓库迁至 Cabbyte 后，新版本使用 `ghcr.io/cabbyte/acornary`。历史镜像与历史发布记录仍保留原路径。已有服务器只需在没有发布任务运行时，备份并原子更新 `/etc/acornary/release.json` 的 `image_repository`；不要重新 bootstrap，也不要改写 `current.json` 的上一版完整镜像引用。首次发布到新的包后，核对包为 Public 且服务器能匿名按 digest 拉取，再提交部署。镜像权限与仓库权限分别配置，参见 [GitHub Packages 权限说明](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility)。
 
 ## 一次性配置
 

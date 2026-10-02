@@ -58,7 +58,7 @@ class ReleaseTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
         self.backend = FakeBackend()
-        self.config = {'state_dir': str(self.root), 'backup_dir': str(self.root / 'backups'), 'image_repository': 'ghcr.io/tang617/acornary'}
+        self.config = {'state_dir': str(self.root), 'backup_dir': str(self.root / 'backups'), 'image_repository': 'ghcr.io/cabbyte/acornary'}
         self.controller = r.Controller(self.config, self.backend)
         r.save_json(self.root / 'current.json', {'version': None, 'commit': SHA, 'image': 'old', 'migrations': MIGRATION})
         r.save_json(self.root / 'schema.json', MIGRATION)
@@ -177,7 +177,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertFalse(Path(successful[0]['backup']).exists())
         self.assertTrue(Path(successful[-3]['backup']).exists())
         removed = [c[1] for c in self.backend.calls if isinstance(c, tuple)]
-        self.assertIn('ghcr.io/tang617/acornary@sha256:' + '1' * 64, removed)
-        self.assertNotIn('ghcr.io/tang617/acornary@sha256:' + '5' * 64, removed)
+        self.assertIn('ghcr.io/cabbyte/acornary@sha256:' + '1' * 64, removed)
+        self.assertNotIn('ghcr.io/cabbyte/acornary@sha256:' + '5' * 64, removed)
 
 if __name__ == '__main__': unittest.main()

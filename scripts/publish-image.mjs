@@ -7,16 +7,16 @@ if (
   !/^[0-9a-f]{40}$/.test(commit ?? '')
 )
   throw new Error('Invalid image identity');
-const image = `ghcr.io/tang617/acornary:${version}`;
+const image = `ghcr.io/cabbyte/acornary:${version}`;
 const run = (args) => spawnSync('docker', args, { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 });
 const prior = run(['buildx', 'imagetools', 'inspect', image]);
 let digest;
 if (prior.status === 0) {
   digest = prior.stdout.match(/^Digest:\s+(sha256:[0-9a-f]{64})$/m)?.[1];
   if (!digest) throw new Error('No existing image digest');
-  const pull = run(['pull', '--platform', 'linux/amd64', `ghcr.io/tang617/acornary@${digest}`]);
+  const pull = run(['pull', '--platform', 'linux/amd64', `ghcr.io/cabbyte/acornary@${digest}`]);
   if (pull.status !== 0) throw new Error('Could not inspect existing release');
-  const inspect = run(['image', 'inspect', `ghcr.io/tang617/acornary@${digest}`]);
+  const inspect = run(['image', 'inspect', `ghcr.io/cabbyte/acornary@${digest}`]);
   const labels = JSON.parse(inspect.stdout)[0].Config.Labels;
   if (
     labels['org.opencontainers.image.revision'] !== commit ||
@@ -45,7 +45,7 @@ if (prior.status === 0) {
     '--label',
     `org.opencontainers.image.revision=${commit}`,
     '--label',
-    'org.opencontainers.image.source=https://github.com/TANG617/Acornary',
+    'org.opencontainers.image.source=https://github.com/Cabbyte/Acornary',
     '--metadata-file',
     '/tmp/acornary-image-metadata.json',
     '-t',
@@ -62,5 +62,5 @@ if (!/^sha256:[0-9a-f]{64}$/.test(digest)) throw new Error('Invalid published di
 appendFileSync(output, `digest=${digest}\n`);
 appendFileSync(
   process.env.GITHUB_STEP_SUMMARY,
-  `Published **${version}**\n\nCommit: \`${commit}\`\n\nImage: \`ghcr.io/tang617/acornary@${digest}\`\n`,
+  `Published **${version}**\n\nCommit: \`${commit}\`\n\nImage: \`ghcr.io/cabbyte/acornary@${digest}\`\n`,
 );
