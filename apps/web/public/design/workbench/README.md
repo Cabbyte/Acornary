@@ -21,4 +21,4 @@ These are navigation and control assets; physical item rows intentionally have n
 | status-muted.svg | 5 × 5             | Mobile list secondary state 5px                                                               |
 | check.svg        | 16 × 16           | Selected native checkbox background 16px                                                      |
 
-`WorkbenchIcon` retains intrinsic SVG dimensions and scales the image using a transform within its design slot. No SVG paths or root dimensions are modified. All files are local and are included in the service worker's precache. The control markup and styling live in `ui/workbench.tsx` and `workbench.css`.
+`WorkbenchIcon` retains intrinsic SVG dimensions and scales the image using a transform within its design slot. No SVG paths or root dimensions are modified. All files are local and are included in the service worker's precache. Vite also bundles their original bytes as data URLs for the shared web and opaque MCP Apps runtime; no external image host is needed. The control markup and styling live in `ui/workbench.tsx` and `workbench.css`.

@@ -417,7 +417,10 @@ test('Soft Gray consumption validates inline and moving requires a separate path
   await page.getByRole('button', { name: '移动位置', exact: true }).click();
   await expect(page.getByRole('button', { name: '确认移动 1 件' })).toBeDisabled();
   await page.getByRole('searchbox', { name: '搜索目标位置' }).fill('验收厨房');
-  await page.getByRole('button', { name: /^验收厨房 \d+$/ }).click();
+  await page
+    .getByRole('tree', { name: '目标位置' })
+    .getByRole('button', { name: /^全部位置 \/ 验收厨房 \d+$/ })
+    .click();
   let writes = 0;
   page.on('request', (request) => {
     if (request.url().includes('/api/write/move_item')) writes++;

@@ -20,13 +20,20 @@ Design source: [Acornary Responsive Workbench](https://www.figma.com/design/Xt5D
 
 Both commands share existing authorization, expected revisions and idempotency. No migration or direct production data edit is required. Their contracts also expose the operations through the existing MCP registration.
 
+## Shared MCP Apps runtime
+
+The production plugin source archive `e5fafc6` was reconciled before release: all 177 archived files matched the deployed v0.3.0 source manifest. The new workbench lives in `workspace.tsx` and is shared by the web entry and the existing MCP Apps entry. SVG assets are bundled inline, so the opaque sandbox needs no asset origin permissions. Search handles Enter without requiring native form submission; query-based inspectors publish the selected item's actual ID and revision to the host. History requests remain cancellable on account or household transitions.
+
+The existing app-only write gateway, expected scope, persisted private drafts, exact idempotent retry and authorization clearing remain intact. No new host permission or database migration is introduced.
+
 ## Evidence
 
-- Node 24.21.0 + PostgreSQL 18: typecheck, 58 tests in 9 files, production build passed. New integration coverage checks atomic bulk moves, replay, rollback on conflicts/cycles, duplicate IDs, atomic item/note editing, unrelated field preservation and note ownership.
+- Node 24.21.0 + PostgreSQL 18: typecheck, 66 tests in 10 files and both production builds passed on GitHub CI. New integration coverage checks atomic bulk moves, replay, rollback on conflicts/cycles, duplicate IDs, atomic item/note editing, unrelated field preservation and note ownership.
 - In-app Chromium, with the production build served by Node 24: search `USB` returns 8 of 18 fixture items; unknown-state filtering returns only the unrecorded item. Desktop note editing refreshes the inspector and history. Mobile cancellation preserves selected items; confirmation moves three selected UUIDs together and refreshes source/target counts from 18/0 to 15/3.
 - 360, 390, 600, 960, 1280 and 1600px viewports have no document horizontal overflow with the inspector open. Reviewed mobile list, mobile inspector, selection, move confirmation, desktop inspector and desktop edit dialog. Move target tree scrolls independently while the final action remains visible. Initial confirmation is disabled until a target is explicitly chosen.
 - Local screenshots and audit: `output/workbench/{desktop,mobile,mobile-detail,mobile-selection,mobile-move,desktop-edit}.jpg`, `responsive-audit.json`, `asset-files.json`, `node24-verification.log`. Output artifacts are ignored by Git.
-- Existing browser regression selectors have been adapted to the new routes and controls. The complete automated browser suite was **not** rerun in this change; the browser evidence above is targeted interactive verification.
+- The complete automated browser suite runs in GitHub CI, including web account/OAuth flows and the opaque MCP Apps sandbox. The first runs exposed regressions in the legacy editor, mobile action clearance and button sizing; these were corrected before release. Final run and deployment evidence are recorded in the release notes.
+- The in-app browser also verified the new workbench in the opaque sandbox: all 35 displayed assets loaded from embedded data URLs. Screenshot: `output/workbench/plugin-desktop.jpg`.
 
 ## Local preview
 
@@ -38,4 +45,4 @@ The preview serves `apps/web/dist`; after editing, run `pnpm build` and reload. 
 
 ## Remaining boundaries
 
-The inventory snapshot is still loaded in full; pagination is client-side. Real iPhone Safari, input methods, VoiceOver and ChatGPT/Codex plugin hosts have not been accepted in this change. Other product screens retain their previous design. This branch has not been merged, pushed or deployed.
+The inventory snapshot is still loaded in full; pagination is client-side. Real iPhone Safari, input methods, VoiceOver and ChatGPT/Codex plugin hosts have not been accepted in this change. Other product screens retain their previous design. Publication is tracked in [PR #6](https://github.com/Cabbyte/Acornary/pull/6); successful CI alone is not production or real-host acceptance.

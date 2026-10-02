@@ -175,6 +175,46 @@ test('sandbox resource, shared UI, selection, actual conversational move and mis
   expect(await page.evaluate(() => (window as any).host.sizes.length)).toBeGreaterThan(0);
 });
 
+test('workbench search, query inspector and atomic editing share the sandbox model context', async ({
+  page,
+}) => {
+  const f = await fixture(page);
+  await view(page).getByRole('link', { name: '我的物品', exact: true }).click();
+  const search = view(page).getByRole('searchbox', { name: '搜索物品、位置、规格…' });
+  await search.fill(f.name);
+  await search.press('Enter');
+  await view(page).getByRole('button', { name: f.name, exact: true }).click();
+  await expect
+    .poll(() => page.evaluate(() => (window as any).host.context?.selection?.id))
+    .toBe(f.id);
+  await view(page).getByRole('button', { name: '编辑', exact: true }).click();
+  await view(page)
+    .getByLabel('名称', { exact: true })
+    .fill(f.name + '已核对');
+  await view(page).getByLabel('备注', { exact: true }).fill('工作台原子保存的备注');
+  await view(page).getByRole('button', { name: '保存修改', exact: true }).click();
+  await expect(view(page).getByRole('dialog')).toHaveCount(0);
+  await expect(
+    view(page).getByRole('heading', { name: f.name + '已核对', exact: true }),
+  ).toBeVisible();
+  await expect(view(page).locator('.wb-inspector')).toContainText('工作台原子保存的备注');
+  await expect
+    .poll(() => page.evaluate(() => (window as any).host.context?.selection?.revision))
+    .toBe(2);
+  const commands = await writes(page);
+  expect(commands).toHaveLength(1);
+  expect(commands[0].arguments.operation).toBe('edit_item');
+  expect(
+    await view(page)
+      .locator('img')
+      .evaluateAll((images) =>
+        (images as HTMLImageElement[]).every(
+          (image) => image.complete && image.naturalWidth > 0 && image.src.startsWith('data:'),
+        ),
+      ),
+  ).toBe(true);
+});
+
 test('lost write response restores the exact request after sandbox remount and commits only once', async ({
   page,
 }) => {

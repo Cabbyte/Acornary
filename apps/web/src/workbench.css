@@ -1335,4 +1335,8 @@
   .workbench-shell .app-main:not(:has(.wb-workspace)) {
     padding-bottom: calc(88px + env(safe-area-inset-bottom));
   }
+  .workbench-shell .sheet .button,
+  .workbench-shell .sheet .icon-button {
+    min-height: 44px;
+  }
 }
