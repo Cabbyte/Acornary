@@ -1,3 +1,5 @@
+import clearIcon from '../../public/design/soft-clear.svg';
+import searchIcon from '../../public/design/soft-search.svg';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useLocation } from '@tanstack/react-router';
 import {
@@ -81,7 +83,7 @@ export function SearchField({
 }) {
   return (
     <div className="soft-search">
-      <img src="/design/soft-search.svg" alt="" width="20" height="20" />
+      <img src={searchIcon} alt="" width="20" height="20" />
       <input
         type="search"
         aria-label={label}
@@ -91,7 +93,7 @@ export function SearchField({
       />
       {value && (
         <button type="button" aria-label="清除搜索" onClick={() => onChange('')}>
-          <img src="/design/soft-clear.svg" alt="" width="16" height="16" />
+          <img src={clearIcon} alt="" width="16" height="16" />
         </button>
       )}
     </div>

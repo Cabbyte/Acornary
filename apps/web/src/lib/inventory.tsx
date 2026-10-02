@@ -1,3 +1,4 @@
+import { embeddedRuntime } from './runtime';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { InventorySnapshot } from '../../../../packages/contracts/src/web';
@@ -37,7 +38,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     };
   }, [key]);
   useEffect(() => {
-    if (!q.data || localStorage.getItem('acornary-account') !== (session.user_id ?? key)) return;
+    if (
+      !q.data ||
+      (!embeddedRuntime() && localStorage.getItem('acornary-account') !== (session.user_id ?? key))
+    )
+      return;
     setCached({ key, data: q.data });
     void persist(`${key}:snapshot`, q.data).catch(() =>
       setCacheWarning('缓存空间不足，本次数据尚未保存在设备上。'),

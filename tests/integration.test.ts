@@ -6,6 +6,7 @@ import { pool, query } from '../apps/server/src/db.js';
 import { initialize } from '../apps/server/src/initialize.js';
 import { debugRead } from '../apps/server/src/debug.js';
 import { buildApp } from '../apps/server/src/app.js';
+import { pluginScope, type PluginIdentity } from '../apps/server/src/plugin.js';
 let ctx: Context, containerSku: string;
 const key = () => randomUUID();
 const run = (name: any, args: any) => execute(ctx, name, args);
@@ -55,6 +56,79 @@ beforeEach(async () => {
 });
 afterAll(() => pool.end());
 describe('Web product interface', () => {
+  it('checks the complete UI identity before executing or replaying a domain command', async () => {
+    const app = await buildApp(ctx, 'd'.repeat(64), false);
+    const address = await app.listen({ host: '127.0.0.1', port: 0 });
+    const client = new McpClient({ name: 'bound-ui-test', version: '1' });
+    try {
+      await client.connect(
+        new StreamableHTTPClientTransport(new URL(`${address}/mcp`), {
+          requestInit: { headers: { Authorization: `Bearer ${'d'.repeat(64)}` } },
+        }),
+      );
+      const view = await client.callTool({ name: 'open_inventory', arguments: {} });
+      const scope = (view._meta?.['acornary/view'] as any).session.cache_key;
+      const identity: PluginIdentity = {
+        ctx,
+        scopes: new Set(['inventory:read', 'inventory:write']),
+      };
+      expect(scope).toBe(pluginScope(identity, false));
+      const input = { kind: 'SKU', name: 'Bound UI identity', idempotency_key: key() };
+      const args = { expected_scope: scope, operation: 'create_catalog_node', input };
+      const call = (arguments_: any) =>
+        client.callTool({ name: 'apply_inventory_command', arguments: arguments_ });
+      const list = await client.listTools();
+      const tool = list.tools.find((t) => t.name === 'apply_inventory_command')!;
+      expect(tool._meta?.ui).toEqual({ visibility: ['app'] });
+      expect(tool.outputSchema?.required).toContain('affected_objects');
+      const first = await call(args);
+      expect(first.isError).not.toBe(true);
+      expect((await call(args)).structuredContent).toEqual(first.structuredContent);
+      const changedIdentities: PluginIdentity[] = [
+        { ...identity, ctx: { ...ctx, household_id: 'another-family' } },
+        { ...identity, ctx: { ...ctx, actor_id: 'another-actor' } },
+        { ...identity, userId: 'another-account' },
+        { ...identity, authVersion: 1 },
+        { ...identity, clientId: 'another-oauth-client' },
+        { ...identity, scopes: new Set(['inventory:write']) },
+      ];
+      const staleScopes = [
+        ...changedIdentities.map((current) => pluginScope(current, false)),
+        pluginScope(identity, true),
+      ];
+      for (const expected_scope of staleScopes) {
+        // Both an existing idempotency key and a new command must be rejected.
+        for (const idempotency_key of [input.idempotency_key, key()]) {
+          const denied = await call({
+            ...args,
+            expected_scope,
+            input: { ...input, idempotency_key },
+          });
+          expect(denied.isError).toBe(true);
+          expect(denied.structuredContent).toMatchObject({ error: { code: 'SESSION_CHANGED' } });
+          expect(denied.structuredContent).not.toHaveProperty('operation_id');
+        }
+      }
+      expect((await run('query_catalog_nodes', { name: input.name })).matching_count).toBe(1);
+      const id = (first.structuredContent as any).affected_objects[0].id;
+      expect(
+        (await query(pool, 'SELECT id FROM events WHERE target_id=$1', [id])).rows,
+      ).toHaveLength(1);
+      expect(
+        (
+          await query(
+            pool,
+            'SELECT result FROM operations WHERE household_id=$1 AND idempotency_key=$2',
+            [ctx.household_id, input.idempotency_key],
+          )
+        ).rows,
+      ).toHaveLength(1);
+      expect((await call({ ...args, operation: 'query_items' })).isError).toBe(true);
+    } finally {
+      await client.close();
+      await app.close();
+    }
+  });
   it('preserves HTTP command identity, revision conflicts and full household totals', async () => {
     const catalog = await sku('六瓶牛奶');
     const ids = await create(catalog, 6, [
@@ -374,6 +448,26 @@ describe('PostgreSQL domain transactions', () => {
       );
       const list = await client.listTools();
       expect(list.tools.map((t) => t.name)).toContain('consume_item_content');
+      const opener = list.tools.find((t) => t.name === 'open_inventory')!;
+      expect(opener._meta?.['openai/ui']).toMatchObject({
+        preferredModelDisplayMode: 'fullscreen',
+      });
+      expect(list.tools.find((t) => t.name === 'get_inventory_view')?._meta?.ui).toEqual({
+        visibility: ['app'],
+      });
+      expect(opener.outputSchema?.required).toEqual(['household', 'items', 'catalog']);
+      const resource = await client.readResource({ uri: (opener._meta?.ui as any).resourceUri });
+      expect(resource.contents[0].mimeType).toBe('text/html;profile=mcp-app');
+      expect('text' in resource.contents[0] ? resource.contents[0].text : '').toContain(
+        '<div id="root"></div>',
+      );
+      expect(resource.contents[0]._meta?.['openai/ui']).toMatchObject({
+        availableDisplayModes: ['fullscreen'],
+      });
+      const view = await client.callTool({ name: 'open_inventory', arguments: {} });
+      expect((view._meta?.['acornary/view'] as any).session.household_id).toBe(ctx.household_id);
+      expect(view.structuredContent).not.toHaveProperty('snapshot');
+
       expect(
         JSON.stringify(list.tools.find((t) => t.name === 'consume_items')?.inputSchema),
       ).not.toContain('selection');
