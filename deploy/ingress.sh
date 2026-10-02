@@ -36,7 +36,11 @@ candidate=$(mktemp -d /etc/acornary/ingress-candidate.XXXXXX)
 trap 'rm -rf "$candidate"' EXIT
 cp "$source_file" "$candidate/runbuoy.caddy"
 cp "$live/acornary.caddy" "$candidate/acornary.caddy"
-printf 'import /etc/acornary/ingress/runbuoy.caddy\nimport /etc/acornary/ingress/acornary.caddy\n' > "$candidate/Caddyfile"
+mkdir -p "$candidate/sites.d"
+if [[ -d $live/sites.d ]]; then
+  cp -a "$live/sites.d/." "$candidate/sites.d/"
+fi
+printf 'import /etc/acornary/ingress/runbuoy.caddy\nimport /etc/acornary/ingress/acornary.caddy\nimport /etc/acornary/ingress/sites.d/*.caddy\n' > "$candidate/Caddyfile"
 docker run --rm --env-file /etc/runbuoy/runbuoy.env \
   -v "$candidate:$live:ro" caddy:2-alpine caddy validate --config "$live/Caddyfile" --adapter caddyfile
 if [[ $mode == prepare ]]; then
