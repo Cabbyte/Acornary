@@ -66,7 +66,11 @@ test('passkey-first registration, optional password, last credential protection,
   await page.getByRole('button', { name: '添加密码', exact: true }).click();
   await page.getByLabel('新密码', { exact: true }).fill('New-passkey-backup-password!');
   await page.getByLabel('再次输入密码').fill('New-passkey-backup-password!');
+  const savedPassword = page.waitForResponse(
+    (r) => r.url().endsWith('/account/password') && r.request().method() === 'POST',
+  );
   await page.getByRole('button', { name: '保存密码' }).click();
+  expect((await savedPassword).status()).toBe(200);
   await expect(page.getByRole('button', { name: '删除通行密钥' })).toBeEnabled();
   page.on('dialog', (d) => d.accept());
   await page.getByRole('button', { name: '移除密码', exact: true }).click();

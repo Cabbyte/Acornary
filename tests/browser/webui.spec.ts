@@ -417,7 +417,7 @@ test('Soft Gray consumption validates inline and moving requires a separate path
   await page.getByRole('button', { name: '移动位置', exact: true }).click();
   await expect(page.getByRole('button', { name: '确认移动 1 件' })).toBeDisabled();
   await page.getByRole('searchbox', { name: '搜索目标位置' }).fill('验收厨房');
-  await page.getByRole('button', { name: /全部位置 \/ 验收厨房/ }).click();
+  await page.getByRole('button', { name: /^验收厨房 \d+$/ }).click();
   let writes = 0;
   page.on('request', (request) => {
     if (request.url().includes('/api/write/move_item')) writes++;
@@ -470,15 +470,12 @@ test('session expiry preserves the exact pending edit and logout clears private 
     data: {},
   });
   await page.getByRole('button', { name: '确认记录消耗', exact: true }).click();
-  const login = page
+  const loginDialog = page
     .getByRole('dialog')
     .filter({ has: page.getByRole('heading', { name: '重新登录', exact: true }) });
-  await expect(login).toBeVisible();
-  await login.getByRole('button', { name: '使用邮箱和密码' }).click();
-  await login.getByLabel('邮箱').fill('browser@example.test');
-  await login.getByLabel('密码').fill('Browser-test-password-123!');
-  await login.getByRole('button', { name: '登录', exact: true }).click();
-  await expect(login).toHaveCount(0);
+  await expect(loginDialog).toBeVisible();
+  await login(page);
+  await expect(loginDialog).toHaveCount(0);
   await expect(page.getByLabel('本次消耗量')).toHaveValue('175');
   await page.getByRole('button', { name: '重试同一次操作' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);

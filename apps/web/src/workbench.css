@@ -1295,7 +1295,8 @@
 .wb-check-cell input:checked,
 .wb-mobile-selection input:checked,
 .wb-popover input:checked {
-  background: var(--tint) url('/design/workbench/check.svg') center / 16px 16px no-repeat;
+  background: var(--tint) url('../public/design/workbench/check.svg?inline') center / 16px 16px
+    no-repeat;
   border-color: var(--tint);
 }
 .wb-detail-more {
@@ -1312,7 +1313,26 @@
     width: 40px;
     height: 40px;
   }
-  .wb-mobile-side img[src$='/status.svg'] {
+  .wb-mobile-side .wb-status-active {
     transform: scale(0.833333);
+  }
+}
+
+/* Legacy full-page forms now live inside the shared workbench main region. */
+@media (min-width: 1024px) {
+  .workbench-shell:has(.editor-page) .app-main {
+    display: block;
+  }
+  .workbench-shell .app-main:has(> .editor-page) > :not(.editor-page) {
+    display: none;
+  }
+  .workbench-shell .editor-page {
+    padding: 32px;
+    min-height: 100%;
+  }
+}
+@media (max-width: 760px) {
+  .workbench-shell .app-main:not(:has(.wb-workspace)) {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
   }
 }

@@ -21,6 +21,8 @@ import { Button, Field, Notice, Sheet } from '../ui/components';
 
 export interface Session {
   mode: 'local' | 'cloud';
+  host?: 'mcp';
+  can_write?: boolean;
   authenticated: boolean;
   cache_key?: string;
   email?: string;
@@ -29,7 +31,7 @@ export interface Session {
   login_methods?: { password: boolean; passkey_count: number };
   households?: { id: string; household_id: string; name: string }[];
 }
-const Context = createContext<{
+export const SessionContext = createContext<{
   session: Session;
   online: boolean;
   expired: boolean;
@@ -38,7 +40,7 @@ const Context = createContext<{
   storageError: string;
   switchHousehold: (id: string) => Promise<void>;
 }>(null!);
-export const useSession = () => useContext(Context);
+export const useSession = () => useContext(SessionContext);
 export function Login({
   onDone,
   oauthQuery,
@@ -339,7 +341,7 @@ export function SessionGate({
       </main>
     );
   return (
-    <Context.Provider
+    <SessionContext.Provider
       value={{
         session,
         online: online && !expired,
@@ -373,6 +375,6 @@ export function SessionGate({
           <Login onDone={check} />
         </Sheet>
       )}
-    </Context.Provider>
+    </SessionContext.Provider>
   );
 }

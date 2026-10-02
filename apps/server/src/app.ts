@@ -32,6 +32,9 @@ import { DomainError } from '../../../packages/domain/src/index.js';
 import { execute, type Context } from './service.js';
 import { pool, query } from './db.js';
 import { webSnapshot } from './web.js';
+import { pluginResource, registerInventoryApp } from './plugin.js';
+import { pluginWriteTool } from '../../../packages/contracts/src/plugin.js';
+import { domainErrorStatus } from '../../../packages/contracts/src/errors.js';
 export async function buildApp(
   ctx: Context,
   token: string,
@@ -44,6 +47,8 @@ export async function buildApp(
     ctx: Context;
     scopes: Set<string>;
     clientId: string;
+    userId: string;
+    authVersion: number;
   }>();
   const webContexts = new WeakMap<FastifyRequest, Context>();
   const headersFor = (req: FastifyRequest) => {
@@ -133,15 +138,7 @@ export async function buildApp(
   app.setErrorHandler((error: any, _req, reply) => {
     if (error instanceof DomainError)
       return reply
-        .code(
-          error.code === 'NOT_FOUND'
-            ? 404
-            : error.code === 'FORBIDDEN'
-              ? 403
-              : ['REVISION_CONFLICT', 'IDEMPOTENCY_CONFLICT'].includes(error.code)
-                ? 409
-                : 400,
-        )
+        .code(domainErrorStatus(error.code) ?? 400)
         .send({ error: { code: error.code, message: error.message, details: error.details } });
     app.log.error({ code: error.code ?? 'INTERNAL_ERROR' }, 'Request failed');
     return reply
@@ -301,6 +298,7 @@ export async function buildApp(
     }
     return debugRead({ ...(webContexts.get(req) ?? ctx), source: 'WEB_DEBUG' }, input);
   });
+  const uiResource = await pluginResource();
   const mcp = createMcpHandler(() => {
     const server = new McpServer(
       { name: 'acornary', version: '0.1.0' },
@@ -308,6 +306,14 @@ export async function buildApp(
         instructions:
           'Acornary 管理具体物品。先查询 UUID、属性和 revision，再进行明确的写操作。已知差异影响选择时先澄清；在用户确认范围内没有已知差异时可选择并报告实际 UUID。不得猜测缺失事实；推荐不自动变为库存写入。写操作携带幂等键与 expected_revisions；超时重试保留原键和参数。版本冲突后重新查询并判断原操作是否仍成立，不自动替换 revision 强行重试。未记录状态不等于 ACTIVE。Web 与 MCP 通过相同领域命令写入，检查器只读。模板字段与单位通过 list_attribute_templates/get_attribute_template 发现。',
       },
+    );
+    registerInventoryApp(
+      server,
+      uiResource,
+      () =>
+        identities.getStore() ??
+        (cloud ? undefined : { ctx, scopes: new Set(['inventory:read', 'inventory:write']) }),
+      !!cloud,
     );
     for (const name of Object.keys(schemas) as Operation[])
       server.registerTool(
@@ -396,12 +402,23 @@ export async function buildApp(
                     .catch(() => null)
                 : null;
             const name =
-              body?.method === 'tools/call' ? (body.params?.name as Operation) : undefined;
+              body?.method === 'tools/call'
+                ? (body.params?.name as Operation | typeof pluginWriteTool)
+                : undefined;
             const scope =
-              name && name in schemas && !reads.has(name) ? 'inventory:write' : 'inventory:read';
+              name === pluginWriteTool || (name && name in schemas && !reads.has(name))
+                ? 'inventory:write'
+                : 'inventory:read';
             if (!scopes.has(scope)) throw createInsufficientScopeError([scope]);
-            return identities.run({ ctx: context, scopes, clientId: claims.client_id }, () =>
-              mcp.fetch(request),
+            return identities.run(
+              {
+                ctx: context,
+                scopes,
+                clientId: claims.client_id,
+                userId: claims.sub as string,
+                authVersion: context.auth_version,
+              },
+              () => mcp.fetch(request),
             );
           },
           { resource: cloud.resource, challengeScopes: [...inventoryScopes, 'offline_access'] },

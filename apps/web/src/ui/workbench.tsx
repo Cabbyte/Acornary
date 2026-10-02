@@ -30,10 +30,19 @@ import {
   type WorkbenchFilter,
 } from '../lib/workbench';
 import { history } from '../lib/api';
+import { embeddedRuntime } from '../lib/runtime';
 import { eventNames, remaining, time } from '../lib/presentation';
 import { Button, Empty, Notice, Sheet } from './components';
 import { LocationPath } from './browser';
 import type { Action } from './forms';
+
+const workbenchAssets = import.meta.glob('../../public/design/workbench/*.svg', {
+  eager: true,
+  query: '?inline',
+  import: 'default',
+}) as Record<string, string>;
+const workbenchAsset = (name: string) =>
+  workbenchAssets[`../../public/design/workbench/${name}.svg`];
 
 export function WorkbenchIcon({ name, size = 18 }: { name: string; size?: number }) {
   const native = name === 'down' ? 12 : name === 'search' ? 20 : 24;
@@ -43,7 +52,7 @@ export function WorkbenchIcon({ name, size = 18 }: { name: string; size?: number
       style={{ width: size, height: size, '--icon-scale': size / native } as CSSProperties}
       aria-hidden="true"
     >
-      <img src={`/design/workbench/${name}.svg`} alt="" />
+      <img src={workbenchAsset(name)} alt="" />
     </span>
   );
 }
@@ -91,7 +100,7 @@ export function WorkbenchShell({
   open: (a: Action) => void;
 }) {
   const { data, stale } = useInventory();
-  const { online } = useSession();
+  const { online, session } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
   const [query, setQuery] = useState('');
@@ -107,7 +116,7 @@ export function WorkbenchShell({
       <header className="wb-header">
         <Link to="/items" className="wb-brand">
           <span className="wb-brand-mark">
-            <img src="/design/workbench/brand.svg" alt="" />
+            <img src={workbenchAsset('brand')} alt="" />
           </span>
           <span>
             <strong>松仓</strong>
@@ -117,6 +126,17 @@ export function WorkbenchShell({
         <form
           className="wb-global-search"
           role="search"
+          onKeyDown={(e) => {
+            if (
+              embeddedRuntime() &&
+              e.key === 'Enter' &&
+              !e.nativeEvent.isComposing &&
+              e.nativeEvent.keyCode !== 229
+            ) {
+              e.preventDefault();
+              void navigate({ to: '/items', search: { q: query } });
+            }
+          }}
           onSubmit={(e) => {
             e.preventDefault();
             void navigate({ to: '/items', search: { q: query } });
@@ -142,7 +162,7 @@ export function WorkbenchShell({
           <span>位置</span>
           <button
             aria-label="新建位置"
-            disabled={!online || stale}
+            disabled={!online || stale || session.can_write === false}
             onClick={() => open({ kind: 'place', parent: place })}
           >
             <WorkbenchIcon name="plus" size={18} />
@@ -408,7 +428,7 @@ export function Workbench({
   const childPlaces = data.items.filter(
     (i) => isContainer(i) && !isTerminal(i) && i.parent_id === (id ?? null),
   );
-  const disabled = !online || stale;
+  const disabled = !online || stale || session.can_write === false;
   const toggle = (item: ItemRecord) =>
     patch({
       selected: view.selected.includes(item.id)
@@ -722,7 +742,16 @@ export function Workbench({
                           <span>
                             <img
                               alt=""
-                              src={`/design/workbench/${attr(item, 'lifecycle')?.availability === 'IN_USE' ? 'status' : 'status-muted'}.svg`}
+                              className={
+                                attr(item, 'lifecycle')?.availability === 'IN_USE'
+                                  ? 'wb-status-active'
+                                  : undefined
+                              }
+                              src={workbenchAsset(
+                                attr(item, 'lifecycle')?.availability === 'IN_USE'
+                                  ? 'status'
+                                  : 'status-muted',
+                              )}
                             />
                             {status}
                           </span>
@@ -910,10 +939,10 @@ function ItemInspector({
   const note = latestNote(data, item.id);
   const events = useQuery({
     queryKey: ['history', session.cache_key, item.id, item.revision],
-    queryFn: () => history(item.id, 'ITEM'),
+    queryFn: ({ signal }) => history(item.id, 'ITEM', undefined, signal),
     enabled: online && !stale,
   });
-  const disabled = !online || stale;
+  const disabled = !online || stale || session.can_write === false;
   return (
     <aside className="wb-inspector" aria-label="物品详情">
       <header>
@@ -938,7 +967,7 @@ function ItemInspector({
         <p className="wb-detail-status">
           <img
             alt=""
-            src={`/design/workbench/${life?.availability === 'IN_USE' ? 'status' : 'status-muted'}.svg`}
+            src={workbenchAsset(life?.availability === 'IN_USE' ? 'status' : 'status-muted')}
           />
           {itemStatus(item)}
         </p>

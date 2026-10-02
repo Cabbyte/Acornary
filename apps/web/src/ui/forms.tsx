@@ -1,3 +1,4 @@
+import { draftSchema } from '../lib/draft';
 import { useEffect, useRef, useState } from 'react';
 import { Decimal } from 'decimal.js';
 import { schemas, type Operation, type TemplateId } from '../../../../packages/contracts/src/index';
@@ -148,7 +149,13 @@ export function ActionSheet({
     if (target) revisions[target.id] = target.revision;
     void stored<Draft>(draftKey)
       .then((saved) => {
-        if (!cancelled) setDraft(saved ?? { values, original: { ...values }, revisions });
+        if (!cancelled) {
+          if (saved && !draftSchema.safeParse(saved).success) {
+            setError('保存的草稿无法安全恢复。请保留此记录并在松仓网站核对操作结果。');
+            return;
+          }
+          setDraft(saved ?? { values, original: { ...values }, revisions });
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -398,6 +405,10 @@ export function ActionSheet({
     onSaved(result);
   }
   async function submit() {
+    if (session.can_write === false) {
+      setError('当前连接只有读取权限。');
+      return;
+    }
     if (lock.current || !draft || !online || (stale && !draft.result) || conflict) return;
     if (!draft.attempt && !draft.result && (amountError || moveError)) return;
     lock.current = true;
@@ -418,6 +429,7 @@ export function ActionSheet({
         attempt.payload,
         session.household_id,
         session.user_id,
+        session.cache_key,
       );
       const committed = { ...pending, result };
       setDraft(committed);
@@ -437,6 +449,23 @@ export function ActionSheet({
       lock.current = false;
       setBusy(false);
     }
+  }
+  function reviewOrSubmit() {
+    if (!draft) return;
+    if (action.kind === 'intake' && !review && !draft.attempt && !draft.result) {
+      try {
+        command();
+        setReview(true);
+      } catch (err) {
+        setError((err as Error).message);
+      }
+      return;
+    }
+    if (physicalMove && !workbench && !review && !draft.attempt && !draft.result) {
+      if (!moveError) setReview(true);
+      return;
+    }
+    void submit();
   }
   const desktopPage =
     ['attributes', 'rename', 'note', 'intake', 'place', 'catalog', 'correct'].includes(
@@ -477,7 +506,7 @@ export function ActionSheet({
         title={titles[action.kind] ?? '编辑'}
         onClose={onClose}
       >
-        <p role="status">正在恢复草稿…</p>
+        <p role="status">{error || '正在恢复草稿…'}</p>
       </Sheet>
     );
   let preview = '';
@@ -508,22 +537,21 @@ export function ActionSheet({
     >
       <form
         className="stack"
+        onKeyDown={(e) => {
+          if (
+            session.host === 'mcp' &&
+            !e.nativeEvent.isComposing &&
+            e.nativeEvent.keyCode !== 229 &&
+            e.key === 'Enter' &&
+            e.target instanceof HTMLInputElement
+          ) {
+            e.preventDefault();
+            if (e.currentTarget.reportValidity()) reviewOrSubmit();
+          }
+        }}
         onSubmit={(e) => {
           e.preventDefault();
-          if (action.kind === 'intake' && !review && !draft.attempt && !draft.result) {
-            try {
-              command();
-              setReview(true);
-            } catch (err) {
-              setError((err as Error).message);
-            }
-            return;
-          }
-          if (physicalMove && !workbench && !review && !draft.attempt && !draft.result) {
-            if (!moveError) setReview(true);
-            return;
-          }
-          void submit();
+          reviewOrSubmit();
         }}
       >
         {item && !workbench && (
@@ -925,8 +953,17 @@ export function ActionSheet({
           </section>
         )}
         <Button
+          type={session.host === 'mcp' ? 'button' : 'submit'}
+          onClick={
+            session.host === 'mcp'
+              ? (e) => {
+                  if (e.currentTarget.form?.reportValidity()) reviewOrSubmit();
+                }
+              : undefined
+          }
           disabled={
             busy ||
+            session.can_write === false ||
             !online ||
             (stale && !draft.result) ||
             conflict ||

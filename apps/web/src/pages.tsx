@@ -1,3 +1,5 @@
+import appIcon from '../public/design/../app-icon.png';
+import searchIcon from '../public/design/search.svg';
 import { AccountSettings, HouseholdSettings } from './accounts';
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from '@tanstack/react-router';
@@ -106,7 +108,7 @@ export function Home({ open }: { open: OpenAction }) {
       </header>
       <div className="content">
         <label className="search">
-          <img src="/design/search.svg" alt="" />
+          <img src={searchIcon} alt="" />
           <input
             aria-label="搜索物品"
             placeholder="搜索物品、品牌或名称"
@@ -569,7 +571,7 @@ export function History({
   const [cached, setCached] = useState<Awaited<ReturnType<typeof history>>>();
   const q = useInfiniteQuery({
     queryKey: ['history', session.cache_key, kind, id, data.cached_at],
-    queryFn: ({ pageParam }) => history(id, kind, pageParam),
+    queryFn: ({ pageParam, signal }) => history(id, kind, pageParam, signal),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next_cursor || undefined,
     enabled: online,
@@ -911,6 +913,26 @@ export function Settings({ section }: { section?: string }) {
   const [install, setInstall] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  if (session.host === 'mcp')
+    return (
+      <>
+        <header className="page-header large">
+          <h1>设置</h1>
+          <p>松仓 · {data.household.name}</p>
+        </header>
+        <div className="content stack">
+          <Notice>
+            {session.can_write ? '当前连接可查看和修改库存。' : '当前连接只有读取权限。'}
+          </Notice>
+          <p>账号、家庭和连接授权请在松仓网站及 ChatGPT 插件设置中管理。</p>
+          <p>草稿保存在当前组件的宿主状态中；新对话或其他设备不保证恢复。</p>
+          <Button onClick={() => void refresh().catch(() => setError('更新失败，请重试。'))}>
+            刷新库存
+          </Button>
+          {error && <Notice danger>{error}</Notice>}
+        </div>
+      </>
+    );
   if (session.mode === 'cloud' && (section === 'account' || section === 'households'))
     return (
       <>
@@ -931,7 +953,7 @@ export function Settings({ section }: { section?: string }) {
       </header>
       <div className="content">
         <section className="card brand-card">
-          <img src="/app-icon.png" alt="松仓" width="56" height="56" />
+          <img src={appIcon} alt="松仓" width="56" height="56" />
           <div>
             <h2>{data.household.name}</h2>
             <p>{session.email ?? '本地所有者'}</p>

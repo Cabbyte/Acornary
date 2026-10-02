@@ -27,7 +27,7 @@
 
 客户端分页仍建立在完整家庭快照上；大库存服务端游标分页需单独实现。iPhone Safari、真实输入法、VoiceOver 和插件宿主尚未实机验收。入库、编辑资料、开封、纠错、容器整批移动、目录管理、笔记、历史、认证、设置保留既有功能，其完整 Soft Gray 设计尚未补齐。
 
-## 插件串行接入方案（未实施）
+## 插件串行接入方案（历史计划；现已在本工作树实施）
 
 1. 从 `app.tsx` 抽出无挂载副作用的共享 `Workspace`，页面、表单、浏览投影和 CSS 仍使用同一份源码。新增 `apps/web/src/plugin.tsx` 作为第二个宿主入口；通过 `vite.config.ts` 构建独立资源包。插件入口不注册 Web Service Worker。
 2. 在 `lib/api.ts` 周围定义 `InventoryTransport`，包含快照、领域读取、写入与历史。Web 实现保持同源 Cookie HTTP；插件实现通过 MCP Apps 宿主桥调用工具，将响应映射为相同的 `InventorySnapshot`、`WriteResult` 和 `ApiError`。`lib/inventory.tsx`、`lib/session.tsx` 和表单消费注入的 transport / session context，不把 Web Cookie、localStorage 的家庭标识或宿主消息当作服务器身份。
@@ -39,3 +39,7 @@
 当前官方文档以 MCP Apps UI resource / tools-call 为基础，ChatGPT 特有扩展仅在需要时加入：[Add UI to your MCP server](https://developers.openai.com/plugins/build/chatgpt-ui)、[MCP server and UI quickstart](https://developers.openai.com/plugins/build/app-quickstart)。以上为结合当前仓库的实施建议，不代表插件已接通。
 
 串行写入交接：本轮结束后才由插件会话接手。接手时重新检查分支、未提交修改和主目录的品牌素材；不要在旧基线覆盖 `app.tsx`、`lib/api.ts`、`lib/inventory.tsx`、`lib/session.tsx`、`ui/forms.tsx`、`vite.config.ts` 和服务器 `app.ts`。
+
+## 插件接入后续交接
+
+2026-10-01：本地插件 UI 已在本工作树实施，仍复用本文件所述 Soft Gray 页面与表单。审阅发现的三项问题已修复；最新单次 Node 24 验收为 59/59 后端及单元测试、35/35 Chromium 测试（15 项插件 + 原有 20 项）。实现、修复过程、最终日志与截图见 [plugin-handoff.md](plugin-handoff.md)，最新证据目录为 `output/ci/plugin-fixes-verified/`。等待再次 Max 只读审阅；未推送、部署或连接真实 ChatGPT，不能视为真实宿主验收。

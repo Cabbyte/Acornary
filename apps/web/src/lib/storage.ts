@@ -1,3 +1,4 @@
+import { embeddedRuntime } from './runtime';
 const DATABASE = 'acornary-web-v1';
 let epoch = 0;
 function openDB(): Promise<IDBDatabase> {
@@ -9,6 +10,8 @@ function openDB(): Promise<IDBDatabase> {
   });
 }
 export async function stored<T>(key: string): Promise<T | undefined> {
+  const embedded = embeddedRuntime();
+  if (embedded) return embedded.storage.get<T>(key);
   const db = await openDB();
   try {
     return await new Promise<T | undefined>((resolve, reject) => {
@@ -21,6 +24,8 @@ export async function stored<T>(key: string): Promise<T | undefined> {
   }
 }
 export async function persist(key: string, value: unknown): Promise<void> {
+  const embedded = embeddedRuntime();
+  if (embedded) return embedded.storage.set(key, value);
   const started = epoch;
   const db = await openDB();
   if (started !== epoch) {
