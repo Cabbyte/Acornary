@@ -265,9 +265,29 @@ describe('cloud OAuth and private inspector', () => {
     ).rows;
     expect(ownEvents.every((row) => row.actor_id === ctx.actor_id)).toBe(true);
     const readGrant = await grant('offline_access inventory:read');
+    const view = (await call(readGrant.access_token, 'open_inventory')).json().result;
+    expect(view._meta['acornary/view'].session).toMatchObject({
+      user_id: userId,
+      household_id: ctx.household_id,
+      can_write: false,
+      host: 'mcp',
+    });
+    expect(view.structuredContent).not.toHaveProperty('snapshot');
+    expect(view.content[0].text).not.toContain(item_id);
+    expect(
+      (await call(readGrant.access_token, 'get_inventory_view', { household_id: 'spoofed' })).json()
+        .result.isError,
+    ).toBe(true);
     const denied = await call(readGrant.access_token, 'create_catalog_node', args);
     expect(denied.statusCode).toBe(403);
     expect(denied.headers['www-authenticate']).toContain('inventory:write');
+    const uiDenied = await call(readGrant.access_token, 'apply_inventory_command', {
+      expected_scope: view._meta['acornary/view'].session.cache_key,
+      operation: 'create_catalog_node',
+      input: args,
+    });
+    expect(uiDenied.statusCode).toBe(403);
+    expect(uiDenied.headers['www-authenticate']).toContain('inventory:write');
     expect((await call(readGrant.access_token)).statusCode).toBe(200);
     const rotated = await tokenPost({
       grant_type: 'refresh_token',
@@ -377,6 +397,41 @@ describe('cloud OAuth and private inspector', () => {
       idempotency_key: randomUUID(),
     });
     const id = write.json().result.structuredContent.affected_objects[0].id;
+    const viewA = (await call(a.access_token, 'get_inventory_view')).json().result._meta[
+      'acornary/view'
+    ];
+    const viewB = (await call(b.access_token, 'get_inventory_view')).json().result._meta[
+      'acornary/view'
+    ];
+    expect(viewA.session.household_id).toBe(ctx.household_id);
+    expect(viewB.session.household_id).toBe(second);
+    expect(viewA.session.cache_key).not.toBe(viewB.session.cache_key);
+    expect(viewB.snapshot.catalog.some((record: any) => record.id === id)).toBe(false);
+    const boundInput = {
+      expected_scope: viewA.session.cache_key,
+      operation: 'create_catalog_node',
+      input: { kind: 'SKU', name: 'UI household binding', idempotency_key: randomUUID() },
+    };
+    const foreignWrite = await call(b.access_token, 'apply_inventory_command', boundInput);
+    expect(foreignWrite.json().result.structuredContent).toMatchObject({
+      error: { code: 'SESSION_CHANGED' },
+    });
+    const boundWrite = await call(a.access_token, 'apply_inventory_command', boundInput);
+    expect(boundWrite.json().result.isError).not.toBe(true);
+    expect(
+      (await call(a.access_token, 'apply_inventory_command', boundInput)).json().result
+        .structuredContent,
+    ).toEqual(boundWrite.json().result.structuredContent);
+    expect(
+      (await call(b.access_token, 'apply_inventory_command', boundInput)).json().result
+        .structuredContent,
+    ).toMatchObject({ error: { code: 'SESSION_CHANGED' } });
+    const createdRows = (
+      await query(pool, 'SELECT household_id,revision FROM catalog_nodes WHERE name=$1', [
+        boundInput.input.name,
+      ])
+    ).rows;
+    expect(createdRows).toEqual([{ household_id: ctx.household_id, revision: 1 }]);
     const denied = await call(b.access_token, 'get_catalog_node', { catalog_node_id: id });
     expect(denied.json().result.isError).toBe(true);
     // A Web family selection cannot change an already-issued OAuth credential.
@@ -400,6 +455,7 @@ describe('cloud OAuth and private inspector', () => {
     expect(changed.statusCode, changed.body).toBe(200);
     expect((await call(a.access_token)).statusCode).toBe(403);
     expect((await call(b.access_token)).statusCode).toBe(403);
+    expect((await call(a.access_token, 'open_inventory')).statusCode).toBe(403);
     expect(
       (
         await tokenPost({

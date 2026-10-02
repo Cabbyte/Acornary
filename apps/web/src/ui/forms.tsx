@@ -1,3 +1,4 @@
+import { draftSchema } from '../lib/draft';
 import { useEffect, useRef, useState } from 'react';
 import { Decimal } from 'decimal.js';
 import { schemas, type Operation, type TemplateId } from '../../../../packages/contracts/src/index';
@@ -5,6 +6,7 @@ import {
   ancestors,
   attr,
   isContainer,
+  isTerminal,
   itemName,
   locationName,
   type WriteResult,
@@ -25,6 +27,9 @@ import {
   type Values,
 } from './fields';
 import { Button, Field, Notice, Sheet } from './components';
+import { consumptionError, fullPath, specification } from '../lib/browse';
+import { WorkbenchMovePicker } from './workbench';
+import { availabilityOptions, moveValidation } from '../lib/workbench';
 
 export interface Action {
   kind: string;
@@ -47,6 +52,7 @@ interface Draft {
   result?: WriteResult;
 }
 const titles: Record<string, string> = {
+  edit: '编辑物品',
   intake: '入库',
   consume: '记录消耗',
   finish: '确认整件用完',
@@ -76,6 +82,10 @@ export function ActionSheet({
   const item = data.items.find((i) => i.id === action.target),
     catalog = data.catalog.find((c) => c.id === action.target);
   const target = item ?? catalog;
+  const moveIds = action.ids?.split(',').filter(Boolean) ?? (item ? [item.id] : []);
+  const movingItems = data.items.filter((i) => moveIds.includes(i.id));
+  const workbench = action.kind === 'edit' || (action.kind === 'move' && movingItems.length > 0);
+  const moving = action.kind === 'move' && movingItems.length > 0;
   const template = action.template ?? 'lifecycle';
   const fields = ['attributes', 'correct'].includes(action.kind)
     ? [
@@ -107,8 +117,16 @@ export function ActionSheet({
     const note = data.notes.find((n) => n.id === action.note && n.item_id === action.target);
     const values: Values = {
       name: item?.display_name ?? catalog?.name ?? '',
+      availability: item ? (attr(item, 'lifecycle')?.availability ?? '') : '',
+      acquired_on: item ? (attr(item, 'lifecycle')?.acquisition?.acquired_on ?? '') : '',
       sku: catalog?.kind === 'SKU' ? catalog.id : '',
-      parent: target?.parent_id ?? action.parent ?? '',
+      parent:
+        target?.parent_id ??
+        (action.ids
+          ? data.items.find((i) => i.id === action.ids?.split(',')[0])?.parent_id
+          : undefined) ??
+        action.parent ??
+        '',
       count: '1',
       opening: '',
       expiry: '',
@@ -119,6 +137,7 @@ export function ActionSheet({
       title: note?.title ?? '',
       body: note?.body ?? '',
       reason: '',
+      destinationChosen: 'false',
       amount: '',
       opened_at: '',
       ...original,
@@ -130,7 +149,13 @@ export function ActionSheet({
     if (target) revisions[target.id] = target.revision;
     void stored<Draft>(draftKey)
       .then((saved) => {
-        if (!cancelled) setDraft(saved ?? { values, original: { ...values }, revisions });
+        if (!cancelled) {
+          if (saved && !draftSchema.safeParse(saved).success) {
+            setError('保存的草稿无法安全恢复。请保留此记录并在松仓网站核对操作结果。');
+            return;
+          }
+          setDraft(saved ?? { values, original: { ...values }, revisions });
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -154,6 +179,18 @@ export function ActionSheet({
     setError('');
   };
   const values = draft?.values ?? {};
+  const physicalMove = moving;
+  const core = action.kind === 'consume' || moving;
+  const currentAmount = item && attr(item, 'contents')?.remaining;
+  const amountError =
+    action.kind === 'consume' ? consumptionError(values.amount ?? '', currentAmount) : '';
+  const moveError = moving
+    ? values.destinationChosen !== 'true'
+      ? '请选择目标位置。'
+      : movingItems.length !== moveIds.length
+        ? '部分物品已不可用，请返回重新选择。'
+        : moveValidation(data, movingItems, values.parent ?? '')
+    : '';
   const kind = item ? 'ITEM' : 'CATALOG_NODE';
   const positions = data.items.filter(
     (i) => isContainer(i) && (!item || !ancestors(i.id, data.items).some((p) => p.id === item.id)),
@@ -234,10 +271,32 @@ export function ActionSheet({
           ? { item_id: item.id, display_name: values.name.trim() || null }
           : { catalog_node_id: catalog?.id, name: values.name.trim() };
         break;
-      case 'move':
-        operation = item ? 'move_item' : 'move_catalog_node';
+      case 'edit':
+        operation = 'edit_item';
         input = {
-          ...(item ? { item_id: item.id } : { catalog_node_id: catalog?.id }),
+          item_id: item?.id,
+          ...(values.name !== draft.original.name
+            ? { display_name: values.name.trim() || null }
+            : {}),
+          ...(values.availability !== draft.original.availability
+            ? { availability: values.availability || null }
+            : {}),
+          ...(values.acquired_on !== draft.original.acquired_on
+            ? { acquired_on: values.acquired_on || null }
+            : {}),
+          ...(values.body !== draft.original.body
+            ? { note: { ...(action.note ? { note_id: action.note } : {}), body: values.body } }
+            : {}),
+        };
+        break;
+      case 'move':
+        operation = action.ids ? 'move_items' : item ? 'move_item' : 'move_catalog_node';
+        input = {
+          ...(action.ids
+            ? { item_ids: moveIds }
+            : item
+              ? { item_id: item.id }
+              : { catalog_node_id: catalog?.id }),
           parent_id: values.parent || null,
         };
         break;
@@ -346,7 +405,12 @@ export function ActionSheet({
     onSaved(result);
   }
   async function submit() {
-    if (lock.current || !draft || !online || stale || conflict) return;
+    if (session.can_write === false) {
+      setError('当前连接只有读取权限。');
+      return;
+    }
+    if (lock.current || !draft || !online || (stale && !draft.result) || conflict) return;
+    if (!draft.attempt && !draft.result && (amountError || moveError)) return;
     lock.current = true;
     setBusy(true);
     setError('');
@@ -365,6 +429,7 @@ export function ActionSheet({
         attempt.payload,
         session.household_id,
         session.user_id,
+        session.cache_key,
       );
       const committed = { ...pending, result };
       setDraft(committed);
@@ -385,28 +450,48 @@ export function ActionSheet({
       setBusy(false);
     }
   }
-  const desktopPage = [
-    'attributes',
-    'rename',
-    'note',
-    'intake',
-    'place',
-    'catalog',
-    'correct',
-  ].includes(action.kind);
+  function reviewOrSubmit() {
+    if (!draft) return;
+    if (action.kind === 'intake' && !review && !draft.attempt && !draft.result) {
+      try {
+        command();
+        setReview(true);
+      } catch (err) {
+        setError((err as Error).message);
+      }
+      return;
+    }
+    if (physicalMove && !workbench && !review && !draft.attempt && !draft.result) {
+      if (!moveError) setReview(true);
+      return;
+    }
+    void submit();
+  }
+  const desktopPage =
+    ['attributes', 'rename', 'note', 'intake', 'place', 'catalog', 'correct'].includes(
+      action.kind,
+    ) || core;
   const context = (
     <>
-      <Notice>
-        {item
-          ? '这页只修改这一件实物，其他同款物品保持各自的记录。'
-          : catalog && action.kind !== 'intake'
-            ? '这里维护商品共有资料；每件实物的数量、位置和状态单独管理。'
-            : '保存前请核对商品、件数与位置。未填写的可选信息保留为未记录。'}
-      </Notice>
+      {!core && (
+        <Notice>
+          {item
+            ? '这页只修改这一件实物，其他同款物品保持各自的记录。'
+            : catalog && action.kind !== 'intake'
+              ? '这里维护商品共有资料；每件实物的数量、位置和状态单独管理。'
+              : '保存前请核对商品、件数与位置。未填写的可选信息保留为未记录。'}
+        </Notice>
+      )}
       {target && (
         <section className="card">
           <h2>{item ? itemTitle(item, data) : catalog?.name}</h2>
-          <p>{item ? locationName(item, data) : '商品资料'}</p>
+          <p>{item ? fullPath(item.parent_id, data) : '商品资料'}</p>
+          {core && item && (
+            <>
+              <p>{specification(data.catalog.find((c) => c.id === item.catalog_node_id))}</p>
+              <small className="identity">实物编号 {item.id}</small>
+            </>
+          )}
           {item && <p className="quantity">{remaining(item)}</p>}
         </section>
       )}
@@ -415,18 +500,18 @@ export function ActionSheet({
   if (!draft)
     return (
       <Sheet
+        workbench={workbench}
         desktopPage={desktopPage}
         context={context}
         title={titles[action.kind] ?? '编辑'}
         onClose={onClose}
       >
-        <p role="status">正在恢复草稿…</p>
+        <p role="status">{error || '正在恢复草稿…'}</p>
       </Sheet>
     );
-  const currentAmount = item && attr(item, 'contents')?.remaining;
   let preview = '';
   try {
-    if (currentAmount && values.amount)
+    if (action.kind === 'consume' && currentAmount && values.amount && !amountError)
       preview = amount(
         new Decimal(currentAmount.value).minus(values.amount).toFixed(),
         currentAmount.unit,
@@ -436,44 +521,62 @@ export function ActionSheet({
   }
   return (
     <Sheet
+      workbench={workbench}
       desktopPage={desktopPage}
+      core={core}
       context={context}
       title={
-        action.kind === 'attributes'
-          ? (templateLabels[template] ?? '编辑资料')
-          : (titles[action.kind] ?? '编辑')
+        moving
+          ? `移动 ${movingItems.length} 件物品`
+          : action.kind === 'attributes'
+            ? (templateLabels[template] ?? '编辑资料')
+            : (titles[action.kind] ?? '编辑')
       }
       onClose={onClose}
       busy={busy}
     >
       <form
         className="stack"
+        onKeyDown={(e) => {
+          if (
+            session.host === 'mcp' &&
+            !e.nativeEvent.isComposing &&
+            e.nativeEvent.keyCode !== 229 &&
+            e.key === 'Enter' &&
+            e.target instanceof HTMLInputElement
+          ) {
+            e.preventDefault();
+            if (e.currentTarget.reportValidity()) reviewOrSubmit();
+          }
+        }}
         onSubmit={(e) => {
           e.preventDefault();
-          if (action.kind === 'intake' && !review && !draft.attempt && !draft.result) {
-            try {
-              command();
-              setReview(true);
-            } catch (err) {
-              setError((err as Error).message);
-            }
-            return;
-          }
-          void submit();
+          reviewOrSubmit();
         }}
       >
-        {item && (
+        {item && !workbench && (
           <Notice>
             {itemTitle(item, data)} · {remaining(item)}
             <br />
-            此次只修改明确选中的实物。
+            {core ? fullPath(item.parent_id, data) : '此次只修改明确选中的实物。'}
           </Notice>
         )}
         {catalog && action.kind !== 'intake' && (
           <Notice>{catalog.name} · 商品共有资料的修改会应用于同款实物的展示。</Notice>
         )}
         {(!online || stale) && (
-          <Notice>当前离线或连接不可用。输入已保留，恢复联网后请手动提交。</Notice>
+          <>
+            <Notice>当前离线或连接不可用。输入已保留，恢复联网后请手动提交。</Notice>
+            {online && stale && !draft.result && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void refresh().catch(() => setError('连接仍不可用，输入已保留。'))}
+              >
+                重新读取库存
+              </Button>
+            )}
+          </>
         )}
         {storageError && <Notice danger>{storageError}</Notice>}
         {draft.attempt && !draft.result && (
@@ -570,16 +673,68 @@ export function ActionSheet({
             </>
           )}
           {action.kind === 'place' && selectParent()}
-          {action.kind === 'move' && (
+          {action.kind === 'edit' && item && (
             <>
-              {selectParent(!item)}
-              {item && isContainer(item) && (
-                <Notice>
-                  移动此容器时，内部所有物品和子容器会一起移动，各自的身份与相对位置保持不变。
-                </Notice>
-              )}
+              <Field label="名称" hint="留空时使用商品名称。">
+                <input
+                  maxLength={500}
+                  value={values.name}
+                  placeholder={itemName(item, data)}
+                  onChange={(e) => set('name', e.target.value)}
+                />
+              </Field>
+              <Field label="规格" hint="同款商品共有资料。在商品目录中编辑。">
+                <input
+                  readOnly
+                  value={
+                    specification(data.catalog.find((c) => c.id === item.catalog_node_id)) ||
+                    '未记录'
+                  }
+                />
+              </Field>
+              <a href={`/catalog/${item.catalog_node_id}`}>编辑商品共有资料 ›</a>
+              <Field label="状态">
+                <select
+                  value={values.availability}
+                  onChange={(e) => set('availability', e.target.value)}
+                >
+                  {availabilityOptions.map(([v, t]) => (
+                    <option key={v} value={v}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="购入日期">
+                <input
+                  type="date"
+                  value={values.acquired_on}
+                  onChange={(e) => set('acquired_on', e.target.value)}
+                />
+              </Field>
+              <Field label="备注">
+                <textarea
+                  rows={4}
+                  maxLength={100000}
+                  value={values.body}
+                  onChange={(e) => set('body', e.target.value)}
+                />
+              </Field>
             </>
           )}
+          {action.kind === 'move' &&
+            (moving ? (
+              <WorkbenchMovePicker
+                items={movingItems}
+                value={values.parent ?? ''}
+                onChange={(value) => {
+                  set('parent', value);
+                  set('destinationChosen', 'true');
+                }}
+              />
+            ) : (
+              selectParent(!item)
+            ))}
           {action.kind === 'open' && (
             <Field label="开封时间" hint="可选，仅填写你确认的时间；留空会保留为未记录。">
               <input
@@ -593,11 +748,13 @@ export function ActionSheet({
             <>
               <Field
                 label="本次消耗量"
+                error={values.amount ? amountError : undefined}
                 hint={`${currentAmount ? label(currentAmount.unit) : ''} · 应大于 0，且不超过当前剩余量`}
               >
                 <input
                   required
                   inputMode="decimal"
+                  maxLength={100}
                   pattern="(0|[1-9][0-9]*)(\.[0-9]+)?"
                   value={values.amount}
                   onChange={(e) => set('amount', e.target.value)}
@@ -666,13 +823,41 @@ export function ActionSheet({
           )}
         </fieldset>
         {preview && (
-          <section>
-            <p>保存后</p>
+          <section className="consume-preview">
+            <p>使用后剩余</p>
             <p className="quantity">剩余 {preview}</p>
-            <small>实物仍是这一件，件数保持不变。</small>
+            {currentAmount && new Decimal(currentAmount.value).eq(values.amount) && (
+              <small>确认后这件实物将标记为已用完。</small>
+            )}
           </section>
         )}
-        {review && (
+        {moving && (
+          <section className="wb-move-confirmation">
+            <p>
+              目标位置 ·{' '}
+              {values.destinationChosen !== 'true'
+                ? '尚未选择'
+                : values.parent
+                  ? fullPath(values.parent, data)
+                  : '未指定位置'}
+            </p>
+            {values.destinationChosen === 'true' && (
+              <p>
+                移入后共{' '}
+                {data.items.filter(
+                  (i) =>
+                    !isContainer(i) &&
+                    !isTerminal(i) &&
+                    (i.parent_id ?? '') === values.parent &&
+                    !moveIds.includes(i.id),
+                ).length + movingItems.filter((i) => !isContainer(i)).length}{' '}
+                件物品（当前层）
+              </p>
+            )}
+            {moveError && <small>{moveError}</small>}
+          </section>
+        )}
+        {review && action.kind === 'intake' && (
           <Notice>
             将新增 {values.count} 件「{data.catalog.find((c) => c.id === values.sku)?.name}
             」，位置：
@@ -691,6 +876,23 @@ export function ActionSheet({
             <h3>核对最新记录</h3>
             <p>你的输入仍保留。以下是服务器当前内容：</p>
             <dl>
+              {moving &&
+                movingItems.map((i) => (
+                  <div key={i.id}>
+                    <dt>{itemName(i, data)}</dt>
+                    <dd>{fullPath(i.parent_id, data)}</dd>
+                  </div>
+                ))}
+              {action.kind === 'edit' && item && (
+                <div>
+                  <dt>最新资料</dt>
+                  <dd>
+                    {itemName(item, data)} · {label(attr(item, 'lifecycle')?.availability)} ·{' '}
+                    {attr(item, 'lifecycle')?.acquisition?.acquired_on || '日期未记录'}
+                    <p>{data.notes.find((n) => n.id === action.note)?.body || '备注未记录'}</p>
+                  </dd>
+                </div>
+              )}
               {target &&
                 fields.map((f) => {
                   const latest = fieldValues(sourceValues(), fields);
@@ -709,6 +911,15 @@ export function ActionSheet({
                   <dd>
                     {item ? itemTitle(item, data) : catalog?.name} ·{' '}
                     {item ? locationName(item, data) : (catalog?.parent_id ?? '顶层目录')}
+                  </dd>
+                </div>
+              )}
+              {action.kind === 'consume' && (
+                <div>
+                  <dt>剩余量与本次消耗</dt>
+                  <dd>
+                    当前：{item ? remaining(item) : '未记录'}；你的输入：{values.amount}{' '}
+                    {currentAmount?.unit}
                   </dd>
                 </div>
               )}
@@ -742,7 +953,22 @@ export function ActionSheet({
           </section>
         )}
         <Button
-          disabled={busy || !online || stale || conflict}
+          type={session.host === 'mcp' ? 'button' : 'submit'}
+          onClick={
+            session.host === 'mcp'
+              ? (e) => {
+                  if (e.currentTarget.form?.reportValidity()) reviewOrSubmit();
+                }
+              : undefined
+          }
+          disabled={
+            busy ||
+            session.can_write === false ||
+            !online ||
+            (stale && !draft.result) ||
+            conflict ||
+            (!draft.attempt && !draft.result && !!(amountError || moveError))
+          }
           variant={action.kind === 'finish' ? 'danger' : 'primary'}
         >
           {busy
@@ -759,7 +985,11 @@ export function ActionSheet({
                     ? '确认记录消耗'
                     : action.kind === 'finish'
                       ? '确认整件用完'
-                      : '保存'}
+                      : moving
+                        ? `确认移动 ${movingItems.length} 件`
+                        : action.kind === 'edit'
+                          ? '保存修改'
+                          : '保存'}
         </Button>
         <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>
           取消

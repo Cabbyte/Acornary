@@ -81,10 +81,12 @@ export function Field({
   label,
   children,
   hint,
+  error,
 }: {
   label: string;
   children: ReactNode;
   hint?: ReactNode;
+  error?: string;
 }) {
   const id = useId();
   const annotate = (nodes: ReactNode): ReactNode =>
@@ -94,7 +96,8 @@ export function Field({
       if (['input', 'select', 'textarea'].includes(String(element.type)))
         return cloneElement(element, {
           'aria-label': element.props['aria-label'] ?? label,
-          ...(hint ? { 'aria-describedby': id } : {}),
+          ...(hint || error ? { 'aria-describedby': id } : {}),
+          ...(error ? { 'aria-invalid': true } : {}),
         });
       return element.props.children
         ? cloneElement(element, { children: annotate(element.props.children as ReactNode) })
@@ -104,7 +107,11 @@ export function Field({
     <div className="field">
       <span>{label}</span>
       {annotate(children)}
-      {hint && <small id={id}>{hint}</small>}
+      {(hint || error) && (
+        <small id={id} className={error ? 'field-error' : undefined}>
+          {error || hint}
+        </small>
+      )}
     </div>
   );
 }
@@ -115,6 +122,8 @@ export function Sheet({
   busy = false,
   desktopPage = false,
   context,
+  core = false,
+  workbench = false,
 }: {
   title: string;
   children: ReactNode;
@@ -122,6 +131,8 @@ export function Sheet({
   busy?: boolean;
   desktopPage?: boolean;
   context?: ReactNode;
+  core?: boolean;
+  workbench?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -132,7 +143,7 @@ export function Sheet({
     query.addEventListener('change', change);
     return () => query.removeEventListener('change', change);
   }, []);
-  const page = desktopPage && wide;
+  const page = desktopPage && wide && !workbench;
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
@@ -144,7 +155,7 @@ export function Sheet({
     document.body.style.overflow = 'hidden';
     // Native dialog handles focus containment, Escape and restoration; the viewport follows the keyboard.
     const resize = () => {
-      dialog.style.maxHeight = `${(window.visualViewport?.height ?? window.innerHeight) - 16}px`;
+      dialog.style.maxHeight = `${(window.visualViewport?.height ?? window.innerHeight) - (workbench && !wide ? 0 : 16)}px`;
     };
     resize();
     window.visualViewport?.addEventListener('resize', resize);
@@ -154,10 +165,10 @@ export function Sheet({
       previous?.focus();
       window.visualViewport?.removeEventListener('resize', resize);
     };
-  }, [page]);
+  }, [page, workbench, wide]);
   if (page)
     return (
-      <section className="editor-page" aria-labelledby={titleId}>
+      <section className={`editor-page ${core ? 'core-editor' : ''}`} aria-labelledby={titleId}>
         <header className="page-header">
           <h1 id={titleId}>{title}</h1>
           <button className="icon-button" aria-label="关闭" disabled={busy} onClick={onClose}>
@@ -172,7 +183,7 @@ export function Sheet({
     );
   return (
     <dialog
-      className="sheet"
+      className={`sheet ${workbench ? 'wb-dialog' : ''} ${workbench && core ? 'wb-move-dialog' : ''}`}
       ref={ref}
       aria-labelledby={titleId}
       onCancel={(e) => {
@@ -183,7 +194,7 @@ export function Sheet({
       <div className="sheet-handle" aria-hidden="true" />
       <header className="sheet-header">
         <button className="icon-button" aria-label="关闭" disabled={busy} onClick={onClose}>
-          ×
+          {workbench ? '取消' : '×'}
         </button>
         <h2 id={titleId}>{title}</h2>
         <span />

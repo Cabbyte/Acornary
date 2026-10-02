@@ -1,3 +1,6 @@
+@layer legacy, soft;
+@import './soft-gray.css' layer(soft);
+@layer legacy {
 :root {
   font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans SC', system-ui, sans-serif;
   color: #000;
@@ -917,4 +920,6 @@ dd {
 }
 .auth-consent > .notice {
   margin-block: 16px;
+}
+
 }

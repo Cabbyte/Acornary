@@ -6,6 +6,7 @@ import { pool, query } from '../apps/server/src/db.js';
 import { initialize } from '../apps/server/src/initialize.js';
 import { debugRead } from '../apps/server/src/debug.js';
 import { buildApp } from '../apps/server/src/app.js';
+import { pluginScope, type PluginIdentity } from '../apps/server/src/plugin.js';
 let ctx: Context, containerSku: string;
 const key = () => randomUUID();
 const run = (name: any, args: any) => execute(ctx, name, args);
@@ -55,6 +56,79 @@ beforeEach(async () => {
 });
 afterAll(() => pool.end());
 describe('Web product interface', () => {
+  it('checks the complete UI identity before executing or replaying a domain command', async () => {
+    const app = await buildApp(ctx, 'd'.repeat(64), false);
+    const address = await app.listen({ host: '127.0.0.1', port: 0 });
+    const client = new McpClient({ name: 'bound-ui-test', version: '1' });
+    try {
+      await client.connect(
+        new StreamableHTTPClientTransport(new URL(`${address}/mcp`), {
+          requestInit: { headers: { Authorization: `Bearer ${'d'.repeat(64)}` } },
+        }),
+      );
+      const view = await client.callTool({ name: 'open_inventory', arguments: {} });
+      const scope = (view._meta?.['acornary/view'] as any).session.cache_key;
+      const identity: PluginIdentity = {
+        ctx,
+        scopes: new Set(['inventory:read', 'inventory:write']),
+      };
+      expect(scope).toBe(pluginScope(identity, false));
+      const input = { kind: 'SKU', name: 'Bound UI identity', idempotency_key: key() };
+      const args = { expected_scope: scope, operation: 'create_catalog_node', input };
+      const call = (arguments_: any) =>
+        client.callTool({ name: 'apply_inventory_command', arguments: arguments_ });
+      const list = await client.listTools();
+      const tool = list.tools.find((t) => t.name === 'apply_inventory_command')!;
+      expect(tool._meta?.ui).toEqual({ visibility: ['app'] });
+      expect(tool.outputSchema?.required).toContain('affected_objects');
+      const first = await call(args);
+      expect(first.isError).not.toBe(true);
+      expect((await call(args)).structuredContent).toEqual(first.structuredContent);
+      const changedIdentities: PluginIdentity[] = [
+        { ...identity, ctx: { ...ctx, household_id: 'another-family' } },
+        { ...identity, ctx: { ...ctx, actor_id: 'another-actor' } },
+        { ...identity, userId: 'another-account' },
+        { ...identity, authVersion: 1 },
+        { ...identity, clientId: 'another-oauth-client' },
+        { ...identity, scopes: new Set(['inventory:write']) },
+      ];
+      const staleScopes = [
+        ...changedIdentities.map((current) => pluginScope(current, false)),
+        pluginScope(identity, true),
+      ];
+      for (const expected_scope of staleScopes) {
+        // Both an existing idempotency key and a new command must be rejected.
+        for (const idempotency_key of [input.idempotency_key, key()]) {
+          const denied = await call({
+            ...args,
+            expected_scope,
+            input: { ...input, idempotency_key },
+          });
+          expect(denied.isError).toBe(true);
+          expect(denied.structuredContent).toMatchObject({ error: { code: 'SESSION_CHANGED' } });
+          expect(denied.structuredContent).not.toHaveProperty('operation_id');
+        }
+      }
+      expect((await run('query_catalog_nodes', { name: input.name })).matching_count).toBe(1);
+      const id = (first.structuredContent as any).affected_objects[0].id;
+      expect(
+        (await query(pool, 'SELECT id FROM events WHERE target_id=$1', [id])).rows,
+      ).toHaveLength(1);
+      expect(
+        (
+          await query(
+            pool,
+            'SELECT result FROM operations WHERE household_id=$1 AND idempotency_key=$2',
+            [ctx.household_id, input.idempotency_key],
+          )
+        ).rows,
+      ).toHaveLength(1);
+      expect((await call({ ...args, operation: 'query_items' })).isError).toBe(true);
+    } finally {
+      await client.close();
+      await app.close();
+    }
+  });
   it('preserves HTTP command identity, revision conflicts and full household totals', async () => {
     const catalog = await sku('六瓶牛奶');
     const ids = await create(catalog, 6, [
@@ -374,6 +448,26 @@ describe('PostgreSQL domain transactions', () => {
       );
       const list = await client.listTools();
       expect(list.tools.map((t) => t.name)).toContain('consume_item_content');
+      const opener = list.tools.find((t) => t.name === 'open_inventory')!;
+      expect(opener._meta?.['openai/ui']).toMatchObject({
+        preferredModelDisplayMode: 'fullscreen',
+      });
+      expect(list.tools.find((t) => t.name === 'get_inventory_view')?._meta?.ui).toEqual({
+        visibility: ['app'],
+      });
+      expect(opener.outputSchema?.required).toEqual(['household', 'items', 'catalog']);
+      const resource = await client.readResource({ uri: (opener._meta?.ui as any).resourceUri });
+      expect(resource.contents[0].mimeType).toBe('text/html;profile=mcp-app');
+      expect('text' in resource.contents[0] ? resource.contents[0].text : '').toContain(
+        '<div id="root"></div>',
+      );
+      expect(resource.contents[0]._meta?.['openai/ui']).toMatchObject({
+        availableDisplayModes: ['fullscreen'],
+      });
+      const view = await client.callTool({ name: 'open_inventory', arguments: {} });
+      expect((view._meta?.['acornary/view'] as any).session.household_id).toBe(ctx.household_id);
+      expect(view.structuredContent).not.toHaveProperty('snapshot');
+
       expect(
         JSON.stringify(list.tools.find((t) => t.name === 'consume_items')?.inputSchema),
       ).not.toContain('selection');
@@ -849,4 +943,121 @@ it('keeps JSON array checks in SQL and enforces binding semantics in the shared 
   expect(
     (await query(pool, 'SELECT count(*) FROM items WHERE household_id=$1', [hh])).rows[0].count,
   ).toBe('0');
+});
+
+describe('Responsive workbench commands', () => {
+  it('moves explicit identities atomically and replays without duplicating history', async () => {
+    const ids = await create(await sku(), 3);
+    const [target] = await create(containerSku, 1, [attrs('container', { can_contain: true })]);
+    const input = {
+      idempotency_key: key(),
+      item_ids: ids.slice(0, 2),
+      parent_id: target,
+      expected_revisions: Object.fromEntries(ids.map((id: string) => [id, 1])),
+    };
+    const moved = await run('move_items', input);
+    expect(moved.affected_objects).toHaveLength(2);
+    expect(await run('move_items', input)).toEqual(moved);
+    expect((await run('get_item', { item_id: ids[0] })).parent_id).toBe(target);
+    expect((await run('get_item', { item_id: ids[2] })).parent_id).toBeNull();
+    await expect(run('move_items', { ...input, parent_id: null })).rejects.toMatchObject({
+      code: 'IDEMPOTENCY_CONFLICT',
+    });
+  });
+  it('rolls back every move when one revision or target is invalid', async () => {
+    const ids = (await create(await sku(), 2)).sort();
+    const [target] = await create(containerSku, 1, [attrs('container', { can_contain: true })]);
+    await expect(
+      write('move_items', {
+        item_ids: ids,
+        parent_id: target,
+        expected_revisions: { [ids[0]]: 1, [ids[1]]: 9 },
+      }),
+    ).rejects.toMatchObject({ code: 'REVISION_CONFLICT' });
+    for (const id of ids)
+      expect(await run('get_item', { item_id: id })).toMatchObject({
+        parent_id: null,
+        revision: 1,
+      });
+    await expect(
+      write('move_items', {
+        item_ids: [target, ids[0]],
+        parent_id: target,
+        expected_revisions: { [ids[0]]: 1, [target]: 1 },
+      }),
+    ).rejects.toMatchObject({ code: 'CYCLE_DETECTED' });
+    await expect(
+      write('move_items', {
+        item_ids: [ids[0], ids[0]],
+        parent_id: target,
+        expected_revisions: { [ids[0]]: 1 },
+      }),
+    ).rejects.toMatchObject({ code: 'ATTRIBUTE_VALIDATION_FAILED' });
+  });
+  it('saves one item and its note in one revision while preserving unknown and shared fields', async () => {
+    const catalog = await sku('Shared product');
+    const ids = await create(catalog, 2, [
+      attrs('lifecycle', { opening: { state: 'SEALED' }, expiry: { date: '2027-01-01' } }),
+    ]);
+    const input = {
+      idempotency_key: key(),
+      item_id: ids[0],
+      display_name: '我的线材',
+      availability: 'IN_USE',
+      acquired_on: '2026-10-01',
+      note: { body: '随身使用' },
+      expected_revisions: rev(ids[0], 1),
+    };
+    const saved = await run('edit_item', input);
+    expect(saved.affected_objects).toMatchObject([{ before_revision: 1, after_revision: 2 }]);
+    expect(saved.event_ids).toHaveLength(1);
+    expect(await run('edit_item', input)).toEqual(saved);
+    const item = await run('get_item', { item_id: ids[0] });
+    expect(item.display_name).toBe('我的线材');
+    expect(item.notes).toHaveLength(1);
+    expect(item.notes[0].body).toBe('随身使用');
+    expect(item.attributes.find((a: any) => a.template_id === 'lifecycle').values).toEqual({
+      opening: { state: 'SEALED' },
+      expiry: { date: '2027-01-01' },
+      availability: 'IN_USE',
+      acquisition: { acquired_on: '2026-10-01' },
+    });
+    expect((await run('get_item', { item_id: ids[1] })).revision).toBe(1);
+    expect((await run('get_catalog_node', { catalog_node_id: catalog })).name).toBe(
+      'Shared product',
+    );
+    await write('edit_item', {
+      item_id: ids[0],
+      display_name: null,
+      availability: null,
+      acquired_on: null,
+      note: { note_id: saved.note_id, body: '' },
+      expected_revisions: rev(ids[0], 2),
+    });
+    const cleared = await run('get_item', { item_id: ids[0] });
+    expect(cleared.attributes.find((a: any) => a.template_id === 'lifecycle').values).toEqual({
+      opening: { state: 'SEALED' },
+      expiry: { date: '2027-01-01' },
+    });
+  });
+  it('rejects a note belonging to another item without saving any fields', async () => {
+    const ids = await create(await sku(), 2);
+    const note = await write('add_note', {
+      item_id: ids[1],
+      body: 'private',
+      expected_revisions: rev(ids[1], 1),
+    });
+    await expect(
+      write('edit_item', {
+        item_id: ids[0],
+        display_name: 'wrong',
+        note: { note_id: note.note_id, body: 'overwrite' },
+        expected_revisions: rev(ids[0], 1),
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    expect(await run('get_item', { item_id: ids[0] })).toMatchObject({
+      display_name: null,
+      revision: 1,
+    });
+  });
 });

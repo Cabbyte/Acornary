@@ -15,7 +15,8 @@ export default defineConfig({
           const assets = Object.keys(bundle)
             .filter(
               (name) =>
-                /\.(js|css)$/.test(name) && !/^assets\/(inspector|authentication)-/.test(name),
+                /\.(js|css|png|svg)$/.test(name) &&
+                !/^assets\/(inspector|authentication)-/.test(name),
             )
             .map((name) => `/${name}`);
           const version = createHash('sha256').update(assets.join('\n')).digest('hex').slice(0, 12);

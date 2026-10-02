@@ -1,9 +1,10 @@
-import type { Operation } from '../../../../packages/contracts/src/index';
+import { embeddedRuntime } from './runtime.js';
+import type { Operation } from '../../../../packages/contracts/src/index.js';
 import type {
   HistoryEvent,
   InventorySnapshot,
   WriteResult,
-} from '../../../../packages/contracts/src/web';
+} from '../../../../packages/contracts/src/web.js';
 
 export class ApiError extends Error {
   constructor(
@@ -18,6 +19,7 @@ export class ApiError extends Error {
 export const messages: Record<string, string> = {
   REVISION_CONFLICT: '记录已发生变化。请核对最新内容后重新提交。',
   IDEMPOTENCY_CONFLICT: '这次操作的重试信息不一致，请重新核对。',
+  SESSION_CHANGED: '连接账号、家庭或授权已改变，请重新打开操作。',
   UNAUTHORIZED: '登录已失效，输入已保留。请重新登录后继续。',
   FORBIDDEN: '当前账号无法执行此操作。',
   NOT_FOUND: '这条记录已不可用，请刷新查看。',
@@ -33,6 +35,8 @@ export const messages: Record<string, string> = {
   NETWORK: '连接中断或响应未返回。输入已保留，请重试同一次操作。',
 };
 export async function request<T>(url: string, init?: RequestInit): Promise<T> {
+  const embedded = embeddedRuntime();
+  if (embedded) return embedded.transport.request<T>(url);
   let response: Response;
   try {
     const headers = new Headers(init?.headers);
@@ -69,14 +73,23 @@ export async function request<T>(url: string, init?: RequestInit): Promise<T> {
   }
   return data;
 }
-export const read = <T>(name: Operation, input: unknown) =>
-  request<T>(`/api/read/${name}?input=${encodeURIComponent(JSON.stringify(input))}`);
+export const read = <T>(name: Operation, input: unknown, signal?: AbortSignal) =>
+  embeddedRuntime()?.transport.read<T>(name, input, signal) ??
+  request<T>(`/api/read/${name}?input=${encodeURIComponent(JSON.stringify(input))}`, { signal });
 export const snapshot = (household?: string, signal?: AbortSignal) =>
+  embeddedRuntime()?.transport.snapshot(signal) ??
   request<InventorySnapshot>('/api/ui/snapshot', {
     headers: household ? { 'X-Acornary-Household': household } : {},
     signal,
   });
-export const write = (name: Operation, payload: unknown, household?: string, userId?: string) =>
+export const write = (
+  name: Operation,
+  payload: unknown,
+  household?: string,
+  userId?: string,
+  scope?: string,
+) =>
+  embeddedRuntime()?.transport.write(name, payload, household, userId, scope) ??
   request<WriteResult>(`/api/write/${name}`, {
     method: 'POST',
     headers: {
@@ -87,9 +100,18 @@ export const write = (name: Operation, payload: unknown, household?: string, use
     },
     body: JSON.stringify(payload),
   });
-export const history = (id: string, kind: 'ITEM' | 'CATALOG_NODE', cursor?: string) =>
-  read<{ data: HistoryEvent[]; next_cursor?: string }>('get_history', {
-    target: { kind, id },
-    limit: 30,
-    ...(cursor ? { cursor } : {}),
-  });
+export const history = (
+  id: string,
+  kind: 'ITEM' | 'CATALOG_NODE',
+  cursor?: string,
+  signal?: AbortSignal,
+) =>
+  read<{ data: HistoryEvent[]; next_cursor?: string }>(
+    'get_history',
+    {
+      target: { kind, id },
+      limit: 30,
+      ...(cursor ? { cursor } : {}),
+    },
+    signal,
+  );

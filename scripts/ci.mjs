@@ -66,7 +66,7 @@ try {
     ],
     true,
   );
-  for (const task of ['typecheck', 'test', 'build']) docker(['exec', worker, 'pnpm', task]);
+  for (const task of ['typecheck', 'build', 'test']) docker(['exec', worker, 'pnpm', task]);
   const db = `acornary_e2e_${Date.now()}`;
   docker(['exec', postgres, 'createdb', '-U', 'acornary', db]);
   env.DATABASE_URL = url(db);
@@ -113,6 +113,24 @@ try {
     const r=https.get('https://127.0.0.1:3210/health',{rejectUnauthorized:false},s=>{s.resume();if(s.statusCode===200)process.exit(0);retry()});r.on('error',retry)}
     function retry(){if(++n>60)process.exit(1);setTimeout(probe,500)}probe()`,
   ]);
+  docker(['exec', worker, 'mkdir', '-p', '/app/output/playwright']);
+  docker([
+    'exec',
+    '-d',
+    '-e',
+    'DATABASE_URL',
+    worker,
+    'sh',
+    '-c',
+    'pnpm exec tsx tests/plugin-browser-server.ts > /app/output/playwright/plugin-host-server.log 2>&1',
+  ]);
+  docker([
+    'exec',
+    worker,
+    'node',
+    '-e',
+    `let n=0;async function probe(){try{const r=await fetch('http://127.0.0.1:3212');if(r.ok)process.exit(0)}catch{}if(++n>60)process.exit(1);setTimeout(probe,500)}probe()`,
+  ]);
   docker([
     'exec',
     '-e',
@@ -124,12 +142,15 @@ try {
     worker,
     'pnpm',
     'test:e2e',
+    ...(process.env.ACORNARY_E2E_GREP ? ['--grep', process.env.ACORNARY_E2E_GREP] : []),
   ]);
 } finally {
-  mkdirSync('output/ci', { recursive: true });
-  spawnSync('docker', ['cp', `${worker}:/app/output/playwright`, 'output/ci/'], {
+  const artifacts = process.env.ACORNARY_CI_OUTPUT ?? 'output/ci';
+  mkdirSync(artifacts, { recursive: true });
+  spawnSync('docker', ['cp', `${worker}:/app/output/playwright`, artifacts], {
     stdio: 'ignore',
   });
+  spawnSync('docker', ['cp', `${worker}:/app/test-results`, artifacts], { stdio: 'ignore' });
   for (const name of [worker, postgres])
     spawnSync('docker', ['rm', '-f', name], { stdio: 'ignore' });
   spawnSync('docker', ['network', 'rm', network], { stdio: 'ignore' });

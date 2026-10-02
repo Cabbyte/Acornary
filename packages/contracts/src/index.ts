@@ -248,6 +248,21 @@ export const schemas = {
   }),
   update_item: z.strictObject({ ...write, item_id: uuid, display_name: text.nullable() }),
   move_item: z.strictObject({ ...write, item_id: uuid, parent_id: uuid.nullable() }),
+  move_items: z.strictObject({
+    ...write,
+    item_ids: z.array(uuid).min(1).max(100),
+    parent_id: uuid.nullable(),
+  }),
+  edit_item: z.strictObject({
+    ...write,
+    item_id: uuid,
+    display_name: text.nullable().optional(),
+    availability: templates.lifecycle.schema.shape.availability.unwrap().nullable().optional(),
+    acquired_on: z.iso.date().nullable().optional(),
+    note: z
+      .strictObject({ note_id: entityId('note').optional(), body: z.string().max(100000) })
+      .optional(),
+  }),
   open_item: z.strictObject({
     ...write,
     item_id: uuid,
@@ -317,6 +332,9 @@ export const descriptions: Record<Operation, string> = {
   create_items: '创建 count 个不同 UUID 的实例；批量共享明确的初始属性，不合并身份。',
   update_item: '修改明确 UUID 的显示名。',
   move_item: '移动明确 UUID 的物品或容器，后代相对位置不变。',
+  move_items: '将明确选择的物品原子地移至同一位置；全部版本必须匹配，任一失败则全部回滚。',
+  edit_item:
+    '原子编辑一件实物的名称、可用状态、购入日期和指定备注；未提供的可选字段保持不变，不修改同款商品资料。',
   open_item:
     '开封用户明确指定的 UUID。多个候选必须先询问用户。opened_at 仅填写用户提供的已知时间。',
   consume_items: '整件消耗用户明确指定的 item_ids，不接受自动选取或 FEFO。',
