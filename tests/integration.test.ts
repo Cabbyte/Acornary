@@ -850,3 +850,120 @@ it('keeps JSON array checks in SQL and enforces binding semantics in the shared 
     (await query(pool, 'SELECT count(*) FROM items WHERE household_id=$1', [hh])).rows[0].count,
   ).toBe('0');
 });
+
+describe('Responsive workbench commands', () => {
+  it('moves explicit identities atomically and replays without duplicating history', async () => {
+    const ids = await create(await sku(), 3);
+    const [target] = await create(containerSku, 1, [attrs('container', { can_contain: true })]);
+    const input = {
+      idempotency_key: key(),
+      item_ids: ids.slice(0, 2),
+      parent_id: target,
+      expected_revisions: Object.fromEntries(ids.map((id: string) => [id, 1])),
+    };
+    const moved = await run('move_items', input);
+    expect(moved.affected_objects).toHaveLength(2);
+    expect(await run('move_items', input)).toEqual(moved);
+    expect((await run('get_item', { item_id: ids[0] })).parent_id).toBe(target);
+    expect((await run('get_item', { item_id: ids[2] })).parent_id).toBeNull();
+    await expect(run('move_items', { ...input, parent_id: null })).rejects.toMatchObject({
+      code: 'IDEMPOTENCY_CONFLICT',
+    });
+  });
+  it('rolls back every move when one revision or target is invalid', async () => {
+    const ids = (await create(await sku(), 2)).sort();
+    const [target] = await create(containerSku, 1, [attrs('container', { can_contain: true })]);
+    await expect(
+      write('move_items', {
+        item_ids: ids,
+        parent_id: target,
+        expected_revisions: { [ids[0]]: 1, [ids[1]]: 9 },
+      }),
+    ).rejects.toMatchObject({ code: 'REVISION_CONFLICT' });
+    for (const id of ids)
+      expect(await run('get_item', { item_id: id })).toMatchObject({
+        parent_id: null,
+        revision: 1,
+      });
+    await expect(
+      write('move_items', {
+        item_ids: [target, ids[0]],
+        parent_id: target,
+        expected_revisions: { [ids[0]]: 1, [target]: 1 },
+      }),
+    ).rejects.toMatchObject({ code: 'CYCLE_DETECTED' });
+    await expect(
+      write('move_items', {
+        item_ids: [ids[0], ids[0]],
+        parent_id: target,
+        expected_revisions: { [ids[0]]: 1 },
+      }),
+    ).rejects.toMatchObject({ code: 'ATTRIBUTE_VALIDATION_FAILED' });
+  });
+  it('saves one item and its note in one revision while preserving unknown and shared fields', async () => {
+    const catalog = await sku('Shared product');
+    const ids = await create(catalog, 2, [
+      attrs('lifecycle', { opening: { state: 'SEALED' }, expiry: { date: '2027-01-01' } }),
+    ]);
+    const input = {
+      idempotency_key: key(),
+      item_id: ids[0],
+      display_name: '我的线材',
+      availability: 'IN_USE',
+      acquired_on: '2026-10-01',
+      note: { body: '随身使用' },
+      expected_revisions: rev(ids[0], 1),
+    };
+    const saved = await run('edit_item', input);
+    expect(saved.affected_objects).toMatchObject([{ before_revision: 1, after_revision: 2 }]);
+    expect(saved.event_ids).toHaveLength(1);
+    expect(await run('edit_item', input)).toEqual(saved);
+    const item = await run('get_item', { item_id: ids[0] });
+    expect(item.display_name).toBe('我的线材');
+    expect(item.notes).toHaveLength(1);
+    expect(item.notes[0].body).toBe('随身使用');
+    expect(item.attributes.find((a: any) => a.template_id === 'lifecycle').values).toEqual({
+      opening: { state: 'SEALED' },
+      expiry: { date: '2027-01-01' },
+      availability: 'IN_USE',
+      acquisition: { acquired_on: '2026-10-01' },
+    });
+    expect((await run('get_item', { item_id: ids[1] })).revision).toBe(1);
+    expect((await run('get_catalog_node', { catalog_node_id: catalog })).name).toBe(
+      'Shared product',
+    );
+    await write('edit_item', {
+      item_id: ids[0],
+      display_name: null,
+      availability: null,
+      acquired_on: null,
+      note: { note_id: saved.note_id, body: '' },
+      expected_revisions: rev(ids[0], 2),
+    });
+    const cleared = await run('get_item', { item_id: ids[0] });
+    expect(cleared.attributes.find((a: any) => a.template_id === 'lifecycle').values).toEqual({
+      opening: { state: 'SEALED' },
+      expiry: { date: '2027-01-01' },
+    });
+  });
+  it('rejects a note belonging to another item without saving any fields', async () => {
+    const ids = await create(await sku(), 2);
+    const note = await write('add_note', {
+      item_id: ids[1],
+      body: 'private',
+      expected_revisions: rev(ids[1], 1),
+    });
+    await expect(
+      write('edit_item', {
+        item_id: ids[0],
+        display_name: 'wrong',
+        note: { note_id: note.note_id, body: 'overwrite' },
+        expected_revisions: rev(ids[0], 1),
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    expect(await run('get_item', { item_id: ids[0] })).toMatchObject({
+      display_name: null,
+      revision: 1,
+    });
+  });
+});

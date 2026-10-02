@@ -9,7 +9,7 @@ import {
   type CatalogRecord,
   type InventoryData,
   type ItemRecord,
-} from '../../../../packages/contracts/src/web';
+} from '../../../../packages/contracts/src/web.js';
 
 export const PAGE_SIZE = 20;
 export const specification = (sku?: CatalogRecord) => {

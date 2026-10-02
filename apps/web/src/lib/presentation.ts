@@ -5,7 +5,7 @@ import {
   type InventoryData,
   type ItemRecord,
   type ProductGroup,
-} from '../../../../packages/contracts/src/web';
+} from '../../../../packages/contracts/src/web.js';
 export const labels: Record<string, string> = {
   current: '当前库存',
   all: '全部记录',
@@ -87,6 +87,7 @@ export const time = (date: string) =>
 export const eventNames: Record<string, string> = {
   CREATE: '创建记录',
   UPDATE: '编辑名称',
+  EDIT: '编辑物品资料',
   MOVE: '移动',
   OPEN: '开封',
   CONSUME_ITEMS: '整件用完',

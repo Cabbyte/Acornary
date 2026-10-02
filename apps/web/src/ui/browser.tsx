@@ -141,7 +141,7 @@ export function PhysicalRow({ item, path = false }: { item: ItemRecord; path?: b
   return (
     <Link
       className="soft-row"
-      to={container ? `/places/${item.id}` : `/items/${item.id}`}
+      to={container ? `/places/${item.id}` : `/items/${item.id}/details`}
       search={{ returnTo: location.pathname + location.searchStr }}
     >
       <span className="soft-row-copy">

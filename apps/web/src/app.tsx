@@ -18,7 +18,9 @@ import { Home, Product, ItemDetail, Catalog, Settings, History, Notes } from './
 import { ActionSheet, type Action } from './ui/forms';
 import { Button, Empty, Notice } from './ui/components';
 import './product.css';
-import { InventoryBrowser, InventorySearch, ProductCatalog } from './ui/browser';
+import { InventorySearch, ProductCatalog } from './ui/browser';
+import { Workbench, WorkbenchShell } from './ui/workbench';
+import './workbench.css';
 
 const nav = [
   ['items', '我的物品'],
@@ -30,13 +32,20 @@ function Workspace() {
   const location = useLocation();
   const navigate = useNavigate();
   const { data, stale, refresh, cacheWarning } = useInventory();
-  const { online, expired, requestLogin, storageError } = useSession();
+  const { session, online, expired, requestLogin, storageError } = useSession();
   const [message, setMessage] = useState('');
+  const [selectionVersion, resetSelection] = useState(0);
   const [connectionError, setConnectionError] = useState('');
   const parts = location.pathname.split('/').filter(Boolean);
   const section = parts[0] || 'items';
   const id = parts[1];
   const params = new URLSearchParams(location.searchStr);
+  const scope =
+    section === 'places'
+      ? id
+      : section === 'items' && id && id !== 'group'
+        ? (data.items.find((i) => i.id === id)?.parent_id ?? undefined)
+        : undefined;
   const action = params.get('dialog')
     ? {
         kind: params.get('dialog')!,
@@ -80,13 +89,33 @@ function Workspace() {
           <History id={id} />
         ) : parts[2] === 'notes' ? (
           <Notes id={id} open={open} />
-        ) : (
+        ) : parts[2] === 'details' ? (
           <ItemDetail id={id} open={open} />
+        ) : (
+          <Workbench
+            selectionVersion={selectionVersion}
+            key={`${session.cache_key}:${scope ?? ''}`}
+            id={scope}
+            detailId={id}
+            open={open}
+          />
         )
       ) : (
-        <InventoryBrowser open={open} />
+        <Workbench
+          selectionVersion={selectionVersion}
+          key={`${session.cache_key}:root`}
+          open={open}
+        />
       );
-  else if (section === 'places') page = <InventoryBrowser key={id ?? 'root'} id={id} open={open} />;
+  else if (section === 'places')
+    page = (
+      <Workbench
+        selectionVersion={selectionVersion}
+        key={`${session.cache_key}:${id ?? ''}`}
+        id={id}
+        open={open}
+      />
+    );
   else if (section === 'search') page = <InventorySearch />;
   else if (section === 'catalog')
     page =
@@ -106,79 +135,43 @@ function Workspace() {
       </Empty>
     );
   return (
-    <div className="app-shell soft-shell">
-      <a href="#main" className="skip-link">
-        跳到内容
-      </a>
-      <header className="soft-topbar">
-        <Link to="/items" className="brand">
-          <span>
-            <strong>松仓</strong>
-          </span>
-        </Link>
-        <nav aria-label="主导航">
-          {nav.map(([key, title]) => (
-            <Link
-              key={key}
-              to={`/${key}`}
-              aria-current={section === key ? 'page' : undefined}
-              className={section === key ? 'active' : ''}
-            >
-              {title}
-            </Link>
-          ))}
-        </nav>
-      </header>
-      <main id="main" className="app-main">
-        {expired && (
-          <div className="status-banner">
-            <Notice>登录已失效。缓存与输入已保留，重新登录后可继续操作。</Notice>
-            <Button onClick={requestLogin}>重新登录</Button>
-          </div>
-        )}
-        {!expired && (stale || !online) && (
-          <div className="status-banner">
-            <Notice>
-              离线查看 · 上次更新 {time(data.cached_at)}
-              <br />
-              已缓存目录、物品与笔记。修改需要联网。
-            </Notice>
-            <Button
-              variant="secondary"
-              onClick={() =>
-                void refresh()
-                  .then(() => setConnectionError(''))
-                  .catch(() => setConnectionError('连接仍不可用，已保留缓存和输入。'))
-              }
-            >
-              重新连接
-            </Button>
-            {connectionError && <Notice danger>{connectionError}</Notice>}
-          </div>
-        )}
-        {(storageError || cacheWarning) && <Notice danger>{storageError || cacheWarning}</Notice>}
-        {page}
-        {message && (
-          <div className="toast" role="status">
-            {message}
-            <button aria-label="关闭提示" onClick={() => setMessage('')}>
-              ×
-            </button>
-          </div>
-        )}
-      </main>
-      <nav className="soft-mobile-nav" aria-label="底部导航">
-        {nav.map(([key, title]) => (
-          <Link
-            key={key}
-            to={`/${key}`}
-            className={section === key ? 'active' : ''}
-            aria-current={section === key ? 'page' : undefined}
+    <WorkbenchShell section={section} place={scope} open={open}>
+      {expired && (
+        <div className="status-banner">
+          <Notice>登录已失效。缓存与输入已保留，重新登录后可继续操作。</Notice>
+          <Button onClick={requestLogin}>重新登录</Button>
+        </div>
+      )}
+      {!expired && (stale || !online) && (
+        <div className="status-banner">
+          <Notice>
+            离线查看 · 上次更新 {time(data.cached_at)}
+            <br />
+            已缓存目录、物品与笔记。修改需要联网。
+          </Notice>
+          <Button
+            variant="secondary"
+            onClick={() =>
+              void refresh()
+                .then(() => setConnectionError(''))
+                .catch(() => setConnectionError('连接仍不可用，已保留缓存和输入。'))
+            }
           >
-            <span>{title}</span>
-          </Link>
-        ))}
-      </nav>
+            重新连接
+          </Button>
+          {connectionError && <Notice danger>{connectionError}</Notice>}
+        </div>
+      )}
+      {(storageError || cacheWarning) && <Notice danger>{storageError || cacheWarning}</Notice>}
+      {page}
+      {message && (
+        <div className="toast" role="status">
+          {message}
+          <button aria-label="关闭提示" onClick={() => setMessage('')}>
+            ×
+          </button>
+        </div>
+      )}
       {action && (
         <ActionSheet
           key={JSON.stringify(action)}
@@ -187,6 +180,7 @@ function Workspace() {
           onCreateProduct={() => open({ kind: 'catalog', from: 'intake' })}
           onSaved={(result) => {
             const first = result.affected_objects[0];
+            if (action.kind === 'move') resetSelection((v) => v + 1);
             setMessage('已保存，库存和历史已更新');
             if (action.kind === 'catalog' && action.from === 'intake' && first) {
               open({ kind: 'intake', target: first.id });
@@ -208,7 +202,7 @@ function Workspace() {
           }}
         />
       )}
-    </div>
+    </WorkbenchShell>
   );
 }
 const client = new QueryClient({

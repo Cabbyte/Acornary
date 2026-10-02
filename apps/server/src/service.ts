@@ -33,8 +33,10 @@ const eventTypes: Record<string, string> = {
   create_items: 'CREATE',
   update_catalog_node: 'UPDATE',
   update_item: 'UPDATE',
+  edit_item: 'EDIT',
   move_catalog_node: 'MOVE',
   move_item: 'MOVE',
+  move_items: 'MOVE',
   open_item: 'OPEN',
   consume_items: 'CONSUME_ITEMS',
   consume_item_content: 'CONSUME_CONTENT',
@@ -432,7 +434,7 @@ export async function execute(ctx: Context, name: Operation, raw: unknown): Prom
           });
       } else {
         let targets: Target[];
-        if (name === 'consume_items') {
+        if (name === 'consume_items' || name === 'move_items') {
           requireFact(
             new Set(input.item_ids).size === input.item_ids.length,
             'ATTRIBUTE_VALIDATION_FAILED',
@@ -459,6 +461,7 @@ export async function execute(ctx: Context, name: Operation, raw: unknown): Prom
               break;
             case 'move_catalog_node':
             case 'move_item':
+            case 'move_items':
               obj.row.parent_id = input.parent_id;
               break;
             case 'bind_attributes':
@@ -521,41 +524,60 @@ export async function execute(ctx: Context, name: Operation, raw: unknown): Prom
                 mutateAttributes(obj, attr, 'update_attributes');
               break;
             }
+            case 'edit_item':
             case 'add_note':
             case 'update_note': {
-              const prior =
-                name === 'update_note'
-                  ? (
-                      await query(
-                        c,
-                        'SELECT * FROM notes WHERE household_id=$1 AND item_id=$2 AND id=$3',
-                        [ctx.household_id, obj.row.id, input.note_id],
-                      )
-                    ).rows[0]
-                  : undefined;
-              if (name === 'update_note')
+              if (name === 'edit_item') {
+                if (input.display_name !== undefined) obj.row.display_name = input.display_name;
+                const set: Record<string, unknown> = {},
+                  unset: string[] = [];
+                for (const [field, path] of [
+                  ['availability', 'availability'],
+                  ['acquired_on', 'acquisition.acquired_on'],
+                ]) {
+                  if (input[field] === null) unset.push(path);
+                  else if (input[field] !== undefined) set[path] = input[field];
+                }
+                if (Object.keys(set).length || unset.length)
+                  obj.sets.lifecycle = patch(obj.sets.lifecycle ?? {}, set, unset, [
+                    ...templates.lifecycle.paths,
+                  ]);
+                if (!input.note) break;
+              }
+              const noteInput = name === 'edit_item' ? input.note : input;
+              const prior = noteInput.note_id
+                ? (
+                    await query(
+                      c,
+                      'SELECT * FROM notes WHERE household_id=$1 AND item_id=$2 AND id=$3',
+                      [ctx.household_id, obj.row.id, noteInput.note_id],
+                    )
+                  ).rows[0]
+                : undefined;
+              if (noteInput.note_id)
                 requireFact(prior, 'NOT_FOUND', 'Note not found on this item.');
               const note_id = prior?.id ?? 'note_' + randomUUID();
-              const title = input.title === undefined ? (prior?.title ?? null) : input.title;
+              const title =
+                noteInput.title === undefined ? (prior?.title ?? null) : noteInput.title;
               const left = prior
                 ? { [`notes.${note_id}.body`]: prior.body, [`notes.${note_id}.title`]: prior.title }
                 : {};
               const right = {
-                [`notes.${note_id}.body`]: input.body,
+                [`notes.${note_id}.body`]: noteInput.body,
                 [`notes.${note_id}.title`]: title,
               };
               if (changes(left, right).length) {
                 if (prior)
                   await query(c, 'UPDATE notes SET title=$1,body=$2,updated_at=now() WHERE id=$3', [
                     title,
-                    input.body,
+                    noteInput.body,
                     note_id,
                   ]);
                 else
                   await query(
                     c,
                     'INSERT INTO notes(id,household_id,item_id,title,body,created_by) VALUES($1,$2,$3,$4,$5,$6)',
-                    [note_id, ctx.household_id, obj.row.id, title, input.body, ctx.actor_id],
+                    [note_id, ctx.household_id, obj.row.id, title, noteInput.body, ctx.actor_id],
                   );
               }
               await save(obj, before, left, right);

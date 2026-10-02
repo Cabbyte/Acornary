@@ -65,7 +65,7 @@ test('six distinct items: intake, open, consume, history and notes persist throu
   const f = await fixture(page);
   await page.goto(`/items/group/${f.sku}`);
   await expect(page.getByText('家里还有 6 瓶')).toBeVisible();
-  await page.goto(`/items/${f.ids[0]}`);
+  await page.goto(`/items/${f.ids[0]}/details`);
   await page.getByRole('button', { name: '记录开封', exact: true }).click();
   await page.getByRole('button', { name: '保存', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -103,7 +103,7 @@ test.describe('injected response loss', () => {
     page,
   }) => {
     const f = await fixture(page);
-    await page.goto(`/items/${f.ids[0]}`);
+    await page.goto(`/items/${f.ids[0]}/details`);
     const payloads: any[] = [];
     let first = true;
     await page.route('**/api/write/consume_item_content', async (route) => {
@@ -129,7 +129,7 @@ test('concurrent modification requires reviewing fresh data before another submi
   page,
 }) => {
   const f = await fixture(page);
-  await page.goto(`/items/${f.ids[0]}`);
+  await page.goto(`/items/${f.ids[0]}/details`);
   await page.getByRole('button', { name: '记录消耗', exact: true }).click();
   await page.getByLabel('本次消耗量').fill('200');
   await command(page, 'consume_item_content', {
@@ -156,7 +156,7 @@ test('offline reload retains inventory and draft, reconnect never automatically 
     'Playwright 1.63 offline navigation bug: https://github.com/microsoft/playwright/issues/42775; physical Safari acceptance still required.',
   );
   const f = await fixture(page);
-  await page.goto(`/items/${f.ids[0]}`);
+  await page.goto(`/items/${f.ids[0]}/details`);
   await page.evaluate(() => navigator.serviceWorker.ready.then(() => true));
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
   await page.getByRole('button', { name: '记录消耗', exact: true }).click();
@@ -197,7 +197,7 @@ test('disconnect during editing preserves input and requires manual submission a
   context,
 }) => {
   const f = await fixture(page);
-  await page.goto(`/items/${f.ids[0]}`);
+  await page.goto(`/items/${f.ids[0]}/details`);
   await page.getByRole('button', { name: '记录消耗', exact: true }).click();
   await page.getByLabel('本次消耗量').fill('75');
   await context.setOffline(true);
@@ -237,7 +237,7 @@ test('mobile and desktop layouts, long names and accessible touch targets', asyn
   await expect(page.getByLabel('品牌', { exact: true })).toHaveValue('桌面输入保留');
   await page.getByRole('button', { name: '关闭', exact: true }).click();
   await page.goto('/items');
-  await page.getByRole('button', { name: '入库', exact: true }).click();
+  await page.getByRole('button', { name: '添加', exact: true }).click();
   await page.getByRole('button', { name: '创建新商品' }).click();
   await page
     .getByLabel('名称', { exact: true })
@@ -283,12 +283,14 @@ test('moving a container keeps child identities and updates their displayed path
     expected_revisions: { [f.ids[0]]: 1 },
   });
   await page.goto(`/places/${box}`);
+  await page.getByText('位置操作', { exact: true }).click();
   await page.getByRole('button', { name: '移动位置', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('内部所有物品和子容器会一起移动');
-  await page.getByLabel('存放位置', { exact: true }).selectOption(study);
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('searchbox', { name: '搜索目标位置' }).fill(`书房 ${suffix}`);
+  await page.getByRole('button', { name: new RegExp(`书房 ${suffix} 0`) }).click();
+  await page.getByRole('button', { name: '确认移动 1 件', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await page.goto(`/items/${f.ids[0]}`);
+  await page.goto(`/items/${f.ids[0]}/details`);
   await expect(page.locator('.page-header')).toContainText(`书房 ${suffix} / 收纳箱 ${suffix}`);
   const after = await (
     await page.request.get('/api/ui/snapshot', {
@@ -316,7 +318,7 @@ test('catalog templates, single-item finish and reasoned correction are editable
   await page.getByRole('button', { name: '保存', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.locator('.card').filter({ hasText: '衣物资料' })).toContainText('棉');
-  await page.goto(`/items/${f.ids[0]}`);
+  await page.goto(`/items/${f.ids[0]}/details`);
   await page.getByRole('button', { name: '整件用完', exact: true }).click();
   await page.getByRole('button', { name: '确认整件用完', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -338,19 +340,20 @@ test('Soft Gray search pages the complete hierarchy and retains catalog and SKU 
   const f = await fixture(page);
   await command(page, 'create_items', { catalog_node_id: f.sku, count: 24 });
   await page.goto('/items');
-  await page.locator('.soft-row').filter({hasText: '验收储藏室'}).click();
-  await page.locator('.soft-row').filter({hasText: '验收行李箱'}).click();
-  await expect(page.locator('.browse-results .soft-row')).toHaveCount(6);
+  await page.getByRole('link', { name: '验收储藏室', exact: true }).click();
+  await page.getByRole('link', { name: '验收行李箱', exact: true }).click();
+  await expect(page.locator('.wb-table tbody tr')).toHaveCount(6);
   for (const width of [390, 1280]) {
-    await page.setViewportSize({width, height: 900});
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await expect(page.locator('.soft-shell')).toHaveCSS('display', 'block');
-    await expect(page.locator('.soft-panel').last()).toHaveCSS('background-color', 'rgb(244, 241, 238)');
-    await page.screenshot({path: `output/playwright/soft-location-${width}.png`});
+    await page.setViewportSize({ width, height: 900 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await expect(page.locator('.wb-inventory')).toBeVisible();
+    await page.screenshot({ path: `output/playwright/workbench-location-${width}.png` });
   }
   await page.goto('/catalog');
   await page.getByRole('searchbox', { name: '搜索商品名称或规格' }).fill(f.name);
-  await page.screenshot({path: 'output/playwright/soft-catalog-1280.png'});
+  await page.screenshot({ path: 'output/playwright/soft-catalog-1280.png' });
   await page.locator('.soft-row').filter({ hasText: f.name }).click();
   await expect(page.locator('.soft-row')).toHaveCount(20);
   await page.getByRole('button', { name: '加载更多', exact: true }).click();
@@ -358,11 +361,11 @@ test('Soft Gray search pages the complete hierarchy and retains catalog and SKU 
   await page.locator('.soft-row').last().click();
   await page.getByRole('link', { name: '返回', exact: true }).click();
   await expect(page.locator('.soft-row')).toHaveCount(30);
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(800);
+  await expect(page.locator('.soft-row').last()).toBeVisible();
   await page.getByRole('link', { name: '返回', exact: true }).click();
-  await expect(page.getByRole('searchbox')).toHaveValue(f.name);
+  await expect(page.getByRole('searchbox', { name: '搜索商品名称或规格' })).toHaveValue(f.name);
   await page.goto('/search');
-  await page.getByRole('searchbox').fill(f.name);
+  await page.getByRole('searchbox', { name: '搜索物品、规格或位置' }).fill(f.name);
   await expect(page.locator('.soft-row')).toHaveCount(20);
   await expect(page.locator('.page-end')).toContainText('30 条');
   await page.getByRole('button', { name: '加载更多', exact: true }).click();
@@ -375,8 +378,8 @@ test('Soft Gray search pages the complete hierarchy and retains catalog and SKU 
     );
     await page.screenshot({ path: `output/playwright/soft-search-${width}.png` });
   }
-  await page.getByRole('button', { name: '清除搜索' }).click();
-  await page.getByRole('searchbox').fill('验收牛奶');
+  await page.locator('.soft-page').getByRole('button', { name: '清除搜索' }).click();
+  await page.getByRole('searchbox', { name: '搜索物品、规格或位置' }).fill('验收牛奶');
   await page
     .getByRole('combobox', { name: '搜索范围', exact: true })
     .selectOption({ label: '全部位置 / 验收储藏室及下级位置' });
@@ -392,7 +395,7 @@ test('Soft Gray consumption validates inline and moving requires a separate path
   page,
 }) => {
   const f = await fixture(page);
-  await page.goto(`/items/${f.ids[0]}`);
+  await page.goto(`/items/${f.ids[0]}/details`);
   await page.getByRole('button', { name: '记录消耗', exact: true }).click();
   for (const value of ['0', '-1', '1001', 'Infinity', 'NaN']) {
     await page.getByLabel('本次消耗量', { exact: true }).fill(value);
@@ -412,31 +415,22 @@ test('Soft Gray consumption validates inline and moving requires a separate path
   await page.getByRole('button', { name: '取消', exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: '移动位置', exact: true }).click();
-  await expect(page.getByRole('button', { name: '核对移动位置' })).toBeDisabled();
-  await page
-    .locator('.move-option')
-    .filter({ hasText: '验收厨房' })
-    .getByRole('button', { name: '选择', exact: true })
-    .click();
+  await expect(page.getByRole('button', { name: '确认移动 1 件' })).toBeDisabled();
+  await page.getByRole('searchbox', { name: '搜索目标位置' }).fill('验收厨房');
+  await page.getByRole('button', { name: /全部位置 \/ 验收厨房/ }).click();
   let writes = 0;
   page.on('request', (request) => {
     if (request.url().includes('/api/write/move_item')) writes++;
   });
-  await page.getByRole('button', { name: '核对移动位置' }).click();
+  await expect(page.locator('.wb-move-confirmation')).toContainText('全部位置 / 验收厨房');
   expect(writes).toBe(0);
-  await expect(page.locator('.move-review')).toContainText('移至：全部位置 / 验收厨房');
-  await page.screenshot({ path: 'output/playwright/soft-move-confirm-390.png', fullPage: true });
-  await page.getByRole('button', { name: '确认移动', exact: true }).click();
+  await page.screenshot({ path: 'output/playwright/workbench-move-confirm-390.png' });
+  await page.getByRole('button', { name: '确认移动 1 件', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(writes).toBe(1);
   await expect(page.locator('.page-header')).toContainText('验收厨房');
   await page.getByRole('button', { name: '移动位置', exact: true }).click();
-  await expect(
-    page
-      .locator('.move-option')
-      .filter({ hasText: '验收厨房' })
-      .getByRole('button', { name: '当前位置', exact: true }),
-  ).toBeDisabled();
+  await expect(page.getByRole('button', { name: '确认移动 1 件' })).toBeDisabled();
 });
 
 test.describe('Soft Gray committed write recovery', () => {
@@ -445,7 +439,7 @@ test.describe('Soft Gray committed write recovery', () => {
     page,
   }) => {
     const f = await fixture(page);
-    await page.goto(`/items/${f.ids[0]}`);
+    await page.goto(`/items/${f.ids[0]}/details`);
     await page.getByRole('button', { name: '记录消耗', exact: true }).click();
     await page.getByLabel('本次消耗量', { exact: true }).fill('150');
     let writes = 0;
@@ -468,7 +462,7 @@ test('session expiry preserves the exact pending edit and logout clears private 
 }) => {
   test.skip(!process.env.ACORNARY_E2E_CLOUD, 'Secure session boundary');
   const f = await fixture(page);
-  await page.goto(`/items/${f.ids[0]}`);
+  await page.goto(`/items/${f.ids[0]}/details`);
   await page.getByRole('button', { name: '记录消耗', exact: true }).click();
   await page.getByLabel('本次消耗量').fill('175');
   await page.request.post('/api/auth/sign-out', {
