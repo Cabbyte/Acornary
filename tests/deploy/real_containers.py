@@ -71,7 +71,7 @@ def fixture(version, migrations, broken=False):
     target = 'acornary-release-fixture:' + version
     run(['docker', 'build', '-q', '-t', target, str(directory)])
     digest = 'sha256:' + __import__('hashlib').sha256(version.encode()).hexdigest()
-    image_map['ghcr.io/tang617/acornary@' + digest] = target
+    image_map['ghcr.io/cabbyte/acornary@' + digest] = target
     return digest
 
 def app_fetch(path, cookie='', body=None):
@@ -90,7 +90,7 @@ try:
     run(compose + ['up', '-d', '--wait', 'postgres'])
     database_container = run(compose + ['ps', '-q', 'postgres']).strip()
     config = {'state_dir': str(root / 'state'), 'backup_dir': str(root / 'backups'),
-              'image_repository': 'ghcr.io/tang617/acornary', 'env_file': str(env_file),
+              'image_repository': 'ghcr.io/cabbyte/acornary', 'env_file': str(env_file),
               'compose_file': str(compose_file), 'database_container': database_container,
               'origin': 'https://release.example.test'}
     backend = LocalBackend(config)

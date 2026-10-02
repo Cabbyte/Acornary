@@ -15,7 +15,7 @@ class SlowBackend(FakeBackend):
     def prepare(self, image, job):
         time.sleep(5)
         return super().prepare(image, job)
-config = {'state_dir': str(root), 'backup_dir': str(root / 'backups'), 'image_repository': 'ghcr.io/tang617/acornary'}
+config = {'state_dir': str(root), 'backup_dir': str(root / 'backups'), 'image_repository': 'ghcr.io/cabbyte/acornary'}
 c = r.Controller(config, SlowBackend())
 if mode == 'prepare':
     assert not (root / 'current.json').exists()
