@@ -8,17 +8,19 @@
 
 ## 当前状态
 
-Stage2 已完成双端预验收、整库迁移、生产入口切换及正式 Codex／ChatGPT 授权和读取核对。正式地址为 [acornary.protium.top](https://acornary.protium.top)，MCP 为 `https://acornary.protium.top/mcp`；本地原库存已停写，云端为唯一正式库存。日常备份默认关闭，保留一次迁移前快照。实际通过项和验证边界见 [Stage2 验证记录](./docs/stage2-verification.md)，操作说明见 [云端运行](./docs/cloud-runtime.md)。核心模型仍为三张表；004 migration 增加认证支撑表，检查器仍只展示原有业务表。历史结果保留在 [Stage1 验证记录](./docs/stage1-verification.md)。
+正式地址为 [acornary.protium.top](https://acornary.protium.top)，MCP 为 `https://acornary.protium.top/mcp`。云端 PostgreSQL 是唯一正式库存，原本地库存保持停写；本地开发使用独立库。
 
-版本发布设施已落地：GitHub Actions 测试、公开 GHCR 镜像和服务器受限部署命令均已验证。**当前正式版本 `v0.2.1` 已通过 GitHub Actions 部署上线。** MCP 名称校验修复、连接器工具刷新及真实写入验收见 [v0.2.1 发布记录](./docs/release-v0.2.1.md)；账号系统与迁移见 [v0.2.0](./docs/release-v0.2.0.md)，首版 Web UI 历史见 [v0.1.0](./docs/release-v0.1.0.md)。普通 main push 只触发 CI；正式 `vX.Y.Z` 才自动更新生产，有新增 migration 时先备份。当前阶段、代码与线上差异、下一步统一见 [项目进度](./docs/progress.md)。
+响应式工作台与 MCP Apps 共用界面已合入 `main`，随 [v0.4.2](https://github.com/Cabbyte/Acornary/releases/tag/v0.4.2) 正式发布。当前发布状态、核对日期和验收边界集中记录于 [项目进度](./docs/progress.md)；后续版本以 [Releases](https://github.com/Cabbyte/Acornary/releases) 和线上 `/health` 为准。普通 main push 只运行 CI，正式 `vX.Y.Z` 标签才自动部署，有新增 migration 时先备份，见 [发布手册](./docs/releases.md)。
 
-**本地开发模式**在独立库运行：产品界面负责业务读写，检查器只读展示两棵树及业务表的实际记录，分开呈现派生结果和 API 响应。**云模式**提供邮箱、Passkey、可选密码及多家庭成员关系，双客户端 OAuth 复用同一账号；公开注册和邮箱找回默认关闭，真实邮件配置与收信验收后分别开启。实现与迁移说明见 [账号系统](./docs/accounts.md)，线上版本以发布记录为准。图片附件、模板升级、FEFO 和后台提醒继续后置。
+账号支持邮箱、Passkey、可选密码和多家庭成员关系，Web 与 MCP 按当前授权家庭隔离。公开注册与邮箱找回默认关闭，真实 SMTP 配置和收信验收后分别开启，见 [账号系统](./docs/accounts.md)。图片附件、模板升级、自动选取／FEFO 和后台提醒仍未实现；日常定时备份默认关闭。
 
-沿用 TypeScript / Node.js 24 LTS、Fastify 5、官方 MCP TypeScript SDK v2、PostgreSQL 18、Drizzle、Zod 4、React / Vite；Stage2 增加 Better Auth 1.7.5 的 MCP／CIMD／JWT 和共享 Caddy HTTPS 入口。`local` 模式使用回环地址与个人凭证，`cloud` 模式只接受 OAuth，不回退为个人凭证。完整边界见 [架构](./docs/architecture.md)。
+运行栈为 TypeScript、Node 24、Fastify、MCP TypeScript SDK v2、PostgreSQL 18、Drizzle、Zod、React / Vite 与 Better Auth。精确版本由锁文件记录；云端使用共享 Caddy HTTPS 入口和 OAuth，本地 MCP 使用回环地址及个人凭证，见 [架构](./docs/architecture.md)。
 
-## Web 产品界面（v0.1.0 已上线）
+## Web 与 MCP Apps
 
-手机优先的「物品、位置、目录、设置」已实现，支持通过页面执行现有业务命令、离线查看缓存、断网保留草稿、幂等重试与冲突核对。原只读检查器移至 `/inspect`，从设置进入并共用会话。`/login` 与 `/consent` 使用产品的公共认证组件；生产共用一个域名与 HTTPS 443。设计来源、接口映射、隔离演示环境和实机验收边界见 [Web UI 实现说明](./docs/webui.md)。本机隔离预览继续保留，正式库存与原停写本地库存的数据不变。
+桌面三栏和手机工作台共用页面、数据与领域命令，支持搜索、筛选、排序、按 UUID 多选、原子批量移动和物品／备注编辑。详细资料、入库、消耗、纠错、笔记和历史入口继续可用。离线只读缓存，修改需联网；草稿、同键重试及 revision 冲突处理保留。
+
+`/inspect` 是独立按需加载的只读检查器，从设置进入并共用账号会话。Web 与插件共用 `Workspace`，各自通过同源 HTTP 或 MCP Apps 宿主桥访问后端。当前设计、接口、复现方式与验收边界见 [Web UI](./docs/webui.md)、[响应式工作台](./docs/responsive-workbench.md) 和 [插件实现](./docs/plugin.md)。
 
 ## 本地启动
 

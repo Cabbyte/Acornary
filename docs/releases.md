@@ -4,7 +4,7 @@
 
 本流程允许短暂停服。业务模型、数据库卷、所有者、OAuth 签名密钥及授权记录保持持久；不会自动升级 PostgreSQL、重建 Caddy 或修改 Runbuoy。实际配置与测试结果见 [发布验证记录](./release-verification.md)。
 
-截至 2026-09-29，首个正式标签 `v0.1.0` 已完成自动部署和公网读取核对，详见 [正式发布验收](./release-v0.1.0.md)。现有服务器无需再次执行 bootstrap。阶段总览见 [项目进度](./progress.md)。
+正式发布链路已通过多轮版本更新，最新核对见 [项目进度](./progress.md)，各版本结果见 [GitHub Releases](https://github.com/Cabbyte/Acornary/releases)。现有服务器无需再次执行 bootstrap；[v0.1.0](./release-v0.1.0.md) 保留首次自动部署证据。
 
 ## 工作流
 
@@ -45,13 +45,14 @@ migration 必须遵守现有事务约定，不得在 SQL 文件内显式 COMMIT�
 
 ## 日常操作与故障恢复
 
-选择未使用且递增的正式版本，合入 main 后创建并推送附注标签，例如下方的版本仅作命令格式说明：
+选择未使用且高于线上版本的正式版本，确认 main 对应 CI 通过。以下 `read` 输入所选 `vX.Y.Z`，再创建并推送附注标签：
 
 ```sh
 git switch main
 git pull --ff-only
-git tag -a v0.3.0 -m 'Acornary v0.3.0'
-git push origin v0.3.0
+read -r version
+git tag -a "$version" -m "Acornary $version"
+git push origin "$version"
 ```
 
 不得移动／复用已发布标签。查看 Actions 的镜像摘要、部署任务 ID 与结果。健康接口可以公开检查，但不包含业务数据或认证秘密。

@@ -1,45 +1,45 @@
-# Acornary documentation
+# Acornary 文档
 
-本目录记录 Acornary / 松仓 v1 的唯一产品与工程基线。Stage1 代码已落地，实际通过与尚未通过的验证见 [验证记录](./stage1-verification.md)。
+先读 [项目进度](./progress.md)。Acornary 以云端库存为唯一正式数据源，Web 和 MCP Apps 使用同一套响应式工作台；MCP 与 Web 写入共用领域命令。产品支持读写，`/inspect` 检查器保持只读。
 
-先读 [项目进度](./progress.md)：Stage1、Stage2 已完成各自验收，自动发布设施已配置并通过测试，首次正式 tag 更新生产及双客户端读取复核尚未执行。进度总览区分源码、构建镜像、线上应用和验收事实；各阶段验证文档保留历史证据。
-
-Stage2 已完成真实双端预验收、正式数据迁移与入口切换，两端正式授权和读取核对均通过。美国云端为唯一正式库存，本地原库停写；Codex／ChatGPT 使用 OAuth，Web 登录后只读。实际验证及边界见 [Stage2 验证](./stage2-verification.md)，操作见 [云端运行](./cloud-runtime.md)。以下 Stage1 段落描述本地模式与历史阶段，不表示云模式允许匿名读取或个人凭证访问。
-
-Stage1 约定为同一电脑上的本地部署：Codex 通过带个人访问凭证的 MCP 操作明确 UUID 的库存和文字 Note；Web 无需登录，仅作只读开发者检查器，核心模型为三张表，按对象覆盖数据库全部 11 张表，分开显示数据库记录、派生结果和 API 响应。自动选取与 FEFO、模板升级、图片附件、云托管、ChatGPT、HTTPS、OAuth、注册登录及后台任务后置。长期技术方向保留，阶段边界统一记录于 Architecture，不另立平行方案。
-
-## 阅读顺序
+## 当前实现与运行
 
 | 文档 | 内容 |
 | --- | --- |
-| [项目进度](./progress.md) | 当前阶段、已实现与已上线的区别、验收缺口和下一步 |
-| [版本发布](./releases.md) | GitHub Actions、公开 GHCR、受限 SSH、迁移备份与恢复 |
-| [发布验证](./release-verification.md) | 流水线、服务器配置和首次正式标签的验收边界 |
-| [云端运行](./cloud-runtime.md) | Stage2 部署、OAuth、账号运维、切换与备份开关 |
-| [Stage2 验证](./stage2-verification.md) | 自动化、真实双端、云环境与正式迁移分别记录 |
-| [本地运行](./local-runtime.md) | 启动、停止、Codex 连接、测试和备份恢复 |
-| [验证记录](./stage1-verification.md) | 自动化证据、真实 Codex 结果及未完成项 |
-| [Domain model](./domain-model.md) | CatalogNode / Item 两棵树、稳定身份、最小字段、七个可选属性模板、事件与不变量；包含静态关系图 |
-| [Architecture](./architecture.md) | Stage1 本地运行、MCP 写入与只读 GUI、技术栈、公共命令、事务、后续阶段及验收 |
-| [Examples](./examples.md) | 明确 UUID 的牛奶／鸡蛋操作、局部更新、容器移动、文字笔记、失败场景及 Stage1 验收；后续能力单独标注 |
-| [Product language](./product-language.md) | 品牌语言与领域术语的对应 |
+| [项目进度](./progress.md) | 已实现、已发布、已验证的状态和剩余边界 |
+| [领域模型](./domain-model.md) | CatalogNode / Item 两棵树、稳定身份、七种属性模板、事件与不变量 |
+| [架构](./architecture.md) | 运行模式、技术栈、领域命令、事务、权限及阶段演进 |
+| [业务示例](./examples.md) | 明确 UUID 的操作、局部更新、移动、笔记和失败场景 |
+| [Web UI](./webui.md) | 路由、会话、读写、离线缓存、草稿与验证流程 |
+| [响应式工作台](./responsive-workbench.md) | 桌面／手机共用界面、原子批量移动与编辑 |
+| [MCP Apps 插件](./plugin.md) | 宿主桥、资源、身份作用域、上下文与私有状态 |
+| [账号系统](./accounts.md) | Passkey、密码、家庭成员、邮件开关与迁移 |
+| [版本发布](./releases.md) | GitHub Actions、GHCR、受限 SSH、迁移备份与恢复 |
+| [云端运行](./cloud-runtime.md) | 云端模式、OAuth、账号运维、入口与备份 |
+| [本地运行](./local-runtime.md) | 独立开发环境、Codex 连接、测试和恢复核对 |
+| [产品语言](./product-language.md) | 品牌语言与领域术语 |
+
+## 历史证据
+
+- [v0.4.2 发布](https://github.com/Cabbyte/Acornary/releases/tag/v0.4.2)：工作台与插件统一、仓库迁移后的发布修复及生产核对。
+- [v0.2.1](./release-v0.2.1.md)、[v0.2.0](./release-v0.2.0.md)、[v0.1.0](./release-v0.1.0.md)：名称校验、账号、初版 Web 的发布记录。
+- [发布设施验证](./release-verification.md)、[Stage2 验证](./stage2-verification.md)、[Stage1 验证](./stage1-verification.md)：各阶段当时的证据与边界。
+- [本地交接归档](./archive/README.md)：已被主线和正式发布取代的工作树交接。
 
 ## 一句话模型
 
-**CatalogNode 定义分类和商品，Item 用独立 UUID 表示每件实物并形成容纳树；业务属性由模板扩展，变化由 Event 记录，用户记忆由 Note 和附件保存。**
+**CatalogNode 定义分类和商品，Item 用独立 UUID 表示每件实物并形成容纳树；属性由版本化模板扩展，变化由 Event 记录，自由文字由 Note 保存。** 图片附件尚未实现。
 
 | 问题 | 数据来源 |
 | --- | --- |
 | 它是什么？ | Item.catalog_node_id → CatalogNode SKU 及其 GROUP 祖先 |
 | 具体是哪一件？ | Item UUID；六瓶牛奶是六个不同 UUID |
 | 在哪里？ | Item.parent_id 形成的容纳树，完整路径由查询推导 |
-| 有多少件／剩多少？ | current_count 及其中的 unknown_lifecycle_count／各实例 contents.remaining；分别统计 |
+| 有多少件／剩多少？ | 实物件数、未知生命周期件数与 contents.remaining 分开统计 |
 | 品牌、条码、日期、状态是什么？ | 对象内嵌 attributes 绑定固定版本的 AttributeTemplate |
-| 经历了什么？ | 以对象身份和 operation_id 查询 Event |
-| 有哪些文字、图片与故事？ | Item → Note → NoteAttachment |
+| 经历了什么？ | 通过对象身份和 operation_id 查询 Event |
+| 有哪些自由记录？ | Item → Note；附件是后续能力 |
 
-家、厨房、抽屉可以引用隐藏的通用容器 SKU，实际冰箱或行李箱可以引用真实 SKU；容纳能力由实例模板明确声明。目录隐藏仅用于展示，不能替代权限控制。
+家、厨房、抽屉可以引用隐藏的通用容器 SKU；实际冰箱或行李箱可引用真实 SKU。容纳能力由实例模板声明，目录隐藏不能替代权限控制。模板为 product、lifecycle、contents、container、catalog、clothing、device；未记录的字段保持未知。
 
-模板统一为 product、lifecycle、contents、container、catalog、clothing、device。字段默认可选；lifecycle.expiry.date 可以单独填写，更新 lifecycle.opening.state 不覆盖其他已知属性。未记录生命周期状态的 Item 仍可参与日常库存与明确操作，但不能把未知描述为 ACTIVE 或 AVAILABLE。
-
-文档修改必须同步检查字段表、图示、模板、MCP 示例和验收场景。领域语义以 Domain model 为准，接口细节与阶段范围以 Architecture 为准；不保留平行架构草稿作为另一套模型。
+领域语义以领域模型为准，接口和运行约束以架构及实现说明为准。修改时同步核对字段、图示、模板、MCP 示例和验收场景；历史文档不构成另一套当前契约。

@@ -1,4 +1,4 @@
-import appIcon from '../public/design/../app-icon.png';
+import appIcon from '../public/app-icon.png';
 import searchIcon from '../public/design/search.svg';
 import { AccountSettings, HouseholdSettings } from './accounts';
 import { useEffect, useState } from 'react';
@@ -15,7 +15,6 @@ import {
   locationName,
   productGroups,
   type InventoryFilter,
-  type ItemRecord,
   type ProductGroup,
 } from '../../../packages/contracts/src/web';
 import type { TemplateId } from '../../../packages/contracts/src/index';
@@ -247,18 +246,6 @@ export function PageHeader({
       </div>
       {subtitle && <p>{subtitle}</p>}
     </header>
-  );
-}
-export function ItemRow({ item }: { item: ItemRecord }) {
-  const { data } = useInventory();
-  const life = attr(item, 'lifecycle');
-  return (
-    <Row
-      title={`${itemTitle(item, data)} · ${isTerminal(item) ? label(life?.state) : label(life?.opening?.state)}`}
-      subtitle={`${life?.expiry?.date ? life.expiry.date + ' 到期' : '到期日期未记录'} · ${locationName(item, data)}`}
-      detail={remaining(item)}
-      to={`/items/${item.id}`}
-    />
   );
 }
 export function Product({ id, open }: { id: string; open: OpenAction }) {
@@ -680,96 +667,6 @@ export function Notes({ id, open }: { id: string; open: OpenAction }) {
         ))}
         {!notes.length && (
           <Empty title="还没有笔记">记录使用方式、存放提醒，或任何值得记住的事。</Empty>
-        )}
-      </div>
-    </>
-  );
-}
-export function Places({ id, open }: { id?: string; open: OpenAction }) {
-  const { data, stale } = useInventory();
-  const { online } = useSession();
-  const place = data.items.find((i) => i.id === id);
-  const children = data.items.filter((i) => i.parent_id === (id ?? null));
-  const unplaced = data.items.filter((i) => i.parent_id === null && !isContainer(i));
-  if (id && !place) return <Empty title="位置不可用" />;
-  return (
-    <>
-      {place ? (
-        <PageHeader
-          title={itemName(place, data)}
-          subtitle={locationName(place, data)}
-          back={place.parent_id ? `/places/${place.parent_id}` : '/places'}
-        />
-      ) : (
-        <header className="page-header large">
-          <h1>存放位置</h1>
-          <p>{data.household.name} · 按实际位置找到物品</p>
-        </header>
-      )}
-      <div className="content">
-        <div className="grouped">
-          {children.filter(isContainer).map((i) => (
-            <Row
-              key={i.id}
-              title={itemName(i, data)}
-              subtitle={
-                data.items
-                  .filter((x) => x.parent_id === i.id)
-                  .slice(0, 3)
-                  .map((x) => itemName(x, data))
-                  .join('、') || '内部暂无物品'
-              }
-              detail={`${data.items.filter((x) => x.parent_id === i.id).length} 件`}
-              to={`/places/${i.id}`}
-            />
-          ))}
-        </div>
-        {place && (
-          <>
-            <p className="section-label">这里的物品</p>
-            <div className="grouped">
-              {children
-                .filter((i) => !isContainer(i))
-                .map((i) => (
-                  <ItemRow item={i} key={i.id} />
-                ))}
-            </div>
-            {!children.length && (
-              <Empty title="这里还是空的">可以创建下级位置，或把物品移入这里。</Empty>
-            )}
-            <div className="split">
-              <Button
-                variant="secondary"
-                disabled={!online || stale}
-                onClick={() => open({ kind: 'rename', target: id })}
-              >
-                修改名称
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={!online || stale}
-                onClick={() => open({ kind: 'move', target: id })}
-              >
-                移动位置
-              </Button>
-            </div>
-          </>
-        )}
-        {!place && !children.some(isContainer) && (
-          <Empty title="给物品一个位置">从房间、柜子或收纳箱开始。</Empty>
-        )}
-        <Button disabled={!online || stale} onClick={() => open({ kind: 'place', parent: id })}>
-          ＋ 新建{place ? '下级' : ''}位置
-        </Button>
-        {!place && unplaced.length > 0 && (
-          <>
-            <p className="section-label">位置未记录 · {unplaced.length} 件</p>
-            <div className="grouped">
-              {unplaced.map((i) => (
-                <ItemRow key={i.id} item={i} />
-              ))}
-            </div>
-          </>
         )}
       </div>
     </>

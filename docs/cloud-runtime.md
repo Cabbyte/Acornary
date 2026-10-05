@@ -6,7 +6,7 @@
 
 ## 运行模式与数据
 
-`local` 保留回环地址、个人凭证与只读本地检查器。`cloud` 必须配置 HTTPS origin、32 字符以上 Better Auth secret、精确 Caddy 代理 IP、数据库连接；只接受 OAuth，Web 也必须登录。云应用启动不执行 migration，不自动创建 Household；缺少安装记录或所有者绑定时拒绝启动。
+`local` 保留回环地址、MCP 个人凭证、产品读写和只读检查器。`cloud` 必须配置 HTTPS origin、32 字符以上 Better Auth secret、精确 Caddy 代理 IP、数据库连接；只接受 OAuth，Web 也必须登录。云应用启动不执行 migration，不自动创建 Household；缺少安装记录或所有者绑定时拒绝启动。
 
 001–004 保持不变。005 增加 Passkey、家庭成员关系、邀请和邮箱验证／恢复记录，保留原用户、家庭与 actor，详见 [账号系统](./accounts.md)。核心仍为 items、catalog_nodes、attribute_templates；检查器仅展示原十一张白名单表，全部按已授权家庭隔离。
 

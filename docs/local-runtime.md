@@ -1,6 +1,6 @@
-# Stage1 本地运行
+# 本地开发运行
 
-Stage1 的运行代码已落地。自动化测试与真实 Codex 验收分别记录在 [验证记录](./stage1-verification.md)；运行服务不代表所有验收项已完成。领域与接口继续以 [领域模型](./domain-model.md) 和 [架构](./architecture.md) 为准。
+本文用于独立本地开发环境。云端是唯一正式库存；已迁移工作区的 `SOURCE_STOPPED` 标记禁止重新启动原本地库存。历史 Stage1 验收见 [验证记录](./stage1-verification.md)，当前产品与接口见 [Web UI](./webui.md)、[领域模型](./domain-model.md) 和 [架构](./architecture.md)。
 
 ## 启动与停止
 
@@ -13,7 +13,7 @@ node scripts/local.mjs init
 node scripts/local.mjs status
 ```
 
-首次 `init` 创建随机数据库密码和 MCP 个人凭证，写入权限为 600 的 `.env`、`.local/token`，随后构建并启动。重复执行不会轮换凭证、重建家庭或覆盖数据。默认 Web 为 **http://127.0.0.1:3210**，数据库不发布宿主机端口。初始化后的正式库存为空，仅有一个隐藏的通用容器 SKU。
+首次 `init` 创建随机数据库密码和 MCP 个人凭证，写入权限为 600 的 `.env`、`.local/token`，随后构建并启动。重复执行不会轮换凭证、重建家庭或覆盖数据。默认 Web 为 **http://127.0.0.1:3210**，数据库不发布宿主机端口。首次初始化的独立开发库存为空，仅有一个隐藏的通用容器 SKU。
 
 ```sh
 node scripts/local.mjs stop
@@ -48,21 +48,23 @@ bearer_token_env_var = "ACORNARY_TOKEN"
 
 ## Web 与接口
 
-浏览器无登录，所有业务请求都是只读 `GET`：
+本地模式的浏览器无需云账号登录，产品通过同源领域接口读写；`/inspect` 仍为只读检查器：
 
 - `/api/context`：当前家庭和隐藏通用容器 SKU 的 ID。
 - `/api/read/<operation>?input=<URL 编码的 JSON>`：仅允许八个查询操作，与 MCP 使用同一服务和 Schema。
 - `/api/debug?input=<URL 编码的 JSON>`：固定对象关系和系统视图；直接返回 PostgreSQL 行、列类型和约束，支持分页。
-- `/health`：数据库连接健康检查。
+- `/api/ui/snapshot`、`/api/ui/groups`：产品的家庭快照与商品汇总。
+- `POST /api/write/<operation>`：业务写入口，校验 Origin、JSON、`X-Acornary-Request: web`、revision 和幂等键。
+- `/health`：数据库、发布身份及所需迁移检查。
 - `/mcp`：带 bearer 凭证的官方 SDK v2 Streamable HTTP。
 
-GUI 支持双树展开、名称／条码／生命周期／日期过滤、目录或容器范围跳转、详情、复制 ID、模板、Markdown 笔记、历史及数据库记录、派生结果与 API 响应。每 5 秒、返回页面和手动点击时刷新。Markdown 不执行原始 HTML；浏览器不持有 MCP 写入凭证。同源和 Host 检查拒绝外部网页调用本地接口，未配置跨域访问。
+产品工作台的路由、写入和离线恢复见 [Web UI](./webui.md)。只读检查器支持双树展开、名称／条码／生命周期／日期过滤、目录或容器范围跳转、详情、复制 ID、模板、Markdown 笔记、历史及数据库记录、派生结果与 API 响应。每 5 秒、返回页面和手动点击时刷新。Markdown 不执行原始 HTML；浏览器不持有 MCP 写入凭证。同源和 Host 检查拒绝外部网页调用本地接口，未配置跨域访问。
 
 ## 工程结构与当前限制
 
 ```text
 apps/server/src/      HTTP/MCP 适配、应用用例、事务、初始化
-apps/web/src/         React 只读模型检查器
+apps/web/src/         共享产品工作台、Web／MCP Apps 入口、只读检查器
 packages/contracts/  Zod 命令与七个模板 v1、公开 Schema
 packages/domain/     计量、路径变更、事件差异、生命周期规则
 migrations/          显式 PostgreSQL migration
@@ -73,7 +75,7 @@ scripts/             本地启动、测试、备份、独立恢复核对
 
 Measurement.value 和设备功率为十进制字符串；输入最多 80 个字符，运算精度 200 位。内置内容单位为 mL、g、count、percent，Stage1 仅同单位扣减；百分比不混入物理量总和。条码支持 1–128 位无空白的可打印 ASCII 标识（包括常见商品码和内部码），区分大小写，并保持同家庭唯一映射；未引入特定 GTIN 制式识别或校验位计算。模板发现接口给出受支持字段、枚举与范围。
 
-当前数据库不包含附件或云端认证表，不提供硬删除、模板升级、自动选择和 FEFO。初始化种子是部署元数据，不产生用户操作 Event；之后业务写入统一记录实际变化。
+当前 schema 包含账号及家庭成员支撑表，检查器不暴露认证记录；不提供附件、硬删除、模板升级、自动选择和 FEFO。初始化种子是部署元数据，不产生用户操作 Event；之后业务写入统一记录实际变化。
 
 ## 自动化验证
 
