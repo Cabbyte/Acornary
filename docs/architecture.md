@@ -2,9 +2,11 @@
 
 本文件定义两棵树模型的应用边界和接口契约，配合 [Domain model](./domain-model.md) 和 [Examples](./examples.md) 使用。Stage1 已有运行代码、锁文件、数据库 migration 与测试。启动方式见 [本地运行](./local-runtime.md)，实际验证与待完成项见 [验证记录](./stage1-verification.md)。
 
-Stage2 云模式的当前约定见下述 1.6 节，部署操作与验收事实分别见 [云端运行](./cloud-runtime.md)、[Stage2 验证](./stage2-verification.md)。Stage1 段落仍定义本地模式；当前原本地库存已迁移并保持停写，云端是唯一正式库存。
+Stage2 云模式的当前约定见下述 1.6 节，部署操作与验收事实分别见 [云端运行](./cloud-runtime.md)、[Stage2 验证](./stage2-verification.md)。Stage1 段落记录最初只读 Web 阶段；当前本地开发模式也提供产品读写，原本地库存已迁移并保持停写，云端是唯一正式库存。
 
 阶段进度统一见 [项目进度](./progress.md)。版本标签发布及公网验收已随 v0.1.0 完成；后续账号系统的实现与迁移见 [账号系统](./accounts.md)，生产版本以发布记录为准。
+
+当前产品入口为 Web／MCP Apps 共用的响应式工作台，只有 `/inspect` 保持只读；账号及成员关系、缓存、草稿与读写恢复分别见 [账号系统](./accounts.md)、[Web UI](./webui.md)、[插件](./plugin.md)。以下 Stage1 边界和图示属于历史阶段，不覆盖这些后续实现。
 
 ## 1. 交付形态与技术选择
 

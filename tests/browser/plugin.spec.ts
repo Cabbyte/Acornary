@@ -432,7 +432,8 @@ test('Chinese composition Enter does not submit, while ordinary Enter preserves 
   await expect(input).toHaveValue('输入法确认后的名称');
   expect(await writes(page)).toHaveLength(0);
   await input.press('Enter');
-  await expect(view(page).getByRole('dialog')).toHaveCount(0);
+  // Wide layouts use an editor page, so no dialog exists even before the write completes.
+  await expect(input).toHaveCount(0);
   expect(await writes(page)).toHaveLength(1);
   expect(
     await page.evaluate(

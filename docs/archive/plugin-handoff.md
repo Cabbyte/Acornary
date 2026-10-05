@@ -1,5 +1,7 @@
 # Acornary MCP 插件 UI 本地交接
 
+> 历史记录（2026-10-01）：下述状态仅描述当时的本地工作。相关源码后来已合入主线并发布；当前入口见 [项目进度](../progress.md) 和 [归档说明](./README.md)。
+
 工作树：`/Users/timli/.codex/worktrees/acornary-soft-gray-webui/Acornary`，分支 `codex/soft-gray-webui`，基线 `e2fb840`。本轮仅本地实现与隔离测试；没有推送、部署、合并、生产 OAuth 修改或真实 ChatGPT 连接变更。
 
 ## 实现
@@ -60,7 +62,7 @@ Max 审阅的三个实际复现见 `output/ci/plugin-review/review.md`。本轮�
 
 本轮首个完整运行也通过 59/59、34/34，保存在 `output/ci/plugin-fixes-final.log` 和 `output/ci/plugin-fixes-final/`；随后补充启动边界修复并重新完成上面的 59/59、35/35。最终结果是单次运行，没有将分轮数字相加。
 
-当前代码已通过 gpt-6-astra/max 最终只读复审：上一轮1项P1和2项P2均已关闭，未发现新的实质问题。复审报告见 [plugin-review-final/review.md](../output/ci/plugin-review-final/review.md)，已独立核对33个源码、测试及配置文件与最终验收镜像一致。代码仍为原工作树中的本地未提交改动；未推送、部署、合并或连接真实 ChatGPT。
+当前代码已通过 gpt-6-astra/max 最终只读复审：上一轮1项P1和2项P2均已关闭，未发现新的实质问题。复审报告见 `output/ci/plugin-review-final/review.md`（当时本机的未跟踪报告），已独立核对33个源码、测试及配置文件与最终验收镜像一致。代码仍为原工作树中的本地未提交改动；未推送、部署、合并或连接真实 ChatGPT。
 
 ## 尚未验证的边界
 

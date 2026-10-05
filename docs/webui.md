@@ -1,17 +1,17 @@
 # 松仓 Web UI
 
-实现核对：2026-09-29。账号、Passkey 与多家庭能力已随 `v0.2.0` 上线，注册／邮箱找回保持关闭，见 [发布验收](./release-v0.2.0.md)。Web 产品界面与真实 HTTP 读写闭环已随 `v0.1.0` 正式部署；[发布与公网验收](./release-v0.1.0.md) 已完成。正式库存只读核对、写入验收使用隔离库；iPhone 实机验收仍待完成。
+当前实现已合入主线并随 [v0.4.2](https://github.com/Cabbyte/Acornary/releases/tag/v0.4.2) 发布：Web 和 MCP Apps 复用响应式工作台。账号与多家庭能力见 [账号系统](./accounts.md)，当前发布和验收状态见 [项目进度](./progress.md)。
 
 ## 设计与入口
 
-2026-10-01：Soft Gray 核心界面在 `codex/soft-gray-webui` 隔离分支实现，尚未合并或部署。设计依据是 [统一 Web / Plugin 页面](https://www.figma.com/design/Xt5Dcp0NHtYPC0UbSF3iHO/Acornary?node-id=80-362)，交互约定为节点 `84:698`。桌面与窄屏共用 React 组件；本轮未接入插件宿主。
+当前布局以 [响应式工作台](./responsive-workbench.md) 为准，设计来源为 Figma 的 `128:358` 分支。共享页面入口是 `workspace.tsx`，Web 与 [插件](./plugin.md) 分别注入 transport 和会话。2026-10-01 的 Soft Gray 本地阶段已归入 [历史交接](./archive/soft-gray-handoff.md)。
 
 使用白底、暖灰内容面板、棕色操作色、完整位置路径与原生 HTML 表单。样式通过明确的 legacy / soft 层级共存，避免异步加载顺序覆盖布局和设计色。
 
-- `/items`：全部位置和未放置实物；浏览只显示当前层，搜索覆盖完整范围。
+- `/items`：工作台列表、完整范围搜索、筛选、排序、显示列和按 UUID 多选。
 - `/search`：逐件搜索名称、规格、型号、位置或完整编号，可限定位置及所有下级位置，并按分类和库存状态筛选。
 - `/items/group/:sku`：逐件选择，区分件数与剩余内容；批量用完显示明确的实物名单。
-- `/items/:id`：单件资料、开封、部分消耗、整件用完、移动、纠错、笔记和历史。
+- `/items/:id`：工作台详情检查器；`/items/:id/details` 保留完整资料、开封、部分消耗、整件用完、纠错、笔记和历史。
 - `/places/:id?`：位置层级、新增／改名／移动；容器内容随父容器一起移动。
 - `/catalog`：可见 SKU 列表，显示规格、分类与实物件数，点击进入该 SKU 的逐件列表。
 - `/catalog/manage`、`/catalog/:id`：保留分类、商品共有资料与属性模板管理。
@@ -20,7 +20,7 @@
 - `/inspect`：设置 → 开发者工具 → 数据库检查器；独立按需加载，提供“返回松仓”。
 - `/login`、`/consent`：产品视觉的公共登录与 OAuth 授权页，不依赖检查器模块。
 
-390px 是窄屏基准，另检查 360、430、600px；宽屏使用顶栏和位置侧栏，1024px 起提供详情与编辑双栏。移动端表单使用可滚动 Sheet；桌面长表单、消耗和单件移动为页面。改变窗口宽度会保留正在编辑的值。触控主控件至少 44px，正文 16px。
+工作台在 760px 及以下使用手机列表、位置面板和全页详情，宽屏使用位置侧栏、列表和检查器。共用表单保留各自的响应式布局；实测屏宽及具体交互见工作台说明，设备边界见项目进度。
 
 ## 单站点与统一会话
 
@@ -30,7 +30,7 @@
 
 任一视图退出都会撤销服务器会话、清除本机私有缓存，并通过 storage 事件令其他标签页失效。恢复焦点和定期查询复核会话。产品编辑遇到过期时保留输入并弹出公共登录表单；检查器回统一登录后返回原入口。检查器数据不写入 IndexedDB，不提供离线查询；Service Worker 不接管检查器、登录和授权导航，也不预加载检查器资源。
 
-发布使用一个应用容器、同一个正式数据库与现有 Caddy HTTPS 443，容器内部仍为 3210。v0.1.0 双视图没有新增 migration；账号系统新增 `005_accounts.sql`。本机 33211 演示预览独立于正式服务，继续保留。发布门禁与回退遵循 [发布手册](./releases.md)。
+发布使用一个应用容器、同一个正式数据库与现有 Caddy HTTPS 443，容器内部仍为 3210。v0.1.0 双视图没有新增 migration；账号系统新增 `005_accounts.sql`。开发预览使用独立测试库，其进程状态不作为部署依据。发布门禁与回退遵循 [发布手册](./releases.md)。
 
 ## 数据与接口
 
@@ -51,6 +51,7 @@
 | 新建商品／分类、改名、调整分类 | `create_catalog_node` / `update_catalog_node` / `move_catalog_node` |
 | 入库、新建位置                 | `create_items`                                                      |
 | 实物改名、移动                 | `update_item` / `move_item`                                         |
+| 工作台原子编辑、批量移动       | `edit_item` / `move_items`，复用相同 revision、幂等及事务校验         |
 | 开封、部分消耗、整件用完       | `open_item` / `consume_item_content` / `consume_items`              |
 | 编辑共有／独立属性             | `bind_attributes` / `update_attributes`                             |
 | 带原因纠错                     | `correct_item`，可在同一次纠错中恢复生命周期和剩余内容              |
@@ -81,7 +82,7 @@ pnpm test
 pnpm build
 ```
 
-集成测试需要独立 `DATABASE_URL`。完整隔离容器流程：`node scripts/ci.mjs`。现有 CI 已包含构建、PostgreSQL 测试及云模式浏览器测试。E2E 自签名证书仅以该测试证书的 SPKI 指纹用于 Chromium 测试启动，不更改应用或系统的证书校验。
+集成测试需要独立 `DATABASE_URL`。先执行 `docker build --target browser-test -t acornary-ci .`，再运行完整隔离容器流程：`node scripts/ci.mjs`。现有 CI 已包含构建、PostgreSQL 测试及云模式浏览器测试。E2E 自签名证书仅以该测试证书的 SPKI 指纹用于 Chromium 测试启动，不更改应用或系统的证书校验。
 
 开发预览可使用 `tests/web-browser-server.ts`，监听 3210；此入口和 `tests/seed-web-demo.ts` 都强制数据库名称符合 `acornary_e2e_<数字>`。演示种子要求没有任何物品，创建虚构家庭数据，不接受正式数据库。先种子、构建，再启动服务器：
 
@@ -91,9 +92,9 @@ pnpm build
 pnpm exec tsx tests/web-browser-server.ts
 ```
 
-本次本机预览为 `http://127.0.0.1:33211/items`，由 `acornary-webui-preview` 容器提供，使用隔离 PostgreSQL 中的 `acornary_e2e_2026092903`。预览是真实读写，修改的是演示数据。示例含六瓶牛奶（位置、开封状态和日期不同）、洗衣液、衣物、扩展坞和大米；牛奶汇总为 6 瓶、约 5.5 L，旅行收纳箱内有衣物和设备。
+工作台演示种子是 `tests/seed-workbench.ts`，同样只接受 `acornary_e2e_<数字>` 数据库。历史预览端口和容器不保证仍在运行；按上述流程重建独立环境，不能复活原正式本地库。
 
-已验证：类型检查、生产构建、35 项单元／真实 PostgreSQL 集成测试；云端 Chromium 的 14 项端到端测试，包括原检查器回归、入库消耗、响应丢失后的幂等重试、冲突核对、离线刷新、断网保留、容器移动、纠错恢复和重新登录。新增双视图和 OAuth 浏览器验收覆盖同一会话、直达返回、双向跨标签页退出、允许／拒绝、授权中失效恢复、PKCE 交换与外部返回地址拒绝。本地 15 项发布控制器测试通过。正式发布验证见 [v0.1.0](./release-v0.1.0.md)；截图与失败诊断保存在忽略提交的 `output/` 下。
+当前 CI 覆盖 Web、账号、OAuth、只读检查器和不透明 MCP Apps 沙箱，结果以对应提交的 GitHub Actions 为准。`v0.4.2` 发布记录包含 66 项单元／集成、36 项 Chromium 和 15 项部署控制器测试；早期 Web 证据见 [v0.1.0](./release-v0.1.0.md)。截图及诊断保存在忽略提交的 `output/`，不保证其他 checkout 可读取。
 
 初版 WebKit 本地模式的 7 项检查通过，覆盖主要写入、冲突、布局与编辑断网流程（本地模式跳过云端会话测试）；离线重开在 Playwright 1.63 的离线模拟中出现引擎内部错误，与[已登记的上游问题](https://github.com/microsoft/playwright/issues/42775)一致，该测试明确跳过，不能据此声称 Safari 离线重开已经验收。
 

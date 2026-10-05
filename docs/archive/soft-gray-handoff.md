@@ -1,5 +1,7 @@
 # Soft Gray 实现交接
 
+> 历史记录（2026-10-01）：下述状态仅描述当时的本地工作。相关源码后来已合入主线并发布；当前入口见 [项目进度](../progress.md) 和 [归档说明](./README.md)。
+
 2026-10-01，MacBook16，分支 `codex/soft-gray-webui`。未合并、推送或部署；所有写入验收使用一次性 PostgreSQL 测试库。
 
 工作目录：`/Users/timli/.codex/worktrees/acornary-soft-gray-webui/Acornary`。

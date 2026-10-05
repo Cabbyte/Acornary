@@ -1,6 +1,6 @@
 # Responsive Workbench implementation
 
-2026-10-03 · `codex/responsive-workbench`, based on local Soft Gray commit `e2fb840`.
+Implemented on 2026-10-03, merged through [PR #6](https://github.com/Cabbyte/Acornary/pull/6) and deployed in [v0.4.2](https://github.com/Cabbyte/Acornary/releases/tag/v0.4.2). Current release status is recorded in [project progress](./progress.md).
 
 Design source: [Acornary Responsive Workbench](https://www.figma.com/design/Xt5Dcp0NHtYPC0UbSF3iHO/Acornary?node-id=128-358). Desktop `136:361`, mobile `136:374`, item detail `136:375`, desktop move/edit `136:370` / `136:372`, mobile move `136:385`.
 
@@ -37,12 +37,10 @@ The existing app-only write gateway, expected scope, persisted private drafts, e
 
 ## Local preview
 
-The current preview runs at `http://127.0.0.1:3210/items` in `acornary-workbench-preview`, using the isolated `acornary-workbench-pg` PostgreSQL container and database `acornary_e2e_20261003`. Both ports are bound to loopback. Its synthetic inventory was created with domain commands by `tests/seed-workbench.ts`; the seed refuses databases without an `acornary_e2e_<digits>` name. No production inventory was used.
+Use the isolated preview procedure in [Web UI](./webui.md). `tests/seed-workbench.ts` creates synthetic inventory through domain commands and refuses databases without an `acornary_e2e_<digits>` name. Build with `pnpm build`, then serve `apps/web/dist` through the test server. Never seed or reset a production database.
 
-Worktree: `/Users/timli/.codex/worktrees/acornary-responsive-workbench/Acornary`.
-
-The preview serves `apps/web/dist`; after editing, run `pnpm build` and reload. To stop it without discarding the review data: `docker stop acornary-workbench-preview acornary-workbench-pg`. To resume: start the PostgreSQL container first, then the preview container.
+The 2026-10-03 screenshots came from an isolated local preview. Its former worktree path and running containers are not prerequisites for the current implementation.
 
 ## Remaining boundaries
 
-The inventory snapshot is still loaded in full; pagination is client-side. Real iPhone Safari, input methods, VoiceOver and ChatGPT/Codex plugin hosts have not been accepted in this change. Other product screens retain their previous design. Publication is tracked in [PR #6](https://github.com/Cabbyte/Acornary/pull/6); successful CI alone is not production or real-host acceptance.
+The inventory snapshot is still loaded in full; pagination is client-side. Real iPhone Safari, input methods, VoiceOver and ChatGPT/Codex plugin hosts have not been accepted in this change. Other product screens retain their previous design. Production evidence is recorded in [v0.4.2](https://github.com/Cabbyte/Acornary/releases/tag/v0.4.2); successful CI alone is not real-host acceptance. The user reported preliminary acceptance on 2026-10-05; no per-device or per-host checklist was supplied.

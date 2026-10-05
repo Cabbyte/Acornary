@@ -4,7 +4,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useLocation } from '@tanstack/react-router';
 import {
   ancestors,
-  attr,
   isContainer,
   isTerminal,
   itemName,
@@ -23,7 +22,6 @@ import {
 } from '../lib/browse';
 import { remaining } from '../lib/presentation';
 import { Button, Empty } from './components';
-import type { Action } from './forms';
 
 type BrowseState = {
   query: string;
@@ -163,145 +161,6 @@ export function PhysicalRow({ item, path = false }: { item: ItemRecord; path?: b
       </span>
       <span aria-hidden="true">›</span>
     </Link>
-  );
-}
-function LocationTree({ id }: { id?: string }) {
-  const { data } = useInventory();
-  const [query, setQuery] = useState('');
-  const active = ancestors(id ?? null, data.items).map((p) => p.id);
-  const [expanded, setExpanded] = useState<string[]>([]);
-  const locations = data.items.filter(isContainer);
-  const matches = query
-    ? locations.filter((p) =>
-        fullPath(p.id, data).toLocaleLowerCase().includes(query.toLocaleLowerCase()),
-      )
-    : locations.filter((p) =>
-        ancestors(p.parent_id, data.items).every(
-          (a) => active.includes(a.id) || expanded.includes(a.id),
-        ),
-      );
-  return (
-    <aside className="location-tree soft-panel">
-      <SearchField value={query} onChange={setQuery} label="搜索位置" />
-      <Link className="tree-root" to="/items">
-        全部位置
-      </Link>
-      {matches.map((p) => (
-        <div
-          className={`tree-node ${p.id === id ? 'selected' : ''}`}
-          key={p.id}
-          style={{
-            paddingInlineStart: query
-              ? 0
-              : Math.min(ancestors(p.id, data.items).length - 1, 4) * 12,
-          }}
-        >
-          <button
-            type="button"
-            aria-label={`${expanded.includes(p.id) ? '收起' : '展开'} ${itemName(p, data)}`}
-            aria-expanded={expanded.includes(p.id) || active.includes(p.id)}
-            onClick={() =>
-              setExpanded((old) =>
-                old.includes(p.id) ? old.filter((v) => v !== p.id) : [...old, p.id],
-              )
-            }
-          >
-            {expanded.includes(p.id) || active.includes(p.id) ? '⌄' : '›'}
-          </button>
-          <Link to={`/places/${p.id}`} aria-current={p.id === id ? 'page' : undefined}>
-            {query ? fullPath(p.id, data) : itemName(p, data)}
-          </Link>
-        </div>
-      ))}
-    </aside>
-  );
-}
-export function InventoryBrowser({ id, open }: { id?: string; open: (action: Action) => void }) {
-  const { data, stale } = useInventory();
-  const { online } = useSession();
-  const [view, update] = useBrowseState(`locations:${id ?? ''}`, id);
-  const place = data.items.find((i) => i.id === id && isContainer(i));
-  if (id && !place) return <Empty title="位置不可用">请返回全部位置。</Empty>;
-  const children = data.items.filter((i) => i.parent_id === (id ?? null) && !isTerminal(i));
-  const results = view.query.trim() ? searchInventory(data, view.query, id) : children;
-  const shown = results.slice(0, view.limit);
-  return (
-    <div className="soft-page">
-      <header className="soft-heading">
-        <h1>我的物品</h1>
-        {!id && (
-          <p>
-            {physicalItems(data.items.filter((i) => !isTerminal(i))).length} 件实物 ·{' '}
-            {visibleProducts(data).length} 款商品
-          </p>
-        )}
-      </header>
-      <LocationPath id={id ?? null} />
-      <div className={id ? 'browse-columns' : ''}>
-        {id && <LocationTree id={id} />}
-        <section className="soft-panel browse-results">
-          <h2>{place ? itemName(place, data) : '全部位置'}</h2>
-          <p className="caption">
-            {physicalItems(results).length} 件实物{!view.query && id ? ' · 仅当前层' : ''}
-          </p>
-          <SearchField
-            value={view.query}
-            onChange={(query) => update({ query })}
-            label={id ? '搜索此位置及下级位置' : '搜索物品或位置'}
-          />
-          {shown.map((item) => (
-            <PhysicalRow key={item.id} item={item} path={!!view.query} />
-          ))}
-          {!results.length && (
-            <Empty title={view.query ? '没有找到匹配结果' : '这里还是空的'}>
-              {view.query ? '试试商品名称、规格或其他位置。' : '可创建下级位置，或将物品移入这里。'}
-            </Empty>
-          )}
-          <PageEnd
-            shown={shown.length}
-            total={results.length}
-            onMore={() => update({ limit: view.limit + PAGE_SIZE })}
-          />
-        </section>
-      </div>
-      <div className="soft-actions">
-        <Button
-          variant="secondary"
-          disabled={!online || stale}
-          onClick={() => open({ kind: 'intake', parent: id })}
-        >
-          入库
-        </Button>
-        <Button
-          variant="secondary"
-          disabled={!online || stale}
-          onClick={() => open({ kind: 'place', parent: id })}
-        >
-          新建{place ? '下级' : ''}位置
-        </Button>
-        {place && (
-          <>
-            <Button
-              variant="secondary"
-              disabled={!online || stale}
-              onClick={() => open({ kind: 'rename', target: id })}
-            >
-              修改名称
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={!online || stale}
-              onClick={() => open({ kind: 'move', target: id })}
-            >
-              移动位置
-            </Button>
-          </>
-        )}
-        <Link className="button secondary" to="/catalog">
-          商品目录
-        </Link>
-      </div>
-    </div>
   );
 }
 export function InventorySearch() {
