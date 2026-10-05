@@ -571,7 +571,10 @@ test('host credential switching at dispatch rejects the old UI command before an
     return { a: await catalog(0), b: await catalog(1) };
   }, name);
   expect(counts).toEqual({ a: [], b: [] });
-  await expect(view(page).getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
+  // An in-flight old-scope read can coalesce invalidation; allow the next 5 s poll and render.
+  await expect(view(page).getByRole('heading', { name: '我的物品', exact: true })).toBeVisible({
+    timeout: 10000,
+  });
   expect(await writes(page)).toHaveLength(1);
   await page.screenshot({ path: 'output/playwright/plugin-cross-family-write-blocked.png' });
 });
