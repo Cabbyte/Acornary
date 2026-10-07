@@ -344,6 +344,40 @@ test('switching the backend household clears old inventory, selection and privat
   expect(await writes(page)).toHaveLength(0);
 });
 
+test('Ant Design SKU selection clears when switching households and returning', async ({
+  page,
+}) => {
+  const f = await fixture(page);
+  await restoreRoute(page, `/items/group/${f.sku}`);
+  const embedded = view(page);
+  await embedded.getByRole('button', { name: '选择实物', exact: true }).click();
+  await embedded.getByRole('checkbox', { name: '选择本页全部物品' }).check();
+  await expect(embedded.getByRole('button', { name: '将选中 1 件标记为用完' })).toBeEnabled();
+  const firstName = await page.evaluate(
+    () => (window as any).host.initial._meta['acornary/view'].snapshot.household.name,
+  );
+  for (const family of [1, 0]) {
+    await page.evaluate((family) => {
+      const h = (window as any).host;
+      h.family = family;
+      h.notify({ content: [] });
+    }, family);
+    await expect(
+      embedded.getByRole('button', { name: family ? '隔离的第二家庭' : firstName, exact: true }),
+    ).toBeVisible();
+    await expect(embedded.getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => (window as any).host.context?.selection))
+      .toBeNull();
+  }
+  await embedded.getByRole('link', { name: '商品目录', exact: true }).click();
+  await embedded.getByRole('searchbox', { name: '搜索商品名称或规格' }).fill(f.name);
+  await embedded.getByRole('link', { name: f.name, exact: true }).click();
+  await expect(embedded.getByRole('button', { name: '选择实物', exact: true })).toBeVisible();
+  await expect(embedded.getByRole('checkbox')).toHaveCount(0);
+  expect(await writes(page)).toHaveLength(0);
+});
+
 test('narrow shared UI has no overflow and untrusted sibling messages cannot replace host data', async ({
   page,
 }) => {

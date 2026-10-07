@@ -19,14 +19,19 @@ import { time } from './lib/presentation';
 import { Home, Product, ItemDetail, Catalog, Settings, History, Notes } from './pages';
 import { ActionSheet, type Action } from './ui/forms';
 import { Empty, Notice } from './ui/components';
-import { InventorySearch, ProductCatalog } from './ui/browser';
-import { Workbench, WorkbenchShell } from './ui/workbench';
+import { clearBrowseSelections, InventorySearch, ProductCatalog } from './ui/browser';
+import { clearWorkbenchSelections, Workbench, WorkbenchShell } from './ui/workbench';
 export function Workspace() {
   const location = useLocation();
   const navigate = useNavigate();
   const { data, stale, refresh, cacheWarning } = useInventory();
   const { session, online, expired, requestLogin, storageError } = useSession();
   const { message } = App.useApp();
+  useEffect(() => {
+    // Clear every list, including an unmounted SKU view, when the host changes households.
+    clearBrowseSelections();
+    clearWorkbenchSelections();
+  }, [session.cache_key]);
   const [selectionVersion, resetSelection] = useState(0);
   const [connectionError, setConnectionError] = useState('');
   const parts = location.pathname.split('/').filter(Boolean);

@@ -50,6 +50,9 @@ type BrowseState = {
   selecting: boolean;
 };
 const views = new Map<string, BrowseState>();
+export function clearBrowseSelections() {
+  for (const [key, view] of views) views.set(key, { ...view, selected: [], selecting: false });
+}
 export function useBrowseState(view: string, scope = '') {
   const { session } = useSession();
   const key = `${session.cache_key}:${view}`;

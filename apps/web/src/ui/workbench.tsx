@@ -315,6 +315,9 @@ const defaults = (): View => ({
   columns: ['spec', 'status', 'place', 'note'],
   scroll: 0,
 });
+export function clearWorkbenchSelections() {
+  for (const [key, view] of views) views.set(key, { ...view, selected: [], selecting: false });
+}
 export function Workbench({
   id,
   detailId,
