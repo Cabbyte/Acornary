@@ -1,3 +1,4 @@
+import { App, Button } from 'antd';
 import type { FunctionComponent } from 'react';
 import type { RouterHistory } from '@tanstack/react-router';
 import { embeddedRuntime } from './lib/runtime';
@@ -17,18 +18,15 @@ import { useInventory } from './lib/inventory';
 import { time } from './lib/presentation';
 import { Home, Product, ItemDetail, Catalog, Settings, History, Notes } from './pages';
 import { ActionSheet, type Action } from './ui/forms';
-import { Button, Empty, Notice } from './ui/components';
-import './product.css';
+import { Empty, Notice } from './ui/components';
 import { InventorySearch, ProductCatalog } from './ui/browser';
 import { Workbench, WorkbenchShell } from './ui/workbench';
-import './workbench.css';
-
 export function Workspace() {
   const location = useLocation();
   const navigate = useNavigate();
   const { data, stale, refresh, cacheWarning } = useInventory();
   const { session, online, expired, requestLogin, storageError } = useSession();
-  const [message, setMessage] = useState('');
+  const { message } = App.useApp();
   const [selectionVersion, resetSelection] = useState(0);
   const [connectionError, setConnectionError] = useState('');
   const parts = location.pathname.split('/').filter(Boolean);
@@ -111,7 +109,7 @@ export function Workspace() {
     void navigate({ to: location.pathname, search: Object.fromEntries(remaining), replace: true });
   };
   useEffect(() => {
-    setMessage('');
+    message.destroy();
   }, [location.pathname]);
   let page;
   if (section === 'items')
@@ -158,7 +156,7 @@ export function Workspace() {
       ) : id ? (
         <Catalog id={id === 'manage' ? undefined : id} open={open} />
       ) : (
-        <ProductCatalog />
+        <ProductCatalog open={open} />
       );
   else if (section === 'settings') page = <Settings section={id} />;
   else if (section === 'login') page = <Home open={open} />;
@@ -173,7 +171,9 @@ export function Workspace() {
       {expired && (
         <div className="status-banner">
           <Notice>登录已失效。缓存与输入已保留，重新登录后可继续操作。</Notice>
-          <Button onClick={requestLogin}>重新登录</Button>
+          <Button onClick={requestLogin} htmlType="button" type="primary">
+            重新登录
+          </Button>
         </div>
       )}
       {!expired && (stale || !online) && (
@@ -184,12 +184,13 @@ export function Workspace() {
             已缓存目录、物品与笔记。修改需要联网。
           </Notice>
           <Button
-            variant="secondary"
             onClick={() =>
               void refresh()
                 .then(() => setConnectionError(''))
                 .catch(() => setConnectionError('连接仍不可用，已保留缓存和输入。'))
             }
+            htmlType="button"
+            type="default"
           >
             重新连接
           </Button>
@@ -198,14 +199,6 @@ export function Workspace() {
       )}
       {(storageError || cacheWarning) && <Notice danger>{storageError || cacheWarning}</Notice>}
       {page}
-      {message && (
-        <div className="toast" role="status">
-          {message}
-          <button aria-label="关闭提示" onClick={() => setMessage('')}>
-            ×
-          </button>
-        </div>
-      )}
       {action && (
         <ActionSheet
           key={JSON.stringify(action)}
@@ -215,7 +208,7 @@ export function Workspace() {
           onSaved={(result) => {
             const first = result.affected_objects[0];
             if (action.kind === 'move') resetSelection((v) => v + 1);
-            setMessage('已保存，库存和历史已更新');
+            void message.success('已保存，库存和历史已更新');
             if (action.kind === 'catalog' && action.from === 'intake' && first) {
               open({ kind: 'intake', target: first.id });
               return;

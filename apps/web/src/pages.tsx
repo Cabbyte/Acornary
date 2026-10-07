@@ -1,5 +1,7 @@
+import { Card } from 'antd';
+import { Button, Checkbox, Input, Select, Descriptions, Timeline } from 'antd';
 import appIcon from '../public/app-icon.png';
-import searchIcon from '../public/design/search.svg';
+import { SearchOutlined } from '@ant-design/icons';
 import { AccountSettings, HouseholdSettings } from './accounts';
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from '@tanstack/react-router';
@@ -32,12 +34,19 @@ import {
   time,
   total,
 } from './lib/presentation';
-import { Button, Empty, Field, Notice, Row, Sheet } from './ui/components';
+import { Empty, FormField, Notice, Row, ActionDrawer } from './ui/components';
 import { definitions, fieldValues, templateLabels } from './ui/fields';
 import type { Action } from './ui/forms';
-import { LocationPath, PhysicalRow, PageEnd, useBrowseState } from './ui/browser';
-import { PAGE_SIZE, specification, categoryPath } from './lib/browse';
-
+import {
+  ListOptions,
+  SearchField,
+  LocationPath,
+  PhysicalRow,
+  ItemTable,
+  PageEnd,
+  useBrowseState,
+} from './ui/browser';
+import { PAGE_SIZE, specification, categoryPath, searchInventory } from './lib/browse';
 export type OpenAction = (action: Action) => void;
 function groupSubtitle(
   group: ProductGroup,
@@ -91,14 +100,14 @@ export function Home({ open }: { open: OpenAction }) {
       <header className="page-header large">
         <div className="toolbar">
           <span />
-          <button
+          <Button
             className="icon-button"
             aria-label="入库"
             disabled={!online || stale}
             onClick={() => open({ kind: 'intake' })}
           >
             ＋
-          </button>
+          </Button>
         </div>
         <h1>我的物品</h1>
         <p>
@@ -107,32 +116,32 @@ export function Home({ open }: { open: OpenAction }) {
       </header>
       <div className="content">
         <label className="search">
-          <img src={searchIcon} alt="" />
-          <input
+          <SearchOutlined aria-hidden="true" />
+          <Input
             aria-label="搜索物品"
             placeholder="搜索物品、品牌或名称"
             value={filter.search}
             onChange={(e) => update('search', e.target.value)}
           />
           {filter.search && (
-            <button aria-label="清除搜索" onClick={() => update('search', '')}>
+            <Button aria-label="清除搜索" onClick={() => update('search', '')}>
               ×
-            </button>
+            </Button>
           )}
         </label>
         <div className="chips">
-          <button className={!filter.category ? 'selected' : ''} onClick={() => setSheet(true)}>
+          <Button className={!filter.category ? 'selected' : ''} onClick={() => setSheet(true)}>
             {filter.category ? '已选分类' : '全部物品'}
-          </button>
-          <button className={filter.location ? 'selected' : ''} onClick={() => setSheet(true)}>
+          </Button>
+          <Button className={filter.location ? 'selected' : ''} onClick={() => setSheet(true)}>
             {filter.location ? '已选位置' : '存放位置'}
-          </button>
-          <button
+          </Button>
+          <Button
             className={filter.state !== 'current' ? 'selected' : ''}
             onClick={() => setSheet(true)}
           >
             {filter.state === 'current' ? '状态筛选' : label(filter.state)}
-          </button>
+          </Button>
         </div>
         {filtered.error && !stale && <Notice>筛选结果暂用上次缓存。请刷新后核对最新库存。</Notice>}
         <p className="section-label">你的松仓</p>
@@ -158,65 +167,68 @@ export function Home({ open }: { open: OpenAction }) {
           </Empty>
         )}
         {sheet && (
-          <Sheet title="筛选物品" onClose={() => setSheet(false)}>
+          <ActionDrawer title="筛选物品" onClose={() => setSheet(false)}>
             <div className="stack">
-              <Field label="分类">
-                <select
+              <FormField label="分类">
+                <Select
                   value={filter.category}
-                  onChange={(e) => update('category', e.target.value)}
-                >
-                  <option value="">全部分类</option>
-                  {data.catalog
-                    .filter((c) => c.kind === 'GROUP')
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {ancestors(c.id, data.catalog)
+                  onChange={(e) => update('category', e)}
+                  options={[
+                    { value: '', label: '\u5168\u90E8\u5206\u7C7B' },
+                    ...(data.catalog
+                      .filter((c) => c.kind === 'GROUP')
+                      .map((c) => ({
+                        value: c.id,
+                        label: ancestors(c.id, data.catalog)
                           .map((x) => x.name)
-                          .join(' / ')}
-                      </option>
-                    ))}
-                </select>
-              </Field>
-              <Field label="存放位置">
-                <select
+                          .join(' / '),
+                      })) ?? []),
+                  ]}
+                />
+              </FormField>
+              <FormField label="存放位置">
+                <Select
                   value={filter.location}
-                  onChange={(e) => update('location', e.target.value)}
-                >
-                  <option value="">全部位置</option>
-                  {data.items.filter(isContainer).map((i) => (
-                    <option key={i.id} value={i.id}>
-                      {ancestors(i.id, data.items)
+                  onChange={(e) => update('location', e)}
+                  options={[
+                    { value: '', label: '\u5168\u90E8\u4F4D\u7F6E' },
+                    ...(data.items.filter(isContainer).map((i) => ({
+                      value: i.id,
+                      label: ancestors(i.id, data.items)
                         .map((x) => itemName(x, data))
-                        .join(' / ')}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="状态">
-                <select value={filter.state} onChange={(e) => update('state', e.target.value)}>
-                  {[
-                    ['current', '当前库存（包含状态未记录）'],
-                    ['all', '全部记录'],
-                    ['OPENED', '已开封'],
-                    ['SEALED', '未开封'],
-                    ['unknown', '开封状态未记录'],
-                    ['terminal', '已用完、丢弃或归档'],
-                  ].map(([v, t]) => (
-                    <option key={v} value={v}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Button onClick={() => setSheet(false)}>查看结果</Button>
+                        .join(' / '),
+                    })) ?? []),
+                  ]}
+                />
+              </FormField>
+              <FormField label="状态">
+                <Select
+                  value={filter.state}
+                  onChange={(e) => update('state', e)}
+                  options={[
+                    ...([
+                      ['current', '当前库存（包含状态未记录）'],
+                      ['all', '全部记录'],
+                      ['OPENED', '已开封'],
+                      ['SEALED', '未开封'],
+                      ['unknown', '开封状态未记录'],
+                      ['terminal', '已用完、丢弃或归档'],
+                    ].map(([v, t]) => ({ value: v, label: t })) ?? []),
+                  ]}
+                />
+              </FormField>
+              <Button onClick={() => setSheet(false)} htmlType="button" type="primary">
+                查看结果
+              </Button>
               <Button
-                variant="secondary"
                 onClick={() => setFilter(inventoryFilterSchema.parse({}))}
+                htmlType="button"
+                type="default"
               >
                 重置筛选
               </Button>
             </div>
-          </Sheet>
+          </ActionDrawer>
         )}
       </div>
     </>
@@ -252,18 +264,24 @@ export function Product({ id, open }: { id: string; open: OpenAction }) {
   const { data, stale } = useInventory();
   const { online } = useSession();
   const sku = data.catalog.find((c) => c.id === id);
-  const [selection, setSelection] = useState<string[]>([]);
-  const [selecting, setSelecting] = useState(false);
   const [view, updateView] = useBrowseState(`product:${id}`);
   const showPast = view.state === 'all';
   const setShowPast = (value: boolean) => updateView({ state: value ? 'all' : 'current' });
-  const limit = view.limit;
-  const setLimit = (value: number) => updateView({ limit: value });
+  const selection = view.selected;
+  const setSelection = (selected: string[]) => updateView({ selected, page: view.page });
+  const selecting = view.selecting;
+  const setSelecting = (selecting: boolean) => updateView({ selecting, page: view.page });
   if (!sku) return <Empty title="商品不可用">请返回物品列表刷新。</Empty>;
   const group = productGroups(data, inventoryFilterSchema.parse({})).find((g) => g.id === id);
-  const items = data.items.filter((i) => i.catalog_node_id === id && (showPast || !isTerminal(i)));
-  const visible = items.slice(0, limit);
-  const paths = [...new Set(visible.map((i) => locationName(i, data)))];
+  const items = searchInventory(data, view.query, view.scope, showPast ? 'all' : 'current')
+    .filter((i) => i.catalog_node_id === id)
+    .sort((a, b) =>
+      view.sort === 'recent'
+        ? b.created_at.localeCompare(a.created_at)
+        : itemName(a, data).localeCompare(itemName(b, data), 'zh-CN'),
+    );
+  const page = Math.min(view.page, Math.max(1, Math.ceil(items.length / view.pageSize)));
+  const visible = items.slice((page - 1) * view.pageSize, page * view.pageSize);
   return (
     <>
       <PageHeader
@@ -272,7 +290,7 @@ export function Product({ id, open }: { id: string; open: OpenAction }) {
         subtitle={`商品汇总 · ${attr(sku, 'product')?.specification ?? '包装规格未记录'}`}
       />
       <div className="content">
-        <section className="card">
+        <Card className="card">
           <h2>
             家里还有 {group?.count ?? 0} {pieceUnit(sku)}
           </h2>
@@ -290,64 +308,56 @@ export function Product({ id, open }: { id: string; open: OpenAction }) {
             </p>
           )}
           <Button
-            variant="secondary"
             disabled={!online || stale}
             onClick={() => open({ kind: 'intake', target: id })}
+            htmlType="button"
+            type="default"
           >
             再入库几件
           </Button>
-        </section>
-        <div className="split">
+        </Card>
+        <div className="ac-toolbar">
+          <SearchField
+            label="搜索同款实物"
+            value={view.query}
+            onChange={(query) => updateView({ query })}
+          />
+          <ListOptions view={view} update={updateView} />
+
           <Button
-            variant="secondary"
             onClick={() => {
               setSelecting(!selecting);
               setSelection([]);
             }}
+            htmlType="button"
+            type="default"
           >
             {selecting ? '取消选择' : '选择实物'}
           </Button>
-          <Button variant="secondary" onClick={() => setShowPast(!showPast)}>
+          <Button onClick={() => setShowPast(!showPast)} htmlType="button" type="default">
             {showPast ? '仅看当前库存' : '包含已用完'}
           </Button>
         </div>
-        {paths.map((path) => (
-          <section key={path}>
-            <p className="section-label">{path}</p>
-            <div className="grouped">
-              {visible
-                .filter((i) => locationName(i, data) === path)
-                .map((item) => (
-                  <div className="selectable-row" key={item.id}>
-                    {selecting && !isTerminal(item) && (
-                      <input
-                        type="checkbox"
-                        aria-label={`选择 ${itemTitle(item, data)}`}
-                        checked={selection.includes(item.id)}
-                        onChange={(e) =>
-                          setSelection((s) =>
-                            e.target.checked ? [...s, item.id] : s.filter((x) => x !== item.id),
-                          )
-                        }
-                      />
-                    )}
-                    <PhysicalRow item={item} path />
-                  </div>
-                ))}
-            </div>
-          </section>
-        ))}
+        <ItemTable
+          items={visible}
+          columns={view.columns}
+          selected={selection}
+          onSelection={selecting ? setSelection : undefined}
+        />
         <PageEnd
-          shown={visible.length}
           total={items.length}
+          page={page}
+          pageSize={view.pageSize}
           unit="件实物"
-          onMore={() => setLimit(limit + PAGE_SIZE)}
+          onChange={(page, pageSize) => updateView({ page, pageSize })}
         />
         {!items.length && <Empty title="这里还没有实物">入库后，每件实物会分别出现在这里。</Empty>}
         {selecting && (
           <Button
             disabled={!online || stale || !selection.length || selection.length > 100}
             onClick={() => open({ kind: 'finish', ids: selection.join(',') })}
+            htmlType="button"
+            type="primary"
           >
             将选中 {selection.length} 件标记为用完
           </Button>
@@ -379,7 +389,7 @@ export function ItemDetail({ id, open }: { id: string; open: OpenAction }) {
       />
       <div className="content detail-grid">
         <div className="stack">
-          <section className="card">
+          <Card className="card">
             <h2>当前剩余</h2>
             <p className="quantity">剩余 {remaining(item)}</p>
             <p>
@@ -396,43 +406,44 @@ export function ItemDetail({ id, open }: { id: string; open: OpenAction }) {
                   )
                 : '未分类'}
             </p>
-            <dl>
-              <div>
-                <dt>开封状态</dt>
-                <dd>
-                  {label(life?.opening?.state)}
-                  {life?.opening?.opened_at && ` · ${time(life.opening.opened_at)}`}
-                </dd>
-              </div>
-              <div>
-                <dt>到期日期</dt>
-                <dd>{life?.expiry?.date ?? '未记录'}</dd>
-              </div>
-              <div>
-                <dt>可用状态</dt>
-                <dd>{label(life?.availability)}</dd>
-              </div>
-              <div>
-                <dt>生命周期</dt>
-                <dd>{label(life?.state)}</dd>
-              </div>
-              <div>
-                <dt>物品状况</dt>
-                <dd>{label(life?.condition)}</dd>
-              </div>
-            </dl>
+            <Descriptions
+              column={1}
+              items={[
+                {
+                  key: 'opening',
+                  label: '开封状态',
+                  children: (
+                    <>
+                      {label(life?.opening?.state)}
+                      {life?.opening?.opened_at && ` · ${time(life.opening.opened_at)}`}
+                    </>
+                  ),
+                },
+                { key: 'expiry', label: '到期日期', children: life?.expiry?.date ?? '未记录' },
+                { key: 'availability', label: '可用状态', children: label(life?.availability) },
+                { key: 'state', label: '生命周期', children: label(life?.state) },
+                { key: 'condition', label: '物品状况', children: label(life?.condition) },
+              ]}
+            />
             <small className="identity">实物编号 {item.id}</small>
-          </section>
+          </Card>
           {!isTerminal(item) && (
             <>
               {life?.opening?.state !== 'OPENED' && (
-                <Button disabled={disabled} onClick={() => action('open')}>
+                <Button
+                  disabled={disabled}
+                  onClick={() => action('open')}
+                  htmlType="button"
+                  type="primary"
+                >
                   记录开封
                 </Button>
               )}
               <Button
                 disabled={disabled || !attr(item, 'contents')?.remaining}
                 onClick={() => action('consume')}
+                htmlType="button"
+                type="primary"
               >
                 记录消耗
               </Button>
@@ -442,15 +453,30 @@ export function ItemDetail({ id, open }: { id: string; open: OpenAction }) {
             </>
           )}
           <div className="split">
-            <Button variant="secondary" disabled={disabled} onClick={() => action('move')}>
+            <Button
+              disabled={disabled}
+              onClick={() => action('move')}
+              htmlType="button"
+              type="default"
+            >
               移动位置
             </Button>
-            <Button variant="secondary" disabled={disabled} onClick={() => setEdit(true)}>
+            <Button
+              disabled={disabled}
+              onClick={() => setEdit(true)}
+              htmlType="button"
+              type="default"
+            >
               编辑资料
             </Button>
           </div>
           {!isTerminal(item) && (
-            <Button variant="secondary" disabled={disabled} onClick={() => action('finish')}>
+            <Button
+              disabled={disabled}
+              onClick={() => action('finish')}
+              htmlType="button"
+              type="default"
+            >
               整件用完
             </Button>
           )}
@@ -468,7 +494,12 @@ export function ItemDetail({ id, open }: { id: string; open: OpenAction }) {
               to={`/items/${id}/history`}
             />
           </div>
-          <Button variant="secondary" disabled={disabled} onClick={() => setCorrection(true)}>
+          <Button
+            disabled={disabled}
+            onClick={() => setCorrection(true)}
+            htmlType="button"
+            type="default"
+          >
             纠正记录
           </Button>
         </div>
@@ -477,7 +508,7 @@ export function ItemDetail({ id, open }: { id: string; open: OpenAction }) {
         </aside>
       </div>
       {(edit || correction) && (
-        <Sheet
+        <ActionDrawer
           title={edit ? '编辑资料' : '纠正记录'}
           onClose={() => {
             setEdit(false);
@@ -507,7 +538,7 @@ export function ItemDetail({ id, open }: { id: string; open: OpenAction }) {
               />
             ))}
           </div>
-        </Sheet>
+        </ActionDrawer>
       )}
     </>
   );
@@ -574,7 +605,7 @@ export function History({
   }, [key, q.data]);
   const events = q.data?.pages.flatMap((p) => p.data) ?? cached?.data;
   const body = (
-    <section className="card">
+    <Card className="card">
       <h2>变化历史</h2>
       {!events ? (
         <p role="status">
@@ -583,51 +614,58 @@ export function History({
       ) : !events.length ? (
         <p>还没有变化记录。</p>
       ) : (
-        events.map((e) => (
-          <article className="event" key={e.id}>
-            <strong>{eventNames[e.event_type] ?? e.event_type}</strong>
-            <time>{time(e.occurred_at)}</time>
-            {e.reason && <p>原因：{e.reason}</p>}
-            {e.changes
-              .filter((c) => !c.path.endsWith('.$binding'))
-              .map((c, i) => {
-                const display = (value: unknown) => {
-                  if (c.path === 'parent_id' && typeof value === 'string')
-                    return kind === 'ITEM'
-                      ? ancestors(value, data.items)
-                          .map((p) => itemName(p, data))
-                          .join(' / ') || '原位置已不可用'
-                      : ancestors(value, data.catalog)
-                          .map((p) => p.name)
-                          .join(' / ') || '原分类已不可用';
-                  if (c.path === 'catalog_node_id' && typeof value === 'string')
-                    return data.catalog.find((p) => p.id === value)?.name ?? '原商品已不可用';
-                  if (c.path === 'kind')
-                    return value === 'SKU' ? '商品' : value === 'GROUP' ? '分类' : '未记录';
-                  return readable(value);
-                };
-                return (
-                  <p key={i}>
-                    {fieldLabels[c.path] ?? (c.path.startsWith('notes.') ? '文字笔记' : '资料变更')}
-                    ：{display(c.before)} → {display(c.after)}
-                  </p>
-                );
-              })}
-          </article>
-        ))
+        <Timeline
+          items={events.map((e) => ({
+            key: e.id,
+            content: (
+              <article className="event" key={e.id}>
+                <strong>{eventNames[e.event_type] ?? e.event_type}</strong>
+                <time>{time(e.occurred_at)}</time>
+                {e.reason && <p>原因：{e.reason}</p>}
+                {e.changes
+                  .filter((c) => !c.path.endsWith('.$binding'))
+                  .map((c, i) => {
+                    const display = (value: unknown) => {
+                      if (c.path === 'parent_id' && typeof value === 'string')
+                        return kind === 'ITEM'
+                          ? ancestors(value, data.items)
+                              .map((p) => itemName(p, data))
+                              .join(' / ') || '原位置已不可用'
+                          : ancestors(value, data.catalog)
+                              .map((p) => p.name)
+                              .join(' / ') || '原分类已不可用';
+                      if (c.path === 'catalog_node_id' && typeof value === 'string')
+                        return data.catalog.find((p) => p.id === value)?.name ?? '原商品已不可用';
+                      if (c.path === 'kind')
+                        return value === 'SKU' ? '商品' : value === 'GROUP' ? '分类' : '未记录';
+                      return readable(value);
+                    };
+                    return (
+                      <p key={i}>
+                        {fieldLabels[c.path] ??
+                          (c.path.startsWith('notes.') ? '文字笔记' : '资料变更')}
+                        ：{display(c.before)} → {display(c.after)}
+                      </p>
+                    );
+                  })}
+              </article>
+            ),
+          }))}
+        />
       )}
       {q.error && <Notice danger>历史读取失败；显示已缓存内容。</Notice>}
       {q.hasNextPage && (
         <Button
-          variant="secondary"
           disabled={!online || q.isFetchingNextPage}
           onClick={() => void q.fetchNextPage()}
+          htmlType="button"
+          type="default"
         >
           加载更早记录
         </Button>
       )}
       {!online && cached?.next_cursor && <small>离线仅包含最近 30 条已缓存记录。</small>}
-    </section>
+    </Card>
   );
   return compact ? (
     body
@@ -646,24 +684,30 @@ export function Notes({ id, open }: { id: string; open: OpenAction }) {
     <>
       <PageHeader title="文字笔记" back={`/items/${id}`} />
       <div className="content">
-        <Button disabled={!online || stale} onClick={() => open({ kind: 'note', target: id })}>
+        <Button
+          disabled={!online || stale}
+          onClick={() => open({ kind: 'note', target: id })}
+          htmlType="button"
+          type="primary"
+        >
           添加笔记
         </Button>
         {notes.map((n) => (
-          <article key={n.id} className="card">
+          <Card key={n.id} className="card">
             <h2>{n.title ?? '笔记'}</h2>
             <div className="markdown">
               <Markdown>{n.body}</Markdown>
             </div>
             <small>{time(n.updated_at)}</small>
             <Button
-              variant="secondary"
               disabled={!online || stale}
               onClick={() => open({ kind: 'note', target: id, note: n.id })}
+              htmlType="button"
+              type="default"
             >
               编辑笔记
             </Button>
-          </article>
+          </Card>
         ))}
         {!notes.length && (
           <Empty title="还没有笔记">记录使用方式、存放提醒，或任何值得记住的事。</Empty>
@@ -705,27 +749,30 @@ export function Catalog({ id, open }: { id?: string; open: OpenAction }) {
               {(['product', 'clothing', 'device'] as TemplateId[])
                 .filter((t) => t === 'product' || !!attr(node, t))
                 .map((t) => (
-                  <section className="card" key={t}>
+                  <Card className="card" key={t}>
                     <h2>{templateLabels[t]}</h2>
-                    <dl>
-                      {definitions[t]?.map((f) => {
+                    <Descriptions
+                      column={1}
+                      items={definitions[t]?.map((f) => {
                         const vs = fieldValues(attr(node, t), definitions[t]!);
-                        return (
-                          <div key={f.path}>
-                            <dt>{f.label}</dt>
-                            <dd>
-                              {vs[f.path]
-                                ? `${label(vs[f.path])}${f.type === 'measurement' ? ' ' + label(vs[`${f.path}.unit`]) : ''}`
-                                : '未记录'}
-                            </dd>
-                          </div>
-                        );
+                        return {
+                          key: f.path,
+                          label: f.label,
+                          children: vs[f.path]
+                            ? `${label(vs[f.path])}${f.type === 'measurement' ? ' ' + label(vs[`${f.path}.unit`]) : ''}`
+                            : '未记录',
+                        };
                       })}
-                    </dl>
-                  </section>
+                    />
+                  </Card>
                 ))}
             </div>
-            <Button disabled={!online || stale} onClick={() => setEdit(true)}>
+            <Button
+              disabled={!online || stale}
+              onClick={() => setEdit(true)}
+              htmlType="button"
+              type="primary"
+            >
               编辑共有资料
             </Button>
             <Link className="button secondary" to={`/items/group/${id}`}>
@@ -761,6 +808,8 @@ export function Catalog({ id, open }: { id?: string; open: OpenAction }) {
             <Button
               disabled={!online || stale}
               onClick={() => open({ kind: 'catalog', parent: id })}
+              htmlType="button"
+              type="primary"
             >
               ＋ 创建商品或分类
             </Button>
@@ -769,23 +818,25 @@ export function Catalog({ id, open }: { id?: string; open: OpenAction }) {
         {node && (
           <div className="split">
             <Button
-              variant="secondary"
               disabled={!online || stale}
               onClick={() => open({ kind: 'rename', target: id })}
+              htmlType="button"
+              type="default"
             >
               修改名称
             </Button>
             <Button
-              variant="secondary"
               disabled={!online || stale}
               onClick={() => open({ kind: 'move', target: id })}
+              htmlType="button"
+              type="default"
             >
               调整分类
             </Button>
           </div>
         )}
         {edit && (
-          <Sheet title="商品共有资料" onClose={() => setEdit(false)}>
+          <ActionDrawer title="商品共有资料" onClose={() => setEdit(false)}>
             <div className="grouped">
               {(['product', 'clothing', 'device'] as TemplateId[]).map((t) => (
                 <Row
@@ -798,7 +849,7 @@ export function Catalog({ id, open }: { id?: string; open: OpenAction }) {
                 />
               ))}
             </div>
-          </Sheet>
+          </ActionDrawer>
         )}
       </div>
     </>
@@ -823,7 +874,11 @@ export function Settings({ section }: { section?: string }) {
           </Notice>
           <p>账号、家庭和连接授权请在松仓网站及 ChatGPT 插件设置中管理。</p>
           <p>草稿保存在当前组件的宿主状态中；新对话或其他设备不保证恢复。</p>
-          <Button onClick={() => void refresh().catch(() => setError('更新失败，请重试。'))}>
+          <Button
+            onClick={() => void refresh().catch(() => setError('更新失败，请重试。'))}
+            htmlType="button"
+            type="primary"
+          >
             刷新库存
           </Button>
           {error && <Notice danger>{error}</Notice>}
@@ -849,13 +904,13 @@ export function Settings({ section }: { section?: string }) {
         <p>松仓 · 家里的每一件，都有迹可循</p>
       </header>
       <div className="content">
-        <section className="card brand-card">
+        <Card className="card brand-card">
           <img src={appIcon} alt="松仓" width="56" height="56" />
           <div>
             <h2>{data.household.name}</h2>
             <p>{session.email ?? '本地所有者'}</p>
           </div>
-        </section>
+        </Card>
         {session.mode === 'cloud' && (
           <>
             <p className="section-label">账号与家庭</p>
@@ -879,7 +934,6 @@ export function Settings({ section }: { section?: string }) {
           />
         </div>
         <Button
-          variant="secondary"
           disabled={!online || busy}
           onClick={async () => {
             setBusy(true);
@@ -892,6 +946,8 @@ export function Settings({ section }: { section?: string }) {
               setBusy(false);
             }
           }}
+          htmlType="button"
+          type="default"
         >
           {busy ? '正在更新…' : '更新缓存'}
         </Button>
@@ -899,7 +955,6 @@ export function Settings({ section }: { section?: string }) {
         {error && <Notice danger>{error}</Notice>}
         {session.mode === 'cloud' && (
           <Button
-            variant="danger"
             disabled={!online || busy}
             onClick={async () => {
               setBusy(true);
@@ -910,6 +965,9 @@ export function Settings({ section }: { section?: string }) {
                 setBusy(false);
               }
             }}
+            htmlType="button"
+            type="primary"
+            danger={true}
           >
             退出登录并清除本机缓存
           </Button>
@@ -921,7 +979,7 @@ export function Settings({ section }: { section?: string }) {
         <small>在线查看原始记录、关联与历史。修正库存请使用松仓的业务操作。</small>
         <small>离线可查看缓存内容，修改需要联网。缓存可能由浏览器清理，不替代云端库存。</small>
         {install && (
-          <Sheet title="添加到主屏幕" onClose={() => setInstall(false)}>
+          <ActionDrawer title="添加到主屏幕" onClose={() => setInstall(false)}>
             <ol className="instructions">
               <li>在 iPhone 的 Safari 中打开松仓。</li>
               <li>打开页面菜单，轻点“分享”。</li>
@@ -937,8 +995,10 @@ export function Settings({ section }: { section?: string }) {
             >
               查看 Apple 操作指引
             </a>
-            <Button onClick={() => setInstall(false)}>知道了</Button>
-          </Sheet>
+            <Button onClick={() => setInstall(false)} htmlType="button" type="primary">
+              知道了
+            </Button>
+          </ActionDrawer>
         )}
       </div>
     </>

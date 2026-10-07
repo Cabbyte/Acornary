@@ -1,3 +1,4 @@
+import { choose } from './controls.js';
 import { login } from './login.js';
 import { test, expect } from '@playwright/test';
 test.beforeEach(async ({ page }) => {
@@ -25,22 +26,25 @@ test('database rows, foreign keys, derived paths, APIs, notes and fixed registry
   await expect(page.getByRole('heading', { name: 'CatalogNode 目录树' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Item 容纳树' })).toBeVisible();
   await page.getByLabel('搜索名称').fill('牛奶');
-  const rows = page.locator('main > .panel').first().locator('tbody tr');
+  const rows = page.locator('main > .panel').first().locator('tbody tr[data-row-key]');
   await expect(rows).toHaveCount(6);
-  await page.getByLabel('生命周期过滤').selectOption('ACTIVE');
+  await choose(page, '生命周期过滤', 'ACTIVE');
   await expect(rows).toHaveCount(0);
-  await page.getByLabel('生命周期过滤').selectOption('');
+  await choose(page, '生命周期过滤', '全部生命周期');
   await page.getByLabel('到期日期上限').fill('2026-09-30');
+  await page.getByLabel('到期日期上限').press('Enter');
   await expect(rows).toHaveCount(0);
+  await page.getByLabel('到期日期上限').click();
   await page.getByLabel('到期日期上限').fill('2026-10-01');
+  await page.getByLabel('到期日期上限').press('Enter');
   await page.getByLabel('查询条码').fill('TEST-MILK-1L');
   await expect(rows).toHaveCount(6);
   await rows.first().getByRole('button').click();
   const core = page.getByTestId('records-items');
   await expect(core).toBeVisible();
-  await expect(core.locator('.record > .json pre')).toContainText('item_');
-  await expect(core.locator('.record > .json pre')).not.toContainText('path_ids');
-  await expect(core.locator('.record > .json pre')).toContainText('attributes');
+  await expect(core.getByLabel('items · 行 1', { exact: true })).toContainText('item_');
+  await expect(core.getByLabel('items · 行 1', { exact: true })).not.toContainText('path_ids');
+  await expect(core.getByLabel('items · 行 1', { exact: true })).toContainText('attributes');
   const response = await page.request.get(
     '/api/debug?input=' +
       encodeURIComponent(JSON.stringify({ view: 'system', table: 'items', limit: 200 })),
@@ -53,7 +57,7 @@ test('database rows, foreign keys, derived paths, APIs, notes and fixed registry
     },
   );
   const db = (await response.json()).rows;
-  const raw = JSON.parse((await core.locator('.record > .json pre').textContent())!);
+  const raw = JSON.parse((await core.getByLabel('items · 行 1', { exact: true }).textContent())!);
   expect(raw).toEqual(db.find((r: any) => r.id === raw.id));
   const sets = page.getByTestId('embedded-attributes');
   await expect(sets.locator('.binding')).toHaveCount(2);
@@ -72,12 +76,12 @@ test('database rows, foreign keys, derived paths, APIs, notes and fixed registry
   await expect(page.getByTestId('records-events')).toContainText('NOTE_UPDATE');
   await expect(page.getByTestId('records-operations')).toContainText('fingerprint_format');
   await page.screenshot({ path: 'output/playwright/database-records.png', fullPage: true });
-  await page.getByRole('button', { name: '派生结果（非存储）', exact: true }).click();
+  await page.getByRole('tab', { name: '派生结果（非存储）', exact: true }).click();
   await expect(page.getByTestId('derived')).toContainText('path_ids');
   const derived = JSON.parse((await page.getByTestId('derived').locator('pre').textContent())!);
   expect(derived.path_ids).toHaveLength(3);
   expect(derived.path_ids.every((s: string) => s.startsWith('item_'))).toBe(true);
-  await page.getByRole('button', { name: 'API 响应', exact: true }).click();
+  await page.getByRole('tab', { name: 'API 响应', exact: true }).click();
   await expect(page.getByTestId('api-response')).toContainText('attributes');
   expect(
     JSON.parse((await page.getByTestId('api-response').locator('pre').textContent())!),
@@ -87,7 +91,7 @@ test('database rows, foreign keys, derived paths, APIs, notes and fixed registry
   );
   for (const a of projection.attributes)
     expect(Object.keys(a).sort()).toEqual(['template_id', 'template_version', 'values']);
-  await page.getByRole('button', { name: '数据库记录', exact: true }).click();
+  await page.getByRole('tab', { name: '数据库记录', exact: true }).click();
   await core
     .locator('.references button')
     .filter({ hasText: /^catalog_node_/ })

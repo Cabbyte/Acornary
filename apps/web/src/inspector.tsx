@@ -1,3 +1,7 @@
+import { CalendarInput } from './ui/inputs';
+import { Collapse, Card } from 'antd';
+import { Button, Input, Select, Table, Tree as AntTree, Menu, Tabs } from 'antd';
+import { AcornaryUIProvider } from './ui/theme';
 import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
@@ -9,13 +13,22 @@ import {
 } from '@tanstack/react-query';
 import { createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router';
 import Markdown from 'react-markdown';
-import './style.css';
 import { SessionGate, useSession } from './lib/session';
 import { request as sharedRequest } from './lib/api';
-type Target = { kind: 'ITEM' | 'CATALOG_NODE'; id: string };
+type Target = {
+  kind: 'ITEM' | 'CATALOG_NODE';
+  id: string;
+};
 type Destination =
-  | { target: Target }
-  | { table: string; id?: string; template_id?: string; template_version?: number };
+  | {
+      target: Target;
+    }
+  | {
+      table: string;
+      id?: string;
+      template_id?: string;
+      template_version?: number;
+    };
 const titles: Record<string, string> = {
   households: '家庭',
   actors: '操作者',
@@ -51,22 +64,35 @@ async function all(op: string, input: object = {}, signal?: AbortSignal) {
 function Json({ value, label: caption = '完整 JSON' }: { value: unknown; label?: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <details className="json" open>
-      <summary>
-        {caption}
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            void navigator.clipboard
-              .writeText(JSON.stringify(value, null, 2))
-              .then(() => setCopied(true));
-          }}
-        >
-          {copied ? '已复制' : '复制 JSON'}
-        </button>
-      </summary>
-      <pre>{JSON.stringify(value, null, 2)}</pre>
-    </details>
+    <Collapse
+      className="json"
+      defaultActiveKey={['content']}
+      items={[
+        {
+          key: 'content',
+          label: (
+            <>
+              {caption}
+              <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  void navigator.clipboard
+                    .writeText(JSON.stringify(value, null, 2))
+                    .then(() => setCopied(true));
+                }}
+              >
+                {copied ? '已复制' : '复制 JSON'}
+              </Button>
+            </>
+          ),
+          children: (
+            <>
+              <pre aria-label={caption}>{JSON.stringify(value, null, 2)}</pre>
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }
 function targetFor(id: string): Destination | undefined {
@@ -107,7 +133,7 @@ function References({ row, go }: { row: any; go: (d: Destination) => void }) {
     <div className="references">
       <small>关联跳转</small>
       {[...refs].map((id) => (
-        <button
+        <Button
           key={id}
           onClick={() => {
             const d = targetFor(id);
@@ -115,10 +141,10 @@ function References({ row, go }: { row: any; go: (d: Destination) => void }) {
           }}
         >
           {id}
-        </button>
+        </Button>
       ))}
       {row.template_id && (
-        <button
+        <Button
           onClick={() =>
             go({
               table: 'attribute_templates',
@@ -128,7 +154,7 @@ function References({ row, go }: { row: any; go: (d: Destination) => void }) {
           }
         >
           {row.template_id} · v{row.template_version}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -160,7 +186,7 @@ function Records({
     queryFn: ({ signal }) => request('/api/debug', input, signal),
   });
   return (
-    <section className="panel records" data-testid={`records-${table}`}>
+    <Card className="panel records" data-testid={`records-${table}`}>
       <div className="section-title">
         <h2>
           {titles[table]} <code>{table}</code>
@@ -172,66 +198,68 @@ function Records({
       {q.isPending && <p>读取中…</p>}
       {q.data && (
         <>
-          <details>
-            <summary>列类型与约束 · {q.data.columns.length} 列</summary>
-            <table>
-              <thead>
-                <tr>
-                  <th>列名</th>
-                  <th>类型 / 底层类型</th>
-                  <th>允许 null</th>
-                  <th>数据库默认值</th>
-                </tr>
-              </thead>
-              <tbody>
-                {q.data.columns.map((c: any) => (
-                  <tr key={c.name}>
-                    <td>{c.name}</td>
-                    <td>
-                      {c.data_type} / {c.udt_name}
-                    </td>
-                    <td>{c.is_nullable}</td>
-                    <td>
-                      <code>{c.column_default === null ? 'null' : c.column_default}</code>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <Json value={q.data.constraints} label="数据库约束与外键" />
-          </details>
+          <Collapse
+            items={[
+              {
+                key: 'content',
+                label: <>列类型与约束 · {q.data.columns.length} 列</>,
+                children: (
+                  <>
+                    <Table
+                      rowKey="name"
+                      pagination={false}
+                      dataSource={q.data.columns}
+                      scroll={{ x: 600 }}
+                      columns={[
+                        { title: '列名', dataIndex: 'name' },
+                        {
+                          title: '类型 / 底层类型',
+                          render: (_, c: any) => `${c.data_type} / ${c.udt_name}`,
+                        },
+                        { title: '允许 null', dataIndex: 'is_nullable' },
+                        {
+                          title: '数据库默认值',
+                          render: (_, c: any) => (
+                            <code>{c.column_default === null ? 'null' : c.column_default}</code>
+                          ),
+                        },
+                      ]}
+                    />
+                    <Json value={q.data.constraints} label="数据库约束与外键" />
+                  </>
+                ),
+              },
+            ]}
+          />
           <div className="pager">
             <span>
               共 {q.data.total_count} 条 · 第 {pages.length} 页
             </span>
             <label>
               每页{' '}
-              <select
+              <Select
                 aria-label={`${table} 每页条数`}
                 value={limit}
                 onChange={(e) => {
-                  setLimit(Number(e.target.value));
+                  setLimit(Number(e));
                   setPages([undefined]);
                 }}
-              >
-                {[10, 25, 50, 200].map((n) => (
-                  <option key={n}>{n}</option>
-                ))}
-              </select>
+                options={[...([10, 25, 50, 200].map((n) => ({ value: n, label: n })) ?? [])]}
+              />
             </label>
-            <button disabled={pages.length === 1} onClick={() => setPages((p) => p.slice(0, -1))}>
+            <Button disabled={pages.length === 1} onClick={() => setPages((p) => p.slice(0, -1))}>
               上一页
-            </button>
-            <button
+            </Button>
+            <Button
               disabled={!q.data.next_cursor}
               onClick={() => setPages((p) => [...p, q.data.next_cursor])}
             >
               下一页
-            </button>
+            </Button>
           </div>
           {!q.data.rows.length && <p className="empty">无记录</p>}
           {q.data.rows.map((row: any, i: number) => (
-            <article className="record" key={i}>
+            <Card className="record" key={i}>
               <References row={row} go={go} />
               <Json value={row} label={`${table} · 行 ${(pages.length - 1) * limit + i + 1}`} />
               {(table === 'items' || table === 'catalog_nodes') && (
@@ -251,16 +279,26 @@ function Records({
                 </section>
               )}
               {table === 'notes' && (
-                <details className="note">
-                  <summary>Markdown 安全预览</summary>
-                  <Markdown skipHtml>{row.body}</Markdown>
-                </details>
+                <Collapse
+                  className="note"
+                  items={[
+                    {
+                      key: 'content',
+                      label: <>Markdown 安全预览</>,
+                      children: (
+                        <>
+                          <Markdown skipHtml>{row.body}</Markdown>
+                        </>
+                      ),
+                    },
+                  ]}
+                />
               )}
-            </article>
+            </Card>
           ))}
         </>
       )}
-    </section>
+    </Card>
   );
 }
 function Tree({
@@ -274,38 +312,22 @@ function Tree({
   go: (d: Destination) => void;
   selected?: string;
 }) {
-  const children = new Map<string | null, any[]>();
-  for (const r of rows) children.set(r.parent_id, [...(children.get(r.parent_id) ?? []), r]);
-  const branch = (r: any): React.ReactNode => {
-    const nodes = children.get(r.id) ?? [];
-    const button = (
-      <button
-        className={`tree-node ${selected === r.id ? 'selected' : ''}`}
-        onClick={() => go({ target: { kind, id: r.id } })}
-      >
-        <strong>{label(r)}</strong>
-        <span>{r.kind ?? (attr(r, 'container')?.can_contain ? 'CONTAINER' : 'ITEM')}</span>
-        <code>{r.id}</code>
-      </button>
-    );
-    return (
-      <li key={r.id}>
-        {nodes.length ? (
-          <details open>
-            <summary>{button}</summary>
-            <ul>{nodes.map(branch)}</ul>
-          </details>
-        ) : (
-          button
-        )}
-      </li>
-    );
-  };
+  const branch = (row: any): import('antd').TreeDataNode => ({
+    key: row.id,
+    title: label(row),
+    children: rows.filter((r) => r.parent_id === row.id).map(branch),
+  });
   return (
-    <ul className="tree">
-      {(children.get(null) ?? []).map(branch)}
-      {!rows.length && <li>无记录</li>}
-    </ul>
+    <AntTree
+      blockNode
+      selectedKeys={selected ? [selected] : []}
+      treeData={rows
+        .filter((r) => !r.parent_id || !rows.some((p) => p.id === r.parent_id))
+        .map(branch)}
+      onSelect={(keys) => {
+        if (keys[0]) go({ target: { kind, id: String(keys[0]) } });
+      }}
+    />
   );
 }
 function Inspector() {
@@ -370,8 +392,8 @@ function Inspector() {
       ? ['items', 'attribute_templates', 'notes', 'events', 'operations']
       : ['catalog_nodes', 'attribute_templates', 'events', 'operations', 'barcode_index'];
   return (
-    <div className="app">
-      <aside>
+    <div className="inspector-layout">
+      <aside className="inspector-navigation">
         <a className="brand" href="/inspect">
           Acornary <small>开发者数据检查器 · 只读</small>
         </a>
@@ -392,13 +414,13 @@ function Inspector() {
             'installations',
             'migrations',
           ].map((table) => (
-            <button
+            <Button
               key={table}
               className={'table' in destination && destination.table === table ? 'selected' : ''}
               onClick={() => go({ table })}
             >
               {titles[table]} <code>{table}</code>
-            </button>
+            </Button>
           ))}
         </nav>
         <p className="muted">修正库存请返回松仓使用业务操作。当前视图每 5 秒、窗口聚焦时刷新。</p>
@@ -410,7 +432,7 @@ function Inspector() {
             <h1>{title}</h1>
             {target && <code className="identity">{target.id}</code>}
           </div>
-          <button onClick={() => void cache.invalidateQueries()}>刷新数据</button>
+          <Button onClick={() => void cache.invalidateQueries()}>刷新数据</Button>
         </header>
         {[catalogs, items, detail]
           .filter((q) => q.error)
@@ -419,14 +441,14 @@ function Inspector() {
               {q.error!.message}
             </p>
           ))}
-        <section className="panel">
-          <button aria-expanded={showList} onClick={() => setShowList((v) => !v)}>
+        <Card className="panel">
+          <Button aria-expanded={showList} onClick={() => setShowList((v) => !v)}>
             物品实例查询 {showList ? '收起' : '展开'}
-          </button>
+          </Button>
           {showList && (
             <>
               <div className="filters">
-                <input
+                <Input
                   aria-label="搜索名称"
                   placeholder="名称"
                   value={filters.name ?? ''}
@@ -435,7 +457,7 @@ function Inspector() {
                     setCursor(undefined);
                   }}
                 />
-                <input
+                <Input
                   aria-label="查询条码"
                   placeholder="条码"
                   value={filters.barcode ?? ''}
@@ -444,32 +466,33 @@ function Inspector() {
                     setCursor(undefined);
                   }}
                 />
-                <select
+                <Select
                   aria-label="生命周期过滤"
                   value={status}
                   onChange={(e) => {
-                    setStatus(e.target.value);
+                    setStatus(e);
                     setCursor(undefined);
                   }}
-                >
-                  <option value="">全部生命周期</option>
-                  {['ACTIVE', 'CONSUMED', 'DISPOSED', 'LOST', 'ARCHIVED'].map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
+                  options={[
+                    { value: '', label: '\u5168\u90E8\u751F\u547D\u5468\u671F' },
+                    ...(['ACTIVE', 'CONSUMED', 'DISPOSED', 'LOST', 'ARCHIVED'].map((s) => ({
+                      value: s,
+                      label: s,
+                    })) ?? []),
+                  ]}
+                />
                 <label>
                   到期不晚于{' '}
-                  <input
+                  <CalendarInput
                     aria-label="到期日期上限"
-                    type="date"
                     value={date}
-                    onChange={(e) => {
-                      setDate(e.target.value);
+                    onChange={(value) => {
+                      setDate(value);
                       setCursor(undefined);
                     }}
                   />
                 </label>
-                <button
+                <Button
                   onClick={() => {
                     setFilters({});
                     setStatus('');
@@ -478,7 +501,7 @@ function Inspector() {
                   }}
                 >
                   清除过滤
-                </button>
+                </Button>
               </div>
               {results.error && <p role="alert">{results.error.message}</p>}
               {results.data && (
@@ -488,61 +511,75 @@ function Inspector() {
                     {results.data.current_count} · unknown_lifecycle_count:{' '}
                     {results.data.unknown_lifecycle_count}
                   </p>
-                  <details>
-                    <summary>剩余内容量汇总（独立于件数）</summary>
-                    <Json value={results.data.content_totals} />
-                  </details>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>物品 / 完整 ID</th>
-                        <th>lifecycle.state</th>
-                        <th>contents.remaining</th>
-                        <th>revision</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {results.data.data.map((o: any) => (
-                        <tr key={o.id}>
-                          <td>
-                            <button onClick={() => go({ target: { kind: 'ITEM', id: o.id } })}>
+                  <Collapse
+                    items={[
+                      {
+                        key: 'content',
+                        label: <>剩余内容量汇总（独立于件数）</>,
+                        children: (
+                          <>
+                            <Json value={results.data.content_totals} />
+                          </>
+                        ),
+                      },
+                    ]}
+                  />
+                  <Table
+                    rowKey="id"
+                    dataSource={results.data.data}
+                    pagination={false}
+                    scroll={{ x: 640 }}
+                    columns={[
+                      {
+                        title: '物品 / 完整 ID',
+                        render: (_, o: any) => (
+                          <>
+                            <Button
+                              type="link"
+                              onClick={() => go({ target: { kind: 'ITEM', id: o.id } })}
+                            >
                               {label(o)}
-                            </button>
+                            </Button>
                             <code className="identity">{o.id}</code>
-                          </td>
-                          <td>{attr(o, 'lifecycle')?.state ?? '未记录'}</td>
-                          <td>
-                            {attr(o, 'contents')?.remaining
-                              ? JSON.stringify(attr(o, 'contents'))
-                              : '未记录'}
-                          </td>
-                          <td>{o.revision}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <button disabled={!cursor} onClick={() => setCursor(undefined)}>
+                          </>
+                        ),
+                      },
+                      {
+                        title: 'lifecycle.state',
+                        render: (_, o: any) => attr(o, 'lifecycle')?.state ?? '未记录',
+                      },
+                      {
+                        title: 'contents.remaining',
+                        render: (_, o: any) =>
+                          attr(o, 'contents')?.remaining
+                            ? JSON.stringify(attr(o, 'contents'))
+                            : '未记录',
+                      },
+                      { title: 'revision', dataIndex: 'revision' },
+                    ]}
+                  />
+                  <Button disabled={!cursor} onClick={() => setCursor(undefined)}>
                     回到首页
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     disabled={!results.data.next_cursor}
                     onClick={() => setCursor(results.data.next_cursor)}
                   >
                     下一页实例
-                  </button>
+                  </Button>
                 </>
               )}
             </>
           )}
-        </section>
+        </Card>
         {target ? (
           <>
             <div className="actions">
-              <button onClick={() => void navigator.clipboard.writeText(target.id)}>
+              <Button onClick={() => void navigator.clipboard.writeText(target.id)}>
                 复制完整 ID
-              </button>
+              </Button>
               {target.kind === 'CATALOG_NODE' ? (
-                <button
+                <Button
                   onClick={() => {
                     setFilters(
                       selectedRow?.kind === 'SKU'
@@ -554,18 +591,18 @@ function Inspector() {
                   }}
                 >
                   查看关联物品
-                </button>
+                </Button>
               ) : (
                 <>
-                  <button
+                  <Button
                     onClick={() => {
                       if (detail.data)
                         go({ target: { kind: 'CATALOG_NODE', id: detail.data.catalog_node_id } });
                     }}
                   >
                     查看商品定义
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => {
                       setFilters({ within_item_id: target.id });
                       setCursor(undefined);
@@ -573,27 +610,25 @@ function Inspector() {
                     }}
                   >
                     查看容器子树
-                  </button>
+                  </Button>
                 </>
               )}
             </div>
-            <div className="tabs">
-              {['core', 'derived', 'api'].map((t) => (
-                <button key={t} className={tab === t ? 'selected' : ''} onClick={() => setTab(t)}>
-                  {t === 'core'
-                    ? '数据库记录'
-                    : t === 'derived'
-                      ? '派生结果（非存储）'
-                      : 'API 响应'}
-                </button>
-              ))}
-            </div>
+            <Tabs
+              activeKey={tab}
+              onChange={setTab}
+              items={[
+                { key: 'core', label: '数据库记录' },
+                { key: 'derived', label: '派生结果（非存储）' },
+                { key: 'api', label: 'API 响应' },
+              ]}
+            />
             {tab === 'core' &&
               objectTables.map((table) => (
                 <Records key={`${target.id}:${table}`} table={table} target={target} go={go} />
               ))}
             {tab === 'derived' && (
-              <section className="panel" data-testid="derived">
+              <Card className="panel" data-testid="derived">
                 <h2>派生结果 · 非数据库列</h2>
                 <p>
                   path_ids 由 parent_id 递归计算；商品名称来自关联
@@ -615,7 +650,7 @@ function Inspector() {
                       }}
                     />
                     {derived.data.path_ids.map((id: string) => (
-                      <button
+                      <Button
                         className="identity"
                         key={id}
                         onClick={() => {
@@ -624,18 +659,18 @@ function Inspector() {
                         }}
                       >
                         {id}
-                      </button>
+                      </Button>
                     ))}
                   </>
                 )}
-              </section>
+              </Card>
             )}
             {tab === 'api' && (
-              <section className="panel" data-testid="api-response">
+              <Card className="panel" data-testid="api-response">
                 <h2>API 响应 · {operation}</h2>
                 <p>以下是实际业务查询响应。关联属性和笔记可能由服务拼装；此处不是数据库行快照。</p>
                 <Json value={detail.data} />
-              </section>
+              </Card>
             )}
           </>
         ) : (
@@ -660,7 +695,7 @@ function InspectorSession({ children }: { children: React.ReactNode }) {
         <a href="/items">返回松仓</a>
         <span>开发者工具 · 数据库检查器 · 只读</span>
         {session.mode === 'cloud' && (
-          <button
+          <Button
             disabled={busy}
             onClick={async () => {
               setBusy(true);
@@ -673,7 +708,7 @@ function InspectorSession({ children }: { children: React.ReactNode }) {
             }}
           >
             退出登录
-          </button>
+          </Button>
         )}
         {error && <span role="alert">{error}</span>}
       </div>
@@ -704,12 +739,14 @@ const router = createRouter({
 });
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <QueryClientProvider client={client}>
-      <SessionGate view="inspector">
-        <InspectorSession>
-          <RouterProvider router={router} />
-        </InspectorSession>
-      </SessionGate>
-    </QueryClientProvider>
+    <AcornaryUIProvider>
+      <QueryClientProvider client={client}>
+        <SessionGate view="inspector">
+          <InspectorSession>
+            <RouterProvider router={router} />
+          </InspectorSession>
+        </SessionGate>
+      </QueryClientProvider>
+    </AcornaryUIProvider>
   </React.StrictMode>,
 );

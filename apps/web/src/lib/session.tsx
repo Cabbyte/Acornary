@@ -1,3 +1,4 @@
+import { Button, Input } from 'antd';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { request } from './api';
@@ -17,8 +18,7 @@ import {
   type Capabilities,
 } from './accounts';
 import { FamilySetup } from '../accounts';
-import { Button, Field, Notice, Sheet } from '../ui/components';
-
+import { FormField, Notice, ActionDrawer } from '../ui/components';
 export interface Session {
   mode: 'local' | 'cloud';
   host?: 'mcp';
@@ -28,8 +28,15 @@ export interface Session {
   email?: string;
   user_id?: string;
   household_id?: string;
-  login_methods?: { password: boolean; passkey_count: number };
-  households?: { id: string; household_id: string; name: string }[];
+  login_methods?: {
+    password: boolean;
+    passkey_count: number;
+  };
+  households?: {
+    id: string;
+    household_id: string;
+    name: string;
+  }[];
 }
 export const SessionContext = createContext<{
   session: Session;
@@ -79,7 +86,7 @@ export function Login({
   return (
     <div className="stack">
       <Button
-        type="button"
+        htmlType="button"
         disabled={busy}
         onClick={async () => {
           setBusy(true);
@@ -93,14 +100,15 @@ export function Login({
             setBusy(false);
           }
         }}
+        type="primary"
       >
         使用通行密钥登录
       </Button>
       <Button
-        type="button"
-        variant="secondary"
+        htmlType="button"
         disabled={busy}
         onClick={() => setPasswordMode(!passwordMode)}
+        type="default"
       >
         使用邮箱和密码
       </Button>
@@ -131,8 +139,8 @@ export function Login({
             }
           }}
         >
-          <Field label="邮箱">
-            <input
+          <FormField label="邮箱">
+            <Input
               name="email"
               type="email"
               autoComplete="username"
@@ -140,11 +148,13 @@ export function Login({
               readOnly={!!expectedEmail}
               required
             />
-          </Field>
-          <Field label="密码">
-            <input name="password" type="password" autoComplete="current-password" required />
-          </Field>
-          <Button disabled={busy}>{busy ? '正在登录…' : '登录'}</Button>
+          </FormField>
+          <FormField label="密码">
+            <Input name="password" type="password" autoComplete="current-password" required />
+          </FormField>
+          <Button disabled={busy} htmlType="submit" type="primary">
+            {busy ? '正在登录…' : '登录'}
+          </Button>
         </form>
       )}
       {error && <Notice danger>{error}</Notice>}
@@ -184,7 +194,6 @@ export function SessionGate({
     location.pathname === '/login' &&
     !!oauthQuery &&
     ((params.get('prompt') ?? '').split(' ').includes('login') || params.has('max_age'));
-
   async function check() {
     if (loggingOut.current) return;
     const version = ++generation.current;
@@ -321,7 +330,9 @@ export function SessionGate({
         {error ? (
           <>
             <Notice danger>{error}</Notice>
-            <Button onClick={() => window.location.reload()}>重试连接</Button>
+            <Button onClick={() => window.location.reload()} htmlType="button" type="primary">
+              重试连接
+            </Button>
           </>
         ) : (
           <p role="status">正在连接你的松仓…</p>
@@ -370,10 +381,10 @@ export function SessionGate({
         <div key={session.cache_key}>{children}</div>
       )}
       {view === 'product' && expired && showLogin && (
-        <Sheet title="重新登录" onClose={() => setShowLogin(false)}>
+        <ActionDrawer title="重新登录" onClose={() => setShowLogin(false)}>
           <Notice>登录已失效，当前输入已保留。请重新登录后核对并继续。</Notice>
           <Login onDone={check} />
-        </Sheet>
+        </ActionDrawer>
       )}
     </SessionContext.Provider>
   );

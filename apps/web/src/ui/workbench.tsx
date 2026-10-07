@@ -1,12 +1,39 @@
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-} from 'react';
+  Button,
+  Card,
+  Checkbox,
+  Descriptions,
+  Drawer,
+  Dropdown,
+  Input,
+  Layout,
+  Menu,
+  Pagination,
+  Popover,
+  Select,
+  Skeleton,
+  Space,
+  Table,
+  Tag,
+  Timeline,
+  Tree,
+  Typography,
+  type TreeDataNode,
+} from 'antd';
+import {
+  AppstoreOutlined,
+  CloseOutlined,
+  DownOutlined,
+  FolderOutlined,
+  InboxOutlined,
+  MoreOutlined,
+  PlusOutlined,
+  SearchOutlined,
+  SettingOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+} from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -30,63 +57,17 @@ import {
   type WorkbenchFilter,
 } from '../lib/workbench';
 import { history } from '../lib/api';
-import { embeddedRuntime } from '../lib/runtime';
 import { eventNames, remaining, time } from '../lib/presentation';
-import { Button, Empty, Notice, Sheet } from './components';
-import { LocationPath } from './browser';
+import { ActionDrawer, Empty, Notice } from './components';
+import { LocationPath, SearchField } from './browser';
+import { useViewport } from './theme';
 import type { Action } from './forms';
+import brand from '../../public/design/workbench/brand.svg?inline';
 
-const workbenchAssets = import.meta.glob('../../public/design/workbench/*.svg', {
-  eager: true,
-  query: '?inline',
-  import: 'default',
-}) as Record<string, string>;
-const workbenchAsset = (name: string) =>
-  workbenchAssets[`../../public/design/workbench/${name}.svg`];
-
-export function WorkbenchIcon({ name, size = 18 }: { name: string; size?: number }) {
-  const native = name === 'down' ? 12 : name === 'search' ? 20 : 24;
-  return (
-    <span
-      className={`wb-icon wb-icon-${name}`}
-      style={{ width: size, height: size, '--icon-scale': size / native } as CSSProperties}
-      aria-hidden="true"
-    >
-      <img src={workbenchAsset(name)} alt="" />
-    </span>
-  );
-}
-function WorkbenchSearch({
-  value,
-  onChange,
-  label,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  label: string;
-}) {
-  return (
-    <div className="wb-search">
-      <WorkbenchIcon name="search" size={20} />
-      <input
-        type="search"
-        aria-label={label}
-        placeholder={label}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-      {value && (
-        <button type="button" aria-label="清除搜索" onClick={() => onChange('')}>
-          <WorkbenchIcon name="close" size={16} />
-        </button>
-      )}
-    </div>
-  );
-}
 const navigation = [
-  ['items', '我的物品'],
-  ['catalog', '商品目录'],
-  ['settings', '设置'],
+  { key: 'items', label: '我的物品', icon: <InboxOutlined aria-hidden="true" /> },
+  { key: 'catalog', label: '商品目录', icon: <AppstoreOutlined aria-hidden="true" /> },
+  { key: 'settings', label: '设置', icon: <SettingOutlined aria-hidden="true" /> },
 ];
 export function WorkbenchShell({
   children,
@@ -102,93 +83,93 @@ export function WorkbenchShell({
   const { data, stale } = useInventory();
   const { online, session } = useSession();
   const navigate = useNavigate();
-  const location = useLocation();
-  const [query, setQuery] = useState('');
-  useEffect(() => {
-    setQuery(new URLSearchParams(location.searchStr).get('q') ?? '');
-  }, [location.pathname, location.searchStr]);
+  const { mobile, wide } = useViewport();
+  const [collapsed, setCollapsed] = useState(false);
   const active = section === 'places' || section === 'search' ? 'items' : section;
   return (
-    <div className="app-shell soft-shell workbench-shell">
+    <Layout className="workbench-shell">
       <a href="#main" className="skip-link">
         跳到内容
       </a>
-      <header className="wb-header">
+      <Layout.Header className="wb-header">
         <Link to="/items" className="wb-brand">
-          <span className="wb-brand-mark">
-            <img src={workbenchAsset('brand')} alt="" />
-          </span>
+          <img src={brand} alt="" width={36} height={36} />
           <span>
             <strong>松仓</strong>
             <small>Acornary</small>
           </span>
         </Link>
-        <form
-          className="wb-global-search"
-          role="search"
-          onKeyDown={(e) => {
-            if (
-              embeddedRuntime() &&
-              e.key === 'Enter' &&
-              !e.nativeEvent.isComposing &&
-              e.nativeEvent.keyCode !== 229
-            ) {
-              e.preventDefault();
-              void navigate({ to: '/items', search: { q: query } });
-            }
-          }}
-          onSubmit={(e) => {
-            e.preventDefault();
-            void navigate({ to: '/items', search: { q: query } });
-          }}
-        >
-          <WorkbenchSearch label="搜索物品、位置、规格…" value={query} onChange={setQuery} />
-        </form>
-        <Link to="/settings/household" className="wb-household">
+        <Button onClick={() => void navigate({ to: '/settings/household' })}>
           {data.household.name}
-          <WorkbenchIcon name="down" size={12} />
-        </Link>
-      </header>
-      <aside className="wb-sidebar">
-        <nav aria-label="主导航">
-          {navigation.slice(0, 2).map(([key, title]) => (
-            <Link to={`/${key}`} key={key} aria-current={active === key ? 'page' : undefined}>
-              <WorkbenchIcon name={key} />
-              {title}
+          <DownOutlined aria-hidden="true" />
+        </Button>
+      </Layout.Header>
+      <Layout>
+        {!mobile && (
+          <Layout.Sider
+            width={wide ? 224 : 200}
+            collapsed={collapsed && !wide}
+            collapsedWidth={64}
+            className="wb-sidebar"
+          >
+            {!wide && (
+              <Button
+                type="text"
+                aria-label={collapsed ? '展开侧栏' : '收起侧栏'}
+                onClick={() => setCollapsed(!collapsed)}
+                icon={
+                  collapsed ? (
+                    <MenuUnfoldOutlined aria-hidden="true" />
+                  ) : (
+                    <MenuFoldOutlined aria-hidden="true" />
+                  )
+                }
+              />
+            )}
+            <Menu
+              aria-label="主导航"
+              mode="inline"
+              selectedKeys={[active]}
+              items={navigation.map((n) => ({
+                ...n,
+                label: <Link to={`/${n.key}`}>{n.label}</Link>,
+              }))}
+            />
+            {(!collapsed || wide) && (
+              <>
+                <div className="wb-location-heading">
+                  <Typography.Text type="secondary">位置</Typography.Text>
+                  <Button
+                    type="text"
+                    icon={<PlusOutlined aria-hidden="true" />}
+                    aria-label="新建位置"
+                    disabled={!online || stale || session.can_write === false}
+                    onClick={() => open({ kind: 'place', parent: place })}
+                  />
+                </div>
+                <LocationTree
+                  active={place}
+                  onChoose={(id) => void navigate({ to: id ? `/places/${id}` : '/items' })}
+                />
+              </>
+            )}
+          </Layout.Sider>
+        )}
+        <Layout.Content id="main" className="app-main">
+          {children}
+        </Layout.Content>
+      </Layout>
+      {mobile && (
+        <nav className="wb-bottom-nav" aria-label="底部导航">
+          {navigation.map((n) => (
+            <Link key={n.key} to={`/${n.key}`} aria-current={active === n.key ? 'page' : undefined}>
+              {n.icon}
+              <span>{n.label}</span>
             </Link>
           ))}
         </nav>
-        <div className="wb-location-heading">
-          <span>位置</span>
-          <button
-            aria-label="新建位置"
-            disabled={!online || stale || session.can_write === false}
-            onClick={() => open({ kind: 'place', parent: place })}
-          >
-            <WorkbenchIcon name="plus" size={18} />
-          </button>
-        </div>
-        <LocationTree
-          active={place}
-          onChoose={(id) => void navigate({ to: id ? `/places/${id}` : '/items' })}
-        />
-        <Link to="/settings" className="wb-settings">
-          <WorkbenchIcon name="settings" />
-          设置
-        </Link>
-      </aside>
-      <main id="main" className="app-main">
-        {children}
-      </main>
-      <nav className="wb-bottom-nav" aria-label="底部导航">
-        {navigation.map(([key, title]) => (
-          <Link to={`/${key}`} key={key} aria-current={active === key ? 'page' : undefined}>
-            <WorkbenchIcon name={key} size={20} />
-            <span>{key === 'items' ? '物品' : key === 'catalog' ? '目录' : title}</span>
-          </Link>
-        ))}
-      </nav>
-    </div>
+      )}
+    </Layout>
   );
 }
 export function LocationTree({
@@ -206,107 +187,72 @@ export function LocationTree({
 }) {
   const { data } = useInventory();
   const [query, setQuery] = useState('');
-  const [expanded, setExpanded] = useState<Set<string>>(
-    () => new Set(ancestors(active ?? null, data.items).map((i) => i.id)),
+  const [expanded, setExpanded] = useState<string[]>(() =>
+    ancestors(active ?? null, data.items).map((i) => i.id),
   );
   useEffect(
     () =>
-      setExpanded(
-        (old) => new Set([...old, ...ancestors(active ?? null, data.items).map((i) => i.id)]),
-      ),
-    [active],
+      setExpanded((old) => [
+        ...new Set([...old, ...ancestors(active ?? null, data.items).map((i) => i.id)]),
+      ]),
+    [active, data.items],
   );
   const locations = moving
     ? moveTargets(data, moving)
     : data.items.filter((i) => isContainer(i) && !isTerminal(i));
-  const byParent = new Map<string | null, ItemRecord[]>();
-  for (const place of locations)
-    byParent.set(place.parent_id, [...(byParent.get(place.parent_id) ?? []), place]);
   const counts = useMemo(() => {
     const result = new Map<string, number>();
     for (const item of data.items)
       if (!isContainer(item) && !isTerminal(item))
-        for (const parent of ancestors(item.parent_id, data.items))
-          result.set(parent.id, (result.get(parent.id) ?? 0) + 1);
+        for (const p of ancestors(item.parent_id, data.items))
+          result.set(p.id, (result.get(p.id) ?? 0) + 1);
     return result;
   }, [data]);
-  const row = (p: ItemRecord, depth: number): ReactNode => {
-    const children = byParent.get(p.id) ?? [];
-    const isOpen = expanded.has(p.id);
-    return (
-      <div
-        key={p.id}
-        role="treeitem"
-        aria-expanded={children.length ? isOpen : undefined}
-        aria-selected={(selected ?? active) === p.id}
-      >
-        <div
-          className={`wb-tree-row ${(selected ?? active) === p.id ? 'is-selected' : ''}`}
-          style={{ '--depth': Math.min(depth, 8) } as CSSProperties}
-        >
-          {children.length && !query ? (
-            <button
-              className="wb-disclosure"
-              type="button"
-              aria-label={`${isOpen ? '收起' : '展开'} ${itemName(p, data)}`}
-              onClick={() =>
-                setExpanded((old) => {
-                  const next = new Set(old);
-                  next.has(p.id) ? next.delete(p.id) : next.add(p.id);
-                  return next;
-                })
-              }
-            >
-              <WorkbenchIcon name={isOpen ? 'down' : 'chevron'} size={12} />
-            </button>
-          ) : (
-            <span className="wb-disclosure" />
-          )}
-          <button
-            className="wb-tree-label"
-            type="button"
-            onClick={() => onChoose(p.id)}
-            title={fullPath(p.id, data)}
-          >
-            <WorkbenchIcon name="folder" size={16} />
-            <span>{query ? fullPath(p.id, data) : itemName(p, data)}</span>
-            <small>{counts.get(p.id) ?? 0}</small>
-          </button>
-        </div>
-        {!query && isOpen && children.length > 0 && (
-          <div role="group">{children.map((child) => row(child, depth + 1))}</div>
-        )}
-      </div>
-    );
-  };
+  const node = (p: ItemRecord): TreeDataNode => ({
+    key: p.id,
+    icon: <FolderOutlined aria-hidden="true" />,
+    title: (
+      <span title={fullPath(p.id, data)}>
+        {query ? fullPath(p.id, data) : itemName(p, data)}{' '}
+        <Typography.Text type="secondary">{counts.get(p.id) ?? 0}</Typography.Text>
+      </span>
+    ),
+    children: query ? undefined : locations.filter((i) => i.parent_id === p.id).map(node),
+  });
+  const treeData = (
+    query
+      ? locations.filter((p) =>
+          fullPath(p.id, data).toLocaleLowerCase().includes(query.toLocaleLowerCase()),
+        )
+      : locations.filter(
+          (p) => !p.parent_id || !locations.some((parent) => parent.id === p.parent_id),
+        )
+  ).map(node);
   return (
-    <div className="wb-location-tree">
+    <div className="stack">
       {searchable && (
-        <WorkbenchSearch
+        <SearchField
           value={query}
           onChange={setQuery}
           label={moving ? '搜索目标位置' : '搜索位置'}
         />
       )}
-      <button
-        className={`wb-tree-root ${!active && !selected ? 'is-selected' : ''}`}
-        type="button"
-        onClick={() => onChoose('')}
-      >
+      <Button type={!(selected ?? active) ? 'primary' : 'text'} onClick={() => onChoose('')}>
         {moving ? '未指定位置' : '全部物品'}
-      </button>
-      <div role="tree" aria-label={moving ? '目标位置' : '位置树'}>
-        {query
-          ? locations
-              .filter((p) =>
-                fullPath(p.id, data).toLocaleLowerCase().includes(query.toLocaleLowerCase()),
-              )
-              .map((p) => row(p, 0))
-          : locations
-              .filter((p) => !p.parent_id || !locations.some((parent) => parent.id === p.parent_id))
-              .map((p) => row(p, 0))}
-      </div>
-      {!locations.length && <p className="caption">还没有位置</p>}
+      </Button>
+      <Tree
+        aria-label={moving ? '目标位置' : '位置树'}
+        blockNode
+        showIcon
+        treeData={treeData}
+        expandedKeys={expanded}
+        onExpand={(keys) => setExpanded(keys.map(String))}
+        selectedKeys={[selected ?? active ?? '']}
+        onSelect={(keys) => {
+          if (keys[0]) onChoose(String(keys[0]));
+        }}
+      />
+      {!locations.length && <Typography.Text type="secondary">还没有位置</Typography.Text>}
     </div>
   );
 }
@@ -320,25 +266,22 @@ export function WorkbenchMovePicker({
   onChange: (id: string) => void;
 }) {
   const { data } = useInventory();
-  const sources = [...new Set(items.map((i) => fullPath(i.parent_id, data)))];
   return (
-    <div className="wb-move-picker">
-      <section className="wb-move-summary">
-        <small>已选物品 · {items.length} 件</small>
+    <div className="stack">
+      <Card size="small" title={`已选物品 · ${items.length} 件`}>
         {items.map((i) => (
           <p key={i.id}>{itemName(i, data)}</p>
         ))}
-        <small>来源</small>
-        {sources.map((p) => (
-          <small key={p}>{p}</small>
-        ))}
-      </section>
+        <Typography.Text type="secondary">
+          来源：{[...new Set(items.map((i) => fullPath(i.parent_id, data)))].join('；')}
+        </Typography.Text>
+      </Card>
       {items.some(isContainer) && (
         <Notice>
           移动此容器时，内部所有物品和子容器会一起移动，各自的身份与相对位置保持不变。
         </Notice>
       )}
-      <h3>选择目标位置</h3>
+      <Typography.Title level={4}>选择目标位置</Typography.Title>
       <LocationTree
         moving={items}
         active={items[0]?.parent_id ?? undefined}
@@ -351,12 +294,14 @@ export function WorkbenchMovePicker({
 }
 type View = WorkbenchFilter & {
   page: number;
+  pageSize: number;
   selected: string[];
   selecting: boolean;
   columns: string[];
   scroll: number;
 };
 const views = new Map<string, View>();
+let householdScope = '';
 const defaults = (): View => ({
   query: '',
   descendants: false,
@@ -364,6 +309,7 @@ const defaults = (): View => ({
   category: '',
   sort: 'name',
   page: 1,
+  pageSize: WORKBENCH_PAGE_SIZE,
   selected: [],
   selecting: false,
   columns: ['spec', 'status', 'place', 'note'],
@@ -382,24 +328,44 @@ export function Workbench({
 }) {
   const { data, stale } = useInventory();
   const { session, online } = useSession();
+  const { mobile, wide } = useViewport();
   const location = useLocation();
   const navigate = useNavigate();
   const key = `${session.cache_key}:workbench:${id ?? ''}`;
-  const [view, setView] = useState<View>(() => views.get(key) ?? defaults());
+  const [view, setView] = useState<View>(() => {
+    if (householdScope !== session.cache_key) {
+      for (const [k, v] of views) views.set(k, { ...v, selected: [], selecting: false });
+      householdScope = session.cache_key ?? '';
+    }
+    return views.get(key) ?? defaults();
+  });
   const [locations, setLocations] = useState(false);
-  const list = useRef<HTMLDivElement>(null);
   const params = new URLSearchParams(location.searchStr);
   const inspectedId = detailId ?? params.get('item');
   const inspected = data.items.find((i) => i.id === inspectedId);
-  useLayoutEffect(() => {
-    if (!window.matchMedia('(max-width: 760px)').matches) return;
-    const frame = requestAnimationFrame(() => window.scrollTo(0, inspectedId ? 0 : view.scroll));
-    return () => cancelAnimationFrame(frame);
-  }, [inspectedId]);
   const patch = (values: Partial<View>) => setView((old) => ({ ...old, page: 1, ...values }));
   useEffect(() => {
     views.set(key, view);
   }, [key, view]);
+  const current = useRef(view);
+  current.current = view;
+  useLayoutEffect(() => {
+    const frame = requestAnimationFrame(() =>
+      window.scrollTo(0, inspectedId && mobile ? 0 : current.current.scroll),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [inspectedId]);
+  useEffect(() => {
+    const scroll = () => {
+      if (!inspectedId) {
+        const next = { ...current.current, scroll: window.scrollY };
+        current.current = next;
+        views.set(key, next);
+      }
+    };
+    window.addEventListener('scroll', scroll, { passive: true });
+    return () => window.removeEventListener('scroll', scroll);
+  }, [key, inspectedId]);
   const previousSelectionVersion = useRef(selectionVersion);
   useEffect(() => {
     if (previousSelectionVersion.current !== selectionVersion) {
@@ -411,9 +377,6 @@ export function Workbench({
   useEffect(() => {
     if (globalQuery !== null) patch({ query: globalQuery, descendants: true });
   }, [globalQuery]);
-  useEffect(() => {
-    if (list.current) list.current.scrollTop = view.scroll;
-  }, []);
   const selected = data.items.filter(
     (i) => view.selected.includes(i.id) && !isContainer(i) && !isTerminal(i),
   );
@@ -421,9 +384,8 @@ export function Workbench({
     () => workbenchItems(data, id, view),
     [data, id, view.query, view.descendants, view.status, view.category, view.sort],
   );
-  const pageCount = Math.max(1, Math.ceil(results.length / WORKBENCH_PAGE_SIZE));
-  const page = Math.min(view.page, pageCount);
-  const shown = results.slice((page - 1) * WORKBENCH_PAGE_SIZE, page * WORKBENCH_PAGE_SIZE);
+  const page = Math.min(view.page, Math.max(1, Math.ceil(results.length / view.pageSize)));
+  const shown = results.slice((page - 1) * view.pageSize, page * view.pageSize);
   const place = data.items.find((i) => i.id === id && isContainer(i));
   const childPlaces = data.items.filter(
     (i) => isContainer(i) && !isTerminal(i) && i.parent_id === (id ?? null),
@@ -438,22 +400,16 @@ export function Workbench({
       page,
     });
   const inspect = (item?: ItemRecord) => {
-    if (item && window.matchMedia('(max-width: 760px)').matches)
-      setView((old) => ({ ...old, scroll: window.scrollY }));
+    if (item) setView((old) => ({ ...old, scroll: window.scrollY }));
     if (!item && detailId && params.get('returnTo')) {
-      const returnPath = params.get('returnTo')!;
-      const returnUrl = URL.canParse(returnPath, window.location.origin)
-        ? new URL(returnPath, window.location.origin)
-        : null;
+      const p = params.get('returnTo')!;
+      const u = URL.canParse(p, window.location.origin) ? new URL(p, window.location.origin) : null;
       if (
-        returnUrl &&
-        returnUrl.origin === window.location.origin &&
-        /^\/(items|places|catalog|search)(\/|$)/.test(returnUrl.pathname)
+        u &&
+        u.origin === window.location.origin &&
+        /^\/(items|places|catalog|search)(\/|$)/.test(u.pathname)
       ) {
-        void navigate({
-          to: returnUrl.pathname,
-          search: Object.fromEntries(returnUrl.searchParams),
-        });
+        void navigate({ to: u.pathname, search: Object.fromEntries(u.searchParams) });
         return;
       }
     }
@@ -481,425 +437,353 @@ export function Workbench({
       page,
     });
   };
+  const allChecked =
+    shown.some((i) => !isTerminal(i)) &&
+    shown.filter((i) => !isTerminal(i)).every((i) => view.selected.includes(i.id));
+  const specs = (item: ItemRecord) =>
+    specification(data.catalog.find((c) => c.id === item.catalog_node_id)) || '规格未记录';
+  const changeQuery = (query: string) => {
+    patch({ query });
+    if (globalQuery !== null) {
+      const next = Object.fromEntries(params);
+      if (query) next.q = query;
+      else delete next.q;
+      void navigate({ to: location.pathname, search: next, replace: true });
+    }
+  };
+  const detail = inspected ? (
+    <ItemInspector item={inspected} open={open} close={() => inspect()} />
+  ) : null;
   return (
-    <div
-      className={`wb-workspace ${inspected ? 'has-detail' : ''} ${view.selecting ? 'is-selecting' : ''}`}
-    >
-      <section className="wb-inventory" aria-label="库存工作台">
-        <div className="wb-location-bar">
-          <button className="wb-location-trigger" onClick={() => setLocations(true)}>
-            位置
-          </button>
+    <div className="wb-workspace">
+      <section className="wb-inventory" aria-label="库存工作台" hidden={mobile && !!inspected}>
+        <Space wrap>
+          {mobile && (
+            <Button icon={<FolderOutlined aria-hidden="true" />} onClick={() => setLocations(true)}>
+              位置
+            </Button>
+          )}
           <LocationPath id={id ?? null} />
-        </div>
+        </Space>
         <div className="wb-title">
           <div>
-            <h1>{place ? itemName(place, data) : '我的物品'}</h1>
-            <span>{results.length} 件物品</span>
+            <Typography.Title level={2}>
+              {place ? itemName(place, data) : '我的物品'}
+            </Typography.Title>
+            <Typography.Text type="secondary">{results.length} 件物品</Typography.Text>
           </div>
-          <Button disabled={disabled} onClick={() => open({ kind: 'intake', parent: id })}>
-            <span aria-hidden="true">＋</span>
-            <span className="wb-add-desktop">添加物品</span>
-            <span className="wb-add-mobile">添加</span>
+          <Button
+            type="primary"
+            icon={<PlusOutlined aria-hidden="true" />}
+            disabled={disabled}
+            onClick={() => open({ kind: 'intake', parent: id })}
+          >
+            添加物品
           </Button>
+          {place && (
+            <Dropdown
+              menu={{
+                items: [
+                  { key: 'place', label: '新建下级位置' },
+                  { key: 'rename', label: '修改位置名称' },
+                  { key: 'move', label: '移动位置' },
+                ],
+                onClick: ({ key }) =>
+                  open({
+                    kind: key,
+                    parent: key === 'place' ? id : undefined,
+                    target: key !== 'place' ? id : undefined,
+                  }),
+              }}
+              disabled={disabled}
+            >
+              <Button aria-label="位置操作" icon={<MoreOutlined aria-hidden="true" />} />
+            </Dropdown>
+          )}
         </div>
-        {place && (
-          <details className="wb-place-actions">
-            <summary>位置操作</summary>
-            <div className="wb-popover">
-              <button disabled={disabled} onClick={() => open({ kind: 'place', parent: id })}>
-                新建下级位置
-              </button>
-              <button disabled={disabled} onClick={() => open({ kind: 'rename', target: id })}>
-                修改位置名称
-              </button>
-              <button disabled={disabled} onClick={() => open({ kind: 'move', target: id })}>
-                移动位置
-              </button>
-            </div>
-          </details>
-        )}
         <div className="wb-toolbar">
-          <WorkbenchSearch
+          <SearchField
             label={id ? '在当前位置搜索…' : '搜索物品、规格、位置…'}
             value={view.query}
-            onChange={(query) => {
-              patch({ query });
-              if (globalQuery !== null) {
-                const next = Object.fromEntries(params);
-                if (query) next.q = query;
-                else delete next.q;
-                void navigate({ to: location.pathname, search: next, replace: true });
-              }
-            }}
+            onChange={changeQuery}
           />
-          <select
-            className="wb-scope"
-            aria-label="位置范围"
-            value={view.descendants ? 'all' : 'direct'}
-            onChange={(e) => patch({ descendants: e.target.value === 'all' })}
-          >
-            <option value="direct">仅当前位置</option>
-            <option value="all">包含下级</option>
-          </select>
-          <details className="wb-filter">
-            <summary>筛选</summary>
-            <div className="wb-popover">
-              <label>
-                类型
-                <select
+          {id && (
+            <Select
+              aria-label="位置范围"
+              value={view.descendants ? 'all' : 'direct'}
+              onChange={(value) => patch({ descendants: value === 'all' })}
+              options={[
+                { value: 'direct', label: '仅当前位置' },
+                { value: 'all', label: '包含下级' },
+              ]}
+            />
+          )}
+          <Popover
+            trigger="click"
+            title="筛选物品"
+            content={
+              <div className="stack">
+                <Select
                   aria-label="商品分类"
                   value={view.category}
-                  onChange={(e) => patch({ category: e.target.value })}
-                >
-                  <option value="">全部分类</option>
-                  {data.catalog
-                    .filter((c) => c.kind === 'GROUP')
-                    .map((c) => (
-                      <option value={c.id} key={c.id}>
-                        {ancestors(c.id, data.catalog)
+                  onChange={(category) => patch({ category })}
+                  options={[
+                    { value: '', label: '全部分类' },
+                    ...data.catalog
+                      .filter((c) => c.kind === 'GROUP')
+                      .map((c) => ({
+                        value: c.id,
+                        label: ancestors(c.id, data.catalog)
                           .map((a) => a.name)
-                          .join(' / ')}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <label>
-                状态
-                <select
+                          .join(' / '),
+                      })),
+                  ]}
+                />
+                <Select
                   aria-label="物品状态"
                   value={view.status}
-                  onChange={(e) => patch({ status: e.target.value })}
-                >
-                  <option value="">全部在库状态</option>
-                  {availabilityOptions.map(([v, t]) => (
-                    <option key={v} value={v || 'unknown'}>
-                      {t}
-                    </option>
-                  ))}
-                  <option value="terminal">历史物品</option>
-                </select>
-              </label>
-              <button type="button" onClick={() => patch({ status: '', category: '' })}>
-                清除筛选
-              </button>
-            </div>
-          </details>
-          <select
-            className="wb-sort"
+                  onChange={(status) => patch({ status })}
+                  options={[
+                    { value: '', label: '全部在库状态' },
+                    ...availabilityOptions.map(([v, t]) => ({ value: v || 'unknown', label: t })),
+                    { value: 'terminal', label: '历史物品' },
+                  ]}
+                />
+                <Button onClick={() => patch({ status: '', category: '' })}>清除筛选</Button>
+              </div>
+            }
+          >
+            <Button>
+              筛选
+              <DownOutlined aria-hidden="true" />
+            </Button>
+          </Popover>
+          <Select
             aria-label="排序"
             value={view.sort}
-            onChange={(e) => patch({ sort: e.target.value })}
-          >
-            <option value="name">名称排序</option>
-            <option value="recent">最近入库</option>
-          </select>
-          <details className="wb-columns">
-            <summary>显示列</summary>
-            <div className="wb-popover">
-              {[
-                ['spec', '规格'],
-                ['status', '状态'],
-                ['place', '收纳位置'],
-                ['note', '备注'],
-              ].map(([v, t]) => (
-                <label key={v}>
-                  <input
-                    type="checkbox"
-                    checked={view.columns.includes(v)}
-                    onChange={() =>
-                      patch({
-                        columns: view.columns.includes(v)
-                          ? view.columns.filter((c) => c !== v)
-                          : [...view.columns, v],
-                        page,
-                      })
-                    }
-                  />
-                  {t}
-                </label>
-              ))}
-            </div>
-          </details>
-          <button
-            className="wb-select-toggle"
-            onClick={() => patch({ selecting: !view.selecting, selected: [], page })}
-          >
-            {view.selecting ? '取消' : '选择'}
-          </button>
+            onChange={(sort) => patch({ sort })}
+            options={[
+              { value: 'name', label: '名称排序' },
+              { value: 'recent', label: '最近入库' },
+            ]}
+          />
+          {!mobile && (
+            <Popover
+              trigger="click"
+              title="显示列"
+              content={
+                <Checkbox.Group
+                  className="stack"
+                  value={view.columns}
+                  options={[
+                    { value: 'spec', label: '规格' },
+                    { value: 'status', label: '状态' },
+                    { value: 'place', label: '收纳位置' },
+                    { value: 'note', label: '备注' },
+                  ]}
+                  onChange={(columns) => patch({ columns: columns.map(String), page })}
+                />
+              }
+            >
+              <Button>
+                显示列
+                <DownOutlined aria-hidden="true" />
+              </Button>
+            </Popover>
+          )}
+          {mobile && (
+            <Button onClick={() => patch({ selecting: !view.selecting, selected: [], page })}>
+              {view.selecting ? '取消选择' : '选择'}
+            </Button>
+          )}
         </div>
         {(view.query || view.status || view.category) && (
-          <div className="wb-active-filters">
-            <span>
-              {view.query ? `“${view.query}” · 搜索此位置及全部下级` : '已筛选'} · {results.length}{' '}
-              件
-            </span>
-            <button
+          <Space wrap>
+            <Typography.Text type="secondary">
+              {view.query
+                ? `“${view.query}” · ${id ? (view.descendants ? '当前位置及下级' : '仅当前位置') : '全家庭'}`
+                : '已筛选'}{' '}
+              · {results.length} 件
+            </Typography.Text>
+            <Button
+              type="link"
               onClick={() => {
                 patch({ query: '', category: '', status: '' });
-                if (globalQuery !== null) {
-                  const next = Object.fromEntries(params);
-                  delete next.q;
-                  void navigate({ to: location.pathname, search: next });
-                }
+                changeQuery('');
               }}
             >
               清除
-            </button>
-          </div>
+            </Button>
+          </Space>
         )}
         {!!childPlaces.length && !view.query && (
-          <div className="wb-child-places" aria-label="下级位置">
+          <Space wrap aria-label="下级位置">
             {childPlaces.map((p) => (
               <Link key={p.id} to={`/places/${p.id}`}>
-                <WorkbenchIcon name="folder" size={16} />
-                {itemName(p, data)}
+                <Tag icon={<FolderOutlined aria-hidden="true" />}>{itemName(p, data)}</Tag>
               </Link>
             ))}
-          </div>
+          </Space>
         )}
-        <div className={`wb-selection-bar ${selected.length ? 'with-selection' : ''}`}>
-          <span>
-            {selected.length
-              ? `已选 ${selected.length} 件`
-              : '点击物品查看详情；使用复选框选择后批量移动。'}
-          </span>
-          {selected.length > 0 && (
-            <>
-              <Button
-                variant="secondary"
-                disabled={disabled || selected.length > 100}
-                onClick={() => open({ kind: 'move', ids: selected.map((i) => i.id).join(',') })}
-              >
-                移动到…
-              </Button>
-              <button onClick={() => patch({ selected: [], selecting: false, page })}>
-                取消选择
-              </button>
-            </>
-          )}
-        </div>
-        <div
-          className="wb-table-scroll"
-          ref={list}
-          onScroll={(e) => {
-            const scroll = e.currentTarget.scrollTop;
-            setView((old) => ({ ...old, scroll }));
-          }}
-        >
-          <table className="wb-table">
-            <thead>
-              <tr>
-                <th className="wb-check-cell">
-                  <input
-                    type="checkbox"
-                    aria-label="选择本页全部物品"
-                    checked={
-                      shown.some((i) => !isTerminal(i)) &&
-                      shown.filter((i) => !isTerminal(i)).every((i) => view.selected.includes(i.id))
-                    }
-                    onChange={selectAll}
-                  />
-                </th>
-                <th>物品</th>
-                {view.columns.includes('spec') && <th className="wb-spec-cell">规格</th>}
-                {view.columns.includes('status') && <th className="wb-status-cell">状态</th>}
-                {view.columns.includes('place') && <th className="wb-place-cell">收纳位置</th>}
-                {view.columns.includes('note') && <th className="wb-note-cell">备注</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((item) => {
-                const sku = data.catalog.find((c) => c.id === item.catalog_node_id);
-                const spec = specification(sku) || '规格未记录';
-                const parent = data.items.find((i) => i.id === item.parent_id);
-                const name = itemName(item, data),
-                  status = itemStatus(item);
-                const selectedRow = view.selected.includes(item.id);
-                return (
-                  <tr
-                    key={item.id}
-                    className={selectedRow || inspected?.id === item.id ? 'is-selected' : ''}
-                  >
-                    <td className="wb-check-cell">
-                      <input
-                        type="checkbox"
-                        aria-label={`选择 ${name} ${item.id}`}
-                        disabled={isTerminal(item)}
-                        checked={selectedRow}
-                        onChange={() => toggle(item)}
-                      />
-                    </td>
-                    <td className="wb-name-cell">
-                      <button
-                        type="button"
-                        onClick={() => (view.selecting ? toggle(item) : inspect(item))}
-                        title={`${name} · ${item.id}`}
-                      >
-                        <strong>{name}</strong>
-                        <span className="wb-mobile-spec">{spec}</span>
-                        <span className="wb-mobile-side">
-                          <span>
-                            <img
-                              alt=""
-                              className={
-                                attr(item, 'lifecycle')?.availability === 'IN_USE'
-                                  ? 'wb-status-active'
-                                  : undefined
-                              }
-                              src={workbenchAsset(
-                                attr(item, 'lifecycle')?.availability === 'IN_USE'
-                                  ? 'status'
-                                  : 'status-muted',
-                              )}
-                            />
-                            {status}
-                          </span>
-                          <small>{parent ? itemName(parent, data) : '未记录位置'}</small>
-                        </span>
-                      </button>
-                    </td>
-                    {view.columns.includes('spec') && (
-                      <td className="wb-spec-cell" title={spec}>
-                        {spec}
-                      </td>
-                    )}
-                    {view.columns.includes('status') && (
-                      <td
-                        className={`wb-status-cell ${attr(item, 'lifecycle')?.availability === 'IN_USE' ? 'in-use' : ''}`}
-                      >
-                        {status}
-                      </td>
-                    )}
-                    {view.columns.includes('place') && (
-                      <td className="wb-place-cell" title={fullPath(item.parent_id, data)}>
-                        {parent ? itemName(parent, data) : '未记录位置'}
-                      </td>
-                    )}
-                    {view.columns.includes('note') && (
-                      <td className="wb-note-cell" title={latestNote(data, item.id)?.body}>
-                        {latestNote(data, item.id)?.body || '—'}
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {!shown.length && (
-            <Empty
-              title={
-                view.query || view.status || view.category ? '没有找到匹配物品' : '这里还没有物品'
-              }
-            >
-              {id && !view.descendants
-                ? '可进入下级位置，或选择“包含下级”查看其中物品。'
-                : '添加物品，开始整理你的库存。'}
-            </Empty>
-          )}
-        </div>
-        <footer className="wb-pagination">
-          <span role="status">
-            显示 {results.length ? (page - 1) * WORKBENCH_PAGE_SIZE + 1 : 0}–
-            {Math.min(page * WORKBENCH_PAGE_SIZE, results.length)} / {results.length} 件
-          </span>
-          <nav aria-label="列表分页">
-            <button
-              disabled={page === 1}
-              aria-label="上一页"
-              onClick={() => patch({ page: page - 1, scroll: 0 })}
-            >
-              ‹
-            </button>
-            {Array.from(
-              { length: Math.min(5, pageCount) },
-              (_, i) => Math.max(1, Math.min(page - 2, pageCount - 4)) + i,
-            ).map((p) => (
-              <button
-                key={p}
-                aria-label={`第 ${p} 页`}
-                aria-current={p === page ? 'page' : undefined}
-                onClick={() => {
-                  patch({ page: p, scroll: 0 });
-                  list.current?.scrollTo(0, 0);
-                }}
-              >
-                {p}
-              </button>
-            ))}
-            <button
-              disabled={page === pageCount}
-              aria-label="下一页"
-              onClick={() => {
-                patch({ page: page + 1, scroll: 0 });
-                list.current?.scrollTo(0, 0);
-              }}
-            >
-              ›
-            </button>
-          </nav>
-          <span>每页 {WORKBENCH_PAGE_SIZE}</span>
-        </footer>
-        {view.selecting && (
-          <div className="wb-mobile-selection">
-            <label>
-              <input
-                type="checkbox"
-                checked={shown.length > 0 && shown.every((i) => view.selected.includes(i.id))}
-                onChange={selectAll}
-              />
-              本页全选
-            </label>
+        {selected.length > 0 && (
+          <div className="wb-selection-bar">
             <span>已选 {selected.length} 件</span>
             <Button
-              disabled={disabled || !selected.length || selected.length > 100}
+              disabled={disabled || selected.length > 100}
               onClick={() => open({ kind: 'move', ids: selected.map((i) => i.id).join(',') })}
             >
               移动到…
             </Button>
+            <Button type="text" onClick={() => patch({ selected: [], selecting: false, page })}>
+              取消选择
+            </Button>
+            {selected.length > 100 && <Notice>每次最多移动 100 件，请减少选择。</Notice>}
           </div>
         )}
-      </section>
-      {selected.length > 0 && !inspected && (
-        <aside className="wb-inspector wb-selection-inspector">
-          <header>
-            <h2>已选物品</h2>
-            <button
-              aria-label="取消选择"
-              onClick={() => patch({ selected: [], selecting: false, page })}
-            >
-              <WorkbenchIcon name="close" />
-            </button>
-          </header>
-          <h3>已选择 {selected.length} 件</h3>
-          {selected.map((i) => (
-            <div className="wb-selected-item" key={i.id}>
-              <strong>{itemName(i, data)}</strong>
-              <p>
-                {specification(data.catalog.find((c) => c.id === i.catalog_node_id)) ||
-                  '规格未记录'}
-              </p>
-            </div>
-          ))}
-          <Button
-            disabled={disabled || selected.length > 100}
-            onClick={() => open({ kind: 'move', ids: selected.map((i) => i.id).join(',') })}
+        {mobile ? (
+          <div className="ac-mobile-list">
+            {view.selecting && (
+              <Checkbox aria-label="选择本页全部物品" checked={allChecked} onChange={selectAll}>
+                本页全选
+              </Checkbox>
+            )}
+            {shown.map((item) => (
+              <div key={item.id} className="ac-mobile-item">
+                {view.selecting && (
+                  <Checkbox
+                    aria-label={`选择 ${itemName(item, data)} ${item.id}`}
+                    checked={view.selected.includes(item.id)}
+                    disabled={isTerminal(item)}
+                    onChange={() => toggle(item)}
+                  />
+                )}
+                <Button type="text" className="row" onClick={() => inspect(item)}>
+                  <span className="row-copy">
+                    <strong>{itemName(item, data)}</strong>
+                    <Typography.Text type="secondary">
+                      {specs(item)} · {itemStatus(item)} · {fullPath(item.parent_id, data)}
+                    </Typography.Text>
+                  </span>
+                </Button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Table<ItemRecord>
+            aria-label="物品列表"
+            rowKey="id"
+            dataSource={shown}
+            pagination={false}
+            tableLayout="fixed"
+            size="middle"
+            rowSelection={{
+              selectedRowKeys: view.selected,
+              preserveSelectedRowKeys: true,
+              columnTitle: (
+                <Checkbox aria-label="选择本页全部物品" checked={allChecked} onChange={selectAll} />
+              ),
+              onChange: (keys) => patch({ selected: keys.map(String), selecting: true, page }),
+              getCheckboxProps: (item) => ({
+                disabled: isTerminal(item),
+                'aria-label': `选择 ${itemName(item, data)} ${item.id}`,
+              }),
+            }}
+            columns={[
+              {
+                title: '物品',
+                key: 'name',
+                render: (_, item) => (
+                  <Button type="link" className="ac-name-button" onClick={() => inspect(item)}>
+                    {itemName(item, data)}
+                  </Button>
+                ),
+              },
+              ...(view.columns.includes('spec')
+                ? [
+                    {
+                      title: '规格',
+                      key: 'spec',
+                      ellipsis: true,
+                      render: (_: unknown, item: ItemRecord) => specs(item),
+                    },
+                  ]
+                : []),
+              ...(view.columns.includes('status')
+                ? [
+                    {
+                      title: '状态',
+                      key: 'status',
+                      width: 100,
+                      render: (_: unknown, item: ItemRecord) => <Tag>{itemStatus(item)}</Tag>,
+                    },
+                  ]
+                : []),
+              ...(view.columns.includes('place')
+                ? [
+                    {
+                      title: '收纳位置',
+                      key: 'place',
+                      ellipsis: true,
+                      render: (_: unknown, item: ItemRecord) => fullPath(item.parent_id, data),
+                    },
+                  ]
+                : []),
+              ...(view.columns.includes('note')
+                ? [
+                    {
+                      title: '备注',
+                      key: 'note',
+                      ellipsis: true,
+                      render: (_: unknown, item: ItemRecord) =>
+                        latestNote(data, item.id)?.body || '—',
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        )}
+        {!shown.length && mobile && (
+          <Empty
+            title={
+              view.query || view.status || view.category ? '没有找到匹配物品' : '这里还没有物品'
+            }
           >
-            移动到…
-          </Button>
-          {selected.length > 100 && <Notice>每次最多移动 100 件，请减少选择。</Notice>}
-        </aside>
-      )}
-      {inspected && (
-        <ItemInspector key={inspected.id} item={inspected} open={open} close={() => inspect()} />
-      )}
+            {id && !view.descendants
+              ? '可进入下级位置，或选择“包含下级”查看其中物品。'
+              : '添加物品，开始整理你的库存。'}
+          </Empty>
+        )}
+        <Pagination
+          aria-label="列表分页"
+          current={page}
+          pageSize={view.pageSize}
+          total={results.length}
+          showSizeChanger
+          pageSizeOptions={[20, 50, 100]}
+          showTotal={(total, range) => `显示 ${range[0]}–${range[1]} / ${total} 件`}
+          onChange={(next, size) => {
+            patch({ page: size !== view.pageSize ? 1 : next, pageSize: size, scroll: 0 });
+            window.scrollTo(0, 0);
+          }}
+        />
+      </section>
+      {detail &&
+        (wide ? (
+          <aside className="wb-inspector">{detail}</aside>
+        ) : mobile ? (
+          <section className="ac-full-detail">{detail}</section>
+        ) : (
+          <Drawer open title="物品详情" size={360} onClose={() => inspect()}>
+            {detail}
+          </Drawer>
+        ))}
       {inspectedId && !inspected && (
         <Notice danger>
-          这件物品已不可用。<button onClick={() => inspect()}>返回列表</button>
+          这件物品已不可用。<Button onClick={() => inspect()}>返回列表</Button>
         </Notice>
       )}
       {locations && (
-        <Sheet title="选择位置" onClose={() => setLocations(false)} workbench>
+        <ActionDrawer title="选择位置" onClose={() => setLocations(false)}>
           <LocationTree
             active={id}
             onChoose={(target) => {
@@ -909,7 +793,6 @@ export function Workbench({
             searchable
           />
           <Button
-            variant="secondary"
             disabled={disabled}
             onClick={() => {
               setLocations(false);
@@ -918,7 +801,7 @@ export function Workbench({
           >
             新建位置
           </Button>
-        </Sheet>
+        </ActionDrawer>
       )}
     </div>
   );
@@ -944,109 +827,95 @@ function ItemInspector({
   });
   const disabled = !online || stale || session.can_write === false;
   return (
-    <aside className="wb-inspector" aria-label="物品详情">
-      <header>
-        <button className="wb-detail-back" onClick={close}>
-          ‹ 返回
-        </button>
-        <h2>物品详情</h2>
-        <button className="wb-detail-close" aria-label="关闭详情" onClick={close}>
-          <WorkbenchIcon name="close" />
-        </button>
-        <Link
-          className="wb-detail-more"
-          aria-label="更多资料与操作"
-          to={`/items/${item.id}/details`}
+    <div className="stack" aria-label="物品详情">
+      <Space wrap>
+        <Button onClick={close}>返回列表</Button>
+        <Button
+          type="text"
+          aria-label="关闭详情"
+          icon={<CloseOutlined aria-hidden="true" />}
+          onClick={close}
+        />
+        <Link to={`/items/${item.id}/details`}>更多资料与操作</Link>
+      </Space>
+      <Typography.Title level={3}>{itemName(item, data)}</Typography.Title>
+      <Typography.Text type="secondary">{specification(sku) || '规格未记录'}</Typography.Text>
+      <Tag>{itemStatus(item)}</Tag>
+      <Space>
+        <Button
+          disabled={disabled || isTerminal(item)}
+          onClick={() => open({ kind: 'move', target: item.id })}
         >
-          <WorkbenchIcon name="dots" />
-        </Link>
-      </header>
-      <div className="wb-inspector-body">
-        <h3>{itemName(item, data)}</h3>
-        <p className="wb-detail-spec">{specification(sku) || '规格未记录'}</p>
-        <p className="wb-detail-status">
-          <img
-            alt=""
-            src={workbenchAsset(life?.availability === 'IN_USE' ? 'status' : 'status-muted')}
-          />
-          {itemStatus(item)}
-        </p>
-        <div className="wb-detail-actions">
-          <Button
-            variant="secondary"
-            disabled={disabled || isTerminal(item)}
-            onClick={() => open({ kind: 'move', target: item.id })}
-          >
-            移动
-          </Button>
-          <Button
-            variant="secondary"
-            disabled={disabled}
-            onClick={() => open({ kind: 'edit', target: item.id, note: note?.id })}
-          >
-            编辑
-          </Button>
-        </div>
-        <section className="wb-properties">
-          <h4>物品资料</h4>
-          <dl>
-            <div>
-              <dt>位置</dt>
-              <dd>
-                <LocationPath id={item.parent_id} />
-              </dd>
-            </div>
-            <div>
-              <dt>编号</dt>
-              <dd className="wb-item-id">{item.id}</dd>
-            </div>
-            <div>
-              <dt>规格</dt>
-              <dd>{specification(sku) || '未记录'}</dd>
-            </div>
-            <div>
-              <dt>购入日期</dt>
-              <dd>{life?.acquisition?.acquired_on || '未记录'}</dd>
-            </div>
-            {attr(item, 'contents')?.remaining && (
-              <div>
-                <dt>剩余量</dt>
-                <dd>{remaining(item)}</dd>
-              </div>
-            )}
-          </dl>
-        </section>
-        <section className="wb-note">
-          <h4>备注</h4>
-          <p>{note?.body || '未记录'}</p>
-        </section>
-        <section className="wb-history">
-          <h4>最近动态</h4>
-          {events.data?.data.slice(0, 3).map((event) => (
-            <p key={event.id}>
-              <time>{time(event.occurred_at)}</time>
-              <span>{eventNames[event.event_type] ?? event.event_type}</span>
-            </p>
-          ))}
-          {events.isFetching && <small>正在读取动态…</small>}
-          {events.isError && (
-            <button onClick={() => void events.refetch()}>动态读取失败，重试</button>
-          )}
-          {!online && <small>联网后可查看最新动态</small>}
-          <Link to={`/items/${item.id}/history`}>查看全部动态</Link>
-        </section>
-        <Link
-          className="wb-more-details"
-          to={`/items/${item.id}/details`}
-          search={{
-            returnTo: item.parent_id
-              ? `/places/${item.parent_id}?item=${item.id}`
-              : `/items?item=${item.id}`,
+          移动
+        </Button>
+        <Button
+          id={`edit-item-${item.id}`}
+          disabled={disabled}
+          onClick={(event) => {
+            // Safari does not focus buttons on pointer activation; retain the return target.
+            event.currentTarget.focus({ preventScroll: true });
+            open({ kind: 'edit', target: item.id, note: note?.id });
           }}
         >
-          更多资料、消耗与笔记 ›
-        </Link>
-      </div>
-    </aside>
+          编辑
+        </Button>
+      </Space>
+      <Descriptions
+        title="物品资料"
+        column={1}
+        items={[
+          { key: 'place', label: '位置', children: <LocationPath id={item.parent_id} /> },
+          {
+            key: 'id',
+            label: '编号',
+            children: (
+              <Typography.Text className="ac-identity" copyable>
+                {item.id}
+              </Typography.Text>
+            ),
+          },
+          { key: 'spec', label: '规格', children: specification(sku) || '未记录' },
+          { key: 'date', label: '购入日期', children: life?.acquisition?.acquired_on || '未记录' },
+          ...(attr(item, 'contents')?.remaining
+            ? [{ key: 'remaining', label: '剩余量', children: remaining(item) }]
+            : []),
+        ]}
+      />
+      <Card size="small" title="备注">
+        {note?.body || '未记录'}
+      </Card>
+      <Card size="small" title="最近动态">
+        {events.isFetching ? (
+          <Skeleton active paragraph={{ rows: 2 }} />
+        ) : (
+          <Timeline
+            items={events.data?.data.slice(0, 3).map((event) => ({
+              key: event.id,
+              content: (
+                <>
+                  <Typography.Text type="secondary">{time(event.occurred_at)}</Typography.Text>
+                  <p>{eventNames[event.event_type] ?? event.event_type}</p>
+                </>
+              ),
+            }))}
+          />
+        )}
+        {events.isError && (
+          <Button onClick={() => void events.refetch()}>动态读取失败，重试</Button>
+        )}
+        {!online && <Typography.Text type="secondary">联网后可查看最新动态</Typography.Text>}
+        <Link to={`/items/${item.id}/history`}>查看全部动态</Link>
+      </Card>
+      <Link
+        to={`/items/${item.id}/details`}
+        search={{
+          returnTo: item.parent_id
+            ? `/places/${item.parent_id}?item=${item.id}`
+            : `/items?item=${item.id}`,
+        }}
+      >
+        更多资料、消耗与笔记 ›
+      </Link>
+    </div>
   );
 }

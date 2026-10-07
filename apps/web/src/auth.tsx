@@ -1,9 +1,9 @@
+import { Button, Select } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { authPost, Redirect, safeReturnTo, serverRedirect } from './lib/auth';
 import { useSession } from './lib/session';
 import { JoinScreen } from './accounts';
-import { Button, Field, Notice } from './ui/components';
-
+import { FormField, Notice } from './ui/components';
 export function AuthScreen() {
   const { session } = useSession();
   const params = new URLSearchParams(location.search);
@@ -44,21 +44,23 @@ export function AuthScreen() {
     return (
       <main className="login stack">
         <h1>选择授权的家庭</h1>
-        <Field label="家庭">
-          <select value={household} onChange={(e) => setHousehold(e.target.value)}>
-            {session.households?.map((h) => (
-              <option key={h.id} value={h.household_id}>
-                {h.name}
-              </option>
-            ))}
-          </select>
-        </Field>
+        <FormField label="家庭">
+          <Select
+            value={household}
+            onChange={(e) => setHousehold(e)}
+            options={[
+              ...(session.households?.map((h) => ({ value: h.household_id, label: h.name })) ?? []),
+            ]}
+          />
+        </FormField>
         <Button
           disabled={busy || !household}
           onClick={() => {
             sessionStorage.setItem(flowKey, household);
             void act('oauth2/continue', { postLogin: true });
           }}
+          htmlType="button"
+          type="primary"
         >
           继续授权
         </Button>
@@ -81,15 +83,16 @@ export function AuthScreen() {
       <p>{session.email}</p>
       {consent && oauthQuery ? (
         <>
-          <Field label="授权家庭">
-            <select value={household} onChange={(e) => setHousehold(e.target.value)}>
-              {session.households?.map((h) => (
-                <option key={h.id} value={h.household_id}>
-                  {h.name}
-                </option>
-              ))}
-            </select>
-          </Field>
+          <FormField label="授权家庭">
+            <Select
+              value={household}
+              onChange={(e) => setHousehold(e)}
+              options={[
+                ...(session.households?.map((h) => ({ value: h.household_id, label: h.name })) ??
+                  []),
+              ]}
+            />
+          </FormField>
           <p>以下客户端请求访问所选家庭的库存：</p>
           <code className="oauth-client">{params.get('client_id')}</code>
           <ul>
@@ -103,17 +106,18 @@ export function AuthScreen() {
           <p>仅在你刚从 Codex、ChatGPT 或其他受信任客户端发起连接时允许。</p>
           <div className="stack">
             <Button
-              type="button"
+              htmlType="button"
               disabled={busy}
               onClick={() => void act('oauth2/consent', { accept: true })}
+              type="primary"
             >
               允许
             </Button>
             <Button
-              type="button"
-              variant="secondary"
+              htmlType="button"
               disabled={busy}
               onClick={() => void act('oauth2/consent', { accept: false })}
+              type="default"
             >
               拒绝
             </Button>

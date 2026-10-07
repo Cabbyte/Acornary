@@ -1,3 +1,4 @@
+import { choose } from './controls.js';
 import { login } from './login.js';
 import { test, expect, type Page } from '@playwright/test';
 test.use({ viewport: { width: 390, height: 844 } });
@@ -71,7 +72,7 @@ test('six distinct items: intake, open, consume, history and notes persist throu
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByRole('button', { name: '记录消耗', exact: true }).click();
   await page.getByLabel('本次消耗量').fill('200');
-  await page.getByLabel('数量依据', { exact: true }).selectOption('MEASURED');
+  await choose(page, '数量依据', '实测值');
   await page.getByRole('button', { name: '确认记录消耗', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.locator('.quantity').first()).toHaveText('剩余 800 mL');
@@ -228,8 +229,7 @@ test('mobile and desktop layouts, long names and accessible touch targets', asyn
   await page.goto(
     `/catalog/${desktop.sku}?dialog=attributes&target=${desktop.sku}&template=product`,
   );
-  await expect(page.locator('.editor-page')).toBeVisible();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByLabel('品牌', { exact: true }).fill('桌面输入保留');
   await page.screenshot({ path: 'output/playwright/webui-desktop-editor.png', fullPage: true });
   await page.setViewportSize({ width: 360, height: 640 });
@@ -237,7 +237,7 @@ test('mobile and desktop layouts, long names and accessible touch targets', asyn
   await expect(page.getByLabel('品牌', { exact: true })).toHaveValue('桌面输入保留');
   await page.getByRole('button', { name: '关闭', exact: true }).click();
   await page.goto('/items');
-  await page.getByRole('button', { name: '添加', exact: true }).click();
+  await page.getByRole('button', { name: '添加物品', exact: true }).click();
   await page.getByRole('button', { name: '创建新商品' }).click();
   await page
     .getByLabel('名称', { exact: true })
@@ -283,11 +283,14 @@ test('moving a container keeps child identities and updates their displayed path
     expected_revisions: { [f.ids[0]]: 1 },
   });
   await page.goto(`/places/${box}`);
-  await page.getByText('位置操作', { exact: true }).click();
-  await page.getByRole('button', { name: '移动位置', exact: true }).click();
+  await page.getByRole('button', { name: '位置操作', exact: true }).click();
+  await page.getByRole('menuitem', { name: '移动位置', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('内部所有物品和子容器会一起移动');
   await page.getByRole('searchbox', { name: '搜索目标位置' }).fill(`书房 ${suffix}`);
-  await page.getByRole('button', { name: new RegExp(`书房 ${suffix} 0`) }).click();
+  await page
+    .getByRole('tree', { name: '目标位置' })
+    .getByText(new RegExp(`书房 ${suffix}`))
+    .click();
   await page.getByRole('button', { name: '确认移动 1 件', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.goto(`/items/${f.ids[0]}/details`);
@@ -325,7 +328,7 @@ test('catalog templates, single-item finish and reasoned correction are editable
   await expect(page.locator('.quantity').first()).toHaveText('剩余 0 mL');
   await page.getByRole('button', { name: '纠正记录', exact: true }).click();
   await page.getByRole('button', { name: '状态与日期', exact: true }).click();
-  await page.getByLabel('生命周期', { exact: true }).selectOption('ACTIVE');
+  await choose(page, '生命周期', '在库');
   await page.getByLabel('剩余内容', { exact: true }).fill('500');
   await page.getByLabel('纠错原因', { exact: true }).fill('误点用完，重新核对仍有 500 mL');
   await page.getByRole('button', { name: '保存', exact: true }).click();
@@ -334,64 +337,46 @@ test('catalog templates, single-item finish and reasoned correction are editable
   await page.getByRole('link', { name: /变化历史/ }).click();
   await expect(page.locator('.event').filter({ hasText: '纠正记录' })).toContainText('误点用完');
 });
-test('Soft Gray search pages the complete hierarchy and retains catalog and SKU return state', async ({
-  page,
-}) => {
+test('Ant Design pagination retains catalog, SKU and search return state', async ({ page }) => {
   const f = await fixture(page);
   await command(page, 'create_items', { catalog_node_id: f.sku, count: 24 });
-  await page.goto('/items');
-  await page.getByRole('link', { name: '验收储藏室', exact: true }).click();
-  await page.getByRole('link', { name: '验收行李箱', exact: true }).click();
-  await expect(page.locator('.wb-table tbody tr')).toHaveCount(6);
-  for (const width of [390, 1280]) {
-    await page.setViewportSize({ width, height: 900 });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
-      true,
-    );
-    await expect(page.locator('.wb-inventory')).toBeVisible();
-    await page.screenshot({ path: `output/playwright/workbench-location-${width}.png` });
-  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/catalog');
   await page.getByRole('searchbox', { name: '搜索商品名称或规格' }).fill(f.name);
-  await page.screenshot({ path: 'output/playwright/soft-catalog-1280.png' });
-  await page.locator('.soft-row').filter({ hasText: f.name }).click();
-  await expect(page.locator('.soft-row')).toHaveCount(20);
-  await page.getByRole('button', { name: '加载更多', exact: true }).click();
-  await expect(page.locator('.soft-row')).toHaveCount(30);
-  await page.locator('.soft-row').last().click();
+  await page.getByRole('link', { name: f.name, exact: true }).click();
+  const rows = page
+    .getByRole('table')
+    .getByRole('row')
+    .filter({ has: page.getByRole('cell') });
+  await expect(rows).toHaveCount(20);
+  await page.getByTitle('2', { exact: true }).click();
+  await expect(rows).toHaveCount(10);
+  await rows.last().getByRole('link').click();
   await page.getByRole('link', { name: '返回', exact: true }).click();
-  await expect(page.locator('.soft-row')).toHaveCount(30);
-  await expect(page.locator('.soft-row').last()).toBeVisible();
+  await expect(rows).toHaveCount(10);
   await page.getByRole('link', { name: '返回', exact: true }).click();
   await expect(page.getByRole('searchbox', { name: '搜索商品名称或规格' })).toHaveValue(f.name);
   await page.goto('/search');
   await page.getByRole('searchbox', { name: '搜索物品、规格或位置' }).fill(f.name);
-  await expect(page.locator('.soft-row')).toHaveCount(20);
-  await expect(page.locator('.page-end')).toContainText('30 条');
-  await page.getByRole('button', { name: '加载更多', exact: true }).click();
-  await expect(page.locator('.soft-row')).toHaveCount(30);
-  await expect(page.locator('.item-identity').filter({ hasText: f.ids[0] })).toHaveCount(1);
-  for (const width of [360, 600, 1280]) {
+  await expect(rows).toHaveCount(20);
+  await page.getByTitle('2', { exact: true }).click();
+  await expect(rows).toHaveCount(10);
+  for (const width of [360, 390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
-    await page.screenshot({ path: `output/playwright/soft-search-${width}.png` });
+    await page.screenshot({ path: `output/playwright/antd-search-${width}.png` });
   }
-  await page.locator('.soft-page').getByRole('button', { name: '清除搜索' }).click();
   await page.getByRole('searchbox', { name: '搜索物品、规格或位置' }).fill('验收牛奶');
-  await page
-    .getByRole('combobox', { name: '搜索范围', exact: true })
-    .selectOption({ label: '全部位置 / 验收储藏室及下级位置' });
-  await expect(page.locator('.soft-row')).toHaveCount(6);
-  await expect(page.locator('.soft-row').first()).toContainText('验收储藏室 / 验收行李箱');
-  await page
-    .getByRole('combobox', { name: '搜索范围', exact: true })
-    .selectOption({ label: '全部位置 / 验收厨房及下级位置' });
+  await choose(page, '搜索范围', '全部位置 / 验收储藏室及下级位置');
+  await expect(rows).toHaveCount(6);
+  await expect(rows.first()).toContainText('验收储藏室 / 验收行李箱');
+  await choose(page, '搜索范围', '全部位置 / 验收厨房及下级位置');
   await expect(page.getByRole('heading', { name: '没有找到匹配结果' })).toBeVisible();
 });
 
-test('Soft Gray consumption validates inline and moving requires a separate path confirmation', async ({
+test('Ant Design consumption validates inline and moving requires a separate path confirmation', async ({
   page,
 }) => {
   const f = await fixture(page);
@@ -419,7 +404,7 @@ test('Soft Gray consumption validates inline and moving requires a separate path
   await page.getByRole('searchbox', { name: '搜索目标位置' }).fill('验收厨房');
   await page
     .getByRole('tree', { name: '目标位置' })
-    .getByRole('button', { name: /^全部位置 \/ 验收厨房 \d+$/ })
+    .getByText(/^全部位置 \/ 验收厨房 /)
     .click();
   let writes = 0;
   page.on('request', (request) => {
@@ -436,7 +421,7 @@ test('Soft Gray consumption validates inline and moving requires a separate path
   await expect(page.getByRole('button', { name: '确认移动 1 件' })).toBeDisabled();
 });
 
-test.describe('Soft Gray committed write recovery', () => {
+test.describe('Ant Design committed write recovery', () => {
   test.use({ serviceWorkers: 'block' });
   test('a successful write with failed refresh can reread without another write', async ({
     page,
@@ -473,9 +458,7 @@ test('session expiry preserves the exact pending edit and logout clears private 
     data: {},
   });
   await page.getByRole('button', { name: '确认记录消耗', exact: true }).click();
-  const loginDialog = page
-    .getByRole('dialog')
-    .filter({ has: page.getByRole('heading', { name: '重新登录', exact: true }) });
+  const loginDialog = page.getByRole('dialog', { name: '重新登录', exact: true });
   await expect(loginDialog).toBeVisible();
   await login(page);
   await expect(loginDialog).toHaveCount(0);

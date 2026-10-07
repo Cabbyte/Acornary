@@ -1,3 +1,4 @@
+import { choose } from './controls.js';
 import { test, expect, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 test.beforeEach(() => test.skip(!process.env.ACORNARY_E2E_CLOUD, 'Cloud accounts'));
@@ -72,8 +73,8 @@ test('passkey-first registration, optional password, last credential protection,
   await page.getByRole('button', { name: '保存密码' }).click();
   expect((await savedPassword).status()).toBe(200);
   await expect(page.getByRole('button', { name: '删除通行密钥' })).toBeEnabled();
-  page.on('dialog', (d) => d.accept());
   await page.getByRole('button', { name: '移除密码', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '移除密码', exact: true }).click();
   await expect(page.getByRole('button', { name: '删除通行密钥' })).toBeDisabled();
   await page.getByLabel('通行密钥名称').fill('我的设备');
   await page.getByRole('button', { name: '保存名称' }).click();
@@ -82,16 +83,8 @@ test('passkey-first registration, optional password, last credential protection,
   await page.getByRole('button', { name: '创建另一个家庭' }).click();
   await expect(page.getByRole('heading', { name: '我的物品' })).toBeVisible();
   await page.goto('/settings/households');
-  await expect(page.getByLabel('当前家庭').locator('option:checked')).toHaveText('第二个家庭');
-  const options = await page
-    .getByLabel('当前家庭')
-    .locator('option')
-    .evaluateAll((nodes) =>
-      nodes.map((n) => ({ value: (n as HTMLOptionElement).value, text: n.textContent })),
-    );
-  await page
-    .getByLabel('当前家庭')
-    .selectOption(options.find((o) => o.text === '通行密钥测试家庭')!.value);
+  await expect(page.getByText('第二个家庭', { exact: true }).last()).toBeVisible();
+  await choose(page, '当前家庭', '通行密钥测试家庭');
   await expect(page.getByRole('heading', { name: '我的物品' })).toBeVisible();
   await page.goto('/settings');
   await page.getByRole('button', { name: '退出登录并清除本机缓存' }).click();

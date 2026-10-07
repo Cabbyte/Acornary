@@ -180,7 +180,7 @@ test('workbench search, query inspector and atomic editing share the sandbox mod
 }) => {
   const f = await fixture(page);
   await view(page).getByRole('link', { name: '我的物品', exact: true }).click();
-  const search = view(page).getByRole('searchbox', { name: '搜索物品、位置、规格…' });
+  const search = view(page).getByRole('searchbox', { name: '搜索物品、规格、位置…' });
   await search.fill(f.name);
   await search.press('Enter');
   await view(page).getByRole('button', { name: f.name, exact: true }).click();
@@ -201,7 +201,9 @@ test('workbench search, query inspector and atomic editing share the sandbox mod
   await expect(
     view(page).getByRole('heading', { name: f.name + '已核对', exact: true }),
   ).toBeVisible();
-  await expect(view(page).locator('.wb-inspector')).toContainText('工作台原子保存的备注');
+  await expect(view(page).getByLabel('物品详情', { exact: true })).toContainText(
+    '工作台原子保存的备注',
+  );
   await expect
     .poll(() => page.evaluate(() => (window as any).host.context?.selection?.revision))
     .toBe(2);
@@ -635,4 +637,33 @@ test('late authorization errors from cancelled history cannot expire the new hou
     ),
   ).toBe(true);
   await page.screenshot({ path: 'output/playwright/plugin-late-auth-new-session-active.png' });
+});
+
+test('Ant Design iframe dropdown and calendar preserve local dates and explicit submission', async ({
+  page,
+}) => {
+  const f = await fixture(page, 'edit');
+  const embedded = view(page);
+  const date = embedded.getByLabel('购入日期', { exact: true });
+  await date.click();
+  await expect(embedded.locator('.ant-picker-dropdown')).toBeVisible();
+  await date.fill('2026-10-07');
+  await date.press('Enter');
+  await embedded.getByRole('combobox', { name: '状态', exact: true }).click();
+  await embedded.getByRole('option', { name: '可用', exact: true }).click();
+  expect(await writes(page)).toHaveLength(0);
+  await page.screenshot({
+    path: `output/playwright/antd-mcp-${process.env.ACORNARY_E2E_BROWSER ?? 'chromium'}.png`,
+    animations: 'disabled',
+  });
+  await embedded.getByRole('button', { name: '保存修改', exact: true }).click();
+  await expect(embedded.getByRole('dialog')).toHaveCount(0);
+  const commands = await writes(page);
+  expect(commands).toHaveLength(1);
+  expect(commands[0].arguments.operation).toBe('edit_item');
+  expect(commands[0].arguments.input).toMatchObject({
+    item_id: f.id,
+    acquired_on: '2026-10-07',
+    availability: 'AVAILABLE',
+  });
 });

@@ -1,7 +1,8 @@
+import { CalendarInput, DecimalInput } from './inputs';
+import { Input, Select } from 'antd';
 import type { TemplateId } from '../../../../packages/contracts/src/index';
 import { label } from '../lib/presentation';
-import { Field } from './components';
-
+import { FormField } from './components';
 export interface Definition {
   path: string;
   label: string;
@@ -86,8 +87,22 @@ export function fieldValues(object: unknown, fields: Definition[]): Values {
   for (const f of fields) {
     const v = valueAt(object, f.path);
     if (f.type === 'measurement') {
-      out[f.path] = String((v as { value?: string })?.value ?? '');
-      out[`${f.path}.unit`] = String((v as { unit?: string })?.unit ?? f.units?.[0] ?? 'mL');
+      out[f.path] = String(
+        (
+          v as {
+            value?: string;
+          }
+        )?.value ?? '',
+      );
+      out[`${f.path}.unit`] = String(
+        (
+          v as {
+            unit?: string;
+          }
+        )?.unit ??
+          f.units?.[0] ??
+          'mL',
+      );
     } else out[f.path] = Array.isArray(v) ? v.join(', ') : String(v ?? '');
   }
   return out;
@@ -145,56 +160,58 @@ export function AttributeFields({
   return (
     <>
       {fields.map((f) => (
-        <Field
+        <FormField
           key={f.path}
           label={f.label}
           hint={f.type === 'list' ? '多个条码用逗号分隔；留空表示未记录' : undefined}
         >
           {f.options ? (
-            <select value={values[f.path] ?? ''} onChange={(e) => onChange(f.path, e.target.value)}>
-              <option value="">未记录</option>
-              {f.options.map((o) => (
-                <option key={o} value={o}>
-                  {label(o)}
-                </option>
-              ))}
-            </select>
+            <Select
+              value={values[f.path] ?? ''}
+              onChange={(value) => onChange(f.path, value)}
+              options={[
+                { value: '', label: '未记录' },
+                ...f.options.map((o) => ({ value: o, label: label(o) })),
+              ]}
+            />
           ) : f.type === 'measurement' ? (
             <span className="measurement">
-              <input
+              <DecimalInput
                 aria-label={f.label}
-                inputMode="decimal"
-                pattern="(0|[1-9][0-9]*)(\.[0-9]+)?"
                 value={values[f.path] ?? ''}
-                onChange={(e) => onChange(f.path, e.target.value)}
+                onChange={(value) => onChange(f.path, value)}
                 placeholder="未记录"
               />
-              <select
+              <Select
                 aria-label={`${f.label}单位`}
                 value={values[`${f.path}.unit`] ?? f.units?.[0]}
-                onChange={(e) => onChange(`${f.path}.unit`, e.target.value)}
-              >
-                {f.units?.map((u) => (
-                  <option key={u} value={u}>
-                    {label(u)}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => onChange(`${f.path}.unit`, value)}
+                options={f.units?.map((u) => ({ value: u, label: label(u) }))}
+              />
             </span>
+          ) : f.type === 'date' ? (
+            <CalendarInput
+              value={values[f.path] ?? ''}
+              onChange={(value) => onChange(f.path, value)}
+            />
+          ) : f.type === 'number' || f.type === 'decimal' ? (
+            <DecimalInput
+              min={f.type === 'number' ? '1' : undefined}
+              max={f.type === 'number' ? '36500' : undefined}
+              step={f.type === 'number' ? '1' : undefined}
+              value={values[f.path] ?? ''}
+              onChange={(value) => onChange(f.path, value)}
+              placeholder="未记录"
+            />
           ) : (
-            <input
-              type={f.type === 'date' ? 'date' : f.type === 'number' ? 'number' : 'text'}
-              min={f.type === 'number' ? 1 : undefined}
-              max={f.type === 'number' ? 36500 : undefined}
-              step={f.type === 'number' ? 1 : undefined}
-              inputMode={f.type === 'decimal' ? 'decimal' : undefined}
+            <Input
               maxLength={f.type === 'list' ? 4096 : 500}
               value={values[f.path] ?? ''}
               onChange={(e) => onChange(f.path, e.target.value)}
               placeholder="未记录"
             />
           )}
-        </Field>
+        </FormField>
       ))}
     </>
   );
