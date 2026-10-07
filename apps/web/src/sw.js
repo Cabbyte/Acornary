@@ -8,29 +8,7 @@ self.addEventListener('install', (event) => {
       const response = await fetch('/', { cache: 'reload' });
       if (!response.ok) throw new Error('App shell unavailable');
       await cache.put('/items', response);
-      await cache.addAll([
-        '/manifest.webmanifest',
-        '/app-icon.png',
-        '/design/search.svg',
-        '/design/soft-search.svg',
-        '/design/soft-clear.svg',
-        '/design/workbench/brand.svg',
-        '/design/workbench/close.svg',
-        '/design/workbench/check.svg',
-        '/design/workbench/dots.svg',
-        '/design/workbench/settings.svg',
-        '/design/workbench/folder.svg',
-        '/design/workbench/chevron.svg',
-        '/design/workbench/plus.svg',
-        '/design/workbench/catalog.svg',
-        '/design/workbench/items.svg',
-        '/design/workbench/search.svg',
-        '/design/workbench/down.svg',
-        '/design/workbench/status.svg',
-        '/design/workbench/status-muted.svg',
-
-        ...PRECACHE,
-      ]);
+      await cache.addAll(['/manifest.webmanifest', '/app-icon.png', ...PRECACHE]);
     })(),
   );
 });

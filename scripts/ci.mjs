@@ -144,6 +144,26 @@ try {
     'test:e2e',
     ...(process.env.ACORNARY_E2E_GREP ? ['--grep', process.env.ACORNARY_E2E_GREP] : []),
   ]);
+  if (!process.env.ACORNARY_E2E_GREP) {
+    docker([
+      'exec',
+      '-e',
+      'ACORNARY_E2E_CLOUD=1',
+      '-e',
+      'ACORNARY_TEST_TLS_DIR=/tmp',
+      '-e',
+      'ACORNARY_E2E_ORIGIN=https://localhost:3210',
+      '-e',
+      'ACORNARY_E2E_BROWSER=webkit',
+      worker,
+      'pnpm',
+      'test:e2e',
+      '--grep',
+      'Ant Design|six distinct items|Chinese composition Enter',
+      '--output',
+      'output/playwright/webkit-results',
+    ]);
+  }
 } finally {
   const artifacts = process.env.ACORNARY_CI_OUTPUT ?? 'output/ci';
   mkdirSync(artifacts, { recursive: true });

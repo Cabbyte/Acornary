@@ -26,6 +26,6 @@ COPY --from=build /app/deploy/grants.sql ./deploy/grants.sql
 COPY package.json ./
 CMD ["node","dist/apps/server/src/index.js"]
 FROM dependencies AS browser-test
-RUN pnpm exec playwright install --with-deps chromium
+RUN pnpm exec playwright install --with-deps chromium webkit
 COPY . .
 CMD ["pnpm","test:e2e"]

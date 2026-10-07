@@ -1,9 +1,10 @@
+import { Card } from 'antd';
+import { App, Button, Input, Select } from 'antd';
 import { useEffect, useState } from 'react';
-import { Button, Field, Notice, Sheet } from './ui/components';
+import { FormField, Notice, ActionDrawer } from './ui/components';
 import { accountRequest, addPasskey, authError, type Capabilities } from './lib/accounts';
 import { Login, useSession } from './lib/session';
 import { clearHouseholdData } from './lib/storage';
-
 export function EnrollmentScreen() {
   const recovery = location.pathname === '/recover';
   const purpose = recovery ? 'recover' : 'register';
@@ -61,16 +62,18 @@ export function EnrollmentScreen() {
                   ? '验证邮箱后，你可以设置新的通行密钥或密码。旧登录方式与客户端授权将被撤销。'
                   : '用邮箱识别账号，再通过系统通行密钥登录。密码可以稍后添加，也可以不设置。'}
               </p>
-              <Field label="邮箱">
-                <input
+              <FormField label="邮箱">
+                <Input
                   type="email"
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
-              </Field>
-              <Button disabled={busy}>发送验证码</Button>
+              </FormField>
+              <Button disabled={busy} htmlType="submit" type="primary">
+                发送验证码
+              </Button>
             </form>
           )}
           {step === 'code' && (
@@ -86,8 +89,8 @@ export function EnrollmentScreen() {
               }}
             >
               <p>如果 {email} 符合条件，验证码已发送；10 分钟内有效。</p>
-              <Field label="邮箱验证码">
-                <input
+              <FormField label="邮箱验证码">
+                <Input
                   name="code"
                   inputMode="numeric"
                   autoComplete="one-time-code"
@@ -95,25 +98,27 @@ export function EnrollmentScreen() {
                   maxLength={6}
                   required
                 />
-              </Field>
-              <Button disabled={busy}>验证邮箱</Button>
+              </FormField>
+              <Button disabled={busy} htmlType="submit" type="primary">
+                验证邮箱
+              </Button>
               <Button
-                type="button"
-                variant="secondary"
+                htmlType="button"
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
                     await accountRequest('account/email/start', { email, purpose });
                   })
                 }
+                type="default"
               >
                 重新发送
               </Button>
               <Button
-                type="button"
-                variant="secondary"
+                htmlType="button"
                 disabled={busy}
                 onClick={() => setStep('email')}
+                type="default"
               >
                 更换邮箱
               </Button>
@@ -130,13 +135,16 @@ export function EnrollmentScreen() {
                     recovery ? next() : setStep('optional');
                   })
                 }
+                htmlType="button"
+                type="primary"
               >
                 创建通行密钥
               </Button>
               <Button
-                variant="secondary"
                 disabled={busy}
                 onClick={() => setPasswordMode(!passwordMode)}
+                htmlType="button"
+                type="default"
               >
                 改用邮箱和密码
               </Button>
@@ -168,7 +176,7 @@ export function EnrollmentScreen() {
                   })
                 }
               />
-              <Button variant="secondary" disabled={busy} onClick={next}>
+              <Button disabled={busy} onClick={next} htmlType="button" type="default">
                 暂时跳过
               </Button>
             </div>
@@ -204,8 +212,8 @@ function PasswordForm({
         void onSubmit(String(f.get('password')));
       }}
     >
-      <Field label="新密码" hint="至少 12 位">
-        <input
+      <FormField label="新密码" hint="至少 12 位">
+        <Input
           type="password"
           name="password"
           autoComplete="new-password"
@@ -213,9 +221,9 @@ function PasswordForm({
           maxLength={128}
           required
         />
-      </Field>
-      <Field label="再次输入密码">
-        <input
+      </FormField>
+      <FormField label="再次输入密码">
+        <Input
           type="password"
           name="confirm"
           autoComplete="new-password"
@@ -223,9 +231,11 @@ function PasswordForm({
           maxLength={128}
           required
         />
-      </Field>
+      </FormField>
       {error && <Notice danger>{error}</Notice>}
-      <Button disabled={busy}>{label}</Button>
+      <Button disabled={busy} htmlType="submit" type="primary">
+        {label}
+      </Button>
     </form>
   );
 }
@@ -251,10 +261,12 @@ export function FamilySetup({ onDone }: { onDone: () => Promise<void> }) {
             .finally(() => setBusy(false));
         }}
       >
-        <Field label="家庭名称">
-          <input name="name" defaultValue="我的家庭" maxLength={80} required />
-        </Field>
-        <Button disabled={busy}>创建家庭</Button>
+        <FormField label="家庭名称">
+          <Input name="name" defaultValue="我的家庭" maxLength={80} required />
+        </FormField>
+        <Button disabled={busy} htmlType="submit" type="primary">
+          创建家庭
+        </Button>
       </form>
       {error && <Notice danger>{error}</Notice>}
     </main>
@@ -290,6 +302,8 @@ export function JoinScreen() {
                   setBusy(false);
                 });
             }}
+            htmlType="button"
+            type="primary"
           >
             确认加入 {name}
           </Button>
@@ -301,6 +315,7 @@ export function JoinScreen() {
   );
 }
 export function AccountSettings() {
+  const { modal } = App.useApp();
   const { session, online } = useSession();
   const [credentials, setCredentials] = useState<any>(),
     [reauth, setReauth] = useState(false),
@@ -327,7 +342,7 @@ export function AccountSettings() {
     }
   }
   return (
-    <section className="card stack">
+    <Card className="card stack">
       <h2>账号与安全</h2>
       <p>{session.email}</p>
       <p>
@@ -335,12 +350,19 @@ export function AccountSettings() {
         个通行密钥
       </p>
       {credentials && !credentials.fresh && <Notice>修改登录方式前，请重新验证身份。</Notice>}
-      <Button variant="secondary" disabled={!online || busy} onClick={() => setReauth(true)}>
+      <Button
+        disabled={!online || busy}
+        onClick={() => setReauth(true)}
+        htmlType="button"
+        type="default"
+      >
         重新验证身份
       </Button>
       <Button
         disabled={!online || busy || !credentials?.fresh}
         onClick={() => void act(() => addPasskey())}
+        htmlType="button"
+        type="primary"
       >
         添加通行密钥
       </Button>
@@ -354,16 +376,19 @@ export function AccountSettings() {
               void act(() => accountRequest('account/passkey/update', { id: key.id, name }));
             }}
           >
-            <Field label="通行密钥名称">
-              <input name="name" defaultValue={key.name ?? '通行密钥'} maxLength={80} required />
-            </Field>
+            <FormField label="通行密钥名称">
+              <Input name="name" defaultValue={key.name ?? '通行密钥'} maxLength={80} required />
+            </FormField>
             <small>添加于 {new Date(key.createdAt).toLocaleDateString()}</small>
-            <Button variant="secondary" disabled={!online || busy || !credentials.fresh}>
+            <Button
+              disabled={!online || busy || !credentials.fresh}
+              htmlType="submit"
+              type="default"
+            >
               保存名称
             </Button>
             <Button
-              type="button"
-              variant="danger"
+              htmlType="button"
               disabled={
                 !online ||
                 busy ||
@@ -371,11 +396,16 @@ export function AccountSettings() {
                 (!credentials.password && credentials.passkeys.length === 1)
               }
               onClick={() => {
-                if (window.confirm('删除这个通行密钥？'))
-                  void act(() =>
-                    accountRequest('account/passkey/update', { id: key.id, name: null }),
-                  );
+                modal.confirm({
+                  title: '删除这个通行密钥？',
+                  okText: '删除',
+                  okButtonProps: { danger: true },
+                  onOk: () =>
+                    act(() => accountRequest('account/passkey/update', { id: key.id, name: null })),
+                });
               }}
+              type="primary"
+              danger={true}
             >
               删除通行密钥
             </Button>
@@ -383,9 +413,10 @@ export function AccountSettings() {
         </div>
       ))}
       <Button
-        variant="secondary"
         disabled={!online || busy || !credentials?.fresh}
         onClick={() => setPassword(!password)}
+        htmlType="button"
+        type="default"
       >
         {credentials?.password ? '修改密码' : '添加密码'}
       </Button>
@@ -403,12 +434,18 @@ export function AccountSettings() {
       )}
       {credentials?.password && (
         <Button
-          variant="danger"
           disabled={!online || busy || !credentials.fresh || !credentials.passkeys.length}
           onClick={() => {
-            if (window.confirm('移除密码后将使用通行密钥登录，继续吗？'))
-              void act(() => accountRequest('account/password', { password: null }));
+            modal.confirm({
+              title: '移除密码后将使用通行密钥登录，继续吗？',
+              okText: '移除密码',
+              okButtonProps: { danger: true },
+              onOk: () => act(() => accountRequest('account/password', { password: null })),
+            });
           }}
+          htmlType="button"
+          type="primary"
+          danger={true}
         >
           移除密码
         </Button>
@@ -417,7 +454,7 @@ export function AccountSettings() {
       {message && <Notice>{message}</Notice>}
       {error && <Notice danger>{error}</Notice>}
       {reauth && (
-        <Sheet title="验证你的身份" onClose={() => setReauth(false)}>
+        <ActionDrawer title="验证你的身份" onClose={() => setReauth(false)}>
           <Login
             expectedEmail={session.email}
             onDone={async () => {
@@ -425,12 +462,13 @@ export function AccountSettings() {
               setReauth(false);
             }}
           />
-        </Sheet>
+        </ActionDrawer>
       )}
-    </section>
+    </Card>
   );
 }
 export function HouseholdSettings() {
+  const { modal } = App.useApp();
   const { session, online, switchHousehold } = useSession();
   const [detail, setDetail] = useState<any>(),
     [error, setError] = useState(''),
@@ -458,21 +496,18 @@ export function HouseholdSettings() {
     }
   }
   return (
-    <section className="card stack">
+    <Card className="card stack">
       <h2>家庭</h2>
-      <Field label="当前家庭">
-        <select
+      <FormField label="当前家庭">
+        <Select
           value={household_id}
           disabled={!online || busy}
-          onChange={(e) => void switchHousehold(e.target.value)}
-        >
-          {session.households?.map((h) => (
-            <option value={h.household_id} key={h.id}>
-              {h.name}
-            </option>
-          ))}
-        </select>
-      </Field>
+          onChange={(e) => void switchHousehold(e)}
+          options={[
+            ...(session.households?.map((h) => ({ value: h.household_id, label: h.name })) ?? []),
+          ]}
+        />
+      </FormField>
       <form
         className="stack"
         onSubmit={(e) => {
@@ -483,15 +518,15 @@ export function HouseholdSettings() {
           });
         }}
       >
-        <Field label="家庭名称">
-          <input
+        <FormField label="家庭名称">
+          <Input
             name="name"
             defaultValue={session.households?.find((h) => h.household_id === household_id)?.name}
             required
             maxLength={80}
           />
-        </Field>
-        <Button variant="secondary" disabled={!online || busy}>
+        </FormField>
+        <Button disabled={!online || busy} htmlType="submit" type="default">
           修改家庭名称
         </Button>
       </form>
@@ -510,13 +545,15 @@ export function HouseholdSettings() {
             if (r) setLink(r.url);
           })
         }
+        htmlType="button"
+        type="primary"
       >
         创建邀请链接
       </Button>
       {link && (
-        <Field label="邀请链接" hint="请复制给家人。7 天有效、单次使用，持有链接的人可加入。">
-          <input readOnly value={link} onFocus={(e) => e.target.select()} />
-        </Field>
+        <FormField label="邀请链接" hint="请复制给家人。7 天有效、单次使用，持有链接的人可加入。">
+          <Input readOnly value={link} onFocus={(e) => e.target.select()} />
+        </FormField>
       )}
       {detail?.invitations
         .filter((i: any) => !i.revoked && !i.used_by)
@@ -524,9 +561,10 @@ export function HouseholdSettings() {
           <div className="stack" key={i.id}>
             <small>邀请有效至 {new Date(i.expires_at).toLocaleString()}</small>
             <Button
-              variant="secondary"
               disabled={!online || busy}
               onClick={() => void act({ action: 'revoke', invitation_id: i.id })}
+              htmlType="button"
+              type="default"
             >
               撤销邀请
             </Button>
@@ -542,30 +580,37 @@ export function HouseholdSettings() {
           });
         }}
       >
-        <Field label="新家庭名称">
-          <input name="name" maxLength={80} required placeholder="例如：另一处住所" />
-        </Field>
-        <Button variant="secondary" disabled={!online || busy}>
+        <FormField label="新家庭名称">
+          <Input name="name" maxLength={80} required placeholder="例如：另一处住所" />
+        </FormField>
+        <Button disabled={!online || busy} htmlType="submit" type="default">
           创建另一个家庭
         </Button>
       </form>
       <Button
-        variant="danger"
         disabled={!online || busy || !detail || detail.members.length < 2}
         onClick={() => {
-          if (window.confirm('退出后无法再访问这个家庭及其库存，继续吗？'))
-            void act({ action: 'leave' }).then((r) => {
-              if (r) {
-                sessionStorage.removeItem('acornary-household');
-                location.replace('/items');
-              }
-            });
+          modal.confirm({
+            title: '退出后无法再访问这个家庭及其库存，继续吗？',
+            okText: '退出家庭',
+            okButtonProps: { danger: true },
+            onOk: () =>
+              act({ action: 'leave' }).then((r) => {
+                if (r) {
+                  sessionStorage.removeItem('acornary-household');
+                  location.replace('/items');
+                }
+              }),
+          });
         }}
+        htmlType="button"
+        type="primary"
+        danger={true}
       >
         退出这个家庭
       </Button>
       {detail?.members.length === 1 && <small>最后一名成员不能退出家庭。</small>}
       {error && <Notice danger>{error}</Notice>}
-    </section>
+    </Card>
   );
 }

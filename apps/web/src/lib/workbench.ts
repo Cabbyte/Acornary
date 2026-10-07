@@ -10,7 +10,7 @@ import {
 import { searchInventory } from './browse.js';
 import { label } from './presentation.js';
 
-export const WORKBENCH_PAGE_SIZE = 18;
+export const WORKBENCH_PAGE_SIZE = 20;
 export type WorkbenchFilter = {
   query: string;
   descendants: boolean;
@@ -43,11 +43,7 @@ export function workbenchItems(
     filter.status === 'terminal' ? 'terminal' : 'current',
     filter.category,
   )
-    .filter(
-      (i) =>
-        !isContainer(i) &&
-        (!place || filter.descendants || !!filter.query.trim() || i.parent_id === place),
-    )
+    .filter((i) => !isContainer(i) && (!place || filter.descendants || i.parent_id === place))
     .filter(
       (i) =>
         !filter.status ||

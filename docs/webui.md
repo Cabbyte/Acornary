@@ -1,12 +1,12 @@
 # 松仓 Web UI
 
-当前实现已合入主线并随 [v0.4.2](https://github.com/Cabbyte/Acornary/releases/tag/v0.4.2) 发布：Web 和 MCP Apps 复用响应式工作台。账号与多家庭能力见 [账号系统](./accounts.md)，当前发布和验收状态见 [项目进度](./progress.md)。
+本分支全量采用 [Ant Design 统一界面](./antd-ui.md)，Web 和 MCP Apps 复用同一组件。正式线上版本仍以发布记录为准；本次迁移尚未部署。账号与多家庭能力见 [账号系统](./accounts.md)，当前发布和验收状态见 [项目进度](./progress.md)。
 
 ## 设计与入口
 
-当前布局以 [响应式工作台](./responsive-workbench.md) 为准，设计来源为 Figma 的 `128:358` 分支。共享页面入口是 `workspace.tsx`，Web 与 [插件](./plugin.md) 分别注入 transport 和会话。2026-10-01 的 Soft Gray 本地阶段已归入 [历史交接](./archive/soft-gray-handoff.md)。
+当前布局及 token 以 [Ant Design 统一界面](./antd-ui.md) 为准，原工作台与 Figma 来源保存在 [工作台历史](./responsive-workbench.md)。共享页面入口是 `workspace.tsx`，Web 与 [插件](./plugin.md) 分别注入 transport 和会话。2026-10-01 的 Soft Gray 本地阶段已归入 [历史交接](./archive/soft-gray-handoff.md)。
 
-使用白底、暖灰内容面板、棕色操作色、完整位置路径与原生 HTML 表单。样式通过明确的 legacy / soft 层级共存，避免异步加载顺序覆盖布局和设计色。
+统一使用暖灰背景、白色内容面板、棕色主色和完整位置路径。Ant Design Form / Input / Select / TreeSelect / DatePicker / InputNumber 连接既有草稿，旧样式层已清理。
 
 - `/items`：工作台列表、完整范围搜索、筛选、排序、显示列和按 UUID 多选。
 - `/search`：逐件搜索名称、规格、型号、位置或完整编号，可限定位置及所有下级位置，并按分类和库存状态筛选。
@@ -20,7 +20,7 @@
 - `/inspect`：设置 → 开发者工具 → 数据库检查器；独立按需加载，提供“返回松仓”。
 - `/login`、`/consent`：产品视觉的公共登录与 OAuth 授权页，不依赖检查器模块。
 
-工作台在 760px 及以下使用手机列表、位置面板和全页详情，宽屏使用位置侧栏、列表和检查器。共用表单保留各自的响应式布局；实测屏宽及具体交互见工作台说明，设备边界见项目进度。
+工作台 <768px 使用手机列表、底部导航、位置抽屉和全页详情；768–1199px 使用 200px 可折叠侧栏与详情抽屉；≥1200px 使用 224px 侧栏与 360px 详情栏。编辑统一在 560px / 手机全屏抽屉中，调整窗口保留草稿。物品、商品、SKU 和搜索每页默认 20 条，可选 50/100。
 
 ## 单站点与统一会话
 
@@ -73,6 +73,9 @@
 - 缓存可能受浏览器存储限制或清理影响；缓存失败会显示提示。没有后台同步或离线写入队列。
 
 ## 启动与验证
+
+本次迁移推荐使用 `node scripts/ui-preview.mjs start` 创建完全独立的示例环境，详见 [试用与验证](./antd-ui.md#试用)。以下历史运行方法仍只适用于明确隔离的开发配置。
+
 
 运行要求保持仓库现有的 Node 24、pnpm 和 PostgreSQL 18。使用独立开发库；不要重新启用迁移前的正式本地库存。
 

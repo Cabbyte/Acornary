@@ -10,6 +10,7 @@
 | [领域模型](./domain-model.md) | CatalogNode / Item 两棵树、稳定身份、七种属性模板、事件与不变量 |
 | [架构](./architecture.md) | 运行模式、技术栈、领域命令、事务、权限及阶段演进 |
 | [业务示例](./examples.md) | 明确 UUID 的操作、局部更新、移动、笔记和失败场景 |
+| [Ant Design 统一界面](./antd-ui.md) | 全量迁移、共享主题、组件约定、独立试用与验证 |
 | [Web UI](./webui.md) | 路由、会话、读写、离线缓存、草稿与验证流程 |
 | [响应式工作台](./responsive-workbench.md) | 桌面／手机共用界面、原子批量移动与编辑 |
 | [MCP Apps 插件](./plugin.md) | 宿主桥、资源、身份作用域、上下文与私有状态 |

@@ -34,9 +34,10 @@ describe('workbench projections', () => {
     expect(workbenchItems(data, '书房', { ...filter, descendants: true }).map((i) => i.id)).toEqual(
       ['one', 'two'],
     );
-    expect(workbenchItems(data, '书房', { ...filter, query: 'two' }).map((i) => i.id)).toEqual([
-      'two',
-    ]);
+    expect(
+      workbenchItems(data, '书房', { ...filter, query: 'two', descendants: true }).map((i) => i.id),
+    ).toEqual(['two']);
+    expect(workbenchItems(data, '书房', { ...filter, query: 'two' })).toHaveLength(0);
     expect(workbenchItems(data, undefined, filter)).toHaveLength(3);
   });
   it('preserves unknown state instead of inventing availability', () => {

@@ -1,3 +1,4 @@
+import { Button, Skeleton } from 'antd';
 import { embeddedRuntime } from './runtime';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -5,8 +6,7 @@ import type { InventorySnapshot } from '../../../../packages/contracts/src/web';
 import { ApiError, snapshot } from './api';
 import { persist, stored } from './storage';
 import { useSession } from './session';
-import { Button, Notice } from '../ui/components';
-
+import { Notice } from '../ui/components';
 const Context = createContext<{
   data: InventorySnapshot;
   refresh: () => Promise<void>;
@@ -17,7 +17,10 @@ export const useInventory = () => useContext(Context);
 export function InventoryProvider({ children }: { children: ReactNode }) {
   const { session, online } = useSession();
   const key = session.cache_key!;
-  const [cached, setCached] = useState<{ key: string; data: InventorySnapshot }>();
+  const [cached, setCached] = useState<{
+    key: string;
+    data: InventorySnapshot;
+  }>();
   const [cacheWarning, setCacheWarning] = useState('');
   const q = useQuery({
     queryKey: ['inventory', key],
@@ -60,11 +63,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 ? q.error.message
                 : '当前离线，尚未缓存库存。请联网后打开一次。'}
             </Notice>
-            <Button onClick={() => void q.refetch()}>重试</Button>
+            <Button onClick={() => void q.refetch()} htmlType="button" type="primary">
+              重试
+            </Button>
           </>
         ) : (
-          <div role="status" className="skeleton">
-            正在读取库存…
+          <div role="status" aria-label="正在读取库存">
+            <Skeleton active paragraph={{ rows: 4 }} />
           </div>
         )}
       </main>

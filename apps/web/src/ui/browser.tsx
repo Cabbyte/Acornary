@@ -1,6 +1,17 @@
-import clearIcon from '../../public/design/soft-clear.svg';
-import searchIcon from '../../public/design/soft-search.svg';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  Breadcrumb,
+  Button,
+  Checkbox,
+  Input,
+  Pagination,
+  Popover,
+  Select,
+  Space,
+  Table,
+  Typography,
+} from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Link, useLocation } from '@tanstack/react-router';
 import {
   ancestors,
@@ -21,17 +32,27 @@ import {
   visibleProducts,
 } from '../lib/browse';
 import { remaining } from '../lib/presentation';
-import { Button, Empty } from './components';
+import { Empty, FormField } from './components';
+import { useViewport } from './theme';
+import type { Action } from './forms';
 
 type BrowseState = {
   query: string;
   scope: string;
   state: string;
   category: string;
-  limit: number;
+  sort: string;
+  columns: string[];
+  page: number;
+  pageSize: number;
   scroll: number;
+  selected: string[];
+  selecting: boolean;
 };
 const views = new Map<string, BrowseState>();
+export function clearBrowseSelections() {
+  for (const [key, view] of views) views.set(key, { ...view, selected: [], selecting: false });
+}
 export function useBrowseState(view: string, scope = '') {
   const { session } = useSession();
   const key = `${session.cache_key}:${view}`;
@@ -41,8 +62,13 @@ export function useBrowseState(view: string, scope = '') {
       scope,
       state: 'current',
       category: '',
-      limit: PAGE_SIZE,
+      sort: 'name',
+      columns: ['spec', 'place', 'remaining', 'category', 'count'],
+      page: 1,
+      pageSize: PAGE_SIZE,
       scroll: 0,
+      selected: [],
+      selecting: false,
     };
   const [state, setState] = useState(defaults);
   const current = useRef(state);
@@ -64,11 +90,68 @@ export function useBrowseState(view: string, scope = '') {
   }, [key]);
   const update = (patch: Partial<BrowseState>) =>
     setState((old) => {
-      const next = { ...old, limit: PAGE_SIZE, ...patch };
+      const next = {
+        ...current.current,
+        ...old,
+        scroll: current.current.scroll,
+        page: 1,
+        ...patch,
+      };
       views.set(key, next);
       return next;
     });
   return [state, update] as const;
+}
+export function ListOptions({
+  view,
+  update,
+  catalog = false,
+}: {
+  view: BrowseState;
+  update: (patch: Partial<BrowseState>) => void;
+  catalog?: boolean;
+}) {
+  const { mobile } = useViewport();
+  return (
+    <>
+      <Select
+        aria-label="排序"
+        value={view.sort}
+        onChange={(sort) => update({ sort })}
+        options={[
+          { value: 'name', label: '名称排序' },
+          { value: 'recent', label: catalog ? '库存数量排序' : '最近入库' },
+        ]}
+      />
+      {!mobile && (
+        <Popover
+          trigger="click"
+          title="显示列"
+          content={
+            <Checkbox.Group
+              className="stack"
+              value={view.columns}
+              onChange={(columns) => update({ columns: columns.map(String), page: view.page })}
+              options={(catalog
+                ? [
+                    ['spec', '规格'],
+                    ['category', '分类'],
+                    ['count', '在库实物'],
+                  ]
+                : [
+                    ['spec', '规格'],
+                    ['place', '收纳位置'],
+                    ['remaining', '剩余'],
+                  ]
+              ).map(([value, label]) => ({ value, label }))}
+            />
+          }
+        >
+          <Button>显示列</Button>
+        </Popover>
+      )}
+    </>
+  );
 }
 export function SearchField({
   value,
@@ -80,57 +163,63 @@ export function SearchField({
   label: string;
 }) {
   return (
-    <div className="soft-search">
-      <img src={searchIcon} alt="" width="20" height="20" />
-      <input
-        type="search"
-        aria-label={label}
-        placeholder={label}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-      {value && (
-        <button type="button" aria-label="清除搜索" onClick={() => onChange('')}>
-          <img src={clearIcon} alt="" width="16" height="16" />
-        </button>
-      )}
-    </div>
+    <Input
+      className="ac-search"
+      type="search"
+      aria-label={label}
+      placeholder={label}
+      prefix={<SearchOutlined aria-hidden="true" />}
+      allowClear={{ clearIcon: <span aria-label="清除搜索">×</span> }}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
   );
 }
-export function LocationPath({ id }: { id: string | null }) {
+export function LocationPath({
+  id,
+  rootLabel = '全部位置',
+}: {
+  id: string | null;
+  rootLabel?: string;
+}) {
   const { data } = useInventory();
   return (
-    <nav className="location-path" aria-label="完整位置路径">
-      <Link to="/items">全部位置</Link>
-      {ancestors(id, data.items).map((p) => (
-        <span key={p.id}>
-          <span aria-hidden="true"> / </span>
-          <Link to={`/places/${p.id}`}>{itemName(p, data)}</Link>
-        </span>
-      ))}
-    </nav>
+    <Breadcrumb
+      aria-label="完整位置路径"
+      items={[
+        { title: <Link to="/items">{rootLabel}</Link> },
+        ...ancestors(id, data.items).map((p) => ({
+          key: p.id,
+          title: <Link to={`/places/${p.id}`}>{itemName(p, data)}</Link>,
+        })),
+      ]}
+    />
   );
 }
 export function PageEnd({
-  shown,
   total,
-  onMore,
+  page,
+  pageSize,
+  onChange,
   unit = '条',
 }: {
-  shown: number;
   total: number;
-  onMore: () => void;
+  page: number;
+  pageSize: number;
+  onChange: (page: number, pageSize: number) => void;
   unit?: string;
 }) {
   return (
-    <footer className="page-end">
-      <span role="status">{total ? `显示 1–${shown} / ${total} ${unit}` : `0 ${unit}`}</span>
-      {shown < total && (
-        <Button variant="secondary" onClick={onMore}>
-          加载更多
-        </Button>
-      )}
-    </footer>
+    <Pagination
+      aria-label="列表分页"
+      current={Math.min(page, Math.max(1, Math.ceil(total / pageSize)))}
+      pageSize={pageSize}
+      total={total}
+      showSizeChanger
+      pageSizeOptions={[20, 50, 100]}
+      showTotal={(count, range) => `显示 ${range[0]}–${range[1]} / ${count} ${unit}`}
+      onChange={(next, size) => onChange(size !== pageSize ? 1 : next, size)}
+    />
   );
 }
 export function PhysicalRow({ item, path = false }: { item: ItemRecord; path?: boolean }) {
@@ -140,256 +229,345 @@ export function PhysicalRow({ item, path = false }: { item: ItemRecord; path?: b
   const container = isContainer(item);
   return (
     <Link
-      className="soft-row"
+      className="row"
       to={container ? `/places/${item.id}` : `/items/${item.id}/details`}
       search={{ returnTo: location.pathname + location.searchStr }}
     >
-      <span className="soft-row-copy">
+      <span className="row-copy">
         <strong>{itemName(item, data)}</strong>
-        <span>{container ? '位置' : specification(sku) || '规格未记录'}</span>
-        {path && <span>{item.parent_id ? fullPath(item.parent_id, data) : '位置未记录'}</span>}
+        <Typography.Text type="secondary">
+          {container ? '位置' : specification(sku) || '规格未记录'}
+          {path && ` · ${fullPath(item.parent_id, data)}`}
+        </Typography.Text>
         <small className="item-identity">{container ? '' : `实物 ${item.id}`}</small>
       </span>
-      <span className="soft-row-detail">
+      <span className="row-detail">
         {container
           ? `${physicalItems(data.items.filter((i) => i.parent_id === item.id && !isTerminal(i))).length} 件实物`
           : isTerminal(item)
             ? '历史记录'
-            : path
-              ? remaining(item)
-              : '1 件'}
+            : remaining(item)}
       </span>
-      <span aria-hidden="true">›</span>
     </Link>
+  );
+}
+export function ItemTable({
+  items,
+  selected,
+  onSelection,
+  columns = ['spec', 'place', 'remaining'],
+}: {
+  items: ItemRecord[];
+  selected?: string[];
+  onSelection?: (ids: string[]) => void;
+  columns?: string[];
+}) {
+  const { data } = useInventory();
+  const { mobile } = useViewport();
+  const location = useLocation();
+  const ids = items.filter((i) => !isTerminal(i)).map((i) => i.id);
+  const all = !!ids.length && ids.every((id) => selected?.includes(id));
+  const selectAll = () =>
+    onSelection?.(
+      all
+        ? (selected ?? []).filter((id) => !ids.includes(id))
+        : [...new Set([...(selected ?? []), ...ids])],
+    );
+  if (mobile)
+    return (
+      <div className="ac-mobile-list">
+        {onSelection && (
+          <Checkbox aria-label="选择本页全部物品" checked={all} onChange={selectAll}>
+            本页全选
+          </Checkbox>
+        )}
+        {items.map((item) => (
+          <div className="ac-mobile-item" key={item.id}>
+            {onSelection && (
+              <Checkbox
+                aria-label={`选择 ${itemName(item, data)} ${item.id}`}
+                disabled={isTerminal(item)}
+                checked={selected?.includes(item.id)}
+                onChange={(e) =>
+                  onSelection(
+                    e.target.checked
+                      ? [...(selected ?? []), item.id]
+                      : (selected ?? []).filter((id) => id !== item.id),
+                  )
+                }
+              />
+            )}
+            <PhysicalRow item={item} path />
+          </div>
+        ))}
+      </div>
+    );
+  return (
+    <Table<ItemRecord>
+      aria-label="实物列表"
+      rowKey="id"
+      dataSource={items}
+      pagination={false}
+      tableLayout="fixed"
+      rowSelection={
+        onSelection
+          ? {
+              selectedRowKeys: selected,
+              preserveSelectedRowKeys: true,
+              columnTitle: (
+                <Checkbox aria-label="选择本页全部物品" checked={all} onChange={selectAll} />
+              ),
+              onChange: (keys) => onSelection(keys.map(String)),
+              getCheckboxProps: (item) => ({
+                disabled: isTerminal(item),
+                'aria-label': `选择 ${itemName(item, data)} ${item.id}`,
+              }),
+            }
+          : undefined
+      }
+      columns={[
+        {
+          title: '物品',
+          key: 'name',
+          render: (_, item) => (
+            <Link
+              to={isContainer(item) ? `/places/${item.id}` : `/items/${item.id}/details`}
+              search={{ returnTo: location.pathname + location.searchStr }}
+            >
+              {itemName(item, data)}
+            </Link>
+          ),
+        },
+        {
+          title: '规格',
+          key: 'spec',
+          hidden: !columns.includes('spec'),
+          ellipsis: true,
+          render: (_, item) =>
+            isContainer(item)
+              ? '位置'
+              : specification(data.catalog.find((c) => c.id === item.catalog_node_id)) ||
+                '规格未记录',
+        },
+        {
+          title: '收纳位置',
+          key: 'place',
+          hidden: !columns.includes('place'),
+          ellipsis: true,
+          render: (_, item) => fullPath(item.parent_id, data),
+        },
+        {
+          title: '剩余',
+          key: 'remaining',
+          hidden: !columns.includes('remaining'),
+          render: (_, item) => (isTerminal(item) ? '历史记录' : remaining(item)),
+        },
+      ]}
+    />
   );
 }
 export function InventorySearch() {
   const { data } = useInventory();
   const [view, update] = useBrowseState('search');
-  const results = searchInventory(data, view.query, view.scope, view.state, view.category);
-  const shown = results.slice(0, view.limit);
+  const results = searchInventory(data, view.query, view.scope, view.state, view.category).sort(
+    (a, b) =>
+      view.sort === 'recent'
+        ? b.created_at.localeCompare(a.created_at)
+        : itemName(a, data).localeCompare(itemName(b, data), 'zh-CN'),
+  );
+  const page = Math.min(view.page, Math.max(1, Math.ceil(results.length / view.pageSize)));
+  const shown = results.slice((page - 1) * view.pageSize, page * view.pageSize);
   return (
-    <div className="soft-page">
-      <header className="soft-heading">
-        <h1>搜索</h1>
+    <div className="ac-page">
+      <header className="page-header">
+        <Typography.Title level={2}>搜索</Typography.Title>
       </header>
-      <SearchField
-        value={view.query}
-        onChange={(query) => update({ query })}
-        label="搜索物品、规格或位置"
-      />
-      <div className="search-filters">
-        <label>
-          搜索范围
-          <select value={view.scope} onChange={(e) => update({ scope: e.target.value })}>
-            <option value="">全家庭</option>
-            {data.items.filter(isContainer).map((i) => (
-              <option key={i.id} value={i.id}>
-                {fullPath(i.id, data)}及下级位置
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          库存状态
-          <select value={view.state} onChange={(e) => update({ state: e.target.value })}>
-            {[
+      <div className="ac-toolbar">
+        <SearchField
+          value={view.query}
+          onChange={(query) => update({ query })}
+          label="搜索物品、规格或位置"
+        />
+        <FormField label="搜索范围">
+          <Select
+            value={view.scope}
+            onChange={(scope) => update({ scope })}
+            options={[
+              { value: '', label: '全家庭' },
+              ...data.items
+                .filter(isContainer)
+                .map((i) => ({ value: i.id, label: `${fullPath(i.id, data)}及下级位置` })),
+            ]}
+          />
+        </FormField>
+        <FormField label="库存状态">
+          <Select
+            value={view.state}
+            onChange={(state) => update({ state })}
+            options={[
               ['current', '当前库存'],
               ['all', '全部记录'],
               ['OPENED', '已开封'],
               ['SEALED', '未开封'],
               ['unknown', '开封未记录'],
               ['terminal', '历史物品'],
-            ].map(([v, t]) => (
-              <option key={v} value={v}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          商品分类
-          <select value={view.category} onChange={(e) => update({ category: e.target.value })}>
-            <option value="">全部分类</option>
-            {data.catalog
-              .filter((c) => c.kind === 'GROUP')
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {[categoryPath(c, data), c.name].join(' / ')}
-                </option>
-              ))}
-          </select>
-        </label>
+            ].map(([value, label]) => ({ value, label }))}
+          />
+        </FormField>
+        <FormField label="商品分类">
+          <Select
+            value={view.category}
+            onChange={(category) => update({ category })}
+            options={[
+              { value: '', label: '全部分类' },
+              ...data.catalog
+                .filter((c) => c.kind === 'GROUP')
+                .map((c) => ({ value: c.id, label: [categoryPath(c, data), c.name].join(' / ') })),
+            ]}
+          />
+        </FormField>
+        <ListOptions view={view} update={update} />
       </div>
-      <section className="soft-panel">
-        <h2>搜索结果</h2>
-        <p className="caption">
-          {physicalItems(results).length} 件实物 · {results.filter(isContainer).length} 个位置
-        </p>
-        {shown.map((item) => (
-          <PhysicalRow key={item.id} item={item} path />
-        ))}
-        {!results.length && <Empty title="没有找到匹配结果">清除关键词或扩大搜索范围。</Empty>}
-        <PageEnd
-          shown={shown.length}
-          total={results.length}
-          onMore={() => update({ limit: view.limit + PAGE_SIZE })}
-        />
-      </section>
-    </div>
-  );
-}
-export function ProductCatalog() {
-  const { data } = useInventory();
-  const location = useLocation();
-  const [view, update] = useBrowseState('catalog');
-  const products = visibleProducts(data).filter((c) =>
-    `${c.name} ${specification(c)}`
-      .toLocaleLowerCase()
-      .includes(view.query.trim().toLocaleLowerCase()),
-  );
-  const shown = products.slice(0, view.limit);
-  return (
-    <div className="soft-page">
-      <header className="soft-heading">
-        <h1>商品目录</h1>
-        <p>{products.length} 款商品</p>
-      </header>
-      <SearchField
-        value={view.query}
-        onChange={(query) => update({ query })}
-        label="搜索商品名称或规格"
+      <Typography.Text type="secondary">
+        {physicalItems(results).length} 件实物 · {results.filter(isContainer).length} 个位置
+      </Typography.Text>
+      <ItemTable items={shown} columns={view.columns} />
+      {!results.length && <Empty title="没有找到匹配结果">清除关键词或扩大搜索范围。</Empty>}
+      <PageEnd
+        total={results.length}
+        page={page}
+        pageSize={view.pageSize}
+        onChange={(page, pageSize) => update({ page, pageSize })}
       />
-      <section className="soft-panel">
-        {shown.map((sku) => (
-          <Link
-            key={sku.id}
-            className="soft-row"
-            to={`/items/group/${sku.id}`}
-            search={{ returnTo: location.pathname }}
-          >
-            <span className="soft-row-copy">
-              <strong>{sku.name}</strong>
-              <span>{specification(sku) || '规格未记录'}</span>
-              <small>{categoryPath(sku, data)}</small>
-            </span>
-            <span className="soft-row-detail">
-              {
-                physicalItems(
-                  data.items.filter((i) => i.catalog_node_id === sku.id && !isTerminal(i)),
-                ).length
-              }{' '}
-              件实物
-            </span>
-            <span aria-hidden="true">›</span>
-          </Link>
-        ))}
-        {!products.length && <Empty title="没有找到商品" />}
-        <PageEnd
-          shown={shown.length}
-          total={products.length}
-          unit="款商品"
-          onMore={() => update({ limit: view.limit + PAGE_SIZE })}
-        />
-      </section>
-      <Link to="/catalog/manage" className="button secondary">
-        管理商品资料
-      </Link>
     </div>
   );
 }
-export function MovePicker({
-  item,
-  value,
-  onChange,
-}: {
-  item: ItemRecord;
-  value: string;
-  onChange: (id: string) => void;
-}) {
-  const { data } = useInventory();
-  const [parent, setParent] = useState<string | null>(null);
-  const [query, setQuery] = useState('');
-  const [limit, setLimit] = useState(PAGE_SIZE);
-  const allowed = data.items.filter(
-    (i) =>
-      isContainer(i) &&
-      !isTerminal(i) &&
-      !ancestors(i.id, data.items).some((p) => p.id === item.id),
-  );
-  const results = allowed.filter((i) =>
-    query
-      ? fullPath(i.id, data).toLocaleLowerCase().includes(query.toLocaleLowerCase())
-      : i.parent_id === parent,
-  );
-  useEffect(() => setLimit(PAGE_SIZE), [query, parent]);
+export function ProductCatalog({ open }: { open: (action: Action) => void }) {
+  const { data, stale } = useInventory();
+  const { online, session } = useSession();
+  const location = useLocation();
+  const { mobile } = useViewport();
+  const [view, update] = useBrowseState('catalog');
+  const count = (id: string) =>
+    physicalItems(data.items.filter((i) => i.catalog_node_id === id && !isTerminal(i))).length;
+  const products = visibleProducts(data)
+    .filter(
+      (c) => !view.category || ancestors(c.id, data.catalog).some((a) => a.id === view.category),
+    )
+    .filter((c) =>
+      `${c.name} ${specification(c)}`
+        .toLocaleLowerCase()
+        .includes(view.query.trim().toLocaleLowerCase()),
+    )
+    .sort((a, b) =>
+      view.sort === 'recent' ? count(b.id) - count(a.id) : a.name.localeCompare(b.name, 'zh-CN'),
+    );
+  const page = Math.min(view.page, Math.max(1, Math.ceil(products.length / view.pageSize)));
+  const shown = products.slice((page - 1) * view.pageSize, page * view.pageSize);
+
   return (
-    <section className="move-picker">
-      <h3>选择目标位置</h3>
-      <p className="caption">当前位置：{fullPath(item.parent_id, data)}</p>
-      <SearchField label="搜索目标位置" value={query} onChange={setQuery} />
-      <nav className="location-path" aria-label="目标位置路径">
-        <button type="button" onClick={() => setParent(null)}>
-          全部位置
-        </button>
-        {ancestors(parent, data.items).map((p) => (
-          <button type="button" key={p.id} onClick={() => setParent(p.id)}>
-            {' '}
-            / {itemName(p, data)}
-          </button>
-        ))}
-      </nav>
-      {parent && (
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={parent === item.parent_id || !allowed.some((i) => i.id === parent)}
-          onClick={() => onChange(parent)}
-        >
-          选择当前位置
-        </Button>
-      )}
-      {results.slice(0, limit).map((p) => (
-        <div className={`move-option ${value === p.id ? 'selected' : ''}`} key={p.id}>
-          <button
-            type="button"
-            className="move-enter"
-            onClick={() => {
-              setParent(p.id);
-              setQuery('');
-            }}
-          >
-            <strong>{itemName(p, data)}</strong>
-            <small>{query ? fullPath(p.id, data) : '进入下级位置'} ›</small>
-          </button>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={p.id === item.parent_id}
-            onClick={() => onChange(p.id)}
-          >
-            {p.id === item.parent_id ? '当前位置' : value === p.id ? '已选择' : '选择'}
-          </Button>
+    <div className="ac-page">
+      <header className="page-header">
+        <div>
+          <Typography.Title level={2}>商品目录</Typography.Title>
+          <Typography.Text type="secondary">{products.length} 款商品</Typography.Text>
         </div>
-      ))}
-      {!results.length && <p>这里没有可进入的下级位置。</p>}
-      {results.length > limit && (
-        <Button type="button" variant="secondary" onClick={() => setLimit(limit + PAGE_SIZE)}>
-          加载更多位置
-        </Button>
+        <Space wrap>
+          <Link to="/catalog/manage">管理商品资料</Link>
+          <Button
+            type="primary"
+            disabled={!online || stale || session.can_write === false}
+            onClick={() => open({ kind: 'catalog' })}
+          >
+            新增商品
+          </Button>
+        </Space>
+      </header>
+      <div className="ac-toolbar">
+        <SearchField
+          value={view.query}
+          onChange={(query) => update({ query })}
+          label="搜索商品名称或规格"
+        />
+        <Select
+          aria-label="商品分类"
+          value={view.category}
+          onChange={(category) => update({ category })}
+          options={[
+            { value: '', label: '全部分类' },
+            ...data.catalog
+              .filter((c) => c.kind === 'GROUP')
+              .map((c) => ({ value: c.id, label: categoryPath(c, data) + ' / ' + c.name })),
+          ]}
+        />
+        <ListOptions view={view} update={update} catalog />
+      </div>
+      {mobile ? (
+        <div className="ac-mobile-list">
+          {shown.map((sku) => (
+            <Link
+              key={sku.id}
+              className="row"
+              to={`/items/group/${sku.id}`}
+              search={{ returnTo: location.pathname }}
+            >
+              <span className="row-copy">
+                <strong>{sku.name}</strong>
+                <Typography.Text type="secondary">
+                  {specification(sku) || '规格未记录'} · {categoryPath(sku, data)}
+                </Typography.Text>
+              </span>
+              <span className="row-detail">{count(sku.id)} 件实物</span>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <Table
+          rowKey="id"
+          pagination={false}
+          dataSource={shown}
+          tableLayout="fixed"
+          columns={[
+            {
+              title: '商品',
+              key: 'name',
+              render: (_, sku) => (
+                <Link to={`/items/group/${sku.id}`} search={{ returnTo: location.pathname }}>
+                  {sku.name}
+                </Link>
+              ),
+            },
+            {
+              title: '规格',
+              key: 'spec',
+              hidden: !view.columns.includes('spec'),
+              ellipsis: true,
+              render: (_, sku) => specification(sku) || '规格未记录',
+            },
+            {
+              title: '分类',
+              key: 'category',
+              hidden: !view.columns.includes('category'),
+              ellipsis: true,
+              render: (_, sku) => categoryPath(sku, data),
+            },
+            {
+              title: '在库实物',
+              key: 'count',
+              hidden: !view.columns.includes('count'),
+              render: (_, sku) => `${count(sku.id)} 件实物`,
+            },
+          ]}
+        />
       )}
-      <Button
-        type="button"
-        variant="secondary"
-        disabled={!item.parent_id}
-        onClick={() => onChange('')}
-      >
-        {!item.parent_id
-          ? '当前未指定位置'
-          : value === ''
-            ? '已选择：未指定位置'
-            : '移至未指定位置'}
-      </Button>
-    </section>
+      {!products.length && mobile && <Empty title="没有找到商品" />}
+      <PageEnd
+        total={products.length}
+        page={page}
+        pageSize={view.pageSize}
+        unit="款商品"
+        onChange={(page, pageSize) => update({ page, pageSize })}
+      />
+    </div>
   );
 }

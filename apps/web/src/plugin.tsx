@@ -1,3 +1,5 @@
+import { Button } from 'antd';
+import { AcornaryUIProvider } from './ui/theme';
 import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -9,11 +11,15 @@ import { SessionContext } from './lib/session';
 import { installEmbeddedRuntime } from './lib/runtime';
 import { PluginClient } from './plugin/client';
 import { WidgetStore, type WidgetBridge } from './plugin/store';
-import { Button, Notice } from './ui/components';
-
+import { Notice } from './ui/components';
 const connection = new PluginClient();
 let store: WidgetStore;
-const bridge = () => (window as Window & { openai?: WidgetBridge }).openai;
+const bridge = () =>
+  (
+    window as Window & {
+      openai?: WidgetBridge;
+    }
+  ).openai;
 function InventoryApp({ envelope }: { envelope: PluginEnvelope }) {
   const [expired, setExpired] = useState(false);
   const [client] = useState(
@@ -111,7 +117,9 @@ function PluginRoot({ initial }: { initial: PluginEnvelope }) {
   return <InventoryApp key={envelope.session.cache_key} envelope={envelope} />;
 }
 const root = createRoot(document.getElementById('root')!);
-root.render(
+const render = (children: import('react').ReactNode) =>
+  root.render(<AcornaryUIProvider>{children}</AcornaryUIProvider>);
+render(
   <main className="loading">
     <p role="status">正在连接松仓…</p>
   </main>,
@@ -128,13 +136,15 @@ void connection
         void store.rememberRoute(route).catch(() => {});
       },
     });
-    root.render(<PluginRoot initial={initial} />);
+    render(<PluginRoot initial={initial} />);
   })
   .catch(() =>
-    root.render(
+    render(
       <main className="loading">
         <Notice danger>无法连接库存。请检查插件授权后重新打开。</Notice>
-        <Button onClick={() => location.reload()}>重试连接</Button>
+        <Button onClick={() => location.reload()} htmlType="button" type="primary">
+          重试连接
+        </Button>
       </main>,
     ),
   );

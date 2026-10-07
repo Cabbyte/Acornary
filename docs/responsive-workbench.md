@@ -1,4 +1,6 @@
-# Responsive Workbench implementation
+# Responsive Workbench history
+
+> 本文记录 v0.4.2 发布时的旧工作台与验收证据；18 条分页和旧 SVG/CSS 不再描述本分支。当前迁移实现见 [Ant Design 统一界面](./antd-ui.md)，尚未正式部署。
 
 Implemented on 2026-10-03, merged through [PR #6](https://github.com/Cabbyte/Acornary/pull/6) and deployed in [v0.4.2](https://github.com/Cabbyte/Acornary/releases/tag/v0.4.2). Current release status is recorded in [project progress](./progress.md).
 
