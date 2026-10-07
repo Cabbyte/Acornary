@@ -635,6 +635,8 @@ dd {
 .ac-mobile-item > .row {
   flex: 1;
   min-width: 0;
+  padding: 0;
+  border-bottom: 0;
 }
 .ant-pagination {
   display: flex;
