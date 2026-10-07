@@ -74,7 +74,7 @@ if (action === 'stop') {
   const image = process.env.ACORNARY_PREVIEW_IMAGE ?? 'acornary-ui-preview';
   if (!process.env.ACORNARY_PREVIEW_IMAGE) {
     console.log('Building preview runtime…');
-    docker(['build', '--target', 'browser-test', '-t', image, '.']);
+    docker(['build', '--target', 'base', '-t', image, '.']);
   }
   const env = { ...process.env, POSTGRES_PASSWORD: randomBytes(24).toString('hex') };
   env.DATABASE_URL = `postgres://acornary:${env.POSTGRES_PASSWORD}@${postgres}:5432/${database}`;
