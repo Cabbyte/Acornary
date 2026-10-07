@@ -175,13 +175,19 @@ export function SearchField({
     />
   );
 }
-export function LocationPath({ id }: { id: string | null }) {
+export function LocationPath({
+  id,
+  rootLabel = '全部位置',
+}: {
+  id: string | null;
+  rootLabel?: string;
+}) {
   const { data } = useInventory();
   return (
     <Breadcrumb
       aria-label="完整位置路径"
       items={[
-        { title: <Link to="/items">全部位置</Link> },
+        { title: <Link to="/items">{rootLabel}</Link> },
         ...ancestors(id, data.items).map((p) => ({
           key: p.id,
           title: <Link to={`/places/${p.id}`}>{itemName(p, data)}</Link>,

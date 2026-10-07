@@ -52,7 +52,7 @@ test('Ant Design cross-page UUID selection, responsive draft, date and keyboard 
   await expect(page.getByText('已选 30 件', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: f.name, exact: true }).first().click();
   await page.getByRole('button', { name: '编辑', exact: true }).click();
-  const drawer = page.getByRole('dialog');
+  const drawer = page.getByRole('dialog', { name: '编辑物品', exact: true });
   const name = drawer.getByLabel('名称', { exact: true });
   await name.fill('调整窗口后仍保留的草稿');
   let writes = 0;

@@ -172,7 +172,7 @@ export function Workspace() {
       </Empty>
     );
   return (
-    <WorkbenchShell section={section} place={scope} open={open}>
+    <WorkbenchShell section={section}>
       {expired && (
         <div className="status-banner">
           <Notice>登录已失效。缓存与输入已保留，重新登录后可继续操作。</Notice>

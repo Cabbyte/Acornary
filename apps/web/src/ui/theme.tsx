@@ -34,7 +34,8 @@ export const acornaryTheme: ThemeConfig = {
   },
   components: {
     Layout: { headerBg: '#F4F1EE', siderBg: '#F4F1EE' },
-    Menu: { itemBg: 'transparent' },
+    Menu: { itemBg: 'transparent', activeBarBorderWidth: 0 },
+    Tree: { titleHeight: 36, nodeSelectedColor: '#AB5F40' },
     Table: { cellPaddingBlock: 10 },
   },
 };
@@ -48,6 +49,10 @@ export function AcornaryUIProvider({ children }: { children: ReactNode }) {
       theme={{
         ...acornaryTheme,
         token: { ...acornaryTheme.token, ...(mobile ? { controlHeight: 44, fontSize: 16 } : {}) },
+        components: {
+          ...acornaryTheme.components,
+          Tree: { ...acornaryTheme.components?.Tree, titleHeight: mobile ? 44 : 36 },
+        },
       }}
       getPopupContainer={(node) => node?.ownerDocument.body ?? document.body}
     >

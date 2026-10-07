@@ -62,6 +62,7 @@ import { ActionDrawer, Empty, Notice } from './components';
 import { LocationPath, SearchField } from './browser';
 import { useViewport } from './theme';
 import type { Action } from './forms';
+import { InventoryColumns, useContentWidth, useLocationPanelWidth } from './inventory-layout';
 import brand from '../../public/design/workbench/brand.svg?inline';
 
 const navigation = [
@@ -69,19 +70,8 @@ const navigation = [
   { key: 'catalog', label: '商品目录', icon: <AppstoreOutlined aria-hidden="true" /> },
   { key: 'settings', label: '设置', icon: <SettingOutlined aria-hidden="true" /> },
 ];
-export function WorkbenchShell({
-  children,
-  section,
-  place,
-  open,
-}: {
-  children: ReactNode;
-  section: string;
-  place?: string;
-  open: (a: Action) => void;
-}) {
-  const { data, stale } = useInventory();
-  const { online, session } = useSession();
+export function WorkbenchShell({ children, section }: { children: ReactNode; section: string }) {
+  const { data } = useInventory();
   const navigate = useNavigate();
   const { mobile, wide } = useViewport();
   const [collapsed, setCollapsed] = useState(false);
@@ -130,29 +120,20 @@ export function WorkbenchShell({
               aria-label="主导航"
               mode="inline"
               selectedKeys={[active]}
-              items={navigation.map((n) => ({
+              inlineCollapsed={collapsed && !wide}
+              items={navigation.slice(0, 2).map((n) => ({
                 ...n,
                 label: <Link to={`/${n.key}`}>{n.label}</Link>,
               }))}
             />
-            {(!collapsed || wide) && (
-              <>
-                <div className="wb-location-heading">
-                  <Typography.Text type="secondary">位置</Typography.Text>
-                  <Button
-                    type="text"
-                    icon={<PlusOutlined aria-hidden="true" />}
-                    aria-label="新建位置"
-                    disabled={!online || stale || session.can_write === false}
-                    onClick={() => open({ kind: 'place', parent: place })}
-                  />
-                </div>
-                <LocationTree
-                  active={place}
-                  onChoose={(id) => void navigate({ to: id ? `/places/${id}` : '/items' })}
-                />
-              </>
-            )}
+            <Menu
+              className="wb-settings-nav"
+              aria-label="设置导航"
+              mode="inline"
+              inlineCollapsed={collapsed && !wide}
+              selectedKeys={[active]}
+              items={[{ ...navigation[2], label: <Link to="/settings">设置</Link> }]}
+            />
           </Layout.Sider>
         )}
         <Layout.Content id="main" className="app-main">
@@ -172,31 +153,36 @@ export function WorkbenchShell({
     </Layout>
   );
 }
+type LocationTreeState = { query: string; expanded: string[] };
+const locationViews = new Map<string, LocationTreeState>();
+
 export function LocationTree({
   active,
   selected,
   onChoose,
   moving,
   searchable = false,
+  state,
+  onStateChange,
 }: {
   active?: string;
   selected?: string;
   onChoose: (id: string) => void;
   moving?: ItemRecord[];
   searchable?: boolean;
+  state?: LocationTreeState;
+  onStateChange?: (state: LocationTreeState) => void;
 }) {
   const { data } = useInventory();
-  const [query, setQuery] = useState('');
-  const [expanded, setExpanded] = useState<string[]>(() =>
-    ancestors(active ?? null, data.items).map((i) => i.id),
-  );
-  useEffect(
-    () =>
-      setExpanded((old) => [
-        ...new Set([...old, ...ancestors(active ?? null, data.items).map((i) => i.id)]),
-      ]),
-    [active, data.items],
-  );
+  const [local, setLocal] = useState<LocationTreeState>({ query: '', expanded: [] });
+  const { query, expanded } = state ?? local;
+  const update = (next: Partial<LocationTreeState>) =>
+    (onStateChange ?? setLocal)({ query, expanded, ...next });
+  useEffect(() => {
+    const parents = ancestors(active ?? null, data.items).map((i) => i.id);
+    if (parents.some((p) => !expanded.includes(p)))
+      update({ expanded: [...new Set([...expanded, ...parents])] });
+  }, [active, data.items]);
   const locations = moving
     ? moveTargets(data, moving)
     : data.items.filter((i) => isContainer(i) && !isTerminal(i));
@@ -212,8 +198,8 @@ export function LocationTree({
     key: p.id,
     icon: <FolderOutlined aria-hidden="true" />,
     title: (
-      <span title={fullPath(p.id, data)}>
-        {query ? fullPath(p.id, data) : itemName(p, data)}{' '}
+      <span className="wb-tree-title" title={fullPath(p.id, data)}>
+        <span className="wb-tree-name">{query ? fullPath(p.id, data) : itemName(p, data)}</span>{' '}
         <Typography.Text type="secondary">{counts.get(p.id) ?? 0}</Typography.Text>
       </span>
     ),
@@ -229,16 +215,31 @@ export function LocationTree({
         )
   ).map(node);
   return (
-    <div className="stack">
+    <div className="stack wb-location-tree">
       {searchable && (
         <SearchField
           value={query}
-          onChange={setQuery}
+          onChange={(query) => update({ query })}
           label={moving ? '搜索目标位置' : '搜索位置'}
         />
       )}
-      <Button type={!(selected ?? active) ? 'primary' : 'text'} onClick={() => onChoose('')}>
-        {moving ? '未指定位置' : '全部物品'}
+      <Button
+        type="text"
+        block
+        className={`wb-tree-root${!(selected ?? active) ? ' is-selected' : ''}`}
+        aria-label={moving ? '未指定位置' : '全部物品'}
+        aria-pressed={!(selected ?? active)}
+        icon={<FolderOutlined aria-hidden="true" />}
+        onClick={() => onChoose('')}
+      >
+        <span className="wb-tree-title">
+          <span className="wb-tree-name">{moving ? '未指定位置' : '全部物品'}</span>
+          {!moving && (
+            <Typography.Text type="secondary">
+              {data.items.filter((i) => !isContainer(i) && !isTerminal(i)).length}
+            </Typography.Text>
+          )}
+        </span>
       </Button>
       <Tree
         aria-label={moving ? '目标位置' : '位置树'}
@@ -246,7 +247,7 @@ export function LocationTree({
         showIcon
         treeData={treeData}
         expandedKeys={expanded}
-        onExpand={(keys) => setExpanded(keys.map(String))}
+        onExpand={(keys) => update({ expanded: keys.map(String) })}
         selectedKeys={[selected ?? active ?? '']}
         onSelect={(keys) => {
           if (keys[0]) onChoose(String(keys[0]));
@@ -304,7 +305,7 @@ const views = new Map<string, View>();
 let householdScope = '';
 const defaults = (): View => ({
   query: '',
-  descendants: false,
+  descendants: true,
   status: '',
   category: '',
   sort: 'name',
@@ -343,6 +344,26 @@ export function Workbench({
     return views.get(key) ?? defaults();
   });
   const [locations, setLocations] = useState(false);
+  const [treeState, setTreeState] = useState<LocationTreeState>(
+    () => locationViews.get(session.cache_key ?? '') ?? { query: '', expanded: [] },
+  );
+  const changeTreeState = (next: LocationTreeState) => {
+    locationViews.set(session.cache_key ?? '', next);
+    setTreeState(next);
+  };
+  const workspace = useContentWidth();
+  const locationWidth = useLocationPanelWidth();
+  // Measure the workspace independently of the inspector to avoid layout feedback loops.
+  const contentWidth = workspace.width - 48;
+  const inlineLocations = wide && contentWidth >= 836;
+  const inlineDetail = inlineLocations && contentWidth >= 320 + 656 + 384;
+  const availableWidth =
+    contentWidth -
+    (inlineDetail && (detailId || new URLSearchParams(location.searchStr).get('item')) ? 384 : 0);
+  const maxLocationWidth = Math.max(180, Math.min(320, availableWidth - 656));
+  useEffect(() => {
+    if (inlineLocations) setLocations(false);
+  }, [inlineLocations]);
   const params = new URLSearchParams(location.searchStr);
   const inspectedId = detailId ?? params.get('item');
   const inspected = data.items.find((i) => i.id === inspectedId);
@@ -390,9 +411,6 @@ export function Workbench({
   const page = Math.min(view.page, Math.max(1, Math.ceil(results.length / view.pageSize)));
   const shown = results.slice((page - 1) * view.pageSize, page * view.pageSize);
   const place = data.items.find((i) => i.id === id && isContainer(i));
-  const childPlaces = data.items.filter(
-    (i) => isContainer(i) && !isTerminal(i) && i.parent_id === (id ?? null),
-  );
   const disabled = !online || stale || session.can_write === false;
   const toggle = (item: ItemRecord) =>
     patch({
@@ -457,326 +475,373 @@ export function Workbench({
   const detail = inspected ? (
     <ItemInspector item={inspected} open={open} close={() => inspect()} />
   ) : null;
+  const chooseLocation = (target: string) => {
+    setLocations(false);
+    void navigate({ to: target ? `/places/${target}` : '/items' });
+  };
+  const locationTree = (
+    <LocationTree
+      active={id}
+      onChoose={chooseLocation}
+      searchable
+      state={treeState}
+      onStateChange={changeTreeState}
+    />
+  );
   return (
-    <div className="wb-workspace">
+    <div className="wb-workspace" ref={workspace.ref}>
       <section className="wb-inventory" aria-label="库存工作台" hidden={mobile && !!inspected}>
-        <Space wrap>
-          {mobile && (
-            <Button icon={<FolderOutlined aria-hidden="true" />} onClick={() => setLocations(true)}>
-              位置
-            </Button>
-          )}
-          <LocationPath id={id ?? null} />
-        </Space>
         <div className="wb-title">
           <div>
-            <Typography.Title level={2}>
-              {place ? itemName(place, data) : '我的物品'}
-            </Typography.Title>
+            <Typography.Title level={2}>我的物品</Typography.Title>
             <Typography.Text type="secondary">{results.length} 件物品</Typography.Text>
           </div>
-          <Button
-            type="primary"
-            icon={<PlusOutlined aria-hidden="true" />}
-            disabled={disabled}
-            onClick={() => open({ kind: 'intake', parent: id })}
-          >
-            添加物品
-          </Button>
-          {place && (
+          <Space.Compact className="wb-add-actions">
+            <Button
+              type="primary"
+              icon={<PlusOutlined aria-hidden="true" />}
+              disabled={disabled}
+              onClick={() => open({ kind: 'intake', parent: id })}
+            >
+              添加物品
+            </Button>
             <Dropdown
+              trigger={['click']}
+              disabled={disabled}
               menu={{
                 items: [
-                  { key: 'place', label: '新建下级位置' },
-                  { key: 'rename', label: '修改位置名称' },
-                  { key: 'move', label: '移动位置' },
+                  { key: 'place', label: '添加位置', icon: <FolderOutlined aria-hidden="true" /> },
                 ],
-                onClick: ({ key }) =>
-                  open({
-                    kind: key,
-                    parent: key === 'place' ? id : undefined,
-                    target: key !== 'place' ? id : undefined,
-                  }),
+                onClick: () => open({ kind: 'place', parent: id }),
               }}
-              disabled={disabled}
             >
-              <Button aria-label="位置操作" icon={<MoreOutlined aria-hidden="true" />} />
+              <Button
+                type="primary"
+                disabled={disabled}
+                aria-label="更多添加选项"
+                icon={<DownOutlined aria-hidden="true" />}
+              />
             </Dropdown>
-          )}
+          </Space.Compact>
         </div>
-        <div className="wb-toolbar">
-          <SearchField
-            label={id ? '在当前位置搜索…' : '搜索物品、规格、位置…'}
-            value={view.query}
-            onChange={changeQuery}
-          />
-          {id && (
-            <Select
-              aria-label="位置范围"
-              value={view.descendants ? 'all' : 'direct'}
-              onChange={(value) => patch({ descendants: value === 'all' })}
-              options={[
-                { value: 'direct', label: '仅当前位置' },
-                { value: 'all', label: '包含下级' },
-              ]}
+        <InventoryColumns
+          inline={inlineLocations}
+          width={locationWidth.width}
+          max={maxLocationWidth}
+          onResize={locationWidth.setWidth}
+          onRemember={locationWidth.remember}
+          tree={
+            <>
+              <Typography.Title level={5}>位置</Typography.Title>
+              {locationTree}
+            </>
+          }
+        >
+          <div className="wb-toolbar">
+            <SearchField
+              label={id ? '在当前位置搜索…' : '搜索物品、规格、位置…'}
+              value={view.query}
+              onChange={changeQuery}
             />
-          )}
-          <Popover
-            trigger="click"
-            title="筛选物品"
-            content={
-              <div className="stack">
-                <Select
-                  aria-label="商品分类"
-                  value={view.category}
-                  onChange={(category) => patch({ category })}
-                  options={[
-                    { value: '', label: '全部分类' },
-                    ...data.catalog
-                      .filter((c) => c.kind === 'GROUP')
-                      .map((c) => ({
-                        value: c.id,
-                        label: ancestors(c.id, data.catalog)
-                          .map((a) => a.name)
-                          .join(' / '),
-                      })),
-                  ]}
-                />
-                <Select
-                  aria-label="物品状态"
-                  value={view.status}
-                  onChange={(status) => patch({ status })}
-                  options={[
-                    { value: '', label: '全部在库状态' },
-                    ...availabilityOptions.map(([v, t]) => ({ value: v || 'unknown', label: t })),
-                    { value: 'terminal', label: '历史物品' },
-                  ]}
-                />
-                <Button onClick={() => patch({ status: '', category: '' })}>清除筛选</Button>
-              </div>
-            }
-          >
-            <Button>
-              筛选
-              <DownOutlined aria-hidden="true" />
-            </Button>
-          </Popover>
-          <Select
-            aria-label="排序"
-            value={view.sort}
-            onChange={(sort) => patch({ sort })}
-            options={[
-              { value: 'name', label: '名称排序' },
-              { value: 'recent', label: '最近入库' },
-            ]}
-          />
-          {!mobile && (
+            {!inlineLocations && (
+              <Button
+                id="wb-location-trigger"
+                icon={<FolderOutlined aria-hidden="true" />}
+                onClick={() => setLocations(true)}
+              >
+                位置
+              </Button>
+            )}
             <Popover
               trigger="click"
-              title="显示列"
+              title="筛选物品"
               content={
-                <Checkbox.Group
-                  className="stack"
-                  value={view.columns}
-                  options={[
-                    { value: 'spec', label: '规格' },
-                    { value: 'status', label: '状态' },
-                    { value: 'place', label: '收纳位置' },
-                    { value: 'note', label: '备注' },
-                  ]}
-                  onChange={(columns) => patch({ columns: columns.map(String), page })}
-                />
+                <div className="stack">
+                  <Select
+                    aria-label="商品分类"
+                    value={view.category}
+                    onChange={(category) => patch({ category })}
+                    options={[
+                      { value: '', label: '全部分类' },
+                      ...data.catalog
+                        .filter((c) => c.kind === 'GROUP')
+                        .map((c) => ({
+                          value: c.id,
+                          label: ancestors(c.id, data.catalog)
+                            .map((a) => a.name)
+                            .join(' / '),
+                        })),
+                    ]}
+                  />
+                  <Select
+                    aria-label="物品状态"
+                    value={view.status}
+                    onChange={(status) => patch({ status })}
+                    options={[
+                      { value: '', label: '全部在库状态' },
+                      ...availabilityOptions.map(([v, t]) => ({ value: v || 'unknown', label: t })),
+                      { value: 'terminal', label: '历史物品' },
+                    ]}
+                  />
+                  <Button onClick={() => patch({ status: '', category: '' })}>清除筛选</Button>
+                </div>
               }
             >
               <Button>
-                显示列
+                筛选
                 <DownOutlined aria-hidden="true" />
               </Button>
             </Popover>
-          )}
-          {mobile && (
-            <Button onClick={() => patch({ selecting: !view.selecting, selected: [], page })}>
-              {view.selecting ? '取消选择' : '选择'}
-            </Button>
-          )}
-        </div>
-        {(view.query || view.status || view.category) && (
-          <Space wrap>
-            <Typography.Text type="secondary">
-              {view.query
-                ? `“${view.query}” · ${id ? (view.descendants ? '当前位置及下级' : '仅当前位置') : '全家庭'}`
-                : '已筛选'}{' '}
-              · {results.length} 件
-            </Typography.Text>
-            <Button
-              type="link"
-              onClick={() => {
-                patch({ query: '', category: '', status: '' });
-                changeQuery('');
-              }}
-            >
-              清除
-            </Button>
-          </Space>
-        )}
-        {!!childPlaces.length && !view.query && (
-          <Space wrap aria-label="下级位置">
-            {childPlaces.map((p) => (
-              <Link key={p.id} to={`/places/${p.id}`}>
-                <Tag icon={<FolderOutlined aria-hidden="true" />}>{itemName(p, data)}</Tag>
-              </Link>
-            ))}
-          </Space>
-        )}
-        {selected.length > 0 && (
-          <div className="wb-selection-bar">
-            <span>已选 {selected.length} 件</span>
-            <Button
-              disabled={disabled || selected.length > 100}
-              onClick={() => open({ kind: 'move', ids: selected.map((i) => i.id).join(',') })}
-            >
-              移动到…
-            </Button>
-            <Button type="text" onClick={() => patch({ selected: [], selecting: false, page })}>
-              取消选择
-            </Button>
-            {selected.length > 100 && <Notice>每次最多移动 100 件，请减少选择。</Notice>}
+            <Select
+              aria-label="排序"
+              value={view.sort}
+              onChange={(sort) => patch({ sort })}
+              options={[
+                { value: 'name', label: '名称排序' },
+                { value: 'recent', label: '最近入库' },
+              ]}
+            />
+            {!mobile && (
+              <Popover
+                trigger="click"
+                title="显示列"
+                content={
+                  <Checkbox.Group
+                    className="stack"
+                    value={view.columns}
+                    options={[
+                      { value: 'spec', label: '规格' },
+                      { value: 'status', label: '状态' },
+                      { value: 'place', label: '收纳位置' },
+                      { value: 'note', label: '备注' },
+                    ]}
+                    onChange={(columns) => patch({ columns: columns.map(String), page })}
+                  />
+                }
+              >
+                <Button>
+                  显示列
+                  <DownOutlined aria-hidden="true" />
+                </Button>
+              </Popover>
+            )}
+            {mobile && (
+              <Button onClick={() => patch({ selecting: !view.selecting, selected: [], page })}>
+                {view.selecting ? '取消选择' : '选择'}
+              </Button>
+            )}
           </div>
-        )}
-        {mobile ? (
-          <div className="ac-mobile-list">
-            {view.selecting && (
-              <Checkbox aria-label="选择本页全部物品" checked={allChecked} onChange={selectAll}>
-                本页全选
+          <div className="wb-location-bar">
+            <LocationPath id={id ?? null} rootLabel="全部物品" />
+            {id && (
+              <Checkbox
+                checked={view.descendants}
+                onChange={(e) => patch({ descendants: e.target.checked })}
+              >
+                包含下级位置
               </Checkbox>
             )}
-            {shown.map((item) => (
-              <div key={item.id} className="ac-mobile-item">
-                {view.selecting && (
-                  <Checkbox
-                    aria-label={`选择 ${itemName(item, data)} ${item.id}`}
-                    checked={view.selected.includes(item.id)}
-                    disabled={isTerminal(item)}
-                    onChange={() => toggle(item)}
-                  />
-                )}
-                <Button type="text" className="row" onClick={() => inspect(item)}>
-                  <span className="row-copy">
-                    <strong>{itemName(item, data)}</strong>
-                    <Typography.Text type="secondary">
-                      {specs(item)} · {itemStatus(item)} · {fullPath(item.parent_id, data)}
-                    </Typography.Text>
-                  </span>
-                </Button>
-              </div>
-            ))}
+            {place && (
+              <Dropdown
+                trigger={['click']}
+                disabled={disabled}
+                menu={{
+                  items: [
+                    { key: 'rename', label: '修改位置名称' },
+                    { key: 'move', label: '移动位置' },
+                  ],
+                  onClick: ({ key }) => open({ kind: key, target: id }),
+                }}
+              >
+                <Button
+                  aria-label="位置操作"
+                  icon={<MoreOutlined aria-hidden="true" />}
+                  disabled={disabled}
+                />
+              </Dropdown>
+            )}
           </div>
-        ) : (
-          <Table<ItemRecord>
-            aria-label="物品列表"
-            rowKey="id"
-            dataSource={shown}
-            pagination={false}
-            tableLayout="fixed"
-            size="middle"
-            rowSelection={{
-              selectedRowKeys: view.selected,
-              preserveSelectedRowKeys: true,
-              columnTitle: (
-                <Checkbox aria-label="选择本页全部物品" checked={allChecked} onChange={selectAll} />
-              ),
-              onChange: (keys) => patch({ selected: keys.map(String), selecting: true, page }),
-              getCheckboxProps: (item) => ({
-                disabled: isTerminal(item),
-                'aria-label': `选择 ${itemName(item, data)} ${item.id}`,
-              }),
-            }}
-            columns={[
-              {
-                title: '物品',
-                key: 'name',
-                render: (_, item) => (
-                  <Button type="link" className="ac-name-button" onClick={() => inspect(item)}>
-                    {itemName(item, data)}
+          {(view.query || view.status || view.category) && (
+            <Space wrap>
+              <Typography.Text type="secondary">
+                {view.query
+                  ? `“${view.query}” · ${id ? (view.descendants ? '当前位置及下级' : '仅当前位置') : '全家庭'}`
+                  : '已筛选'}{' '}
+                · {results.length} 件
+              </Typography.Text>
+              <Button
+                type="link"
+                onClick={() => {
+                  patch({ query: '', category: '', status: '' });
+                  changeQuery('');
+                }}
+              >
+                清除
+              </Button>
+            </Space>
+          )}
+          {selected.length > 0 && (
+            <div className="wb-selection-bar">
+              <span>已选 {selected.length} 件</span>
+              <Button
+                disabled={disabled || selected.length > 100}
+                onClick={() => open({ kind: 'move', ids: selected.map((i) => i.id).join(',') })}
+              >
+                移动到…
+              </Button>
+              <Button type="text" onClick={() => patch({ selected: [], selecting: false, page })}>
+                取消选择
+              </Button>
+              {selected.length > 100 && <Notice>每次最多移动 100 件，请减少选择。</Notice>}
+            </div>
+          )}
+          {mobile ? (
+            <div className="ac-mobile-list">
+              {view.selecting && (
+                <Checkbox aria-label="选择本页全部物品" checked={allChecked} onChange={selectAll}>
+                  本页全选
+                </Checkbox>
+              )}
+              {shown.map((item) => (
+                <div key={item.id} className="ac-mobile-item">
+                  {view.selecting && (
+                    <Checkbox
+                      aria-label={`选择 ${itemName(item, data)} ${item.id}`}
+                      checked={view.selected.includes(item.id)}
+                      disabled={isTerminal(item)}
+                      onChange={() => toggle(item)}
+                    />
+                  )}
+                  <Button type="text" className="row" onClick={() => inspect(item)}>
+                    <span className="row-copy">
+                      <strong>{itemName(item, data)}</strong>
+                      <Typography.Text type="secondary">
+                        {specs(item)} · {itemStatus(item)} · {fullPath(item.parent_id, data)}
+                      </Typography.Text>
+                    </span>
                   </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Table<ItemRecord>
+              aria-label="物品列表"
+              rowKey="id"
+              dataSource={shown}
+              pagination={false}
+              tableLayout="fixed"
+              size="middle"
+              rowSelection={{
+                selectedRowKeys: view.selected,
+                preserveSelectedRowKeys: true,
+                columnTitle: (
+                  <Checkbox
+                    aria-label="选择本页全部物品"
+                    checked={allChecked}
+                    onChange={selectAll}
+                  />
                 ),
-              },
-              ...(view.columns.includes('spec')
-                ? [
-                    {
-                      title: '规格',
-                      key: 'spec',
-                      ellipsis: true,
-                      render: (_: unknown, item: ItemRecord) => specs(item),
-                    },
-                  ]
-                : []),
-              ...(view.columns.includes('status')
-                ? [
-                    {
-                      title: '状态',
-                      key: 'status',
-                      width: 100,
-                      render: (_: unknown, item: ItemRecord) => <Tag>{itemStatus(item)}</Tag>,
-                    },
-                  ]
-                : []),
-              ...(view.columns.includes('place')
-                ? [
-                    {
-                      title: '收纳位置',
-                      key: 'place',
-                      ellipsis: true,
-                      render: (_: unknown, item: ItemRecord) => fullPath(item.parent_id, data),
-                    },
-                  ]
-                : []),
-              ...(view.columns.includes('note')
-                ? [
-                    {
-                      title: '备注',
-                      key: 'note',
-                      ellipsis: true,
-                      render: (_: unknown, item: ItemRecord) =>
-                        latestNote(data, item.id)?.body || '—',
-                    },
-                  ]
-                : []),
-            ]}
+                onChange: (keys) => patch({ selected: keys.map(String), selecting: true, page }),
+                getCheckboxProps: (item) => ({
+                  disabled: isTerminal(item),
+                  'aria-label': `选择 ${itemName(item, data)} ${item.id}`,
+                }),
+              }}
+              columns={[
+                {
+                  title: '物品',
+                  key: 'name',
+                  render: (_, item) => (
+                    <Button type="link" className="ac-name-button" onClick={() => inspect(item)}>
+                      {itemName(item, data)}
+                    </Button>
+                  ),
+                },
+                ...(view.columns.includes('spec')
+                  ? [
+                      {
+                        title: '规格',
+                        key: 'spec',
+                        ellipsis: true,
+                        render: (_: unknown, item: ItemRecord) => specs(item),
+                      },
+                    ]
+                  : []),
+                ...(view.columns.includes('status')
+                  ? [
+                      {
+                        title: '状态',
+                        key: 'status',
+                        width: 100,
+                        render: (_: unknown, item: ItemRecord) => <Tag>{itemStatus(item)}</Tag>,
+                      },
+                    ]
+                  : []),
+                ...(view.columns.includes('place')
+                  ? [
+                      {
+                        title: '收纳位置',
+                        key: 'place',
+                        ellipsis: true,
+                        render: (_: unknown, item: ItemRecord) => fullPath(item.parent_id, data),
+                      },
+                    ]
+                  : []),
+                ...(view.columns.includes('note')
+                  ? [
+                      {
+                        title: '备注',
+                        key: 'note',
+                        ellipsis: true,
+                        render: (_: unknown, item: ItemRecord) =>
+                          latestNote(data, item.id)?.body || '—',
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          )}
+          {!shown.length && mobile && (
+            <Empty
+              title={
+                view.query || view.status || view.category ? '没有找到匹配物品' : '这里还没有物品'
+              }
+            >
+              {id && !view.descendants
+                ? '可进入下级位置，或选择“包含下级”查看其中物品。'
+                : '添加物品，开始整理你的库存。'}
+            </Empty>
+          )}
+          <Pagination
+            aria-label="列表分页"
+            current={page}
+            pageSize={view.pageSize}
+            total={results.length}
+            showSizeChanger
+            pageSizeOptions={[20, 50, 100]}
+            showTotal={(total, range) => `显示 ${range[0]}–${range[1]} / ${total} 件`}
+            onChange={(next, size) => {
+              patch({ page: size !== view.pageSize ? 1 : next, pageSize: size, scroll: 0 });
+              window.scrollTo(0, 0);
+            }}
           />
-        )}
-        {!shown.length && mobile && (
-          <Empty
-            title={
-              view.query || view.status || view.category ? '没有找到匹配物品' : '这里还没有物品'
-            }
-          >
-            {id && !view.descendants
-              ? '可进入下级位置，或选择“包含下级”查看其中物品。'
-              : '添加物品，开始整理你的库存。'}
-          </Empty>
-        )}
-        <Pagination
-          aria-label="列表分页"
-          current={page}
-          pageSize={view.pageSize}
-          total={results.length}
-          showSizeChanger
-          pageSizeOptions={[20, 50, 100]}
-          showTotal={(total, range) => `显示 ${range[0]}–${range[1]} / ${total} 件`}
-          onChange={(next, size) => {
-            patch({ page: size !== view.pageSize ? 1 : next, pageSize: size, scroll: 0 });
-            window.scrollTo(0, 0);
-          }}
-        />
+        </InventoryColumns>
       </section>
       {detail &&
-        (wide ? (
+        (inlineDetail ? (
           <aside className="wb-inspector">{detail}</aside>
         ) : mobile ? (
           <section className="ac-full-detail">{detail}</section>
         ) : (
-          <Drawer open title="物品详情" size={360} onClose={() => inspect()}>
+          <Drawer
+            open
+            title="物品详情"
+            size={360}
+            onClose={() => inspect()}
+            // A responsive inspector must not cover or take focus from an active editor.
+            autoFocus={!params.has('dialog')}
+            rootStyle={{ display: params.has('dialog') ? 'none' : undefined }}
+          >
             {detail}
           </Drawer>
         ))}
@@ -785,25 +850,9 @@ export function Workbench({
           这件物品已不可用。<Button onClick={() => inspect()}>返回列表</Button>
         </Notice>
       )}
-      {locations && (
+      {locations && !inlineLocations && (
         <ActionDrawer title="选择位置" onClose={() => setLocations(false)}>
-          <LocationTree
-            active={id}
-            onChoose={(target) => {
-              setLocations(false);
-              void navigate({ to: target ? `/places/${target}` : '/items' });
-            }}
-            searchable
-          />
-          <Button
-            disabled={disabled}
-            onClick={() => {
-              setLocations(false);
-              open({ kind: 'place', parent: id });
-            }}
-          >
-            新建位置
-          </Button>
+          {locationTree}
         </ActionDrawer>
       )}
     </div>

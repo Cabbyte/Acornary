@@ -202,6 +202,9 @@ dd {
   padding: 12px;
 }
 .wb-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -226,14 +229,27 @@ dd {
   margin-left: auto;
 }
 .wb-sidebar {
+  position: sticky !important;
+  top: 64px;
+  height: calc(100dvh - 64px);
   padding: 16px;
   overflow: auto;
 }
-.wb-location-heading {
+.wb-sidebar .ant-layout-sider-children {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin: 24px 0 12px;
+  flex-direction: column;
+}
+.wb-sidebar .ant-menu {
+  border-inline-end: 0;
+}
+.wb-sidebar.ant-layout-sider-collapsed {
+  padding-inline: 0;
+}
+.wb-sidebar.ant-layout-sider-collapsed .ant-menu {
+  width: 64px;
+}
+.wb-settings-nav {
+  margin-top: auto;
 }
 .app-main {
   padding: 24px;
@@ -246,18 +262,76 @@ dd {
   align-items: flex-start;
 }
 .wb-inventory {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 112px);
   flex: 1;
   min-width: 0;
   background: var(--ant-color-bg-container);
   padding: 24px;
   border-radius: 12px;
 }
+.wb-inventory[hidden] {
+  display: none;
+}
+.wb-inventory-columns {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
 .wb-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 16px 0;
+  margin: 0 0 24px;
+  flex-wrap: wrap;
+}
+.wb-title h2 {
+  margin: 0;
+}
+.wb-title .wb-add-actions {
+  flex-wrap: nowrap;
+  gap: 0;
+  margin-left: auto;
+}
+.wb-inventory-columns > .ant-splitter {
+  flex: 1;
+  align-items: stretch;
+}
+.wb-list-panel {
+  display: flex;
+  flex-direction: column;
+}
+.wb-inventory-columns .ant-splitter-panel {
+  min-width: 0;
+  overflow: visible;
+}
+.wb-location-tree .ac-search {
+  min-width: 0;
+}
+.wb-inventory-columns:not(.with-locations) .wb-location-panel,
+.wb-inventory-columns:not(.with-locations) .ant-splitter-bar {
+  display: none;
+}
+.with-locations .wb-location-panel {
+  padding-right: 16px;
+}
+.with-locations .wb-list-panel {
+  padding-left: 16px;
+}
+.wb-location-panel h5 {
+  margin: 0 0 16px;
+}
+.wb-inventory-columns .ant-splitter-bar-dragger {
+  touch-action: none;
+}
+.wb-inventory-columns [role='separator']:focus-visible {
+  outline: 2px solid var(--ant-color-primary);
+  outline-offset: 2px;
+}
+.wb-location-bar > .ant-breadcrumb {
+  margin-right: auto;
 }
 .wb-title > div {
   display: flex;
@@ -336,7 +410,38 @@ dd {
 }
 .wb-location-tree .ant-tree-node-content-wrapper {
   min-width: 0;
-  white-space: normal;
+  display: flex;
+  align-items: center;
+}
+.wb-location-tree .ant-tree-title {
+  flex: 1;
+  min-width: 0;
+}
+.wb-location-tree .ant-tree {
+  max-height: max(200px, calc(100dvh - 320px));
+  overflow: auto;
+}
+.wb-tree-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.wb-tree-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.wb-tree-title > .ant-typography {
+  flex-shrink: 0;
+}
+.wb-tree-root.is-selected {
+  color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
 }
 .wb-location-tree .ant-tree-treenode {
   padding: 4px 0;
@@ -447,6 +552,9 @@ dd {
   margin-bottom: 12px;
 }
 @media (max-width: 1199px) {
+  .wb-inventory {
+    min-height: calc(100dvh - 96px);
+  }
   .app-main {
     padding: 16px;
   }
@@ -473,6 +581,7 @@ dd {
     display: none !important;
   }
   .wb-inventory {
+    min-height: calc(100dvh - 164px);
     padding: 16px;
   }
   .wb-title > div {
@@ -587,16 +696,13 @@ dd {
   justify-content: space-between;
   line-height: normal;
 }
-.wb-sidebar .ant-tree {
-  background: transparent;
+.wb-list-panel > .ant-pagination {
+  justify-content: flex-end;
+  margin-top: auto;
+  padding-top: 24px;
 }
-.wb-sidebar .ant-tree-node-content-wrapper {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  white-space: normal;
-}
-.wb-inventory > .ant-pagination {
-  margin-top: 24px;
+.wb-list-panel .ant-pagination-total-text {
+  margin-inline-end: auto;
 }
 .ac-toolbar {
   display: flex;
