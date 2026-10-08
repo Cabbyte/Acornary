@@ -70,11 +70,36 @@ const navigation = [
   { key: 'catalog', label: '商品目录', icon: <AppstoreOutlined aria-hidden="true" /> },
   { key: 'settings', label: '设置', icon: <SettingOutlined aria-hidden="true" /> },
 ];
+const sidebarCollapsedKey = 'acornary-sidebar-collapsed';
+let rememberedSidebarCollapsed = false;
+
+function useSidebarCollapsed() {
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      const saved = localStorage.getItem(sidebarCollapsedKey);
+      if (saved !== null) rememberedSidebarCollapsed = saved === 'true';
+    } catch {
+      // Opaque MCP iframes retain the preference only within this running session.
+    }
+    return rememberedSidebarCollapsed;
+  });
+  const toggle = () => {
+    rememberedSidebarCollapsed = !collapsed;
+    setCollapsed(rememberedSidebarCollapsed);
+    try {
+      localStorage.setItem(sidebarCollapsedKey, String(rememberedSidebarCollapsed));
+    } catch {
+      // Storage restrictions must not disable navigation.
+    }
+  };
+  return { collapsed, toggle };
+}
+
 export function WorkbenchShell({ children, section }: { children: ReactNode; section: string }) {
   const { data } = useInventory();
   const navigate = useNavigate();
   const { mobile, wide } = useViewport();
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, toggle } = useSidebarCollapsed();
   const active = section === 'places' || section === 'search' ? 'items' : section;
   return (
     <Layout className="workbench-shell">
@@ -98,31 +123,33 @@ export function WorkbenchShell({ children, section }: { children: ReactNode; sec
         {!mobile && (
           <Layout.Sider
             width={wide ? 224 : 200}
-            collapsed={collapsed && !wide}
+            collapsed={collapsed}
             collapsedWidth={64}
             className="wb-sidebar"
           >
-            {!wide && (
-              <Button
-                type="text"
-                aria-label={collapsed ? '展开侧栏' : '收起侧栏'}
-                onClick={() => setCollapsed(!collapsed)}
-                icon={
-                  collapsed ? (
-                    <MenuUnfoldOutlined aria-hidden="true" />
-                  ) : (
-                    <MenuFoldOutlined aria-hidden="true" />
-                  )
-                }
-              />
-            )}
+            <Button
+              className="wb-sidebar-toggle"
+              type="text"
+              aria-label={collapsed ? '展开侧栏' : '收起侧栏'}
+              title={collapsed ? '展开侧栏' : '收起侧栏'}
+              aria-expanded={!collapsed}
+              onClick={toggle}
+              icon={
+                collapsed ? (
+                  <MenuUnfoldOutlined aria-hidden="true" />
+                ) : (
+                  <MenuFoldOutlined aria-hidden="true" />
+                )
+              }
+            />
             <Menu
               aria-label="主导航"
               mode="inline"
               selectedKeys={[active]}
-              inlineCollapsed={collapsed && !wide}
+              inlineCollapsed={collapsed}
               items={navigation.slice(0, 2).map((n) => ({
                 ...n,
+                title: n.label,
                 label: <Link to={`/${n.key}`}>{n.label}</Link>,
               }))}
             />
@@ -130,9 +157,15 @@ export function WorkbenchShell({ children, section }: { children: ReactNode; sec
               className="wb-settings-nav"
               aria-label="设置导航"
               mode="inline"
-              inlineCollapsed={collapsed && !wide}
+              inlineCollapsed={collapsed}
               selectedKeys={[active]}
-              items={[{ ...navigation[2], label: <Link to="/settings">设置</Link> }]}
+              items={[
+                {
+                  ...navigation[2],
+                  title: '设置',
+                  label: <Link to="/settings">设置</Link>,
+                },
+              ]}
             />
           </Layout.Sider>
         )}
@@ -492,7 +525,7 @@ export function Workbench({
     <div className="wb-workspace" ref={workspace.ref}>
       <section className="wb-inventory" aria-label="库存工作台" hidden={mobile && !!inspected}>
         <div className="wb-title">
-          <div>
+          <div className="wb-title-copy">
             <Typography.Title level={2}>我的物品</Typography.Title>
             <Typography.Text type="secondary">{results.length} 件物品</Typography.Text>
           </div>

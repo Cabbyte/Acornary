@@ -242,6 +242,14 @@ dd {
 .wb-sidebar .ant-menu {
   border-inline-end: 0;
 }
+.wb-sidebar-toggle {
+  align-self: flex-end;
+  flex-shrink: 0;
+  margin-bottom: 8px;
+}
+.wb-sidebar.ant-layout-sider-collapsed .wb-sidebar-toggle {
+  align-self: center;
+}
 .wb-sidebar.ant-layout-sider-collapsed {
   padding-inline: 0;
 }
@@ -333,7 +341,7 @@ dd {
 .wb-location-bar > .ant-breadcrumb {
   margin-right: auto;
 }
-.wb-title > div {
+.wb-title-copy {
   display: flex;
   align-items: baseline;
   gap: 12px;
@@ -584,10 +592,10 @@ dd {
     min-height: calc(100dvh - 164px);
     padding: 16px;
   }
-  .wb-title > div {
+  .wb-title-copy {
     gap: 4px;
   }
-  .wb-title > div > span {
+  .wb-title-copy > span {
     font-size: 14px;
     color: var(--ant-color-text-secondary);
   }

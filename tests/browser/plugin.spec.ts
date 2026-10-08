@@ -84,6 +84,40 @@ async function restoreRoute(page: Page, route: string) {
   }, route);
 }
 
+test('Ant Design icon navigation works with denied storage in the MCP sandbox', async ({
+  page,
+}) => {
+  await page.goto(origin);
+  const embedded = view(page);
+  await expect(embedded.getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
+  const frame = page
+    .frames()
+    .find((frame) => frame.parentFrame() && frame.url() === 'about:srcdoc')!;
+  expect(
+    await frame.evaluate(() => {
+      try {
+        localStorage.getItem('acornary-sidebar-collapsed');
+        return false;
+      } catch {
+        return true;
+      }
+    }),
+  ).toBe(true);
+  await embedded.getByRole('button', { name: '收起侧栏', exact: true }).click();
+  const sidebar = embedded.locator('.wb-sidebar');
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeCloseTo(64, 0);
+  const navigation = embedded.getByRole('menu', { name: '主导航', exact: true });
+  await navigation.getByRole('menuitem', { name: '商品目录', exact: true }).click();
+  await expect(embedded.getByRole('heading', { name: '商品目录', exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeCloseTo(64, 0);
+  await navigation.getByRole('menuitem', { name: '我的物品', exact: true }).click();
+  await expect(embedded.getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
+  await embedded.getByRole('button', { name: '展开侧栏', exact: true }).click();
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeCloseTo(200, 0);
+  expect(await writes(page)).toHaveLength(0);
+});
+
 test('a late opener notification cannot invalidate the authoritative startup fallback', async ({
   page,
 }) => {

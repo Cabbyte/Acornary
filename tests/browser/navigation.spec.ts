@@ -1,6 +1,61 @@
 import { test, expect, type Page } from '@playwright/test';
 import { login } from './login.js';
 
+test('Ant Design split actions align and desktop icon navigation remembers its state', async ({
+  page,
+}) => {
+  await page.goto('/items');
+  await login(page);
+  await expect(page.getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
+  const sidebar = page.locator('.wb-sidebar');
+  const mainNavigation = page.getByRole('menu', { name: '主导航', exact: true });
+  const settings = page.getByRole('menu', { name: '设置导航' });
+  await page.getByRole('button', { name: '收起侧栏', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: '展开侧栏' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeCloseTo(64, 0);
+  await mainNavigation.getByRole('menuitem', { name: '商品目录', exact: true }).hover();
+  await expect(page.getByRole('tooltip', { name: '商品目录', exact: true })).toBeVisible();
+  await mainNavigation.getByRole('menuitem', { name: '商品目录', exact: true }).click();
+  await expect(page).toHaveURL(/\/catalog$/);
+  await settings.getByRole('menuitem', { name: '设置', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '设置', exact: true })).toBeVisible();
+  await page.reload();
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeCloseTo(64, 0);
+  expect((await settings.boundingBox())!.y).toBeGreaterThan(850);
+  await page.screenshot({ path: 'output/playwright/sidebar-icons-settings.png' });
+  for (const width of [1024, 390, 1920]) {
+    await page.setViewportSize({ width, height: 1000 });
+    if (width < 768) await expect(page.getByRole('navigation', { name: '底部导航' })).toBeVisible();
+    else await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeCloseTo(64, 0);
+  }
+  await page.getByRole('button', { name: '展开侧栏', exact: true }).click();
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeCloseTo(224, 0);
+  await mainNavigation.getByRole('menuitem', { name: '我的物品', exact: true }).click();
+  for (const width of [1440, 1024, 390, 360]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const add = page.getByRole('button', { name: '添加物品', exact: true });
+    const more = page.getByRole('button', { name: '更多添加选项', exact: true });
+    await expect
+      .poll(async () => {
+        const a = (await add.boundingBox())!,
+          b = (await more.boundingBox())!;
+        return Math.max(Math.abs(a.y - b.y), Math.abs(a.height - b.height));
+      })
+      .toBeLessThan(1);
+    await more.click();
+    await expect(page.getByRole('menuitem', { name: '添加位置', exact: true })).toBeVisible();
+    await page.screenshot({ path: `output/playwright/add-actions-aligned-${width}.png` });
+    await page.keyboard.press('Escape');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+  }
+});
+
 async function fixture(page: Page) {
   const household = await page.evaluate(() => sessionStorage.getItem('acornary-household') ?? '');
   const headers = {
