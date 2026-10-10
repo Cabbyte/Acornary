@@ -1,3 +1,5 @@
+import { LabelButton } from './ui/label-button';
+import { itemDate } from './lib/labels';
 import { Card } from 'antd';
 import { Button, Checkbox, Input, Select, Descriptions, Timeline } from 'antd';
 import appIcon from '../public/app-icon.png';
@@ -353,6 +355,12 @@ export function Product({ id, open }: { id: string; open: OpenAction }) {
         />
         {!items.length && <Empty title="这里还没有实物">入库后，每件实物会分别出现在这里。</Empty>}
         {selecting && (
+          <LabelButton
+            disabled={!online || stale || !selection.length || selection.length > 100}
+            onClick={() => open({ kind: 'print', ids: selection.join(',') })}
+          />
+        )}
+        {selecting && (
           <Button
             disabled={!online || stale || !selection.length || selection.length > 100}
             onClick={() => open({ kind: 'finish', ids: selection.join(',') })}
@@ -371,11 +379,26 @@ export function Product({ id, open }: { id: string; open: OpenAction }) {
 }
 export function ItemDetail({ id, open }: { id: string; open: OpenAction }) {
   const { data, stale } = useInventory();
-  const { online } = useSession();
+  const { online, session, switchHousehold } = useSession();
   const item = data.items.find((i) => i.id === id);
   const [edit, setEdit] = useState(false);
   const [correction, setCorrection] = useState(false);
-  if (!item) return <Empty title="物品不可用">请返回列表刷新。</Empty>;
+  if (!item)
+    return (
+      <Empty title="当前家庭中没有这件物品">
+        <p>请检查登录账号，或切换到保存此物品的家庭。</p>
+        {session.households?.map((h) => (
+          <Button
+            key={h.household_id}
+            disabled={h.household_id === session.household_id}
+            onClick={() => void switchHousehold(h.household_id)}
+          >
+            {h.name}
+          </Button>
+        ))}
+        <Link to="/items">返回我的物品</Link>
+      </Empty>
+    );
   const life = attr(item, 'lifecycle');
   const notes = data.notes.filter((n) => n.item_id === id);
   const disabled = !online || stale;
@@ -419,13 +442,18 @@ export function ItemDetail({ id, open }: { id: string; open: OpenAction }) {
                     </>
                   ),
                 },
-                { key: 'expiry', label: '到期日期', children: life?.expiry?.date ?? '未记录' },
+                {
+                  key: 'expiry',
+                  label: itemDate(item).title,
+                  children: <strong>{itemDate(item).text}</strong>,
+                },
                 { key: 'availability', label: '可用状态', children: label(life?.availability) },
                 { key: 'state', label: '生命周期', children: label(life?.state) },
                 { key: 'condition', label: '物品状况', children: label(life?.condition) },
               ]}
             />
             <small className="identity">实物编号 {item.id}</small>
+            <LabelButton disabled={disabled} onClick={() => action('print')} />
           </Card>
           {!isTerminal(item) && (
             <>

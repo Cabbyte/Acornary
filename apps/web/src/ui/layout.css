@@ -837,3 +837,20 @@ dd {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+.label-preview-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+.label-preview {
+  width: 480px;
+  height: auto;
+  max-width: 100%;
+  image-rendering: pixelated;
+  border: 1px solid #777;
+  background: white;
+}

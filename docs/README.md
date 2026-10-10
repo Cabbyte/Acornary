@@ -14,6 +14,7 @@
 | [Web UI](./webui.md) | 路由、会话、读写、离线缓存、草稿与验证流程 |
 | [响应式工作台](./responsive-workbench.md) | 桌面／手机共用界面、原子批量移动与编辑 |
 | [MCP Apps 插件](./plugin.md) | 宿主桥、资源、身份作用域、上下文与私有状态 |
+| [D101 物品标签](./item-labels.md) | 单件标签、Chrome 蓝牙打印、短链接与待完成的实机验收 |
 | [账号系统](./accounts.md) | Passkey、密码、家庭成员、邮件开关与迁移 |
 | [版本发布](./releases.md) | GitHub Actions、GHCR、受限 SSH、迁移备份与恢复 |
 | [云端运行](./cloud-runtime.md) | 云端模式、OAuth、账号运维、入口与备份 |

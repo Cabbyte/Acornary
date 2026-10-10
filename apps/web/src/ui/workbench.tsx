@@ -1,3 +1,5 @@
+import { LabelButton } from './label-button';
+import { itemDate } from '../lib/labels';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Button,
@@ -716,6 +718,10 @@ export function Workbench({
           {selected.length > 0 && (
             <div className="wb-selection-bar">
               <span>已选 {selected.length} 件</span>
+              <LabelButton
+                disabled={!online || stale || selected.length > 100}
+                onClick={() => open({ kind: 'print', ids: selected.map((i) => i.id).join(',') })}
+              />
               <Button
                 disabled={disabled || selected.length > 100}
                 onClick={() => open({ kind: 'move', ids: selected.map((i) => i.id).join(',') })}
@@ -926,6 +932,15 @@ function ItemInspector({
       <Typography.Title level={3}>{itemName(item, data)}</Typography.Title>
       <Typography.Text type="secondary">{specification(sku) || '规格未记录'}</Typography.Text>
       <Tag>{itemStatus(item)}</Tag>
+      <LabelButton
+        disabled={!online || stale}
+        onClick={() => open({ kind: 'print', target: item.id })}
+      />
+      <p>
+        <strong>
+          {itemDate(item).title}：{itemDate(item).text}
+        </strong>
+      </p>
       <Space>
         <Button
           disabled={disabled || isTerminal(item)}

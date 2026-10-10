@@ -171,7 +171,13 @@ export function AttributeFields({
               onChange={(value) => onChange(f.path, value)}
               options={[
                 { value: '', label: '未记录' },
-                ...f.options.map((o) => ({ value: o, label: label(o) })),
+                ...f.options.map((o) => ({
+                  value: o,
+                  label:
+                    f.path === 'expiry.date_kind' && o === 'ESTIMATED'
+                      ? '计划吃完（自行设定）'
+                      : label(o),
+                })),
               ]}
             />
           ) : f.type === 'measurement' ? (
