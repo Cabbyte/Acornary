@@ -1,8 +1,9 @@
-import { beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 const fake = vi.hoisted(() => ({
   model: 'D101',
   connected: false,
   connect: vi.fn(),
+  requestDevice: vi.fn(),
   disconnect: vi.fn(),
   printInit: vi.fn(),
   printPage: vi.fn(),
@@ -26,6 +27,9 @@ vi.mock('@mmote/niimbluelib', () => ({
     getModelMetadata() {
       return { model: fake.model };
     }
+    getServiceUuidFilter() {
+      return ['printer-service'];
+    }
     getPrintTaskType() {
       return 'B1';
     }
@@ -35,6 +39,8 @@ vi.mock('@mmote/niimbluelib', () => ({
 import { D101Printer } from '../apps/web/src/lib/d101-printer.js';
 beforeEach(() => {
   vi.resetAllMocks();
+  fake.requestDevice.mockResolvedValue({ id: 'printer', name: 'D101-Test' });
+  vi.stubGlobal('navigator', { bluetooth: { requestDevice: fake.requestDevice } });
   fake.model = 'D101';
   fake.connected = false;
   fake.connect.mockImplementation(async () => {
@@ -47,6 +53,7 @@ beforeEach(() => {
   fake.printEnd.mockResolvedValue(true);
   fake.encodeCanvas.mockReturnValue('encoded');
 });
+afterEach(() => vi.unstubAllGlobals());
 it('uses negotiated D101 task, one sheet, left rotation and waits for completion', async () => {
   const printer = new D101Printer(vi.fn());
   await printer.connect();
@@ -86,6 +93,7 @@ it('disconnects a permission request that resolves after its window was closed',
   );
   const printer = new D101Printer(vi.fn());
   const pending = printer.connect();
+  await Promise.resolve();
   await printer.close();
   resolve();
   await expect(pending).rejects.toThrow('窗口已关闭');
@@ -114,4 +122,35 @@ it('treats an unconfirmed print-end response as uncertain', async () => {
   const printer = new D101Printer(vi.fn());
   await printer.connect();
   await expect(printer.print({} as HTMLCanvasElement)).rejects.toThrow('尚未确认结束');
+});
+
+it('reuses the paired device across disconnect and reconnect without another picker', async () => {
+  const printer = new D101Printer(vi.fn());
+  await printer.connect();
+  await printer.close();
+  await printer.connect();
+  expect(fake.requestDevice).toHaveBeenCalledExactlyOnceWith({
+    filters: [{ namePrefix: 'D101' }],
+    optionalServices: ['printer-service'],
+  });
+  expect(fake.connect).toHaveBeenCalledTimes(2);
+  expect(fake.connect).toHaveBeenLastCalledWith({
+    authorizedDevice: { id: 'printer', name: 'D101-Test' },
+  });
+  expect(printer.deviceName).toBe('D101-Test');
+});
+it('does not open GATT when a chooser resolves after the session closes', async () => {
+  let resolve!: (device: object) => void;
+  fake.requestDevice.mockImplementation(
+    () =>
+      new Promise((r) => {
+        resolve = r;
+      }),
+  );
+  const printer = new D101Printer(vi.fn());
+  const pending = printer.connect();
+  await printer.close();
+  resolve({ name: 'D101-Test' });
+  await expect(pending).rejects.toThrow('窗口已关闭');
+  expect(fake.connect).not.toHaveBeenCalled();
 });

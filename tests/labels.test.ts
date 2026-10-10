@@ -7,6 +7,7 @@ import {
   itemLabelURL,
   printLabelBatch,
 } from '../apps/web/src/lib/labels.js';
+import { LABEL_PROFILES } from '../apps/web/src/lib/label-profiles.js';
 import { labelNameLines, labelQR } from '../apps/web/src/lib/label-renderer.js';
 import type { ItemRecord } from '../packages/contracts/src/web.js';
 
@@ -111,4 +112,20 @@ describe('physical item labels', () => {
     await printLabelBatch([{ id: 'a', image: 'a' }], { print }, abort.signal, vi.fn());
     expect(print).not.toHaveBeenCalled();
   });
+});
+
+it('lays out both sizes with integer QR dots, quiet zones and no text overlap', () => {
+  const url = itemLabelURL(
+    'item_11111111-1111-4111-8111-000000000001',
+    'https://acornary.protium.top',
+  );
+  for (const profile of Object.values(LABEL_PROFILES)) {
+    const { size, quiet, scale } = labelQR(url, profile);
+    expect(Number.isInteger(scale)).toBe(true);
+    expect(quiet).toBe(4);
+    expect(profile.margin + profile.textWidth).toBeLessThan(profile.width - size - profile.margin);
+    expect(size).toBeLessThan(profile.height);
+    expect(profile.dateTop + profile.dateFont).toBeLessThan(profile.height);
+  }
+  expect(labelQR(url, LABEL_PROFILES['40x20']).size).toBe(123);
 });

@@ -1,3 +1,5 @@
+import { lazy, Suspense } from 'react';
+const PrinterSettings = lazy(() => import('./ui/printer-settings'));
 import { LabelButton } from './ui/label-button';
 import { itemDate } from './lib/labels';
 import { Card } from 'antd';
@@ -913,6 +915,12 @@ export function Settings({ section }: { section?: string }) {
         </div>
       </>
     );
+  if (section === 'printer')
+    return (
+      <Suspense fallback={<p role="status">正在打开打印设置…</p>}>
+        <PrinterSettings />
+      </Suspense>
+    );
   if (session.mode === 'cloud' && (section === 'account' || section === 'households'))
     return (
       <>
@@ -948,6 +956,14 @@ export function Settings({ section }: { section?: string }) {
             </div>
           </>
         )}
+        <p className="section-label">打印</p>
+        <div className="grouped">
+          <Row
+            title="打印机与标签"
+            subtitle="D101 蓝牙连接、标签尺寸与打印浓度"
+            to="/settings/printer"
+          />
+        </div>
         <p className="section-label">本机缓存</p>
         <div className="grouped">
           <Row title="上次更新" detail={time(data.cached_at)} />

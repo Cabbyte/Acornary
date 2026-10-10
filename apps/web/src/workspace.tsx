@@ -6,6 +6,7 @@ import { itemName, locationName, ancestors } from '../../../packages/contracts/s
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { expandItemId } from './lib/labels';
 import { LabelButton } from './ui/label-button';
+import { PrinterProvider } from './lib/printer-context';
 const LabelPrint = lazy(() => import('./ui/label-print'));
 import {
   createRootRoute,
@@ -25,6 +26,17 @@ import { Empty, Notice } from './ui/components';
 import { clearBrowseSelections, InventorySearch, ProductCatalog } from './ui/browser';
 import { clearWorkbenchSelections, Workbench, WorkbenchShell } from './ui/workbench';
 export function Workspace() {
+  const { session, expired } = useSession();
+  return (
+    <PrinterProvider
+      key={`${session.cache_key ?? session.user_id ?? 'local'}:${expired}`}
+      expired={expired}
+    >
+      <WorkspaceContent />
+    </PrinterProvider>
+  );
+}
+function WorkspaceContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const { data, stale, refresh, cacheWarning } = useInventory();

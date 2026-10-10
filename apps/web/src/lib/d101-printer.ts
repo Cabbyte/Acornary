@@ -4,25 +4,50 @@ import {
   PageColorType,
   PrinterModel,
 } from '@mmote/niimbluelib';
+import type { NiimbotBluetoothClientConnectOptions } from '@mmote/niimbluelib';
 import type { LabelPrinter } from './labels.js';
 
 export class D101Printer implements LabelPrinter<HTMLCanvasElement> {
   private client = new NiimbotBluetoothClient();
   private closed = false;
   density = 2;
+  deviceName?: string;
+  private device?: NiimbotBluetoothClientConnectOptions['authorizedDevice'];
   constructor(disconnected: () => void) {
     this.client.on('disconnect', disconnected);
   }
   async connect() {
-    await this.client.connect();
+    this.closed = false;
+    // Keep the authorized device in memory to reconnect without another chooser.
+    // Request directly from the click, filtering out unrelated nearby devices.
+    if (!this.device) {
+      const bluetooth = (
+        navigator as unknown as {
+          bluetooth: {
+            requestDevice(
+              options: object,
+            ): Promise<NonNullable<NiimbotBluetoothClientConnectOptions['authorizedDevice']>>;
+          };
+        }
+      ).bluetooth;
+      this.device = await bluetooth.requestDevice({
+        filters: [{ namePrefix: 'D101' }],
+        optionalServices: this.client.getServiceUuidFilter(),
+      });
+    }
+    if (this.closed) throw new Error('打印窗口已关闭，请重新连接。');
+    await this.client.connect({ authorizedDevice: this.device });
     if (this.closed) {
       await this.client.disconnect();
       throw new Error('打印窗口已关闭，请重新连接。');
     }
     if (this.client.getModelMetadata()?.model !== PrinterModel.D101) {
       await this.client.disconnect();
+      this.device = undefined;
       throw new Error('第一版仅支持 D101，请选择正确的打印机。');
     }
+    if (!this.client.isConnected()) throw new Error('打印机已断开连接。');
+    this.deviceName = this.device.name ?? 'D101';
   }
   async close() {
     this.closed = true;

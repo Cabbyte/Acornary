@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Checkbox, Select, Space, Tag } from 'antd';
+import { Button, Checkbox, Space, Tag } from 'antd';
 import { itemName } from '../../../../packages/contracts/src/web';
 import { useInventory } from '../lib/inventory';
 import { useSession } from '../lib/session';
@@ -12,7 +12,9 @@ import {
   type LabelStatus,
 } from '../lib/labels';
 import { renderLabel } from '../lib/label-renderer';
-import { D101Printer } from '../lib/d101-printer';
+import { Link, useLocation } from '@tanstack/react-router';
+import { usePrinter } from '../lib/printer-context';
+import { LABEL_PROFILES } from '../lib/label-profiles';
 import { snapshot } from '../lib/api';
 import { ActionDrawer, Notice } from './components';
 
@@ -23,17 +25,16 @@ const statuses = {
   uncertain: '出纸结果待核对',
 };
 export default function LabelPrint({ ids, onClose }: { ids: string[]; onClose: () => void }) {
+  const location = useLocation();
   const { data, stale, refresh } = useInventory();
   const { session, online, expired } = useSession();
-  const [connected, setConnected] = useState(false);
-  const [connecting, setConnecting] = useState(false);
+  const { printer, connected, busy: printerBusy, size } = usePrinter();
+  const profile = LABEL_PROFILES[size];
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [density, setDensity] = useState(2);
   const [journal, setJournal] = useState<Record<string, LabelStatus>>({});
   const [chosen, setChosen] = useState(ids);
   const [reviewed, setReviewed] = useState(false);
-  const printer = useRef<D101Printer | null>(null);
   const controller = useRef<AbortController | null>(null);
   const alive = useRef(true);
   const lock = useRef(false);
@@ -44,15 +45,11 @@ export default function LabelPrint({ ids, onClose }: { ids: string[]; onClose: (
     return () => {
       alive.current = false;
       controller.current?.abort();
-      void printer.current?.close().catch(() => {});
     };
   }, []);
   useEffect(() => {
     if (!available) {
       controller.current?.abort();
-      void printer.current?.close().catch(() => {});
-      printer.current = null;
-      setConnected(false);
     }
   }, [available]);
   const prepared = useMemo(() => {
@@ -65,7 +62,7 @@ export default function LabelPrint({ ids, onClose }: { ids: string[]; onClose: (
         const name = itemName(item, data),
           date = itemDate(item);
         const url = itemLabelURL(id, window.location.origin);
-        const image = renderLabel(name, date.title, date.date, url);
+        const image = renderLabel(name, date.title, date.date, url, profile);
         return {
           id,
           name,
@@ -80,33 +77,14 @@ export default function LabelPrint({ ids, onClose }: { ids: string[]; onClose: (
     } catch (e) {
       return { pages: [], error: (e as Error).message };
     }
-  }, [data, ids]);
+  }, [data, ids, profile]);
   const uncertain = Object.values(journal).includes('uncertain');
-  async function connect() {
-    if (lock.current || connecting || !available) return;
-    setConnecting(true);
-    setError('');
-    // Construct before connecting: requestDevice must retain the button's user activation.
-    const next = new D101Printer(() => {
-      if (alive.current) setConnected(false);
-    });
-    printer.current = next;
-    try {
-      await next.connect();
-      if (alive.current) setConnected(true);
-    } catch (e) {
-      await next.close().catch(() => {});
-      if (alive.current) setError(`连接未完成：${(e as Error).message}`);
-    } finally {
-      if (alive.current) setConnecting(false);
-    }
-  }
   async function print() {
     if (
       lock.current ||
       !available ||
       !connected ||
-      !printer.current ||
+      printerBusy ||
       prepared.error ||
       !chosen.length ||
       (uncertain && !reviewed)
@@ -135,18 +113,19 @@ export default function LabelPrint({ ids, onClose }: { ids: string[]; onClose: (
         await refresh();
         throw new Error('物品资料已变化，预览已更新，请核对后再次打印。');
       }
-      printer.current.density = density;
       setReviewed(false);
-      await printLabelBatch(
-        prepared.pages.filter((p) => chosen.includes(p.id)),
-        printer.current,
-        abort.signal,
-        (id, status) => {
-          if (!alive.current) return;
-          setJournal((old) => ({ ...old, [id]: status }));
-          if (status === 'done' || status === 'uncertain')
-            setChosen((old) => old.filter((v) => v !== id));
-        },
+      await printer.run((device) =>
+        printLabelBatch(
+          prepared.pages.filter((p) => chosen.includes(p.id)),
+          device,
+          abort.signal,
+          (id, status) => {
+            if (!alive.current) return;
+            setJournal((old) => ({ ...old, [id]: status }));
+            if (status === 'done' || status === 'uncertain')
+              setChosen((old) => old.filter((v) => v !== id));
+          },
+        ),
       );
     } catch (e) {
       if (alive.current) setError(`已停止，未自动重打。${(e as Error).message}`);
@@ -156,32 +135,29 @@ export default function LabelPrint({ ids, onClose }: { ids: string[]; onClose: (
     }
   }
   return (
-    <ActionDrawer title="打印标签" onClose={onClose} busy={busy || connecting}>
+    <ActionDrawer title="打印标签" onClose={onClose} busy={busy}>
       <div className="stack">
-        <p>D101 · 30 × 12 mm · {ids.length} 件物品 · 每件一张</p>
+        <p>
+          D101 · {profile.name} · {ids.length} 件物品 · 每件一张
+        </p>
         {!permitted && <Notice>请在 Mac 的 Chrome 独立网页中连接 D101 打印。</Notice>}
         {!available && permitted && <Notice>请联网并登录后打印最新的物品资料。</Notice>}
         <Space wrap>
           <Tag>{connected ? 'D101 已连接' : '打印机未连接'}</Tag>
-          <Button
-            disabled={!available || busy || connected || connecting}
-            loading={connecting}
-            onClick={() => void connect()}
-          >
-            连接 D101
-          </Button>
-          <Select
-            aria-label="打印浓度"
-            value={density}
-            disabled={busy}
-            onChange={setDensity}
-            options={[1, 2, 3].map((v) => ({
-              value: v,
-              label: `浓度 ${v}${v === 2 ? '（默认）' : ''}`,
-            }))}
-          />
+          {!busy && (
+            <Link
+              to="/settings/printer"
+              search={{ returnTo: location.pathname + location.searchStr }}
+            >
+              打印机与标签设置
+            </Link>
+          )}
         </Space>
-        <p>首次请先只勾选一张试印，核对文字方向、边距和手机扫码效果。预览为放大显示。</p>
+        {!connected && permitted && (
+          <Notice>请先在设置中连接打印机，连接会在本次页面使用期间保留。</Notice>
+        )}
+        {printerBusy && !busy && <Notice>上一批标签仍在打印，请稍候。</Notice>}
+        <p>请确认已装入 {profile.name} 标签纸。预览为放大显示。</p>
         {prepared.error && <Notice danger>{prepared.error}</Notice>}
         {prepared.pages.map((page) => (
           <div key={page.id} className="label-preview-row">
@@ -200,8 +176,8 @@ export default function LabelPrint({ ids, onClose }: { ids: string[]; onClose: (
             <img
               className="label-preview"
               src={page.preview}
-              width={240}
-              height={96}
+              width={profile.width}
+              height={profile.height}
               alt={`${page.name}的标签预览`}
             />
             <span role="status">{statuses[journal[page.id] ?? 'pending']}</span>
@@ -224,7 +200,7 @@ export default function LabelPrint({ ids, onClose }: { ids: string[]; onClose: (
             disabled={
               !available ||
               !connected ||
-              connecting ||
+              printerBusy ||
               !!prepared.error ||
               !chosen.length ||
               (uncertain && !reviewed)
