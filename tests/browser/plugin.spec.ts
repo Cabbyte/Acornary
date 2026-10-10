@@ -358,7 +358,8 @@ test('read-only UI and revoked authorization do not dispatch changes and clear s
     h.expired = true;
     h.notify({ content: [] });
   });
-  await expect(view(page).getByText(/连接授权已失效/)).toBeVisible();
+  // An invalidation during a read can be coalesced into the 5 s poll plus 150 ms debounce.
+  await expect(view(page).getByText(/连接授权已失效/)).toBeVisible({ timeout: 10000 });
   await expect.poll(() => page.evaluate(() => (window as any).host.context?.selection)).toBeNull();
 });
 
@@ -444,7 +445,8 @@ test('failed context clearing retries after authorization loss without further u
     h.expired = true;
     h.notify({ content: [] });
   });
-  await expect(view(page).getByText(/连接授权已失效/)).toBeVisible();
+  // An invalidation during a read can be coalesced into the 5 s poll plus 150 ms debounce.
+  await expect(view(page).getByText(/连接授权已失效/)).toBeVisible({ timeout: 10000 });
   await expect
     .poll(() => page.evaluate(() => (window as any).host.context?.selection), { timeout: 10000 })
     .toBeNull();
