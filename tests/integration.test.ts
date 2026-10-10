@@ -449,7 +449,26 @@ describe('PostgreSQL domain transactions', () => {
       const list = await client.listTools();
       expect(list.tools.map((t) => t.name)).toContain('consume_item_content');
       const opener = list.tools.find((t) => t.name === 'open_inventory')!;
+      expect(opener.title).toBe('Acornary');
+      expect(opener.description).toContain('打开 Acornary 库存界面。');
+      expect(opener.icons).toHaveLength(2);
+      for (const [index, theme, stroke] of [
+        [0, 'light', '#68615C'],
+        [1, 'dark', '#A6A49E'],
+      ] as const) {
+        const icon = opener.icons![index];
+        expect(icon).toMatchObject({ theme, mimeType: 'image/svg+xml', sizes: ['any'] });
+        expect(icon.src).toMatch(/^data:image\/svg\+xml;base64,/);
+        const svg = Buffer.from(icon.src.split(',')[1], 'base64').toString('utf8');
+        expect(svg).toContain('viewBox="0 0 20 20"');
+        expect(svg).toContain(`stroke="${stroke}"`);
+        expect(svg).toContain('stroke-width="1.35"');
+        expect(svg).toContain('fill="none"');
+        expect(svg.match(/<path /g)).toHaveLength(3);
+        expect(svg).not.toMatch(/<script|<image|<foreignObject|href=/i);
+      }
       expect(opener._meta?.['openai/ui']).toMatchObject({
+        entrypoints: [{ type: 'global' }, { type: 'thread' }],
         preferredModelDisplayMode: 'fullscreen',
       });
       expect(list.tools.find((t) => t.name === 'get_inventory_view')?._meta?.ui).toEqual({

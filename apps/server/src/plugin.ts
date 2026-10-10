@@ -19,6 +19,7 @@ import {
 import { DomainError } from '../../../packages/domain/src/index.js';
 import { execute, type Context } from './service.js';
 import { webSnapshot } from './web.js';
+import { inventoryIcons } from './plugin-icons.js';
 
 export interface PluginIdentity {
   ctx: Context;
@@ -135,10 +136,11 @@ export function registerInventoryApp(
       server,
       name,
       {
-        title: name === pluginOpenTool ? '浏览松仓库存' : '刷新库存视图',
+        title: name === pluginOpenTool ? 'Acornary' : '刷新库存视图',
+        ...(name === pluginOpenTool ? { icons: inventoryIcons } : {}),
         description:
           name === pluginOpenTool
-            ? '打开松仓库存界面。选择具体物品后可在对话中指代该物品；选择本身不授权写入。'
+            ? '打开 Acornary 库存界面。选择具体物品后可在对话中指代该物品；选择本身不授权写入。'
             : '读取当前已授权家庭的完整界面投影。身份和家庭由服务端认证决定。',
         inputSchema: z.strictObject({}),
         outputSchema: z.strictObject({
