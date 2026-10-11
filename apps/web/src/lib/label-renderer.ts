@@ -12,14 +12,30 @@ export function labelQR(url: string, profile: LabelProfile = LABEL_PROFILES['30x
     throw new Error(`物品链接过长，无法在 ${profile.name} 标签上清晰打印二维码。`);
   return { qr, scale, quiet, size };
 }
-export function labelNameLines(name: string, measure: (s: string) => number, width: number) {
-  const chars = Array.from(name.replace(/\s+/g, ' ').trim());
+export function labelNameLines(
+  name: string,
+  measure: (s: string) => number,
+  width: number,
+  maxLines = 2,
+) {
+  const chars = Array.from(
+    new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(
+      name.replace(/\s+/g, ' ').trim(),
+    ),
+    (part) => part.segment,
+  );
   const lines: string[] = [];
-  for (let row = 0; row < 2 && chars.length; row++) {
+  for (let row = 0; row < maxLines && chars.length; row++) {
     let line = '';
     while (chars.length && measure(line + chars[0]) <= width) line += chars.shift();
-    if (row === 1 && chars.length) {
-      while (line && measure(line + '…') > width) line = Array.from(line).slice(0, -1).join('');
+    if (row === maxLines - 1 && chars.length) {
+      while (line && measure(line + '…') > width)
+        line = Array.from(
+          new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(line),
+          (part) => part.segment,
+        )
+          .slice(0, -1)
+          .join('');
       line += '…';
     }
     lines.push(line);
@@ -27,12 +43,11 @@ export function labelNameLines(name: string, measure: (s: string) => number, wid
   return lines;
 }
 export function renderLabel(
-  name: string,
-  title: string,
-  date: string | undefined,
+  content: { name: string; specification: string; title: string; date?: string; suffix: string },
   url: string,
   profile: LabelProfile = LABEL_PROFILES['30x12'],
 ) {
+  const { name, specification, title, date, suffix } = content;
   const canvas = document.createElement('canvas');
   canvas.width = profile.width;
   canvas.height = profile.height;
@@ -46,19 +61,31 @@ export function renderLabel(
   labelNameLines(name, (s) => ctx.measureText(s).width, profile.textWidth).forEach((line, i) =>
     ctx.fillText(line, profile.margin, profile.nameTop + i * profile.nameLine),
   );
+  ctx.font = `${profile.specFont}px "PingFang SC", "Microsoft YaHei", sans-serif`;
+  labelNameLines(
+    specification,
+    (s) => ctx.measureText(s).width,
+    profile.textWidth,
+    profile.specLines,
+  ).forEach((line, i) =>
+    ctx.fillText(line, profile.margin, profile.specTop + i * profile.specLine),
+  );
   ctx.font = `${profile.dateTitleFont}px "PingFang SC", "Microsoft YaHei", sans-serif`;
-  ctx.fillText(date ? title : '日期未记录', profile.margin, profile.dateTitleTop);
+  if (date) ctx.fillText(title, profile.margin, profile.dateTitleTop);
   if (date) {
     ctx.font = `${profile.dateFont}px sans-serif`;
     ctx.fillText(date, profile.margin, profile.dateTop);
   }
   const { qr, scale, quiet, size } = labelQR(url, profile);
   const x = profile.width - size - profile.margin,
-    y = Math.floor((profile.height - size) / 2);
+    y = profile.qrTop;
   for (let row = 0; row < qr.modules.size; row++)
     for (let col = 0; col < qr.modules.size; col++)
       if (qr.modules.get(row, col))
         ctx.fillRect(x + (col + quiet) * scale, y + (row + quiet) * scale, scale, scale);
+  ctx.font = `${profile.suffixFont}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(suffix, x + size / 2, profile.suffixTop);
   // The protocol encoder requires exact black/white; use this same bitmap for preview and print.
   const pixels = ctx.getImageData(0, 0, profile.width, profile.height);
   for (let i = 0; i < pixels.data.length; i += 4) {

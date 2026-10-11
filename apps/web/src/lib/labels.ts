@@ -1,5 +1,10 @@
 import { entityId } from '../../../../packages/contracts/src/ids.js';
-import { attr, type ItemRecord } from '../../../../packages/contracts/src/web.js';
+import {
+  attr,
+  itemName,
+  type InventoryData,
+  type ItemRecord,
+} from '../../../../packages/contracts/src/web.js';
 
 // Reversible representation of the existing UUID, not an access token or a new identity.
 export function compactItemId(id: string): string {
@@ -34,6 +39,17 @@ export function itemDate(item: ItemRecord) {
           ? '最佳食用期'
           : '到期日期';
   return { title, date: expiry?.date, text: expiry?.date ?? '日期未记录' };
+}
+export function itemLabelContent(item: ItemRecord, data: InventoryData) {
+  const sku = data.catalog.find((c) => c.id === item.catalog_node_id);
+  const date = itemDate(item);
+  return {
+    name: itemName(item, data),
+    specification: sku ? (attr(sku, 'product')?.specification ?? '') : '',
+    title: date.title,
+    date: date.date,
+    suffix: entityId('item').parse(item.id).slice(-6).toLowerCase(),
+  };
 }
 export function canPrintLabels(): boolean {
   return (

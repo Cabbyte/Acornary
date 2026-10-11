@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Checkbox, Space, Tag } from 'antd';
-import { itemName } from '../../../../packages/contracts/src/web';
 import { useInventory } from '../lib/inventory';
 import { useSession } from '../lib/session';
 import { embeddedRuntime } from '../lib/runtime';
 import {
   canPrintLabels,
-  itemDate,
+  itemLabelContent,
   itemLabelURL,
   printLabelBatch,
   type LabelStatus,
@@ -59,13 +58,12 @@ export default function LabelPrint({ ids, onClose }: { ids: string[]; onClose: (
       const pages = ids.map((id) => {
         const item = data.items.find((i) => i.id === id);
         if (!item) throw new Error('部分物品在当前家庭中不可用，请返回重新选择。');
-        const name = itemName(item, data),
-          date = itemDate(item);
+        const content = itemLabelContent(item, data);
         const url = itemLabelURL(id, window.location.origin);
-        const image = renderLabel(name, date.title, date.date, url, profile);
+        const image = renderLabel(content, url, profile);
         return {
           id,
-          name,
+          name: content.name,
           image,
           preview: image.toDataURL(),
           url,

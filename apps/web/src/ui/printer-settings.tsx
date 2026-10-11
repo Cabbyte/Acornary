@@ -24,7 +24,19 @@ export default function PrinterSettings() {
   const preview = useMemo(() => {
     try {
       const url = itemLabelURL('item_11111111-1111-4111-8111-000000000001', window.location.origin);
-      return { src: renderLabel('冷藏饮料', '计划吃完', '2026-10-15', url, profile).toDataURL() };
+      return {
+        src: renderLabel(
+          {
+            name: '冷萃乌龙茶',
+            specification: '500 mL · 无糖',
+            title: '计划吃完',
+            date: '2026-10-15',
+            suffix: '000001',
+          },
+          url,
+          profile,
+        ).toDataURL(),
+      };
     } catch (error) {
       return { error: (error as Error).message };
     }

@@ -4,12 +4,13 @@ import {
   compactItemId,
   expandItemId,
   itemDate,
+  itemLabelContent,
   itemLabelURL,
   printLabelBatch,
 } from '../apps/web/src/lib/labels.js';
 import { LABEL_PROFILES } from '../apps/web/src/lib/label-profiles.js';
-import { labelNameLines, labelQR } from '../apps/web/src/lib/label-renderer.js';
-import type { ItemRecord } from '../packages/contracts/src/web.js';
+import { labelNameLines, labelQR, renderLabel } from '../apps/web/src/lib/label-renderer.js';
+import type { ItemRecord, InventoryData } from '../packages/contracts/src/web.js';
 
 describe('physical item labels', () => {
   it('keeps each UUID distinct and reversible without leaking a credential', () => {
@@ -128,4 +129,76 @@ it('lays out both sizes with integer QR dots, quiet zones and no text overlap', 
     expect(profile.dateTop + profile.dateFont).toBeLessThan(profile.height);
   }
   expect(labelQR(url, LABEL_PROFILES['40x20']).size).toBe(123);
+});
+
+it('uses recorded specifications and a validated UUID suffix without changing identity', () => {
+  const item = {
+    id: 'item_11111111-1111-4111-8111-000000a5c92e',
+    catalog_node_id: 'sku',
+    attributes: [],
+  } as unknown as ItemRecord;
+  const data = {
+    items: [item],
+    catalog: [
+      {
+        id: 'sku',
+        name: '冷萃乌龙茶',
+        attributes: [
+          {
+            template_id: 'product',
+            template_version: 1,
+            values: { specification: '500 mL · 无糖' },
+          },
+        ],
+      },
+    ],
+  } as unknown as InventoryData;
+  expect(itemLabelContent(item, data)).toEqual({
+    name: '冷萃乌龙茶',
+    specification: '500 mL · 无糖',
+    title: '到期日期',
+    date: undefined,
+    suffix: 'a5c92e',
+  });
+  expect(itemLabelContent(item, { ...data, catalog: [] }).specification).toBe('');
+});
+it('truncates specifications at the fixed line limit and preserves grapheme clusters', () => {
+  const measure = (s: string) =>
+    [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(s)].length * 16;
+  for (const profile of Object.values(LABEL_PROFILES)) {
+    const lines = labelNameLines('👨‍👩‍👧‍👦'.repeat(40), measure, profile.textWidth, profile.specLines);
+    expect(lines).toHaveLength(profile.specLines);
+    expect(lines.at(-1)).toMatch(/…$/);
+    expect(lines.every((line) => measure(line) <= profile.textWidth)).toBe(true);
+    expect(lines.join('').replaceAll('👨‍👩‍👧‍👦', '').replaceAll('…', '')).toBe('');
+    expect(profile.specTop + profile.specLine * profile.specLines).toBeLessThan(
+      profile.dateTitleTop,
+    );
+    expect(profile.qrTop + profile.qrMax).toBeLessThan(profile.suffixTop);
+    expect(profile.suffixTop + profile.suffixFont).toBeLessThanOrEqual(profile.height);
+  }
+});
+it('prints no placeholder or date title when date and specifications are absent', () => {
+  const fillText = vi.fn();
+  const ctx = {
+    fillText,
+    fillRect: vi.fn(),
+    measureText: (s: string) => ({ width: s.length * 8 }),
+    getImageData: () => ({ data: new Uint8ClampedArray(4) }),
+    putImageData: vi.fn(),
+  };
+  vi.stubGlobal('document', { createElement: () => ({ getContext: () => ctx }) });
+  try {
+    for (const profile of Object.values(LABEL_PROFILES)) {
+      fillText.mockClear();
+      renderLabel(
+        { name: '电源适配器', specification: '', title: '计划吃完', suffix: '3ba71f' },
+        itemLabelURL('item_11111111-1111-4111-8111-0000003ba71f', 'https://acornary.protium.top'),
+        profile,
+      );
+      expect(fillText.mock.calls.map((c) => c[0])).toEqual(['电源适配器', '3ba71f']);
+    }
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });
