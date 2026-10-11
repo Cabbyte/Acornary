@@ -1,5 +1,7 @@
 # Acornary 文档
 
+语音入库扩展：版本必填、错误恢复、请求追踪、原子批量操作及 product v2 见 [语音入库指南](./voice-intake.md)。下文历史阶段中的 v1 限制以该扩展说明为准。
+
 先读 [项目进度](./progress.md)。Acornary 以云端库存为唯一正式数据源，Web 和 MCP Apps 使用同一套响应式工作台；MCP 与 Web 写入共用领域命令。产品支持读写，`/inspect` 检查器保持只读。
 
 ## 当前实现与运行

@@ -7,7 +7,10 @@ for (const operation of ['create_catalog_node', 'update_catalog_node'] as const)
     idempotency_key: 'catalog-name-contract',
     ...(operation === 'create_catalog_node'
       ? { kind: 'SKU' }
-      : { catalog_node_id: 'catalog_node_11111111-1111-4111-8111-000000000001' }),
+      : {
+          catalog_node_id: 'catalog_node_11111111-1111-4111-8111-000000000001',
+          expected_revisions: { 'catalog_node_11111111-1111-4111-8111-000000000001': 1 },
+        }),
   };
 
   describe(operation, () => {

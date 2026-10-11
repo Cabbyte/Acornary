@@ -1,6 +1,57 @@
 import { test, expect, type Page } from '@playwright/test';
+import { catalogFixture, checkCatalog } from './catalog-checks.js';
 const origin = 'http://127.0.0.1:3212';
 const view = (page: Page) => page.frameLocator('#inventory');
+test('Ant Design catalog tree works in the MCP sandbox and isolates household state', async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  await page.goto(origin);
+  await expect(view(page).getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
+  const f = await catalogFixture((name, input) =>
+    page.evaluate(
+      async ({ name, input }) => {
+        const result = await (window as any).host.call(name, {
+          idempotency_key: crypto.randomUUID(),
+          ...input,
+        });
+        if (result.isError) throw new Error(JSON.stringify(result));
+        return result.structuredContent;
+      },
+      { name, input },
+    ),
+  );
+  await restoreRoute(page, '/catalog');
+  await checkCatalog(page, view(page), f, 'plugin');
+  await view(page).getByRole('link', { name: '我的物品', exact: true }).click();
+  await expect(view(page).getByRole('separator', { name: '调整位置栏宽度' })).toHaveAttribute(
+    'aria-valuenow',
+    '224',
+  );
+  await expect(view(page).getByRole('columnheader', { name: '收纳位置', exact: true })).toHaveCount(
+    0,
+  );
+  await view(page).getByRole('link', { name: '商品目录', exact: true }).click();
+  await expect(view(page).getByRole('searchbox', { name: '搜索分类', exact: true })).toHaveValue(
+    f.leaf,
+  );
+  await page.evaluate(async () => {
+    const h = (window as any).host;
+    h.family = 1;
+    h.notify(await h.call('get_inventory_view'));
+  });
+  // An in-flight refresh can coalesce this notification; allow the 5s polling interval.
+  await expect(view(page).getByRole('heading', { name: '我的物品', exact: true })).toBeVisible({
+    timeout: 10_000,
+  });
+  await view(page).getByRole('link', { name: '商品目录', exact: true }).click();
+  await expect(view(page).getByRole('searchbox', { name: '搜索分类', exact: true })).toHaveValue(
+    '',
+  );
+  await expect(view(page).getByRole('searchbox', { name: '搜索商品名称或规格' })).toHaveValue('');
+  await expect(view(page).getByLabel('当前商品分类')).toHaveText('全部商品');
+  await expect(view(page).getByRole('tree', { name: '商品分类树' })).not.toContainText(f.first);
+});
 async function fixture(page: Page, dialog = '') {
   await page.goto(origin);
   await expect(view(page).getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
@@ -784,4 +835,39 @@ test('Ant Design location resizing and drawer state survive opaque sandbox stora
   });
   await embedded.getByRole('button', { name: '更多添加选项' }).click();
   await expect(embedded.getByRole('menuitem', { name: '添加位置', exact: true })).toBeVisible();
+});
+
+test('product v2 shelf life remains versioned when edited in the plugin', async ({ page }) => {
+  const f = await fixture(page);
+  await page.evaluate(async (sku) => {
+    await (window as any).host.call('bind_attributes', {
+      target: { kind: 'CATALOG_NODE', id: sku },
+      template_id: 'product',
+      template_version: 2,
+      values: { brand: '盒马', shelf_life_days: 15, storage: { requirement: 'REFRIGERATED' } },
+      expected_revisions: { [sku]: 1 },
+      idempotency_key: crypto.randomUUID(),
+    });
+  }, f.sku);
+  await restoreRoute(page, `/catalog/${f.sku}?dialog=attributes&template=product&target=${f.sku}`);
+  await expect(view(page).getByLabel('未开封保质天数', { exact: true })).toHaveValue('15');
+  await view(page).getByLabel('未开封保质天数', { exact: true }).fill('16');
+  await view(page).getByRole('button', { name: '保存', exact: true }).click();
+  await expect
+    .poll(async () =>
+      page.evaluate(
+        async (sku) =>
+          (await (window as any).host.call('get_catalog_node', { catalog_node_id: sku }))
+            .structuredContent.attributes[0],
+        f.sku,
+      ),
+    )
+    .toEqual({
+      template_id: 'product',
+      template_version: 2,
+      values: { brand: '盒马', shelf_life_days: 16, storage: { requirement: 'REFRIGERATED' } },
+    });
+  const last = (await writes(page)).at(-1)!;
+  expect(last.arguments.input.template_version).toBe(2);
+  expect(last.arguments.input.expected_revisions).toEqual({ [f.sku]: 2 });
 });

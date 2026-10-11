@@ -4,7 +4,12 @@ import { Button, Form, Input, Select, TreeSelect } from 'antd';
 import { draftSchema } from '../lib/draft';
 import { useEffect, useRef, useState } from 'react';
 import { Decimal } from 'decimal.js';
-import { schemas, type Operation, type TemplateId } from '../../../../packages/contracts/src/index';
+import {
+  templateFor,
+  schemas,
+  type Operation,
+  type TemplateId,
+} from '../../../../packages/contracts/src/index';
 import {
   ancestors,
   attr,
@@ -88,10 +93,14 @@ export function ActionSheet({
   const workbench = action.kind === 'edit' || (action.kind === 'move' && movingItems.length > 0);
   const moving = action.kind === 'move' && movingItems.length > 0;
   const template = action.template ?? 'lifecycle';
+  const templateVersion =
+    target?.attributes.find((a) => a.template_id === template)?.template_version ?? 1;
   const fields = ['attributes', 'correct'].includes(action.kind)
     ? [
         ...(action.kind === 'correct' && template === 'lifecycle' ? correctionFields : []),
-        ...(definitions[template] ?? []),
+        ...(definitions[template] ?? []).filter((f) =>
+          (templateFor(template, templateVersion).paths as readonly string[]).includes(f.path),
+        ),
         ...(action.kind === 'correct' && template === 'lifecycle'
           ? (definitions.contents ?? []).map((f) => ({ ...f, path: `content.${f.path}` }))
           : []),
@@ -226,7 +235,7 @@ export function ActionSheet({
     const base = { expected_revisions: draft.revisions };
     let operation: Operation;
     let input: Record<string, unknown>;
-    const attribute = { template_id: template, template_version: 1 };
+    const attribute = { template_id: template, template_version: templateVersion };
     switch (action.kind) {
       case 'intake': {
         operation = 'create_items';

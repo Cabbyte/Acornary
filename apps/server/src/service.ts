@@ -2,7 +2,9 @@ import { legacyInput } from './fingerprint.js';
 import { randomUUID, createHash } from 'node:crypto';
 import { Decimal } from 'decimal.js';
 import {
-  schemas,
+  parseCommand,
+  templateFor,
+  latestTemplateVersion,
   reads,
   templates,
   templateDefinition,
@@ -24,13 +26,33 @@ import {
   reminderDate,
 } from '../../../packages/domain/src/index.js';
 import { query, transaction, type Client } from './db.js';
-export type Context = { household_id: string; actor_id: string; source: string };
-type ObjectState = { kind: 'ITEM' | 'CATALOG_NODE'; row: any; sets: Record<string, any> };
+import { timed, traces } from './telemetry.js';
+export type Context = {
+  household_id: string;
+  actor_id: string;
+  source: string;
+  connection?: {
+    server_origin: string;
+    mode: 'local' | 'cloud';
+    account?: { id: string; name: string };
+    scopes: string[];
+  };
+};
+type ObjectState = {
+  kind: 'ITEM' | 'CATALOG_NODE';
+  row: any;
+  sets: Record<string, any>;
+  versions?: Record<string, number>;
+};
+const versionOf = (obj: ObjectState, name: string) => obj.versions?.[name] ?? 1;
 const table = (kind: string) => (kind === 'ITEM' ? 'items' : 'catalog_nodes');
 
 const eventTypes: Record<string, string> = {
   create_catalog_node: 'CREATE',
   create_items: 'CREATE',
+  create_items_batch: 'CREATE',
+  update_items_lifecycle: 'ATTRIBUTE_UPDATE',
+  upgrade_attributes: 'ATTRIBUTE_UPGRADE',
   update_catalog_node: 'UPDATE',
   update_item: 'UPDATE',
   edit_item: 'EDIT',
@@ -55,7 +77,14 @@ export async function load(c: Client, ctx: Context, t: Target): Promise<ObjectSt
     ])
   ).rows[0];
   requireFact(row, 'NOT_FOUND', 'Object not found in this household.');
-  const obj = { kind: t.kind, row, sets: {} as Record<string, any> };
+  const obj: ObjectState = {
+    kind: t.kind,
+    row,
+    sets: {},
+    versions: Object.fromEntries(
+      row.attributes.map((a: any) => [a.template_id, a.template_version]),
+    ),
+  };
   await validateBindings(c, ctx, obj, row.attributes);
   obj.sets = Object.fromEntries(row.attributes.map((a: any) => [a.template_id, a.values]));
   return obj;
@@ -79,7 +108,7 @@ async function validateBindings(c: Client, ctx: Context, obj: ObjectState, bindi
         typeof a.updated_at === 'string' &&
         Number.isFinite(Date.parse(a.updated_at)) &&
         !seen.has(a.template_id) &&
-        a.template_version === 1,
+        Number.isInteger(a.template_version),
       'ATTRIBUTE_VALIDATION_FAILED',
       'Invalid or duplicate embedded binding.',
     );
@@ -102,7 +131,7 @@ async function validateBindings(c: Client, ctx: Context, obj: ObjectState, bindi
       'ATTRIBUTE_VALIDATION_FAILED',
       'Template version is not registered for this household and target.',
     );
-    validateValues(a.template_id as TemplateId, a.values);
+    validateValues(a.template_id as TemplateId, a.values, a.template_version);
   }
 }
 
@@ -113,8 +142,11 @@ function flatten(obj: ObjectState): Record<string, any> {
     : ['kind', 'name', 'parent_id'])
     if (Object.hasOwn(obj.row, field)) r[field] = obj.row[field];
   for (const [name, value] of Object.entries(obj.sets)) {
-    r[`attributes.${name}.$binding`] = { template_id: name, template_version: 1 };
-    for (const path of templates[name as TemplateId].paths) {
+    r[`attributes.${name}.$binding`] = {
+      template_id: name,
+      template_version: versionOf(obj, name),
+    };
+    for (const path of templateFor(name as TemplateId, versionOf(obj, name)).paths) {
       const v = getPath(value, path);
       if (v !== undefined) r[`attributes.${name}.${path}`] = v;
     }
@@ -135,7 +167,7 @@ async function validate(
       'ATTRIBUTE_VALIDATION_FAILED',
       'Template not applicable to this object.',
     );
-    obj.sets[name] = prune(validateValues(name as TemplateId, value));
+    obj.sets[name] = prune(validateValues(name as TemplateId, value, versionOf(obj, name)));
     if (!Object.keys(obj.sets[name]).length) delete obj.sets[name];
   }
   if (obj.kind === 'ITEM') {
@@ -207,12 +239,38 @@ function initialSets(input: any[] | undefined) {
       'ATTRIBUTE_VALIDATION_FAILED',
       'Duplicate template binding.',
     );
+    validateValues(attr.template_id, attr.values, attr.template_version);
     sets[attr.template_id] = attr.values;
   }
   return sets;
 }
 function mutateAttributes(obj: ObjectState, input: any, mode: string) {
   const name = input.template_id as TemplateId;
+  const definition = templateFor(name, input.template_version);
+  if (mode === 'upgrade_attributes') {
+    requireFact(
+      name === 'product' &&
+        obj.sets[name] &&
+        versionOf(obj, name) === 1 &&
+        input.template_version === 2,
+      'ATTRIBUTE_VALIDATION_FAILED',
+      'Only an existing product v1 binding can explicitly upgrade to v2.',
+    );
+    obj.sets[name] = validateValues(name, input.values, 2);
+    requireFact(
+      Object.keys(prune(structuredClone(obj.sets[name]))).length,
+      'ATTRIBUTE_VALIDATION_FAILED',
+      'Upgrade requires nonempty complete values.',
+    );
+    (obj.versions ??= {})[name] = 2;
+    return;
+  }
+  requireFact(
+    !obj.sets[name] || versionOf(obj, name) === input.template_version,
+    'ATTRIBUTE_VALIDATION_FAILED',
+    'Use the binding version; upgrade explicitly to change it.',
+  );
+  (obj.versions ??= {})[name] = input.template_version;
   if (mode === 'remove_attributes') {
     delete obj.sets[name];
     return;
@@ -222,17 +280,24 @@ function mutateAttributes(obj: ObjectState, input: any, mode: string) {
     obj.sets[name] = input.values;
     return;
   }
-  obj.sets[name] = patch(obj.sets[name] ?? {}, input.set, input.unset, [...templates[name].paths]);
+  obj.sets[name] = patch(obj.sets[name] ?? {}, input.set, input.unset, [...definition.paths]);
 }
 export async function execute(ctx: Context, name: Operation, raw: unknown): Promise<any> {
-  const parsed = schemas[name].safeParse(raw);
-  if (!parsed.success)
-    throw new DomainError(
-      'ATTRIBUTE_VALIDATION_FAILED',
-      'Invalid command input.',
-      parsed.error.issues,
-    );
-  const input: any = parsed.data;
+  return timed('business_ms', async () => {
+    const result = await executeCommand(ctx, name, raw);
+    const trace = traces.getStore();
+    if (trace) trace.outcome = 'SUCCESS';
+    return result;
+  });
+}
+async function executeCommand(ctx: Context, name: Operation, raw: unknown): Promise<any> {
+  const trace = traces.getStore();
+  if (trace) trace.tool = name;
+  const input = parseCommand(name, raw);
+  if (trace) {
+    trace.tool = name;
+    trace.batch_size = input.items?.length ?? input.item_ids?.length ?? input.count ?? 1;
+  }
   try {
     return await transaction(async (c) => {
       if (reads.has(name))
@@ -249,7 +314,9 @@ export async function execute(ctx: Context, name: Operation, raw: unknown): Prom
       );
       if (reads.has(name)) return read(c, ctx, name, input);
       // Household writes are deliberately serialized for Stage1: one lock order also protects tree/capability races.
-      await query(c, 'SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [ctx.household_id]);
+      await timed('lock_wait_ms', () =>
+        query(c, 'SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [ctx.household_id], false),
+      );
       const fingerprint = createHash('sha256').update(canonical({ name, input })).digest('hex');
       const old = (
         await query(
@@ -269,9 +336,14 @@ export async function execute(ctx: Context, name: Operation, raw: unknown): Prom
           'IDEMPOTENCY_CONFLICT',
           'Key was used with different parameters.',
         );
+        if (trace) {
+          trace.idempotency_replay = true;
+          trace.operation_id = old.result.operation_id;
+        }
         return old.result;
       }
       const operation_id = 'operation_' + randomUUID();
+      if (trace) trace.operation_id = operation_id;
       const result: any = {
         operation_id,
         changed: false,
@@ -284,7 +356,11 @@ export async function execute(ctx: Context, name: Operation, raw: unknown): Prom
           input.expected_revisions[obj.row.id] === obj.row.revision,
           'REVISION_CONFLICT',
           'Re-query and submit the current revision.',
-          { id: obj.row.id, current_revision: obj.row.revision },
+          {
+            id: obj.row.id,
+            expected_revision: input.expected_revisions[obj.row.id],
+            current_revision: obj.row.revision,
+          },
         );
       const save = async (
         obj: ObjectState,
@@ -292,6 +368,16 @@ export async function execute(ctx: Context, name: Operation, raw: unknown): Prom
         extraBefore: Record<string, any> = {},
         extraAfter: Record<string, any> = {},
       ) => {
+        if (
+          obj.sets.product &&
+          versionOf(obj, 'product') === 2 &&
+          (!before?.sets.product || versionOf(before, 'product') !== 2)
+        )
+          requireFact(
+            process.env.ACORNARY_PRODUCT_V2_WRITES !== '0',
+            'ATTRIBUTE_VALIDATION_FAILED',
+            'New product v2 bindings are disabled for the compatibility rollout.',
+          );
         await validate(c, ctx, obj, before, name === 'correct_item');
         const delta = changes(
           { ...(before ? flatten(before) : {}), ...extraBefore },
@@ -306,11 +392,13 @@ export async function execute(ctx: Context, name: Operation, raw: unknown): Prom
             const prior = before?.row.attributes.find((a: any) => a.template_id === template_id);
             return {
               template_id,
-              template_version: prior?.template_version ?? 1,
+              template_version: versionOf(obj, template_id),
               values: obj.sets[template_id],
               created_at: prior?.created_at ?? now,
               updated_at:
-                prior && canonical(prior.values) === canonical(obj.sets[template_id])
+                prior &&
+                prior.template_version === versionOf(obj, template_id) &&
+                canonical(prior.values) === canonical(obj.sets[template_id])
                   ? prior.updated_at
                   : now,
             };
@@ -378,7 +466,11 @@ export async function execute(ctx: Context, name: Operation, raw: unknown): Prom
         const event_id = 'event_' + randomUUID();
         const enriched = delta.map((d) =>
           d.path.startsWith('attributes.')
-            ? { ...d, template_id: d.path.split('.')[1], template_version: 1 }
+            ? {
+                ...d,
+                template_id: d.path.split('.')[1],
+                template_version: versionOf(obj, d.path.split('.')[1]),
+              }
             : d,
         );
         await query(
@@ -418,8 +510,69 @@ export async function execute(ctx: Context, name: Operation, raw: unknown): Prom
             parent_id: input.parent_id,
           },
           sets: initialSets(input.initial_attributes),
+          versions: Object.fromEntries(
+            (input.initial_attributes ?? []).map((a: any) => [a.template_id, a.template_version]),
+          ),
         };
         await save(obj);
+      } else if (name === 'create_items_batch' || name === 'update_items_lifecycle') {
+        const identity = name === 'create_items_batch' ? 'client_ref' : 'item_id';
+        const seen = new Set<string>();
+        if (name === 'create_items_batch') result.created_items = [];
+        for (const [item_index, entry] of input.items.entries()) {
+          try {
+            requireFact(
+              !seen.has(entry[identity]),
+              'ATTRIBUTE_VALIDATION_FAILED',
+              `Duplicate ${identity}.`,
+            );
+            seen.add(entry[identity]);
+            if (name === 'create_items_batch') {
+              const item_id = 'item_' + randomUUID();
+              await save({
+                kind: 'ITEM',
+                row: {
+                  id: item_id,
+                  catalog_node_id: entry.catalog_node_id,
+                  parent_id: entry.parent_id,
+                  display_name: entry.display_name ?? null,
+                },
+                sets: initialSets(entry.initial_attributes),
+                versions: Object.fromEntries(
+                  (entry.initial_attributes ?? []).map((a: any) => [
+                    a.template_id,
+                    a.template_version,
+                  ]),
+                ),
+              });
+              result.created_items.push({
+                client_ref: entry.client_ref,
+                item_id,
+                after_revision: 1,
+              });
+            } else {
+              const before = await load(c, ctx, { kind: 'ITEM', id: entry.item_id });
+              checkRevision(before);
+              const obj = structuredClone(before);
+              mutateAttributes(obj, { ...entry, template_id: 'lifecycle' }, 'update_attributes');
+              await save(obj, before);
+            }
+          } catch (error) {
+            if (error instanceof DomainError)
+              throw new DomainError(error.code, error.message, {
+                ...(error.details &&
+                typeof error.details === 'object' &&
+                !Array.isArray(error.details)
+                  ? error.details
+                  : { cause_details: error.details }),
+                item_index,
+                ...(entry.client_ref
+                  ? { client_ref: entry.client_ref }
+                  : { item_id: entry.item_id }),
+              });
+            throw error;
+          }
+        }
       } else if (name === 'create_items') {
         for (let i = 0; i < input.count; i++)
           await save({
@@ -431,6 +584,9 @@ export async function execute(ctx: Context, name: Operation, raw: unknown): Prom
               display_name: input.display_name ?? null,
             },
             sets: initialSets(input.initial_attributes),
+            versions: Object.fromEntries(
+              (input.initial_attributes ?? []).map((a: any) => [a.template_id, a.template_version]),
+            ),
           });
       } else {
         let targets: Target[];
@@ -464,6 +620,7 @@ export async function execute(ctx: Context, name: Operation, raw: unknown): Prom
             case 'move_items':
               obj.row.parent_id = input.parent_id;
               break;
+            case 'upgrade_attributes':
             case 'bind_attributes':
             case 'update_attributes':
             case 'remove_attributes':
@@ -690,13 +847,33 @@ function paged(rows: any[], input: any) {
   };
 }
 async function read(c: Client, ctx: Context, name: Operation, input: any): Promise<any> {
+  if (name === 'get_connection_context') {
+    const household = (
+      await query(c, 'SELECT id,name,timezone FROM households WHERE id=$1', [ctx.household_id])
+    ).rows[0];
+    const actor = (
+      await query(c, 'SELECT id,name FROM actors WHERE household_id=$1 AND id=$2', [
+        ctx.household_id,
+        ctx.actor_id,
+      ])
+    ).rows[0];
+    return {
+      ...ctx.connection,
+      ...(traces.getStore()?.server_origin
+        ? { server_origin: traces.getStore()!.server_origin }
+        : {}),
+      household,
+      actor,
+    };
+  }
   if (name === 'list_attribute_templates')
     return {
       data: Object.keys(templates)
-        .map((n) => templateDefinition(n as TemplateId))
+        .map((n) => templateDefinition(n as TemplateId, latestTemplateVersion(n as TemplateId)))
         .filter((t) => !input.target_kind || t.target_kind === input.target_kind),
     };
-  if (name === 'get_attribute_template') return templateDefinition(input.template_id);
+  if (name === 'get_attribute_template')
+    return templateDefinition(input.template_id, input.template_version);
   if (name === 'get_history') {
     if (input.target) await load(c, ctx, input.target);
     const rows = (
@@ -748,7 +925,7 @@ async function read(c: Client, ctx: Context, name: Operation, input: any): Promi
       ).rows.map((r) => r.catalog_node_id),
     );
   for (const f of input.attribute_filters ?? []) {
-    const t = templates[f.template_id as TemplateId];
+    const t = templateFor(f.template_id, latestTemplateVersion(f.template_id));
     requireFact(
       t.target_kind === kind && (t.paths as readonly string[]).includes(f.path),
       'ATTRIBUTE_VALIDATION_FAILED',
@@ -760,7 +937,11 @@ async function read(c: Client, ctx: Context, name: Operation, input: any): Promi
         'ATTRIBUTE_VALIDATION_FAILED',
         'Range filters support date fields only.',
       );
-    validateValues(f.template_id, patch({}, { [f.path]: f.value }, [], [...t.paths]));
+    validateValues(
+      f.template_id,
+      patch({}, { [f.path]: f.value }, [], [...t.paths]),
+      latestTemplateVersion(f.template_id),
+    );
   }
   const rows = (
     await query(c, `SELECT id FROM ${table(kind)} WHERE household_id=$1 ORDER BY id`, [

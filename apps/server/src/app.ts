@@ -1,4 +1,8 @@
 import { debugRead } from './debug.js';
+import { deferredInput } from './mcp-input.js';
+import { newTrace, traces, traceMetadata, failure, timed, type Trace } from './telemetry.js';
+import { performance } from 'node:perf_hooks';
+import { intakeInstructions } from '../../../packages/contracts/src/intake.js';
 import { release, verifyReleaseMigrations } from './release.js';
 import Fastify from 'fastify';
 import staticFiles from '@fastify/static';
@@ -42,6 +46,14 @@ export async function buildApp(
   config: RuntimeConfig = runtimeConfig(),
 ) {
   const cloud = config.mode === 'cloud' ? config : null;
+  ctx = {
+    ...ctx,
+    connection: {
+      server_origin: cloud?.origin ?? 'http://localhost:3210',
+      mode: cloud ? 'cloud' : 'local',
+      scopes: ['inventory:read', 'inventory:write'],
+    },
+  };
   const auth = cloud ? createAuth(cloud) : null;
   const identities = new AsyncLocalStorage<{
     ctx: Context;
@@ -85,6 +97,33 @@ export async function buildApp(
     requestTimeout: 30000,
     bodyLimit: 1024 * 1024,
   });
+  const requestTraces = new WeakMap<FastifyRequest, Trace>();
+  app.addHook('onRequest', (req, reply, done) => {
+    const trace = newTrace();
+    trace.server_origin = cloud?.origin ?? `http://${req.headers.host}`;
+    requestTraces.set(req, trace);
+    reply.header('X-Request-ID', trace.request_id);
+    traces.run(trace, done);
+  });
+  app.addHook('onSend', async (req, reply, payload) => {
+    const trace = requestTraces.get(req);
+    if (trace)
+      reply.header('Server-Timing', `total;dur=${(performance.now() - trace.started).toFixed(2)}`);
+    return payload;
+  });
+  app.addHook('onResponse', async (req, reply) => {
+    const trace = requestTraces.get(req);
+    if (trace)
+      app.log.info(
+        {
+          ...traceMetadata(trace),
+          outcome: trace.outcome ?? (reply.statusCode < 400 ? 'SUCCESS' : 'HTTP_ERROR'),
+          version: release.version,
+          status: reply.statusCode,
+        },
+        'Request timing',
+      );
+  });
   if (!cloud) app.addHook('onRequest', localhostHostValidation());
   app.addHook('onRequest', async (req, reply) => {
     if (
@@ -94,14 +133,16 @@ export async function buildApp(
         req.headers.host !== new URL(cloud.origin).host ||
         req.headers['x-forwarded-proto'] !== 'https')
     )
-      return reply.code(403).send({ error: { code: 'FORBIDDEN', message: 'Untrusted ingress.' } });
+      return reply
+        .code(403)
+        .send({ error: failure(new DomainError('FORBIDDEN', 'Untrusted ingress.')) });
     if (
       req.headers.origin &&
       req.headers.origin !== (cloud?.origin ?? `http://${req.headers.host}`)
     )
       return reply
         .code(403)
-        .send({ error: { code: 'FORBIDDEN', message: 'Cross-origin access denied.' } });
+        .send({ error: failure(new DomainError('FORBIDDEN', 'Cross-origin access denied.')) });
     reply.header('Cache-Control', 'no-store');
     reply.header('X-Content-Type-Options', 'nosniff');
     reply.header('Referrer-Policy', 'no-referrer');
@@ -115,35 +156,45 @@ export async function buildApp(
       auth &&
       /^\/api\/(context|read(?:\/|$)|write(?:\/|$)|ui(?:\/|$)|debug(?:\?|$))/.test(req.url)
     ) {
-      const session = await auth.api.getSession({ headers: headersFor(req) });
-      const user = session && (await activeUser(session.user.id));
-      if (!user)
-        return reply
-          .code(401)
-          .send({ error: { code: 'UNAUTHORIZED', message: 'Login required.' } });
-      if (req.headers['x-acornary-account'] && req.headers['x-acornary-account'] !== user.id)
-        return reply
-          .code(401)
-          .send({ error: { code: 'UNAUTHORIZED', message: 'Account changed.' } });
-      const household = req.headers['x-acornary-household'];
-      const context =
-        typeof household === 'string' ? await memberContext(user.id, household) : null;
-      if (!context)
-        return reply
-          .code(403)
-          .send({ error: { code: 'FORBIDDEN', message: 'Household membership required.' } });
-      webContexts.set(req, context);
+      return timed('auth_ms', async () => {
+        const session = await auth.api.getSession({ headers: headersFor(req) });
+        const user = session && (await activeUser(session.user.id));
+        if (!user)
+          return reply
+            .code(401)
+            .send({ error: failure(new DomainError('UNAUTHORIZED', 'Login required.')) });
+        if (req.headers['x-acornary-account'] && req.headers['x-acornary-account'] !== user.id)
+          return reply
+            .code(401)
+            .send({ error: failure(new DomainError('UNAUTHORIZED', 'Account changed.')) });
+        const household = req.headers['x-acornary-household'];
+        const context =
+          typeof household === 'string' ? await memberContext(user.id, household) : null;
+        if (!context)
+          return reply.code(403).send({
+            error: failure(new DomainError('FORBIDDEN', 'Household membership required.')),
+          });
+        webContexts.set(req, {
+          ...context,
+          connection: {
+            server_origin: cloud!.origin,
+            mode: 'cloud',
+            account: { id: user.id, name: user.name },
+            scopes: ['inventory:read', 'inventory:write'],
+          },
+        });
+      });
     }
   });
   app.setErrorHandler((error: any, _req, reply) => {
-    if (error instanceof DomainError)
-      return reply
-        .code(domainErrorStatus(error.code) ?? 400)
-        .send({ error: { code: error.code, message: error.message, details: error.details } });
-    app.log.error({ code: error.code ?? 'INTERNAL_ERROR' }, 'Request failed');
+    const result = failure(error);
     return reply
-      .code(error.statusCode ?? 500)
-      .send({ error: { code: 'INTERNAL_ERROR', message: 'Request failed.' } });
+      .code(
+        error instanceof DomainError
+          ? (domainErrorStatus(error.code) ?? 400)
+          : (error.statusCode ?? 500),
+      )
+      .send({ error: result });
   });
   app.get('/health', async () => {
     await query(pool, 'SELECT 1');
@@ -271,11 +322,13 @@ export async function buildApp(
     }
     return execute({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }, name, input);
   });
-  app.get('/api/ui/snapshot', (req) => webSnapshot(webContexts.get(req) ?? ctx, req.query));
-  app.get(
-    '/api/ui/groups',
-    async (req) => (await webSnapshot(webContexts.get(req) ?? ctx, req.query)).groups,
-  );
+  const snapshotFor = (req: FastifyRequest) => {
+    const trace = traces.getStore();
+    if (trace) trace.tool = 'web_snapshot';
+    return timed('business_ms', () => webSnapshot(webContexts.get(req) ?? ctx, req.query));
+  };
+  app.get('/api/ui/snapshot', snapshotFor);
+  app.get('/api/ui/groups', async (req) => (await snapshotFor(req)).groups);
   app.post('/api/write/:operation', async (req) => {
     // Browser-only same-origin JSON commands. Reject absent/null Origin as well as cross-site requests.
     if (
@@ -303,8 +356,7 @@ export async function buildApp(
     const server = new McpServer(
       { name: 'acornary', version: '0.1.0' },
       {
-        instructions:
-          'Acornary 管理具体物品。先查询 UUID、属性和 revision，再进行明确的写操作。已知差异影响选择时先澄清；在用户确认范围内没有已知差异时可选择并报告实际 UUID。不得猜测缺失事实；推荐不自动变为库存写入。写操作携带幂等键与 expected_revisions；超时重试保留原键和参数。版本冲突后重新查询并判断原操作是否仍成立，不自动替换 revision 强行重试。未记录状态不等于 ACTIVE。Web 与 MCP 通过相同领域命令写入，检查器只读。模板字段与单位通过 list_attribute_templates/get_attribute_template 发现。',
+        instructions: intakeInstructions,
       },
     );
     registerInventoryApp(
@@ -320,7 +372,7 @@ export async function buildApp(
         name,
         {
           description: descriptions[name],
-          inputSchema: schemas[name] as any,
+          inputSchema: deferredInput(schemas[name]),
           annotations: {
             readOnlyHint: reads.has(name),
             destructiveHint: !reads.has(name),
@@ -362,14 +414,15 @@ export async function buildApp(
             return {
               content: [{ type: 'text' as const, text: JSON.stringify(result) }],
               structuredContent: result,
+              _meta: { 'acornary/trace': traceMetadata() },
             };
           } catch (e) {
-            if (!(e instanceof DomainError)) throw e;
-            const error = { code: e.code, message: e.message, details: e.details };
+            const error = failure(e);
             return {
               isError: true,
               content: [{ type: 'text' as const, text: JSON.stringify({ error }) }],
               structuredContent: { error },
+              _meta: { 'acornary/trace': traceMetadata() },
             };
           }
         },
@@ -410,9 +463,24 @@ export async function buildApp(
                 ? 'inventory:write'
                 : 'inventory:read';
             if (!scopes.has(scope)) throw createInsufficientScopeError([scope]);
+            const user =
+              name === 'get_connection_context'
+                ? await activeUser(claims.sub as string)
+                : undefined;
+            const trace = traces.getStore();
+            if (trace)
+              trace.phases.auth_ms = performance.now() - (trace.auth_started ?? trace.started);
             return identities.run(
               {
-                ctx: context,
+                ctx: {
+                  ...context,
+                  connection: {
+                    server_origin: cloud.origin,
+                    mode: 'cloud',
+                    account: user ? { id: user.id, name: user.name } : undefined,
+                    scopes: [...scopes],
+                  },
+                },
                 scopes,
                 clientId: claims.client_id,
                 userId: claims.sub as string,
@@ -428,13 +496,23 @@ export async function buildApp(
     method: ['POST', 'GET', 'DELETE'],
     url: '/mcp',
     handler: async (req, reply) => {
-      if (cloudMcp) return sendResponse(reply, await cloudMcp(requestFor(req)));
+      const currentTrace = traces.getStore();
+      if (currentTrace) currentTrace.auth_started = performance.now();
+      if (cloudMcp) {
+        const response = await cloudMcp(requestFor(req));
+        const trace = traces.getStore();
+        if (trace && trace.phases.auth_ms === undefined)
+          trace.phases.auth_ms = performance.now() - (trace.auth_started ?? trace.started);
+        return sendResponse(reply, response);
+      }
       const provided = Buffer.from(req.headers.authorization ?? ''),
         expected = Buffer.from(`Bearer ${token}`);
       if (provided.length !== expected.length || !timingSafeEqual(provided, expected))
         return reply.code(401).send({
-          error: { code: 'UNAUTHORIZED', message: 'A personal access token is required.' },
+          error: failure(new DomainError('UNAUTHORIZED', 'A personal access token is required.')),
         });
+      const trace = traces.getStore();
+      if (trace) trace.phases.auth_ms = performance.now() - (trace.auth_started ?? trace.started);
       return sendResponse(reply, await mcp.fetch(requestFor(req)));
     },
   });
@@ -451,7 +529,7 @@ export async function buildApp(
         )
       )
         return reply.sendFile('index.html');
-      return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Not found.' } });
+      return reply.code(404).send({ error: failure(new DomainError('NOT_FOUND', 'Not found.')) });
     });
   }
   return app;

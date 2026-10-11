@@ -1,15 +1,16 @@
 import { Splitter } from 'antd';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
-const widthKey = 'acornary-location-panel-width';
 const defaultWidth = 224;
 const minWidth = 180;
 const maxWidth = 320;
-let rememberedWidth = defaultWidth;
+const rememberedWidths = new Map<string, number>();
 const clamp = (n: number, max = maxWidth) => Math.max(minWidth, Math.min(max, n));
 
-export function useLocationPanelWidth() {
+export function useLocationPanelWidth(panel: 'location' | 'catalog' = 'location') {
+  const widthKey = `acornary-${panel}-panel-width`;
   const [width, setWidth] = useState(() => {
+    let rememberedWidth = rememberedWidths.get(widthKey) ?? defaultWidth;
     try {
       const saved = localStorage.getItem(widthKey);
       if (saved !== null && Number.isFinite(Number(saved))) rememberedWidth = clamp(Number(saved));
@@ -19,7 +20,8 @@ export function useLocationPanelWidth() {
     return rememberedWidth;
   });
   const remember = (value: number) => {
-    rememberedWidth = clamp(value);
+    const rememberedWidth = clamp(value);
+    rememberedWidths.set(widthKey, rememberedWidth);
     setWidth(rememberedWidth);
     try {
       localStorage.setItem(widthKey, String(rememberedWidth));
@@ -53,6 +55,7 @@ export function InventoryColumns({
   onRemember,
   tree,
   children,
+  resizeLabel = '调整位置栏宽度',
 }: {
   inline: boolean;
   width: number;
@@ -61,6 +64,7 @@ export function InventoryColumns({
   onRemember: (width: number) => void;
   tree: ReactNode;
   children: ReactNode;
+  resizeLabel?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const size = clamp(width, max);
@@ -68,12 +72,23 @@ export function InventoryColumns({
     // Ant 6.6's separator exposes ARIA values but has no keyboard resize handler.
     const separator = ref.current?.querySelector<HTMLElement>('[role="separator"]');
     if (!separator) return;
-    separator.tabIndex = inline ? 0 : -1;
-    separator.setAttribute('aria-label', '调整位置栏宽度');
-    separator.setAttribute('aria-valuemin', String(minWidth));
-    separator.setAttribute('aria-valuemax', String(max));
-    separator.setAttribute('aria-valuenow', String(size));
-    separator.setAttribute('aria-valuetext', `${Math.round(size)} 像素`);
+    const attributes = {
+      tabindex: inline ? '0' : '-1',
+      'aria-label': resizeLabel,
+      'aria-valuemin': String(minWidth),
+      'aria-valuemax': String(max),
+      'aria-valuenow': String(size),
+      'aria-valuetext': `${Math.round(size)} 像素`,
+    };
+    const syncAria = () => {
+      for (const [name, value] of Object.entries(attributes))
+        if (separator.getAttribute(name) !== value) separator.setAttribute(name, value);
+    };
+    syncAria();
+    // Splitter recalculates percentage ARIA values after its own ResizeObserver runs.
+    // Keep the advertised bounds in pixels, matching our keyboard resize handler.
+    const observer = new MutationObserver(syncAria);
+    observer.observe(separator, { attributes: true, attributeFilter: Object.keys(attributes) });
     const keydown = (event: KeyboardEvent) => {
       const next =
         event.key === 'ArrowLeft'
@@ -90,8 +105,11 @@ export function InventoryColumns({
       onRemember(clamp(next, max));
     };
     separator.addEventListener('keydown', keydown);
-    return () => separator.removeEventListener('keydown', keydown);
-  }, [inline, size, max, onRemember]);
+    return () => {
+      observer.disconnect();
+      separator.removeEventListener('keydown', keydown);
+    };
+  }, [inline, size, max, onRemember, resizeLabel]);
   return (
     <div ref={ref} className={`wb-inventory-columns${inline ? ' with-locations' : ''}`}>
       <Splitter

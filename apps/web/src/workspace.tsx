@@ -188,7 +188,7 @@ function WorkspaceContent() {
       ) : id ? (
         <Catalog id={id === 'manage' ? undefined : id} open={open} />
       ) : (
-        <ProductCatalog open={open} />
+        <ProductCatalog key={session.cache_key} open={open} />
       );
   else if (section === 'settings') page = <Settings section={id} />;
   else if (section === 'login') page = <Home open={open} />;
