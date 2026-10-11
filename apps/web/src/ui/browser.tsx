@@ -10,8 +10,8 @@ import {
   Table,
   Typography,
 } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { FolderOutlined, SearchOutlined } from '@ant-design/icons';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useLocation } from '@tanstack/react-router';
 import {
   ancestors,
@@ -35,12 +35,17 @@ import { remaining } from '../lib/presentation';
 import { Empty, FormField } from './components';
 import { useViewport } from './theme';
 import type { Action } from './forms';
+import { ActionDrawer } from './components';
+import { CatalogTree, UNCATEGORIZED } from './catalog-tree';
+import { InventoryColumns, useContentWidth, useLocationPanelWidth } from './inventory-layout';
 
 type BrowseState = {
   query: string;
   scope: string;
   state: string;
   category: string;
+  categoryQuery: string;
+  categoryExpanded: string[];
   sort: string;
   columns: string[];
   page: number;
@@ -56,20 +61,27 @@ export function clearBrowseSelections() {
 export function useBrowseState(view: string, scope = '') {
   const { session } = useSession();
   const key = `${session.cache_key}:${view}`;
-  const defaults = (): BrowseState =>
-    views.get(key) ?? {
+  const defaults = (): BrowseState => {
+    const saved = views.get(key);
+    return {
       query: '',
       scope,
       state: 'current',
       category: '',
+      categoryQuery: '',
+      categoryExpanded: [],
       sort: 'name',
-      columns: ['spec', 'place', 'remaining', 'category', 'count'],
       page: 1,
       pageSize: PAGE_SIZE,
       scroll: 0,
       selected: [],
       selecting: false,
+      ...saved,
+      columns: (saved?.columns ?? ['spec', 'remaining', 'category', 'count']).filter(
+        (column) => column !== 'place',
+      ),
     };
+  };
   const [state, setState] = useState(defaults);
   const current = useRef(state);
   current.current = state;
@@ -140,7 +152,6 @@ export function ListOptions({
                   ]
                 : [
                     ['spec', '规格'],
-                    ['place', '收纳位置'],
                     ['remaining', '剩余'],
                   ]
               ).map(([value, label]) => ({ value, label }))}
@@ -255,7 +266,7 @@ export function ItemTable({
   items,
   selected,
   onSelection,
-  columns = ['spec', 'place', 'remaining'],
+  columns = ['spec', 'remaining'],
 }: {
   items: ItemRecord[];
   selected?: string[];
@@ -350,13 +361,6 @@ export function ItemTable({
                 '规格未记录',
         },
         {
-          title: '收纳位置',
-          key: 'place',
-          hidden: !columns.includes('place'),
-          ellipsis: true,
-          render: (_, item) => fullPath(item.parent_id, data),
-        },
-        {
           title: '剩余',
           key: 'remaining',
           hidden: !columns.includes('remaining'),
@@ -446,13 +450,47 @@ export function ProductCatalog({ open }: { open: (action: Action) => void }) {
   const { data, stale } = useInventory();
   const { online, session } = useSession();
   const location = useLocation();
-  const { mobile } = useViewport();
+  const { mobile, wide } = useViewport();
   const [view, update] = useBrowseState('catalog');
+  const workspace = useContentWidth();
+  const panelWidth = useLocationPanelWidth('catalog');
+  const contentWidth = workspace.width - 48;
+  const inline = wide && contentWidth >= 836;
+  const maxWidth = Math.max(180, Math.min(320, contentWidth - 656));
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  useEffect(() => {
+    if (inline) setCategoriesOpen(false);
+  }, [inline]);
+  useEffect(() => {
+    const valid =
+      view.category === UNCATEGORIZED
+        ? visibleProducts(data).some((c) => !c.parent_id)
+        : data.catalog.some((c) => c.id === view.category && c.kind === 'GROUP');
+    if (view.category && !valid) update({ category: '' });
+  }, [data.catalog, view.category]);
+  const chooseCategory = (category: string) => {
+    update({ category });
+    setCategoriesOpen(false);
+  };
+  const tree = (
+    <CatalogTree
+      active={view.category}
+      query={view.categoryQuery}
+      expanded={view.categoryExpanded}
+      onChoose={chooseCategory}
+      onQuery={(categoryQuery) => update({ categoryQuery, page: view.page })}
+      onExpand={(categoryExpanded) => update({ categoryExpanded, page: view.page })}
+    />
+  );
   const count = (id: string) =>
     physicalItems(data.items.filter((i) => i.catalog_node_id === id && !isTerminal(i))).length;
   const products = visibleProducts(data)
     .filter(
-      (c) => !view.category || ancestors(c.id, data.catalog).some((a) => a.id === view.category),
+      (c) =>
+        !view.category ||
+        (view.category === UNCATEGORIZED
+          ? !c.parent_id
+          : ancestors(c.parent_id, data.catalog).some((a) => a.id === view.category)),
     )
     .filter((c) =>
       `${c.name} ${specification(c)}`
@@ -466,108 +504,154 @@ export function ProductCatalog({ open }: { open: (action: Action) => void }) {
   const shown = products.slice((page - 1) * view.pageSize, page * view.pageSize);
 
   return (
-    <div className="ac-page">
-      <header className="page-header">
-        <div>
-          <Typography.Title level={2}>商品目录</Typography.Title>
-          <Typography.Text type="secondary">{products.length} 款商品</Typography.Text>
-        </div>
-        <Space wrap>
-          <Link to="/catalog/manage">管理商品资料</Link>
-          <Button
-            type="primary"
-            disabled={!online || stale || session.can_write === false}
-            onClick={() => open({ kind: 'catalog' })}
-          >
-            新增商品
-          </Button>
-        </Space>
-      </header>
-      <div className="ac-toolbar">
-        <SearchField
-          value={view.query}
-          onChange={(query) => update({ query })}
-          label="搜索商品名称或规格"
-        />
-        <Select
-          aria-label="商品分类"
-          value={view.category}
-          onChange={(category) => update({ category })}
-          options={[
-            { value: '', label: '全部分类' },
-            ...data.catalog
-              .filter((c) => c.kind === 'GROUP')
-              .map((c) => ({ value: c.id, label: categoryPath(c, data) + ' / ' + c.name })),
-          ]}
-        />
-        <ListOptions view={view} update={update} catalog />
-      </div>
-      {mobile ? (
-        <div className="ac-mobile-list">
-          {shown.map((sku) => (
-            <Link
-              key={sku.id}
-              className="row"
-              to={`/items/group/${sku.id}`}
-              search={{ returnTo: location.pathname }}
+    <div className="wb-workspace" ref={workspace.ref}>
+      <section className="wb-inventory" aria-label="商品目录浏览">
+        <header className="wb-title">
+          <div>
+            <Typography.Title level={2}>商品目录</Typography.Title>
+            <Typography.Text type="secondary">{products.length} 款商品</Typography.Text>
+          </div>
+          <Space wrap>
+            <Link to="/catalog/manage">管理商品资料</Link>
+            <Button
+              type="primary"
+              disabled={!online || stale || session.can_write === false}
+              onClick={() => open({ kind: 'catalog' })}
             >
-              <span className="row-copy">
-                <strong>{sku.name}</strong>
-                <Typography.Text type="secondary">
-                  {specification(sku) || '规格未记录'} · {categoryPath(sku, data)}
-                </Typography.Text>
-              </span>
-              <span className="row-detail">{count(sku.id)} 件实物</span>
-            </Link>
-          ))}
-        </div>
-      ) : (
-        <Table
-          rowKey="id"
-          pagination={false}
-          dataSource={shown}
-          tableLayout="fixed"
-          columns={[
-            {
-              title: '商品',
-              key: 'name',
-              render: (_, sku) => (
-                <Link to={`/items/group/${sku.id}`} search={{ returnTo: location.pathname }}>
-                  {sku.name}
+              新增商品
+            </Button>
+          </Space>
+        </header>
+        <InventoryColumns
+          inline={inline}
+          width={panelWidth.width}
+          max={maxWidth}
+          onResize={panelWidth.setWidth}
+          onRemember={panelWidth.remember}
+          resizeLabel="调整分类栏宽度"
+          tree={
+            <>
+              <Typography.Title level={5}>分类</Typography.Title>
+              {tree}
+            </>
+          }
+        >
+          <div className="wb-toolbar">
+            <SearchField
+              value={view.query}
+              onChange={(query) => update({ query })}
+              label="搜索商品名称或规格"
+            />
+            {!inline && (
+              <Button
+                icon={<FolderOutlined aria-hidden="true" />}
+                onClick={() => setCategoriesOpen(true)}
+              >
+                分类
+              </Button>
+            )}
+            <ListOptions view={view} update={update} catalog />
+          </div>
+          <Typography.Paragraph aria-label="当前商品分类">
+            {!view.category
+              ? '全部商品'
+              : view.category === UNCATEGORIZED
+                ? '未分类'
+                : ancestors(view.category, data.catalog)
+                    .map((c) => c.name)
+                    .join(' / ')}
+          </Typography.Paragraph>
+          {mobile ? (
+            <div className="ac-mobile-list">
+              {shown.map((sku) => (
+                <Link
+                  key={sku.id}
+                  className="row"
+                  to={`/items/group/${sku.id}`}
+                  search={{ returnTo: location.pathname }}
+                >
+                  <span className="row-copy">
+                    <strong>{sku.name}</strong>
+                    <Typography.Text type="secondary">
+                      {specification(sku) || '规格未记录'} · {categoryPath(sku, data)}
+                    </Typography.Text>
+                  </span>
+                  <span className="row-detail">{count(sku.id)} 件实物</span>
                 </Link>
-              ),
-            },
-            {
-              title: '规格',
-              key: 'spec',
-              hidden: !view.columns.includes('spec'),
-              ellipsis: true,
-              render: (_, sku) => specification(sku) || '规格未记录',
-            },
-            {
-              title: '分类',
-              key: 'category',
-              hidden: !view.columns.includes('category'),
-              ellipsis: true,
-              render: (_, sku) => categoryPath(sku, data),
-            },
-            {
-              title: '在库实物',
-              key: 'count',
-              hidden: !view.columns.includes('count'),
-              render: (_, sku) => `${count(sku.id)} 件实物`,
-            },
-          ]}
-        />
+              ))}
+            </div>
+          ) : (
+            <Table
+              aria-label="商品列表"
+              rowKey="id"
+              pagination={false}
+              dataSource={shown}
+              tableLayout="fixed"
+              locale={{
+                emptyText: view.query
+                  ? '没有找到匹配商品'
+                  : view.category
+                    ? '此分类下还没有商品'
+                    : '还没有商品',
+              }}
+              columns={[
+                {
+                  title: '商品',
+                  key: 'name',
+                  render: (_, sku) => (
+                    <Link to={`/items/group/${sku.id}`} search={{ returnTo: location.pathname }}>
+                      {sku.name}
+                    </Link>
+                  ),
+                },
+                {
+                  title: '规格',
+                  key: 'spec',
+                  hidden: !view.columns.includes('spec'),
+                  ellipsis: true,
+                  render: (_, sku) => specification(sku) || '规格未记录',
+                },
+                {
+                  title: '分类',
+                  key: 'category',
+                  hidden: !view.columns.includes('category'),
+                  ellipsis: true,
+                  render: (_, sku) => categoryPath(sku, data),
+                },
+                {
+                  title: '在库实物',
+                  key: 'count',
+                  hidden: !view.columns.includes('count'),
+                  render: (_, sku) => `${count(sku.id)} 件实物`,
+                },
+              ]}
+            />
+          )}
+          {!products.length && mobile && (
+            <Empty
+              title={
+                view.query
+                  ? '没有找到匹配商品'
+                  : view.category
+                    ? '此分类下还没有商品'
+                    : '还没有商品'
+              }
+            />
+          )}
+          <PageEnd
+            total={products.length}
+            page={page}
+            pageSize={view.pageSize}
+            unit="款商品"
+            onChange={(page, pageSize) => update({ page, pageSize })}
+          />
+        </InventoryColumns>
+      </section>
+      {categoriesOpen && !inline && (
+        <ActionDrawer title="选择分类" onClose={() => setCategoriesOpen(false)}>
+          {tree}
+        </ActionDrawer>
       )}
-      {!products.length && mobile && <Empty title="没有找到商品" />}
-      <PageEnd
-        total={products.length}
-        page={page}
-        pageSize={view.pageSize}
-        unit="款商品"
-        onChange={(page, pageSize) => update({ page, pageSize })}
-      />
     </div>
   );
 }

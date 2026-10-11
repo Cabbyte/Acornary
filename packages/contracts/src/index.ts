@@ -129,11 +129,34 @@ export const templateId = z.enum([
   'clothing',
   'device',
 ]);
-export function templateDefinition(name: TemplateId) {
-  const t = templates[name];
+export const productV2 = {
+  ...templates.product,
+  paths: [
+    ...templates.product.paths,
+    'shelf_life_days',
+    'shelf_life_basis',
+    'shelf_life_basis_note',
+  ],
+  schema: templates.product.schema.extend({
+    shelf_life_days: z.int().positive().max(36500).optional(),
+    shelf_life_basis: z.enum(['PRODUCTION_DATE', 'PACKAGING_DATE', 'OTHER']).optional(),
+    shelf_life_basis_note: text.optional(),
+  }),
+};
+export const latestTemplateVersion = (name: TemplateId) => (name === 'product' ? 2 : 1);
+export function templateFor(name: TemplateId, version = 1) {
+  if (name === 'product' && version === 2) return productV2;
+  if (version === 1 && Object.hasOwn(templates, name)) return templates[name];
+  throw new DomainError('ATTRIBUTE_VALIDATION_FAILED', 'Unsupported template version.', {
+    template_id: name,
+    template_version: version,
+  });
+}
+export function templateDefinition(name: TemplateId, version = 1) {
+  const t = templateFor(name, version);
   return {
     id: name,
-    version: 1,
+    version,
     name,
     target_kind: t.target_kind,
     allowed_catalog_node_kinds: t.target_kind === 'CATALOG_NODE' ? ['SKU'] : [],
@@ -142,8 +165,8 @@ export function templateDefinition(name: TemplateId) {
     fields_optional: true,
   };
 }
-export function validateValues(name: TemplateId, values: unknown): any {
-  const result = templates[name].schema.safeParse(values);
+export function validateValues(name: TemplateId, values: unknown, version = 1): any {
+  const result = templateFor(name, version).schema.safeParse(values);
   if (!result.success)
     throw new DomainError(
       'ATTRIBUTE_VALIDATION_FAILED',
@@ -172,13 +195,24 @@ export const target = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('CATALOG_NODE'), id }),
 ]);
 export type Target = z.infer<typeof target>;
-const revisions = z.record(z.union([id, uuid]), z.int().positive());
+const revisions = z
+  .record(z.union([id, uuid]), z.int().positive())
+  .describe(
+    '必填：全部待修改对象的完整 ID 到当前 revision 的映射。例如 {"item_11111111-1111-4111-8111-000000000001":1}。从读取结果取得版本；成功后采用 affected_objects.after_revision；冲突后重新读取并核对，不直接替换版本重试。',
+  );
 const write = {
   idempotency_key: z.string().min(1).max(200),
-  expected_revisions: revisions.default({}),
+  expected_revisions: revisions,
   occurred_at: z.iso.datetime({ offset: true }).optional(),
 };
-const attr = { template_id: templateId, template_version: z.literal(1) };
+// Creation keeps the original normalization for persisted idempotency fingerprints.
+const create = {
+  ...write,
+  expected_revisions: revisions
+    .default({})
+    .describe('创建新对象不需要旧版本，可省略；保留此字段以兼容既有幂等请求。'),
+};
+const attr = { template_id: templateId, template_version: z.union([z.literal(1), z.literal(2)]) };
 const values = z.record(z.string(), z.unknown());
 const patchShape = {
   ...attr,
@@ -205,6 +239,43 @@ const filters = z
   .max(20)
   .optional();
 export const schemas = {
+  get_connection_context: z.strictObject({}),
+  create_items_batch: z.strictObject({
+    ...create,
+    items: z
+      .array(
+        z.strictObject({
+          client_ref: z.string().min(1).max(100),
+          catalog_node_id: id,
+          parent_id: uuid.nullable().default(null),
+          display_name: text.optional(),
+          initial_attributes: initial,
+        }),
+      )
+      .min(1)
+      .max(100),
+  }),
+  update_items_lifecycle: z.strictObject({
+    ...write,
+    items: z
+      .array(
+        z.strictObject({
+          item_id: uuid,
+          template_version: z.literal(1),
+          set: patchShape.set,
+          unset: patchShape.unset,
+        }),
+      )
+      .min(1)
+      .max(100),
+  }),
+  upgrade_attributes: z.strictObject({
+    ...write,
+    target: z.strictObject({ kind: z.literal('CATALOG_NODE'), id }),
+    template_id: z.literal('product'),
+    template_version: z.literal(2),
+    values,
+  }),
   query_catalog_nodes: z.strictObject({
     ...page,
     include_path: z.boolean().default(false),
@@ -219,7 +290,7 @@ export const schemas = {
     include_path: z.boolean().default(false),
   }),
   create_catalog_node: z.strictObject({
-    ...write,
+    ...create,
     kind: z.enum(['GROUP', 'SKU']),
     name: catalogName,
     parent_id: id.nullable().default(null),
@@ -239,7 +310,7 @@ export const schemas = {
   }),
   get_item: z.strictObject({ item_id: uuid, include_path: z.boolean().default(false) }),
   create_items: z.strictObject({
-    ...write,
+    ...create,
     catalog_node_id: id,
     parent_id: uuid.nullable().default(null),
     count: z.int().min(1).max(100),
@@ -311,6 +382,7 @@ export const schemas = {
 };
 export type Operation = keyof typeof schemas;
 export const reads = new Set<Operation>([
+  'get_connection_context',
   'query_catalog_nodes',
   'get_catalog_node',
   'query_items',
@@ -321,15 +393,28 @@ export const reads = new Set<Operation>([
   'get_history',
 ]);
 export const descriptions: Record<Operation, string> = {
-  query_catalog_nodes: '查询目录树、SKU、名称和商品条码，返回稳定 ID 和版本。',
-  get_catalog_node: '读取一个目录节点及其模板属性。',
-  create_catalog_node: '创建分类 GROUP 或商品 SKU，分类父节点必须是 GROUP。',
+  get_connection_context:
+    '读取当前连接的服务、账号/操作者、家庭、时区及权限；不能用参数切换身份。多连接时先辨认目标家庭。',
+  create_items_batch:
+    '将 1–100 包不同规格的实物一次入库，每条一个独立 ID。每条 client_ref 必须唯一；尽量同时提供已知位置、重量和日期。整批成功或回滚；同键同参数重试返回原 ID。创建商品 SKU 不会新增库存。',
+  update_items_lifecycle:
+    '原子更新明确物品的生命周期；每条使用 lifecycle v1 的 set/unset，全部 item_id 必须提供 expected_revisions，任一失败整批回滚。',
+  upgrade_attributes:
+    '显式升级已绑定的 product v1 至 v2；提交完整目标 values 和目标 template_version=2，保留需继续使用的旧值。须提供对象 revision；不会从规格文字推断保质期。',
+  query_catalog_nodes:
+    '查询分类 GROUP、商品 SKU、名称和条码，返回稳定 ID 和版本。建商品前先查同款及相关分类分支，include_path=true 返回 path_ids，补读未知节点名称并沿 next_cursor 翻页；按含义和完整路径复用，不只匹配短名称，不因首屏未找到就创建。近义名称或多条合理路径有歧义时先确认。',
+  get_catalog_node:
+    '读取一个目录节点及其模板属性。include_path=true 返回 path_ids；按需补读路径节点名称，核对完整分类路径、GROUP/SKU 类型及修改前 revision。',
+  create_catalog_node:
+    '创建分类 GROUP 或商品 SKU；非根节点的父节点必须是 GROUP，SKU 是商品叶节点，创建 SKU 不会新增库存。先查同款与完整分类路径，沿用现有目录；分类默认按商品类型从大到小细分，同级依据一致，选最具体且有依据的分类。授权创建商品时可从父到子补建必要 GROUP，再建 SKU，不随意挂根或宽泛父类，不强制层数或复制商品名建同名分类。默认不按品牌、规格、重量、颜色、日期、储存要求建分类；已有明确惯例时沿用。实物位置不作商品分类。歧义先确认，不新建“其他/未分类”绕过判断；创建后核对完整路径。',
   update_catalog_node: '修改目录名称，稳定 ID 不变。',
-  move_catalog_node: '移动目录分类，禁止环和跨家庭引用。',
+  move_catalog_node:
+    '在用户已授权整理目录时移动原 GROUP 或 SKU，保留稳定 ID 和库存关联，不改变实物位置；不通过重建商品修复归类。先读取原节点 revision 并核对目标完整分类路径，歧义先确认；提交 expected_revisions。非根父节点必须是 GROUP，禁止环和跨家庭引用；移动后核对完整路径。',
   query_items:
     '查询具体实例、位置路径、版本和库存统计；未知不等于 ACTIVE 或 AVAILABLE。多个候选必须请用户确认，不自动选取。',
   get_item: '读取明确 UUID 的物品、模板值、位置、文字笔记和版本。',
-  create_items: '创建 count 个不同 UUID 的实例；批量共享明确的初始属性，不合并身份。',
+  create_items:
+    '创建 count 个不同 UUID 的实例；相同规格共用明确初始属性。请同时提供已知 parent_id、contents 重量及 lifecycle 日期，减少补写；不同规格用 create_items_batch。创建 SKU 不等于入库。',
   update_item: '修改明确 UUID 的显示名。',
   move_item: '移动明确 UUID 的物品或容器，后代相对位置不变。',
   move_items: '将明确选择的物品原子地移至同一位置；全部版本必须匹配，任一失败则全部回滚。',
@@ -341,7 +426,7 @@ export const descriptions: Record<Operation, string> = {
   consume_item_content:
     '从明确 UUID 扣减正数内容量。需要已知剩余量，不从 SKU 猜测。percent 是初始内容的百分点。',
   correct_item: '带原因纠正明确 UUID 的属性或商品关联，可修复终结状态。',
-  list_attribute_templates: '发现内置的七个可选属性模板。',
+  list_attribute_templates: '发现内置七种可选属性模板的最新版本；已有绑定使用其固定版本。',
   get_attribute_template: '读取指定模板版本和允许字段。',
   get_attribute_sets: '读取目标已绑定的模板和值。',
   bind_attributes: '绑定尚未存在的模板，不覆盖已有值。',
@@ -351,3 +436,54 @@ export const descriptions: Record<Operation, string> = {
   update_note: '修改属于明确 UUID 的文字笔记。',
   get_history: '查询对象或操作的追加式历史。',
 };
+
+export const creates = new Set<Operation>([
+  'create_catalog_node',
+  'create_items',
+  'create_items_batch',
+]);
+export function parseCommand(name: Operation, raw: unknown): any {
+  // Classify missing versions before Zod's required-field error. Never infer a revision.
+  if (
+    !reads.has(name) &&
+    !creates.has(name) &&
+    raw &&
+    typeof raw === 'object' &&
+    !Array.isArray(raw)
+  ) {
+    const input = raw as Record<string, any>;
+    if (input.expected_revisions === undefined)
+      throw new DomainError(
+        'MISSING_EXPECTED_REVISION',
+        'Supply revisions for every target before writing.',
+      );
+  }
+  const parsed = schemas[name].safeParse(raw);
+  if (!parsed.success) {
+    const issue = parsed.error.issues.find(
+      (i) => i.path[0] === 'items' && typeof i.path[1] === 'number',
+    );
+    const index = issue?.path[1] as number | undefined;
+    throw new DomainError('ATTRIBUTE_VALIDATION_FAILED', 'Invalid command input.', {
+      issues: parsed.error.issues,
+      ...(index === undefined
+        ? {}
+        : { item_index: index, client_ref: (raw as any)?.items?.[index]?.client_ref }),
+    });
+  }
+  const input: any = parsed.data;
+  if (!reads.has(name) && !creates.has(name)) {
+    const ids: string[] = input.item_ids ??
+      input.items?.map((i: any) => i.item_id) ?? [
+        input.target?.id ?? input.item_id ?? input.catalog_node_id,
+      ];
+    const missing = ids.filter((id) => !Object.hasOwn(input.expected_revisions, id));
+    if (missing.length)
+      throw new DomainError(
+        'MISSING_EXPECTED_REVISION',
+        'Supply revisions for every target before writing.',
+        { missing_ids: missing },
+      );
+  }
+  return input;
+}

@@ -1,5 +1,40 @@
 import { test, expect, type Page } from '@playwright/test';
 import { login } from './login.js';
+import { catalogFixture, checkCatalog } from './catalog-checks.js';
+
+test('Ant Design catalog tree filters and preserves browse state on Web', async ({ page }) => {
+  await page.goto('/items');
+  await login(page);
+  await expect(page.getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
+  const headers = {
+    Origin: new URL(page.url()).origin,
+    'X-Acornary-Request': 'web',
+    'X-Acornary-Household': await page.evaluate(
+      () => sessionStorage.getItem('acornary-household') ?? '',
+    ),
+  };
+  const f = await catalogFixture(async (name, input) => {
+    const response = await page.request.post(`/api/write/${name}`, {
+      headers,
+      data: { idempotency_key: crypto.randomUUID(), ...input },
+    });
+    expect(response.status(), await response.text()).toBe(200);
+    return response.json();
+  });
+  await page.goto('/catalog');
+  await checkCatalog(page, page, f, 'web');
+  await page.getByRole('menuitem', { name: '我的物品', exact: true }).click();
+  await expect(page.getByRole('separator', { name: '调整位置栏宽度' })).toHaveAttribute(
+    'aria-valuenow',
+    '224',
+  );
+  await expect(page.getByRole('columnheader', { name: '收纳位置', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: '显示列', exact: true }).click();
+  await expect(page.getByRole('checkbox', { name: '收纳位置', exact: true })).toHaveCount(0);
+  await page.goto('/search');
+  await expect(page.getByRole('table', { name: '实物列表' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: '收纳位置', exact: true })).toHaveCount(0);
+});
 
 test('Ant Design split actions align and desktop icon navigation remembers its state', async ({
   page,

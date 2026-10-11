@@ -1,3 +1,4 @@
+import { beginCall, type CallTiming } from './timing.js';
 import { embeddedRuntime } from './runtime.js';
 import type { Operation } from '../../../../packages/contracts/src/index.js';
 import type {
@@ -12,11 +13,14 @@ export class ApiError extends Error {
     message: string,
     public status = 0,
     public details?: unknown,
+    public request_id?: string,
+    public recovery?: string,
   ) {
     super(message);
   }
 }
 export const messages: Record<string, string> = {
+  MISSING_EXPECTED_REVISION: '缺少记录版本。请读取目标记录后再提交。',
   REVISION_CONFLICT: '记录已发生变化。请核对最新内容后重新提交。',
   IDEMPOTENCY_CONFLICT: '这次操作的重试信息不一致，请重新核对。',
   SESSION_CHANGED: '连接账号、家庭或授权已改变，请重新打开操作。',
@@ -37,6 +41,29 @@ export const messages: Record<string, string> = {
 export async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const embedded = embeddedRuntime();
   if (embedded) return embedded.transport.request<T>(url);
+  const tool = url.match(/^\/api\/(?:read|write)\/([^?]+)/)?.[1] ?? 'http_read';
+  let input: unknown;
+  try {
+    input = typeof init?.body === 'string' ? JSON.parse(init.body) : undefined;
+  } catch {
+    /* fetch reports invalid input */
+  }
+  const timing = beginCall('HTTP', tool, input);
+  timing.sample.write = init?.method === 'POST';
+  try {
+    const result = await requestImpl<T>(url, init, timing.sample);
+    timing.finish('SUCCESS');
+    return result;
+  } catch (error) {
+    timing.finish(error instanceof ApiError ? error.code : 'NETWORK');
+    throw error;
+  }
+}
+async function requestImpl<T>(
+  url: string,
+  init: RequestInit | undefined,
+  timing: CallTiming,
+): Promise<T> {
   let response: Response;
   try {
     const headers = new Headers(init?.headers);
@@ -54,6 +81,9 @@ export async function request<T>(url: string, init?: RequestInit): Promise<T> {
   } catch {
     throw new ApiError('NETWORK', messages.NETWORK);
   }
+  timing.request_id = response.headers.get('X-Request-ID') ?? undefined;
+  const duration = response.headers.get('Server-Timing')?.match(/total;dur=([\d.]+)/)?.[1];
+  if (duration) timing.server_duration_ms = Number(duration);
   let data;
   try {
     data = await response.json();
@@ -69,6 +99,8 @@ export async function request<T>(url: string, init?: RequestInit): Promise<T> {
       messages[code] ?? '暂时无法完成，请稍后重试。',
       response.status,
       data.error?.details,
+      data.error?.request_id,
+      data.error?.recovery,
     );
   }
   return data;
