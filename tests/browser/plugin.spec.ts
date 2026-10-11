@@ -40,7 +40,10 @@ test('Ant Design catalog tree works in the MCP sandbox and isolates household st
     h.family = 1;
     h.notify(await h.call('get_inventory_view'));
   });
-  await expect(view(page).getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
+  // An in-flight refresh can coalesce this notification; allow the 5s polling interval.
+  await expect(view(page).getByRole('heading', { name: '我的物品', exact: true })).toBeVisible({
+    timeout: 10_000,
+  });
   await view(page).getByRole('link', { name: '商品目录', exact: true }).click();
   await expect(view(page).getByRole('searchbox', { name: '搜索分类', exact: true })).toHaveValue(
     '',
