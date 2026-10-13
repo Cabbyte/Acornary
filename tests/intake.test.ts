@@ -600,6 +600,10 @@ it('cannot bypass a stricter child rule by describing its existing path as a new
 
 it('keeps product v2 shelf-life facts in governed atomic intake and requires approval for upgrades', async () => {
   await installRule();
+  const context = await execute(ctx, 'get_intake_context', { catalog_node_ids: [sku] });
+  const productTemplate = context.templates.find((t: any) => t.id === 'product');
+  expect(productTemplate.version).toBe(2);
+  expect(productTemplate.paths).toContain('shelf_life_days');
   const result = await write(
     'commit_intake',
     await batch(

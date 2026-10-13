@@ -4,6 +4,7 @@ import {
   schemas,
   templates,
   templateDefinition,
+  latestTemplateVersion,
   validateValues,
   type TemplateId,
   type Operation,
@@ -317,7 +318,9 @@ export async function readIntake(c: Client, ctx: Context, name: Operation, input
     expected_revisions: Object.fromEntries(
       [...cp, ...lp].map((r) => [r.object.id, r.object.revision]),
     ),
-    templates: Object.keys(templates).map((id) => templateDefinition(id as TemplateId)),
+    templates: Object.keys(templates).map((id) =>
+      templateDefinition(id as TemplateId, latestTemplateVersion(id as TemplateId)),
+    ),
     unknowns:
       'Omit unknown values. Physical counts must be explicit. Semantic branch fit is a reasoned judgment, not a permission token.',
   };
