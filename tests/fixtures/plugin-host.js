@@ -31,20 +31,39 @@ const host = (window.host = {
     return this.fixtureGoverned('create_catalog_node', input);
   },
   async fixtureGoverned(operation, input) {
-    const proposal = await this.call('propose_catalog_change', {
-      idempotency_key: crypto.randomUUID(),
-      proposal: { kind: 'catalog_command', operation, input, reason: 'Synthetic plugin fixture' },
-    });
+    const checked = (result) => {
+      if (result.isError) throw Error(JSON.stringify(result.structuredContent?.error));
+      return result;
+    };
+    const proposal = checked(
+      await this.call('propose_catalog_change', {
+        idempotency_key: crypto.randomUUID(),
+        proposal: { kind: 'catalog_command', operation, input, reason: 'Synthetic plugin fixture' },
+      }),
+    );
     const proposal_id = proposal.structuredContent.proposal_id;
-    const expected_scope = (await this.call('open_inventory'))._meta['acornary/view'].session
+    const expected_scope = checked(await this.call('open_inventory'))._meta['acornary/view'].session
       .cache_key;
-    const review = await this.call('get_catalog_review', { proposal_id, expected_scope });
-    const approval = await this.call('confirm_catalog_change', {
-      proposal_id,
-      expected_scope,
-      challenge: review._meta['acornary/catalog-review'].challenge,
-    });
-    return this.call(operation, { ...input, approval_id: approval.structuredContent.approval_id });
+    // The mounted app can open the same pending card and rotate its challenge.
+    // Re-review this exact synthetic proposal, never create a replacement intent.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const review = checked(
+        await this.call('get_catalog_review', { proposal_id, expected_scope }),
+      );
+      const approval = await this.call('confirm_catalog_change', {
+        proposal_id,
+        expected_scope,
+        challenge: review._meta['acornary/catalog-review'].challenge,
+      });
+      if (approval.structuredContent?.error?.code === 'APPROVAL_EXPIRED' && attempt < 2) continue;
+      checked(approval);
+      return checked(
+        await this.call(operation, {
+          ...input,
+          approval_id: approval.structuredContent.approval_id,
+        }),
+      );
+    }
   },
   notify(result) {
     this.frame.contentWindow.postMessage(

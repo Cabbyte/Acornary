@@ -338,7 +338,7 @@ test('Ant Design pagination retains catalog, SKU and search return state', async
   await page.getByRole('searchbox', { name: '搜索商品名称或规格' }).fill(f.name);
   await page.getByRole('link', { name: f.name, exact: true }).click();
   const rows = page
-    .getByRole('table')
+    .getByRole('table', { name: '实物列表', exact: true })
     .getByRole('row')
     .filter({ has: page.getByRole('cell') });
   await expect(rows).toHaveCount(20);
