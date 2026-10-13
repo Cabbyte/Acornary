@@ -185,7 +185,7 @@ try {
       'pnpm',
       'test:e2e',
       '--grep',
-      'Ant Design|six distinct items|Chinese composition Enter',
+      'Ant Design|Impeccable|six distinct items|Chinese composition Enter',
       '--output',
       'output/playwright/webkit-results',
     ]);
