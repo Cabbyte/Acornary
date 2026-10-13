@@ -31,6 +31,7 @@ test('Impeccable mobile facts, searchable intake and visible review preserve dra
   await page.getByRole('option').filter({ hasText: '验收牛奶 1L' }).click();
   await drawer.getByLabel('入库件数', { exact: true }).fill('2');
   await choose(page, '开封状态', '已开封');
+  await choose(page, '日期类型', '保质期（原包装）');
   await drawer.getByLabel('到期日期', { exact: true }).fill('2026-12-31');
   await drawer.getByLabel('到期日期', { exact: true }).press('Enter');
   await drawer.getByLabel('每件剩余量', { exact: true }).fill('800');
