@@ -71,7 +71,7 @@ MCP日常正常路径为一次 context + 一次 commit。已有明确SKU不需�
 
 ## 迁移、运行和交付
 
-006是增量迁移，仅增表、函数和索引；旧对象、嵌入属性、事件、旧幂等指纹/结果保留。部署权限追加policy INSERT、proposal INSERT/UPDATE、identity索引维护；policy版本有不可变触发器。备份清单新增三表；CI真实pg_dump/pg_restore后对比全部36张表。
+008是增量迁移（整合v0.8.0已发布的007后，由未发布的006顺延），仅增表、函数和索引；旧对象、嵌入属性、事件、旧幂等指纹/结果保留。部署权限追加policy INSERT、proposal INSERT/UPDATE、identity索引维护；policy版本有不可变触发器。备份清单新增三表；CI真实pg_dump/pg_restore后对比全部36张表。
 
 ```sh
 docker build --target browser-test -t acornary-intake-candidate .

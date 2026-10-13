@@ -1,5 +1,7 @@
 # Architecture v1
 
+语音入库扩展：版本必填、错误恢复、请求追踪、原子批量操作及 product v2 见 [语音入库指南](./voice-intake.md)。下文历史阶段中的 v1 限制以该扩展说明为准。
+
 本文件定义两棵树模型的应用边界和接口契约，配合 [Domain model](./domain-model.md) 和 [Examples](./examples.md) 使用。Stage1 已有运行代码、锁文件、数据库 migration 与测试。启动方式见 [本地运行](./local-runtime.md)，实际验证与待完成项见 [验证记录](./stage1-verification.md)。
 
 Stage2 云模式的当前约定见下述 1.6 节，部署操作与验收事实分别见 [云端运行](./cloud-runtime.md)、[Stage2 验证](./stage2-verification.md)。Stage1 段落记录最初只读 Web 阶段；当前本地开发模式也提供产品读写，原本地库存已迁移并保持停写，云端是唯一正式库存。

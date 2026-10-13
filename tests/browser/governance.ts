@@ -16,7 +16,9 @@ export async function fixtureCommand(page: Page, operation: string, input: any) 
   const data = { idempotency_key: crypto.randomUUID(), ...input };
   if (
     ['create_catalog_node', 'update_catalog_node', 'move_catalog_node'].includes(operation) ||
-    (['bind_attributes', 'update_attributes', 'remove_attributes'].includes(operation) &&
+    (['bind_attributes', 'update_attributes', 'remove_attributes', 'upgrade_attributes'].includes(
+      operation,
+    ) &&
       input.target?.kind === 'CATALOG_NODE')
   ) {
     const proposal = await post('/api/write/propose_catalog_change', {

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import {
   templates,
   templateDefinition,
+  latestTemplateVersion,
   type TemplateId,
 } from '../../../packages/contracts/src/index.js';
 import { pool, transaction, query, type Client } from './db.js';
@@ -29,11 +30,18 @@ export async function createHousehold(
     actorName,
   ]);
   for (const name of Object.keys(templates) as TemplateId[])
-    await query(
-      c,
-      'INSERT INTO attribute_templates(household_id,id,version,target_kind,definition) VALUES($1,$2,1,$3,$4::jsonb)',
-      [household_id, name, templates[name].target_kind, JSON.stringify(templateDefinition(name))],
-    );
+    for (let version = 1; version <= latestTemplateVersion(name); version++)
+      await query(
+        c,
+        'INSERT INTO attribute_templates(household_id,id,version,target_kind,definition) VALUES($1,$2,$3,$4,$5::jsonb)',
+        [
+          household_id,
+          name,
+          version,
+          templates[name].target_kind,
+          JSON.stringify(templateDefinition(name, version)),
+        ],
+      );
   await query(
     c,
     `INSERT INTO catalog_nodes(id,household_id,kind,name,attributes)

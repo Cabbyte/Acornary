@@ -3,6 +3,8 @@ import {
   catalogReviewSchema,
   catalogConfirmSchema,
 } from '../../../packages/contracts/src/intake.js';
+import { deferredInput } from './mcp-input.js';
+import { failure, traceMetadata, timed, traces } from './telemetry.js';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
@@ -130,7 +132,7 @@ export function registerInventoryApp(
     {
       title: '提交库存界面修改',
       description: '仅提交当前 UI 会话的明确修改。预期会话只用于一致性检查，不选择身份或家庭。',
-      inputSchema: pluginWriteSchema,
+      inputSchema: deferredInput(pluginWriteSchema),
       outputSchema: pluginWriteResultSchema,
       annotations: {
         readOnlyHint: false,
@@ -143,8 +145,14 @@ export function registerInventoryApp(
         ...(cloud ? { securitySchemes: [{ type: 'oauth2', scopes: ['inventory:write'] }] } : {}),
       },
     },
-    async (args) => {
+    async (raw) => {
       try {
+        const parsed = pluginWriteSchema.safeParse(raw);
+        if (!parsed.success)
+          throw new DomainError('ATTRIBUTE_VALIDATION_FAILED', 'Invalid UI command.', {
+            issues: parsed.error.issues,
+          });
+        const args = parsed.data;
         const current = identity();
         if (!current?.scopes.has('inventory:write'))
           throw new DomainError('FORBIDDEN', 'OAuth write scope is required.');
@@ -160,14 +168,15 @@ export function registerInventoryApp(
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result) }],
           structuredContent: result,
+          _meta: { 'acornary/trace': traceMetadata() },
         };
       } catch (error) {
-        if (!(error instanceof DomainError)) throw error;
-        const failure = { code: error.code, message: error.message, details: error.details };
+        const rejected = failure(error);
         return {
           isError: true,
-          content: [{ type: 'text' as const, text: JSON.stringify({ error: failure }) }],
-          structuredContent: { error: failure },
+          content: [{ type: 'text' as const, text: JSON.stringify({ error: rejected }) }],
+          structuredContent: { error: rejected },
+          _meta: { 'acornary/trace': traceMetadata() },
         };
       }
     },
@@ -209,7 +218,7 @@ export function registerInventoryApp(
           name === pluginOpenTool
             ? '打开 Acornary 库存界面。选择具体物品后可在对话中指代该物品；选择本身不授权写入。'
             : '读取当前已授权家庭的完整界面投影。身份和家庭由服务端认证决定。',
-        inputSchema: z.strictObject({}),
+        inputSchema: deferredInput(z.strictObject({})),
         outputSchema: z.strictObject({
           household: z.string(),
           items: z.number().int().nonnegative(),
@@ -237,41 +246,51 @@ export function registerInventoryApp(
           ...(cloud ? { securitySchemes: [{ type: 'oauth2', scopes: ['inventory:read'] }] } : {}),
         },
       },
-      async () => {
-        const current = identity();
-        if (!current?.scopes.has('inventory:read'))
-          return {
-            isError: true,
-            content: [{ type: 'text', text: '需要库存读取权限。' }],
-            structuredContent: {
-              error: { code: 'FORBIDDEN', message: 'OAuth read scope is required.' },
-            },
+      async (raw) => {
+        try {
+          const trace = traces.getStore();
+          if (trace) trace.tool = name;
+          if (!z.strictObject({}).safeParse(raw).success)
+            throw new DomainError('ATTRIBUTE_VALIDATION_FAILED', 'This tool accepts no arguments.');
+          const current = identity();
+          if (!current?.scopes.has('inventory:read'))
+            throw new DomainError('FORBIDDEN', 'OAuth read scope is required.');
+          const snapshot = await timed('business_ms', () => webSnapshot(current.ctx, {}));
+          if (trace) trace.outcome = 'SUCCESS';
+          const summary = {
+            household: snapshot.household.name,
+            items: snapshot.items.length,
+            catalog: snapshot.catalog.length,
           };
-        const snapshot = await webSnapshot(current.ctx, {});
-        const summary = {
-          household: snapshot.household.name,
-          items: snapshot.items.length,
-          catalog: snapshot.catalog.length,
-        };
-        return {
-          content: [{ type: 'text', text: JSON.stringify(summary) }],
-          structuredContent: summary,
-          _meta: {
-            [pluginMetaKey]: {
-              version: 1,
-              snapshot,
-              session: {
-                mode: cloud ? 'cloud' : 'local',
-                authenticated: true,
-                host: 'mcp',
-                household_id: current.ctx.household_id,
-                user_id: current.userId,
-                cache_key: pluginScope(current, cloud),
-                can_write: current.scopes.has('inventory:write'),
+          return {
+            content: [{ type: 'text', text: JSON.stringify(summary) }],
+            structuredContent: summary,
+            _meta: {
+              'acornary/trace': traceMetadata(),
+              [pluginMetaKey]: {
+                version: 1,
+                snapshot,
+                session: {
+                  mode: cloud ? 'cloud' : 'local',
+                  authenticated: true,
+                  host: 'mcp',
+                  household_id: current.ctx.household_id,
+                  user_id: current.userId,
+                  cache_key: pluginScope(current, cloud),
+                  can_write: current.scopes.has('inventory:write'),
+                },
               },
             },
-          },
-        };
+          };
+        } catch (error) {
+          const rejected = failure(error);
+          return {
+            isError: true,
+            content: [{ type: 'text' as const, text: JSON.stringify({ error: rejected }) }],
+            structuredContent: { error: rejected },
+            _meta: { 'acornary/trace': traceMetadata() },
+          };
+        }
       },
     );
   }

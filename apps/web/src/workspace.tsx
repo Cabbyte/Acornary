@@ -4,7 +4,11 @@ import type { FunctionComponent } from 'react';
 import type { RouterHistory } from '@tanstack/react-router';
 import { embeddedRuntime } from './lib/runtime';
 import { itemName, locationName, ancestors } from '../../../packages/contracts/src/web';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { expandItemId } from './lib/labels';
+import { LabelButton } from './ui/label-button';
+import { PrinterProvider } from './lib/printer-context';
+const LabelPrint = lazy(() => import('./ui/label-print'));
 import {
   createRootRoute,
   createRoute,
@@ -23,6 +27,17 @@ import { Empty, Notice } from './ui/components';
 import { clearBrowseSelections, InventorySearch, ProductCatalog } from './ui/browser';
 import { clearWorkbenchSelections, Workbench, WorkbenchShell } from './ui/workbench';
 export function Workspace() {
+  const { session, expired } = useSession();
+  return (
+    <PrinterProvider
+      key={`${session.cache_key ?? session.user_id ?? 'local'}:${expired}`}
+      expired={expired}
+    >
+      <WorkspaceContent />
+    </PrinterProvider>
+  );
+}
+function WorkspaceContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const { data, stale, refresh, cacheWarning } = useInventory();
@@ -34,6 +49,8 @@ export function Workspace() {
     clearWorkbenchSelections();
   }, [session.cache_key]);
   const [selectionVersion, resetSelection] = useState(0);
+  const [receipt, setReceipt] = useState<{ scope: string; ids: string[] }>();
+  useEffect(() => setReceipt(undefined), [session.cache_key]);
   const [connectionError, setConnectionError] = useState('');
   const parts = location.pathname.split('/').filter(Boolean);
   const section = parts[0] || 'items';
@@ -56,6 +73,10 @@ export function Workspace() {
         from: params.get('from') ?? undefined,
       }
     : undefined;
+  const compactId = section === 'i' && parts.length === 2 ? expandItemId(id ?? '') : undefined;
+  useEffect(() => {
+    if (compactId) void navigate({ to: `/items/${compactId}/details`, replace: true });
+  }, [compactId, navigate]);
   const actionKeys = ['dialog', 'target', 'template', 'note', 'parent', 'ids', 'from'];
   const browseParams = Object.fromEntries([...params].filter(([key]) => !actionKeys.includes(key)));
   useEffect(() => {
@@ -118,7 +139,13 @@ export function Workspace() {
     message.destroy();
   }, [location.pathname]);
   let page;
-  if (section === 'items')
+  if (section === 'i')
+    page = (
+      <Empty title={compactId ? '正在打开物品…' : '标签链接无效'}>
+        <Link to="/items">返回我的物品</Link>
+      </Empty>
+    );
+  else if (section === 'items')
     page =
       id === 'group' ? (
         <Product id={parts[2]} open={open} />
@@ -162,7 +189,7 @@ export function Workspace() {
       ) : id ? (
         <Catalog id={id === 'manage' ? undefined : id} open={open} />
       ) : (
-        <ProductCatalog open={open} />
+        <ProductCatalog key={session.cache_key} open={open} />
       );
   else if (section === 'settings') page = <Settings section={id} />;
   else if (section === 'login') page = <Home open={open} />;
@@ -205,8 +232,31 @@ export function Workspace() {
       )}
       {(storageError || cacheWarning) && <Notice danger>{storageError || cacheWarning}</Notice>}
       {!action && <PendingCatalogReviews key={session.cache_key} />}
+      {receipt?.scope === session.cache_key && receipt && (
+        <div className="status-banner">
+          <span>本次已入库 {receipt.ids.length} 件。</span>
+          <LabelButton
+            disabled={!online || stale}
+            onClick={() => open({ kind: 'print', ids: receipt.ids.join(',') })}
+          >
+            打印本次入库标签
+          </LabelButton>
+          <Button type="text" onClick={() => setReceipt(undefined)}>
+            关闭
+          </Button>
+        </div>
+      )}
       {page}
-      {action && (
+      {action?.kind === 'print' && (
+        <Suspense fallback={<p role="status">正在准备标签预览…</p>}>
+          <LabelPrint
+            key={`${session.cache_key}:${action.ids ?? action.target ?? ''}`}
+            ids={(action.ids ?? action.target ?? '').split(',').filter(Boolean)}
+            onClose={close}
+          />
+        </Suspense>
+      )}
+      {action && action.kind !== 'print' && (
         <ActionSheet
           key={JSON.stringify(action)}
           action={action}
@@ -224,6 +274,10 @@ export function Workspace() {
               return;
             }
             if (action.kind === 'intake' && first) {
+              setReceipt({
+                scope: session.cache_key!,
+                ids: result.affected_objects.filter((o) => o.kind === 'ITEM').map((o) => o.id),
+              });
               void navigate({ to: `/items/${first.id}`, replace: true });
               return;
             }

@@ -19,6 +19,7 @@ services:
       target: runtime
     environment:
       DATABASE_URL: postgres://acornary:${POSTGRES_PASSWORD}@postgres:5432/acornary
+      ACORNARY_PRODUCT_V2_WRITES: ${ACORNARY_PRODUCT_V2_WRITES:-1}
       HOUSEHOLD_TIMEZONE: ${HOUSEHOLD_TIMEZONE:-Asia/Shanghai}
     ports:
       - '127.0.0.1:${ACORNARY_PORT:-3210}:3210'

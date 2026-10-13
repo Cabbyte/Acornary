@@ -12,6 +12,13 @@ export interface Definition {
 }
 export const definitions: Partial<Record<TemplateId, Definition[]>> = {
   product: [
+    { path: 'shelf_life_days', label: '未开封保质天数', type: 'number' },
+    {
+      path: 'shelf_life_basis',
+      label: '保质期起算依据',
+      options: ['PRODUCTION_DATE', 'PACKAGING_DATE', 'OTHER'],
+    },
+    { path: 'shelf_life_basis_note', label: '起算依据说明' },
     { path: 'brand', label: '品牌' },
     { path: 'model', label: '型号' },
     { path: 'specification', label: '包装规格' },
@@ -171,7 +178,13 @@ export function AttributeFields({
               onChange={(value) => onChange(f.path, value)}
               options={[
                 { value: '', label: '未记录' },
-                ...f.options.map((o) => ({ value: o, label: label(o) })),
+                ...f.options.map((o) => ({
+                  value: o,
+                  label:
+                    f.path === 'expiry.date_kind' && o === 'ESTIMATED'
+                      ? '计划吃完（自行设定）'
+                      : label(o),
+                })),
               ]}
             />
           ) : f.type === 'measurement' ? (

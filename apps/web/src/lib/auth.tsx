@@ -9,7 +9,7 @@ export function safeReturnTo(value: string | null): string {
     const url = new URL(value, 'https://return.invalid');
     if (
       url.origin !== 'https://return.invalid' ||
-      !/^\/(items|places|catalog|search|settings|inspect|join)(\/|$)/.test(url.pathname)
+      !/^\/(i|items|places|catalog|search|settings|inspect|join)(\/|$)/.test(url.pathname)
     )
       return '/items';
     return url.pathname + url.search + url.hash;

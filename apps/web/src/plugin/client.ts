@@ -1,3 +1,4 @@
+import { beginCall } from '../lib/timing.js';
 import { SelectionSync } from './selection.js';
 import { App } from '@modelcontextprotocol/ext-apps';
 import {
@@ -99,6 +100,7 @@ export class PluginClient implements InventoryTransport {
     return this.envelope!;
   }
   private async call(name: string, input: unknown, signal?: AbortSignal) {
+    const timing = beginCall('MCP_UI', name, input);
     const generation = this.generation;
     const ensureCurrent = () => {
       if (signal?.aborted || generation !== this.generation)
@@ -110,11 +112,26 @@ export class PluginClient implements InventoryTransport {
         { name, arguments: input as Record<string, unknown> },
         { signal, timeout: 15000 },
       );
+      const trace = result._meta?.['acornary/trace'] as
+        { request_id?: string; server_duration_ms?: number } | undefined;
+      if (trace) {
+        timing.sample.request_id = trace.request_id;
+        timing.sample.server_duration_ms = trace.server_duration_ms;
+      }
       ensureCurrent();
       if (result.isError) {
         const error = (
           result.structuredContent as
-            { error?: { code?: string; message?: string; details?: unknown } } | undefined
+            | {
+                error?: {
+                  code?: string;
+                  message?: string;
+                  details?: unknown;
+                  request_id?: string;
+                  recovery?: string;
+                };
+              }
+            | undefined
         )?.error;
         const code = error?.code ?? 'INTERNAL_ERROR';
         throw new ApiError(
@@ -122,10 +139,14 @@ export class PluginClient implements InventoryTransport {
           messages[code] ?? error?.message ?? '暂时无法完成，请重试。',
           domainErrorStatus(code) ?? 0,
           error?.details,
+          error?.request_id,
+          error?.recovery,
         );
       }
+      timing.sample.outcome = 'SUCCESS';
       return result;
     } catch (error) {
+      timing.sample.outcome = (error as any)?.code ?? 'NETWORK';
       ensureCurrent();
       const failure =
         error instanceof ApiError
@@ -142,6 +163,8 @@ export class PluginClient implements InventoryTransport {
         this.onInvalidate();
       }
       throw failure;
+    } finally {
+      timing.finish(timing.sample.outcome);
     }
   }
   private async fetchEnvelope(signal?: AbortSignal) {

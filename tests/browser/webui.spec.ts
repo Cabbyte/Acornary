@@ -364,7 +364,7 @@ test('Ant Design pagination retains catalog, SKU and search return state', async
   await page.getByRole('searchbox', { name: '搜索物品、规格或位置' }).fill('验收牛奶');
   await choose(page, '搜索范围', '全部位置 / 验收储藏室及下级位置');
   await expect(rows).toHaveCount(6);
-  await expect(rows.first()).toContainText('验收储藏室 / 验收行李箱');
+  await expect(page.getByRole('columnheader', { name: '收纳位置', exact: true })).toHaveCount(0);
   await choose(page, '搜索范围', '全部位置 / 验收厨房及下级位置');
   await expect(page.getByRole('heading', { name: '没有找到匹配结果' })).toBeVisible();
 });

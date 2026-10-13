@@ -5,7 +5,12 @@ import { Button, Form, Input, Select, TreeSelect } from 'antd';
 import { draftSchema } from '../lib/draft';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Decimal } from 'decimal.js';
-import { schemas, type Operation, type TemplateId } from '../../../../packages/contracts/src/index';
+import {
+  templateFor,
+  schemas,
+  type Operation,
+  type TemplateId,
+} from '../../../../packages/contracts/src/index';
 import {
   ancestors,
   attr,
@@ -107,10 +112,14 @@ export function ActionSheet({
   const workbench = action.kind === 'edit' || (action.kind === 'move' && movingItems.length > 0);
   const moving = action.kind === 'move' && movingItems.length > 0;
   const template = action.template ?? 'lifecycle';
+  const templateVersion =
+    target?.attributes.find((a) => a.template_id === template)?.template_version ?? 1;
   const fields = ['attributes', 'correct'].includes(action.kind)
     ? [
         ...(action.kind === 'correct' && template === 'lifecycle' ? correctionFields : []),
-        ...(definitions[template] ?? []),
+        ...(definitions[template] ?? []).filter((f) =>
+          (templateFor(template, templateVersion).paths as readonly string[]).includes(f.path),
+        ),
         ...(action.kind === 'correct' && template === 'lifecycle'
           ? (definitions.contents ?? []).map((f) => ({ ...f, path: `content.${f.path}` }))
           : []),
@@ -160,6 +169,7 @@ export function ActionSheet({
       count: '1',
       opening: '',
       expiry: '',
+      expiry_kind: 'ESTIMATED',
       quantity: '',
       unit: 'mL',
       accuracy: '',
@@ -255,14 +265,21 @@ export function ActionSheet({
     const base = { expected_revisions: draft.revisions };
     let operation: Operation;
     let input: Record<string, unknown>;
-    const attribute = { template_id: template, template_version: 1 };
+    const attribute = { template_id: template, template_version: templateVersion };
     switch (action.kind) {
       case 'intake': {
         operation = 'commit_intake';
         const initial: unknown[] = [];
         const lifecycle = {
           ...(values.opening ? { opening: { state: values.opening } } : {}),
-          ...(values.expiry ? { expiry: { date: values.expiry } } : {}),
+          ...(values.expiry
+            ? {
+                expiry: {
+                  date: values.expiry,
+                  ...(values.expiry_kind ? { date_kind: values.expiry_kind } : {}),
+                },
+              }
+            : {}),
         };
         if (Object.keys(lifecycle).length)
           initial.push({ template_id: 'lifecycle', template_version: 1, values: lifecycle });
@@ -793,7 +810,19 @@ export function ActionSheet({
                     ]}
                   />
                 </FormField>
-                <FormField label="到期日期">
+                <FormField label="日期类型">
+                  <Select
+                    value={values.expiry_kind ?? ''}
+                    onChange={(v) => set('expiry_kind', v)}
+                    options={[
+                      { value: '', label: '未记录类型' },
+                      { value: 'ESTIMATED', label: '计划吃完（自行设定）' },
+                      { value: 'USE_BY', label: '保质期（原包装）' },
+                      { value: 'BEST_BEFORE', label: '最佳食用期（原包装）' },
+                    ]}
+                  />
+                </FormField>
+                <FormField label={values.expiry_kind === 'ESTIMATED' ? '计划吃完日期' : '到期日期'}>
                   <CalendarInput value={values.expiry} onChange={(value) => set('expiry', value)} />
                 </FormField>
                 <FormField label="每件剩余量" hint="可选。请填写已知数量，不会自动按包装规格填满。">

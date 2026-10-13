@@ -1,5 +1,7 @@
 # MCP Apps 插件
 
+语音入库扩展：版本必填、错误恢复、请求追踪、原子批量操作及 product v2 见 [语音入库指南](./voice-intake.md)。下文历史阶段中的 v1 限制以该扩展说明为准。
+
 插件与 Web 共用 `apps/web/src/workspace.tsx`、页面、表单及响应式工作台。相关源码已合入 `main` 并随 [v0.4.2](https://github.com/Cabbyte/Acornary/releases/tag/v0.4.2) 发布；当前生产版本见 `/health`，布局见 [工作台说明](./responsive-workbench.md)。2026-10-01 的逐轮本地测试保留在 [历史交接](./archive/plugin-handoff.md)。
 
 ## 入口与身份

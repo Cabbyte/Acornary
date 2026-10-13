@@ -329,7 +329,9 @@ function commandInput(name: Operation, input: any) {
 function governed(name: Operation, input: any) {
   return (
     ['create_catalog_node', 'update_catalog_node', 'move_catalog_node'].includes(name) ||
-    (['bind_attributes', 'update_attributes', 'remove_attributes'].includes(name) &&
+    (['bind_attributes', 'update_attributes', 'remove_attributes', 'upgrade_attributes'].includes(
+      name,
+    ) &&
       input.target?.kind === 'CATALOG_NODE') ||
     (name === 'correct_item' && input.core?.catalog_node_id)
   );
@@ -609,6 +611,10 @@ export async function authorizeCatalogCommand(
   operation_id: string,
 ) {
   if (name === 'create_items') await checkExistingPlacement(c, ctx, input.catalog_node_id);
+  if (name === 'create_items_batch') {
+    for (const id of new Set<string>(input.items.map((item: any) => item.catalog_node_id)))
+      await checkExistingPlacement(c, ctx, id);
+  }
   if (!governed(name, input)) return;
   await consumeApproval(
     c,
@@ -748,7 +754,9 @@ export async function commitIntake(
       receipt.reused_catalog.push(sku);
     } else {
       const product = line.product;
-      const ancestry: Awaited<ReturnType<typeof paths>> = p.dependencies.filter((row: any) => row.origin === product.parent_id);
+      const ancestry: Awaited<ReturnType<typeof paths>> = p.dependencies.filter(
+        (row: any) => row.origin === product.parent_id,
+      );
       const parent = ancestry.find((a) => a.object.id === product.parent_id)?.object;
       requireFact(
         parent?.kind === 'GROUP' ||
@@ -827,7 +835,7 @@ export async function commitIntake(
           'ATTRIBUTE_VALIDATION_FAILED',
           'Physical attributes belong to instances.',
         );
-        validateValues(a.template_id as TemplateId, a.values);
+        validateValues(a.template_id as TemplateId, a.values, a.template_version);
       }
       const fields = rule?.identity_fields ?? [
         'product.brand',

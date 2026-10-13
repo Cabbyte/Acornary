@@ -4,7 +4,7 @@ import { templates, type TemplateId } from './index.js';
 
 export interface Attribute {
   template_id: TemplateId;
-  template_version: 1;
+  template_version: 1 | 2;
   values: Record<string, unknown>;
 }
 export interface CatalogRecord {
@@ -65,6 +65,7 @@ export interface InventorySnapshot extends InventoryData {
 }
 export interface WriteResult {
   operation_id: string;
+  created_items?: { client_ref: string; item_id: string; after_revision: number }[];
   changed: boolean;
   event_ids: string[];
   note_id?: string;

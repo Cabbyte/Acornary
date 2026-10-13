@@ -597,3 +597,44 @@ it('cannot bypass a stricter child rule by describing its existing path as a new
   ).rejects.toMatchObject({ code: 'CLASSIFICATION_CONFLICT' });
   expect((await execute(ctx, 'query_catalog_nodes', { name: '新肉类' })).matching_count).toBe(0);
 });
+
+it('keeps product v2 shelf-life facts in governed atomic intake and requires approval for upgrades', async () => {
+  await installRule();
+  const result = await write(
+    'commit_intake',
+    await batch(
+      newProduct('保质期商品', {
+        initial_attributes: [
+          {
+            template_id: 'product',
+            template_version: 2,
+            values: { brand: '测试', shelf_life_days: 15, shelf_life_basis: 'PRODUCTION_DATE' },
+          },
+        ],
+      }),
+    ),
+  );
+  const created = result.affected_objects.find((o: any) => o.kind === 'CATALOG_NODE');
+  const product = await execute(ctx, 'get_catalog_node', { catalog_node_id: created.id });
+  expect(product.attributes).toContainEqual({
+    template_id: 'product',
+    template_version: 2,
+    values: { brand: '测试', shelf_life_days: 15, shelf_life_basis: 'PRODUCTION_DATE' },
+  });
+  await expect(
+    write('upgrade_attributes', {
+      target: { kind: 'CATALOG_NODE', id: sku },
+      template_id: 'product',
+      template_version: 2,
+      values: {},
+      expected_revisions: { [sku]: 1 },
+    }),
+  ).rejects.toMatchObject({ code: 'APPROVAL_REQUIRED' });
+});
+
+it('does not let the retained batch endpoint bypass a confirmed placement restriction', async () => {
+  await installRule({ allow_direct_products: false });
+  await expect(
+    write('create_items_batch', { items: [{ client_ref: 'one', catalog_node_id: sku }] }),
+  ).rejects.toMatchObject({ code: 'CLASSIFICATION_CONFLICT' });
+});

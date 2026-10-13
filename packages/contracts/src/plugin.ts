@@ -7,7 +7,7 @@ const attribute = z.object({
   template_id: z.enum(
     Object.keys(templates) as [keyof typeof templates, ...(keyof typeof templates)[]],
   ),
-  template_version: z.literal(1),
+  template_version: z.union([z.literal(1), z.literal(2)]),
   values: z.record(z.string(), z.unknown()),
 });
 const record = {
@@ -90,6 +90,15 @@ export const pluginWriteResultSchema = z.strictObject({
     }),
   ),
   event_ids: z.array(entityId('event')),
+  created_items: z
+    .array(
+      z.strictObject({
+        client_ref: z.string(),
+        item_id: entityId('item'),
+        after_revision: z.number().int().positive(),
+      }),
+    )
+    .optional(),
   note_id: entityId('note').optional(),
   proposal_id: z.uuid().optional(),
   receipt: z.record(z.string(), z.unknown()).optional(),

@@ -7,6 +7,9 @@ import {
   type ProductGroup,
 } from '../../../../packages/contracts/src/web.js';
 export const labels: Record<string, string> = {
+  PRODUCTION_DATE: '生产日期',
+  PACKAGING_DATE: '包装日期',
+  OTHER: '其他依据',
   current: '当前库存',
   all: '全部记录',
   unknown: '开封未记录',

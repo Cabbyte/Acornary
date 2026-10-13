@@ -1,5 +1,7 @@
 # Domain model v1
 
+语音入库扩展：版本必填、错误恢复、请求追踪、原子批量操作及 product v2 见 [语音入库指南](./voice-intake.md)。下文历史阶段中的 v1 限制以该扩展说明为准。
+
 本文是 Acornary 唯一的领域模型基线，定义领域契约；Stage1 已有运行代码与 PostgreSQL migration，后续能力仍按阶段边界实施。实际验证范围见 [验证记录](./stage1-verification.md)。接口见 [Architecture](./architecture.md)，实例见 [Examples](./examples.md)。
 
 本文保留长期领域契约；Stage1 的交付子集以 Architecture 为准。Stage1 实现两棵树、七个模板 v1、明确 UUID 的库存操作、文字 Note 和 Event；NoteAttachment 与模板升级属于后续阶段，不因出现在静态模型中而纳入首阶段实施。

@@ -1,5 +1,7 @@
 # Acornary 文档
 
+语音入库扩展：版本必填、错误恢复、请求追踪、原子批量操作及 product v2 见 [语音入库指南](./voice-intake.md)。下文历史阶段中的 v1 限制以该扩展说明为准。
+
 先读 [项目进度](./progress.md)。Acornary 以云端库存为唯一正式数据源，Web 和 MCP Apps 使用同一套响应式工作台；MCP 与 Web 写入共用领域命令。产品支持读写，`/inspect` 检查器保持只读。
 
 ## 当前实现与运行
@@ -14,6 +16,7 @@
 | [Web UI](./webui.md) | 路由、会话、读写、离线缓存、草稿与验证流程 |
 | [响应式工作台](./responsive-workbench.md) | 桌面／手机共用界面、原子批量移动与编辑 |
 | [MCP Apps 插件](./plugin.md) | 宿主桥、资源、身份作用域、上下文与私有状态 |
+| [D101 物品标签](./item-labels.md) | 单件标签、Chrome 蓝牙打印、短链接与待完成的实机验收 |
 | [账号系统](./accounts.md) | Passkey、密码、家庭成员、邮件开关与迁移 |
 | [版本发布](./releases.md) | GitHub Actions、GHCR、受限 SSH、迁移备份与恢复 |
 | [云端运行](./cloud-runtime.md) | 云端模式、OAuth、账号运维、入口与备份 |

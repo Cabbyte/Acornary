@@ -1,3 +1,5 @@
+import { LabelButton } from './label-button';
+import { itemDate } from '../lib/labels';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Button,
@@ -348,7 +350,7 @@ const defaults = (): View => ({
   pageSize: WORKBENCH_PAGE_SIZE,
   selected: [],
   selecting: false,
-  columns: ['spec', 'status', 'place', 'note'],
+  columns: ['spec', 'status', 'note'],
   scroll: 0,
 });
 export function clearWorkbenchSelections() {
@@ -376,7 +378,8 @@ export function Workbench({
       for (const [k, v] of views) views.set(k, { ...v, selected: [], selecting: false });
       householdScope = session.cache_key ?? '';
     }
-    return views.get(key) ?? defaults();
+    const saved = views.get(key) ?? defaults();
+    return { ...saved, columns: saved.columns.filter((column) => column !== 'place') };
   });
   const [locations, setLocations] = useState(false);
   const [treeState, setTreeState] = useState<LocationTreeState>(
@@ -676,7 +679,6 @@ export function Workbench({
                     options={[
                       { value: 'spec', label: '规格' },
                       { value: 'status', label: '状态' },
-                      { value: 'place', label: '收纳位置' },
                       { value: 'note', label: '备注' },
                     ]}
                     onChange={(columns) => patch({ columns: columns.map(String), page })}
@@ -747,6 +749,10 @@ export function Workbench({
           {selected.length > 0 && (
             <div className="wb-selection-bar">
               <span>已选 {selected.length} 件</span>
+              <LabelButton
+                disabled={!online || stale || selected.length > 100}
+                onClick={() => open({ kind: 'print', ids: selected.map((i) => i.id).join(',') })}
+              />
               <Button
                 disabled={disabled || selected.length > 100}
                 onClick={() => open({ kind: 'move', ids: selected.map((i) => i.id).join(',') })}
@@ -846,16 +852,6 @@ export function Workbench({
                         key: 'status',
                         width: 100,
                         render: (_: unknown, item: ItemRecord) => <Tag>{itemStatus(item)}</Tag>,
-                      },
-                    ]
-                  : []),
-                ...(view.columns.includes('place')
-                  ? [
-                      {
-                        title: '收纳位置',
-                        key: 'place',
-                        ellipsis: true,
-                        render: (_: unknown, item: ItemRecord) => fullPath(item.parent_id, data),
                       },
                     ]
                   : []),
@@ -968,6 +964,15 @@ function ItemInspector({
       </Typography.Title>
       <Typography.Text type="secondary">{specification(sku) || '规格未记录'}</Typography.Text>
       <Tag>{itemStatus(item)}</Tag>
+      <LabelButton
+        disabled={!online || stale}
+        onClick={() => open({ kind: 'print', target: item.id })}
+      />
+      <p>
+        <strong>
+          {itemDate(item).title}：{itemDate(item).text}
+        </strong>
+      </p>
       <Space>
         <Button
           disabled={disabled || isTerminal(item)}

@@ -11,6 +11,7 @@ const statuses: Record<string, number> = {
   UNAUTHORIZED: 401,
   FORBIDDEN: 403,
   NOT_FOUND: 404,
+  MISSING_EXPECTED_REVISION: 400,
   REVISION_CONFLICT: 409,
   IDEMPOTENCY_CONFLICT: 409,
   SESSION_CHANGED: 409,
@@ -26,3 +27,10 @@ const statuses: Record<string, number> = {
 };
 export const domainErrorStatus = (code: string): number | undefined =>
   Object.hasOwn(statuses, code) ? statuses[code] : undefined;
+
+export function errorRecovery(code: string) {
+  if (code === 'REVISION_CONFLICT') return 'REREAD_AND_REVIEW';
+  if (code === 'IDEMPOTENCY_CONFLICT') return 'RECOVER_ORIGINAL_REQUEST';
+  if (['UNAUTHORIZED', 'FORBIDDEN', 'SESSION_CHANGED'].includes(code)) return 'REAUTHORIZE';
+  return domainErrorStatus(code) ? 'FIX_REQUEST' : 'RETRY_SAME_REQUEST';
+}
