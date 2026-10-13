@@ -457,7 +457,8 @@ test('Ant Design SKU selection clears when switching households and returning', 
     }, family);
     await expect(
       embedded.getByRole('button', { name: family ? '隔离的第二家庭' : firstName, exact: true }),
-    ).toBeVisible();
+      // A notification during an in-flight read may wait for the 5 s poll and debounce.
+    ).toBeVisible({ timeout: 10000 });
     await expect(embedded.getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
     await expect
       .poll(() => page.evaluate(() => (window as any).host.context?.selection))
