@@ -1,3 +1,4 @@
+import { fixtureCommand } from './governance.js';
 import { test, expect, type Page } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { login } from './login.js';
@@ -12,12 +13,7 @@ async function fixture(page: Page) {
     ),
   };
   const write = async (operation: string, input: object) => {
-    const r = await page.request.post(`/api/write/${operation}`, {
-      headers,
-      data: { idempotency_key: crypto.randomUUID(), ...input },
-    });
-    expect(r.status(), await r.text()).toBe(200);
-    return r.json();
+    return fixtureCommand(page, operation, input);
   };
   const name = '统一界面验收 ' + crypto.randomUUID().slice(0, 6);
   const sku = (await write('create_catalog_node', { kind: 'SKU', name })).affected_objects[0].id;

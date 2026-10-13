@@ -1,10 +1,12 @@
+import { reviewCatalogProposal, confirmCatalogProposal, compactIntakeResult } from './intake.js';
+import { pluginReviewTool, pluginConfirmTool } from '../../../packages/contracts/src/plugin.js';
 import { debugRead } from './debug.js';
 import { release, verifyReleaseMigrations } from './release.js';
 import Fastify from 'fastify';
 import staticFiles from '@fastify/static';
 import { localhostHostValidation } from '@modelcontextprotocol/fastify';
 import { McpServer, createMcpHandler } from '@modelcontextprotocol/server';
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -51,6 +53,7 @@ export async function buildApp(
     authVersion: number;
   }>();
   const webContexts = new WeakMap<FastifyRequest, Context>();
+  const webApprovalScopes = new WeakMap<FastifyRequest, string>();
   const headersFor = (req: FastifyRequest) => {
     const headers = new Headers();
     for (const [key, value] of Object.entries(req.headers))
@@ -133,6 +136,20 @@ export async function buildApp(
           .code(403)
           .send({ error: { code: 'FORBIDDEN', message: 'Household membership required.' } });
       webContexts.set(req, context);
+      webApprovalScopes.set(
+        req,
+        'web:' +
+          createHash('sha256')
+            .update(
+              JSON.stringify({
+                context,
+                user_id: user.id,
+                auth_version: user.auth_version,
+                session_id: session!.session.id,
+              }),
+            )
+            .digest('hex'),
+      );
     }
   });
   app.setErrorHandler((error: any, _req, reply) => {
@@ -276,6 +293,20 @@ export async function buildApp(
     '/api/ui/groups',
     async (req) => (await webSnapshot(webContexts.get(req) ?? ctx, req.query)).groups,
   );
+  for (const action of ['catalog-review', 'catalog-confirm'])
+    app.post(`/api/ui/${action}`, async (req) => {
+      if (
+        req.headers.origin !== (cloud?.origin ?? `http://${req.headers.host}`) ||
+        req.headers['x-acornary-request'] !== 'web' ||
+        !req.headers['content-type']?.startsWith('application/json')
+      )
+        throw new DomainError('FORBIDDEN', 'Same-origin Web request required.');
+      const current = webContexts.get(req) ?? ctx;
+      const scope = webApprovalScopes.get(req) ?? 'local-web:' + JSON.stringify(current);
+      return action === 'catalog-review'
+        ? reviewCatalogProposal(current, scope, req.body)
+        : confirmCatalogProposal(current, scope, req.body);
+    });
   app.post('/api/write/:operation', async (req) => {
     // Browser-only same-origin JSON commands. Reject absent/null Origin as well as cross-site requests.
     if (
@@ -304,7 +335,7 @@ export async function buildApp(
       { name: 'acornary', version: '0.1.0' },
       {
         instructions:
-          'Acornary 管理具体物品。先查询 UUID、属性和 revision，再进行明确的写操作。已知差异影响选择时先澄清；在用户确认范围内没有已知差异时可选择并报告实际 UUID。不得猜测缺失事实；推荐不自动变为库存写入。写操作携带幂等键与 expected_revisions；超时重试保留原键和参数。版本冲突后重新查询并判断原操作是否仍成立，不自动替换 revision 强行重试。未记录状态不等于 ACTIVE。Web 与 MCP 通过相同领域命令写入，检查器只读。模板字段与单位通过 list_attribute_templates/get_attribute_template 发现。',
+          '协作规范 intake/1 与 catalog-governance/1：日常整批入库先一次 get_intake_context，再一次 commit_intake，已明确授权的正常入库不重复要求确认。未知数量、日期、开封状态、精度保持未知，物理件数必须明确；每批最多100件，超限先明确分批边界。同名不等于同款，具体歧义集中澄清；位置与逐件重量不参与商品身份。新分支规范或越界扩展先 propose_catalog_change，用户在 Acornary 卡片确认；区分本次授权和长期规则。未确认规范的已有明确商品仍可补货。超时保留原参数与幂等键，get_intake_receipt 核对结果；冲突不自动换版本重试。成功后简短报告实际件数、商品和位置及差异，完整编号按需查看。家庭规范始终读取服务端；模型语义判断不能替代授权。Acornary 管理具体物品。先查询 UUID、属性和 revision，再进行明确的写操作。已知差异影响选择时先澄清；在用户确认范围内没有已知差异时可选择并报告实际 UUID。不得猜测缺失事实；推荐不自动变为库存写入。写操作携带幂等键与 expected_revisions；超时重试保留原键和参数。版本冲突后重新查询并判断原操作是否仍成立，不自动替换 revision 强行重试。未记录状态不等于 ACTIVE。Web 与 MCP 通过相同领域命令写入，检查器只读。模板字段与单位通过 list_attribute_templates/get_attribute_template 发现。',
       },
     );
     registerInventoryApp(
@@ -320,6 +351,19 @@ export async function buildApp(
         name,
         {
           description: descriptions[name],
+          _meta: {
+            ...(name === 'propose_catalog_change' ? { ui: { resourceUri: uiResource.uri } } : {}),
+            ...(cloud
+              ? {
+                  securitySchemes: [
+                    {
+                      type: 'oauth2',
+                      scopes: [reads.has(name) ? 'inventory:read' : 'inventory:write'],
+                    },
+                  ],
+                }
+              : {}),
+          },
           inputSchema: schemas[name] as any,
           annotations: {
             readOnlyHint: reads.has(name),
@@ -327,18 +371,6 @@ export async function buildApp(
             idempotentHint: true,
             openWorldHint: false,
           },
-          ...(cloud
-            ? {
-                _meta: {
-                  securitySchemes: [
-                    {
-                      type: 'oauth2',
-                      scopes: [reads.has(name) ? 'inventory:read' : 'inventory:write'],
-                    },
-                  ],
-                },
-              }
-            : {}),
         },
         async (args: any) => {
           try {
@@ -359,9 +391,10 @@ export async function buildApp(
                 },
                 'MCP operation',
               );
+            const response = name === 'commit_intake' ? compactIntakeResult(result) : result;
             return {
-              content: [{ type: 'text' as const, text: JSON.stringify(result) }],
-              structuredContent: result,
+              content: [{ type: 'text' as const, text: JSON.stringify(response) }],
+              structuredContent: response,
             };
           } catch (e) {
             if (!(e instanceof DomainError)) throw e;
@@ -403,10 +436,17 @@ export async function buildApp(
                 : null;
             const name =
               body?.method === 'tools/call'
-                ? (body.params?.name as Operation | typeof pluginWriteTool)
+                ? (body.params?.name as
+                    | Operation
+                    | typeof pluginWriteTool
+                    | typeof pluginReviewTool
+                    | typeof pluginConfirmTool)
                 : undefined;
             const scope =
-              name === pluginWriteTool || (name && name in schemas && !reads.has(name))
+              name === pluginWriteTool ||
+              name === pluginReviewTool ||
+              name === pluginConfirmTool ||
+              (name && name in schemas && !reads.has(name))
                 ? 'inventory:write'
                 : 'inventory:read';
             if (!scopes.has(scope)) throw createInsufficientScopeError([scope]);

@@ -154,16 +154,6 @@ export function ActionDrawer({
     },
     [opener],
   );
-  const [height, setHeight] = useState(() => window.visualViewport?.height ?? window.innerHeight);
-  useEffect(() => {
-    const update = () => setHeight(window.visualViewport?.height ?? window.innerHeight);
-    window.visualViewport?.addEventListener('resize', update);
-    window.addEventListener('resize', update);
-    return () => {
-      window.visualViewport?.removeEventListener('resize', update);
-      window.removeEventListener('resize', update);
-    };
-  }, []);
   return (
     <Drawer
       open
@@ -178,9 +168,9 @@ export function ActionDrawer({
       getContainer={() => document.body}
       className="action-drawer"
       styles={{
-        section: { height },
+        section: { height: '100%' },
         body: { padding: mobile ? 16 : 24 },
-        footer: { padding: '12px 24px max(12px, env(safe-area-inset-bottom))' },
+        footer: { padding: '12px 24px' },
       }}
       footer={footer}
     >

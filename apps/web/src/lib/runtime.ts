@@ -12,6 +12,7 @@ export interface InventoryTransport {
     scope?: string,
   ): Promise<WriteResult>;
   request<T>(url: string): Promise<T>;
+  governance<T>(action: 'review' | 'confirm', input: unknown): Promise<T>;
 }
 export interface RecordStore {
   get<T>(key: string): Promise<T | undefined>;

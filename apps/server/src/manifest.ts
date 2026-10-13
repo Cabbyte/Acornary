@@ -15,6 +15,9 @@ export async function inventoryManifest() {
     'operations',
     'barcode_index',
     'installations',
+    'catalog_policy_versions',
+    'catalog_proposals',
+    'catalog_identity_keys',
     'migrations',
   ];
   const client = await pool.connect();
@@ -24,7 +27,7 @@ export async function inventoryManifest() {
     for (const table of tables) {
       const where =
         table === 'migrations'
-          ? " WHERE name IN ('001_initial.sql','002_unified_ids.sql','003_embed_attributes.sql')"
+          ? " WHERE name IN ('001_initial.sql','002_unified_ids.sql','003_embed_attributes.sql','006_intake_policy.sql')"
           : '';
       const rows = (
         await client.query(`SELECT to_jsonb(t)::text AS row FROM "${table}" t${where}`)

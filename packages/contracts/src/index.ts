@@ -1,3 +1,4 @@
+import { intakeSchemas } from './intake.js';
 import { entityId } from './ids.js';
 import { z } from 'zod';
 import { Decimal } from 'decimal.js';
@@ -177,6 +178,7 @@ const write = {
   idempotency_key: z.string().min(1).max(200),
   expected_revisions: revisions.default({}),
   occurred_at: z.iso.datetime({ offset: true }).optional(),
+  approval_id: z.uuid().optional(),
 };
 const attr = { template_id: templateId, template_version: z.literal(1) };
 const values = z.record(z.string(), z.unknown());
@@ -205,6 +207,7 @@ const filters = z
   .max(20)
   .optional();
 export const schemas = {
+  ...intakeSchemas,
   query_catalog_nodes: z.strictObject({
     ...page,
     include_path: z.boolean().default(false),
@@ -311,6 +314,9 @@ export const schemas = {
 };
 export type Operation = keyof typeof schemas;
 export const reads = new Set<Operation>([
+  'get_intake_context',
+  'get_intake_receipt',
+  'get_catalog_policy',
   'query_catalog_nodes',
   'get_catalog_node',
   'query_items',
@@ -321,9 +327,19 @@ export const reads = new Set<Operation>([
   'get_history',
 ]);
 export const descriptions: Record<Operation, string> = {
+  get_intake_context:
+    '日常入库先批量查询整批名称、已知位置和明确 ID，获得当前规范、候选与版本。检索覆盖范围不等于语义上全库无匹配；截断时继续查询。',
+  commit_intake:
+    '在用户已授权范围内一次原子入库整批物品，复用商品，必要分类和新商品一起提交。共同信息放 defaults，逐件差异放 instances；不猜数量、日期、精度，不夹带目录治理。成功回执即实际结果，超时保留原键与参数。',
+  get_intake_receipt: '按操作 ID 或原幂等键读取已提交入库回执。未找到不代表可换键重试。',
+  get_catalog_policy: '读取家庭当前已确认分类规范及版本。历史目录不自动等于规范。',
+  propose_catalog_change:
+    '提出具体规范变更、仅本次入库例外或独立目录治理；只保存提案，必须在插件确认卡片确认后生效。不得为普通入库主动整理旧目录。',
+
   query_catalog_nodes: '查询目录树、SKU、名称和商品条码，返回稳定 ID 和版本。',
   get_catalog_node: '读取一个目录节点及其模板属性。',
-  create_catalog_node: '创建分类 GROUP 或商品 SKU，分类父节点必须是 GROUP。',
+  create_catalog_node:
+    '独立目录创建，须有界面确认的对应治理提案。日常入库请使用 commit_intake，避免留下部分目录。',
   update_catalog_node: '修改目录名称，稳定 ID 不变。',
   move_catalog_node: '移动目录分类，禁止环和跨家庭引用。',
   query_items:

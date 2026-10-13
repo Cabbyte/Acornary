@@ -1,8 +1,9 @@
-import { Card } from 'antd';
+import { CatalogReview } from './catalog-review';
+import { Card, Descriptions } from 'antd';
 import { CalendarInput, DecimalInput } from './inputs';
 import { Button, Form, Input, Select, TreeSelect } from 'antd';
 import { draftSchema } from '../lib/draft';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Decimal } from 'decimal.js';
 import { schemas, type Operation, type TemplateId } from '../../../../packages/contracts/src/index';
 import {
@@ -16,7 +17,7 @@ import {
 } from '../../../../packages/contracts/src/web';
 import { useInventory } from '../lib/inventory';
 import { useSession } from '../lib/session';
-import { ApiError, write } from '../lib/api';
+import { ApiError, write, read } from '../lib/api';
 import { persist, stored } from '../lib/storage';
 import { amount, itemTitle, label, remaining } from '../lib/presentation';
 import {
@@ -52,6 +53,7 @@ interface Draft {
   revisions: Record<string, number>;
   attempt?: Attempt;
   result?: WriteResult;
+  proposalId?: string;
 }
 const titles: Record<string, string> = {
   edit: '编辑物品',
@@ -71,7 +73,6 @@ export function ActionSheet({
   action,
   onClose,
   onSaved,
-  onCreateProduct,
 }: {
   action: Action;
   onClose: () => void;
@@ -80,6 +81,24 @@ export function ActionSheet({
 }) {
   const { data, refresh, stale } = useInventory();
   const { session, online } = useSession();
+  const productOptions = useMemo(
+    () =>
+      data.catalog
+        .filter((c) => c.kind === 'SKU' && c.id !== data.container_catalog_id)
+        .map((c) => {
+          const product = attr(c, 'product');
+          const details = [product?.brand, specification(c), ...(product?.barcodes ?? [])]
+            .filter(Boolean)
+            .join(' · ');
+          return {
+            value: c.id,
+            label: c.name,
+            details,
+            searchText: `${c.name} ${details}`.normalize('NFKC').toLocaleLowerCase(),
+          };
+        }),
+    [data.catalog, data.container_catalog_id],
+  );
   const item = data.items.find((i) => i.id === action.target),
     catalog = data.catalog.find((c) => c.id === action.target);
   const target = item ?? catalog;
@@ -106,10 +125,20 @@ export function ActionSheet({
   const draftKey = `${session.cache_key}:draft:${action.kind}:${action.target ?? ''}:${template}:${action.note ?? ''}:${action.ids ?? ''}:${action.parent ?? ''}`;
   const [draft, setDraft] = useState<Draft>();
   const [error, setError] = useState('');
+  const [errorDetails, setErrorDetails] = useState<any>();
   const [storageError, setStorageError] = useState('');
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
   const [review, setReview] = useState(false);
+  const reviewRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!review || action.kind !== 'intake') return;
+    const frame = requestAnimationFrame(() => {
+      reviewRef.current?.focus({ preventScroll: true });
+      reviewRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [review, action.kind]);
   const [conflict, setConflict] = useState(false);
   const [done, setDone] = useState(false);
   useEffect(() => {
@@ -178,6 +207,7 @@ export function ActionSheet({
     setDraft((d) => (d ? { ...d, values: { ...d.values, [key]: value } } : d));
     setReview(false);
     setError('');
+    setErrorDetails(undefined);
   };
   const values = draft?.values ?? {};
   const physicalMove = moving;
@@ -228,7 +258,7 @@ export function ActionSheet({
     const attribute = { template_id: template, template_version: 1 };
     switch (action.kind) {
       case 'intake': {
-        operation = 'create_items';
+        operation = 'commit_intake';
         const initial: unknown[] = [];
         const lifecycle = {
           ...(values.opening ? { opening: { state: values.opening } } : {}),
@@ -246,10 +276,26 @@ export function ActionSheet({
             },
           });
         input = {
-          catalog_node_id: values.sku,
-          count: Number(values.count),
-          parent_id: values.parent || null,
-          initial_attributes: initial,
+          policy_revision: Number(values.policyRevision ?? 0),
+          lines: [
+            {
+              product:
+                values.newProduct === 'true'
+                  ? {
+                      name: values.productName,
+                      parent_id: values.productParent,
+                      classification_reason: values.classificationReason,
+                    }
+                  : { catalog_node_id: values.sku },
+              instances: [
+                {
+                  count: Number(values.count),
+                  parent_id: values.parent || null,
+                  initial_attributes: initial,
+                },
+              ],
+            },
+          ],
         };
         break;
       }
@@ -423,11 +469,67 @@ export function ActionSheet({
         await complete(draft.result);
         return;
       }
-      const attempt = draft.attempt ?? command();
+      let attempt = draft.attempt ?? command();
+      if (!draft.attempt && attempt.operation === 'commit_intake') {
+        const context = await read<any>('get_intake_context', {
+          catalog_node_ids: [values.newProduct === 'true' ? values.productParent : values.sku],
+          location_ids: values.parent ? [values.parent] : [],
+        });
+        const observed = Object.fromEntries(
+          [...data.catalog, ...data.items].map((o) => [o.id, o.revision]),
+        );
+        for (const [id, revision] of Object.entries(context.expected_revisions))
+          if (observed[id] !== revision)
+            throw new ApiError(
+              'REVISION_CONFLICT',
+              '所选商品或位置发生变化，请核对最新记录。',
+              409,
+            );
+        attempt = {
+          ...attempt,
+          payload: {
+            ...attempt.payload,
+            policy_revision: context.policy_revision,
+            expected_revisions: context.expected_revisions,
+          },
+        };
+      }
       const pending = { ...draft, attempt };
       setDraft(pending);
       // Persist the exact key and payload before dispatch: even a reload after a lost response is a safe retry.
       await persist(draftKey, pending);
+      const needsGovernance =
+        ['create_catalog_node', 'update_catalog_node', 'move_catalog_node'].includes(
+          attempt.operation,
+        ) ||
+        (['bind_attributes', 'update_attributes', 'remove_attributes'].includes(
+          attempt.operation,
+        ) &&
+          (attempt.payload.target as any)?.kind === 'CATALOG_NODE') ||
+        (attempt.operation === 'correct_item' && !!attempt.payload.core);
+      if (needsGovernance && !attempt.payload.approval_id) {
+        if (!draft.proposalId) {
+          const proposal = (await write(
+            'propose_catalog_change',
+            {
+              idempotency_key: `proposal:${attempt.payload.idempotency_key}`,
+              proposal: {
+                kind: 'catalog_command',
+                operation: attempt.operation,
+                input: attempt.payload,
+                reason: values.reason || '核对本次明确的目录修改',
+              },
+            },
+            session.household_id,
+            session.user_id,
+            session.cache_key,
+          )) as WriteResult & { proposal_id: string };
+          const waiting = { ...pending, proposalId: proposal.proposal_id };
+          setDraft(waiting);
+          await persist(draftKey, waiting);
+        }
+        return;
+      }
       const result = await write(
         attempt.operation,
         attempt.payload,
@@ -441,12 +543,16 @@ export function ActionSheet({
       await complete(result);
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.code === 'REVISION_CONFLICT') {
+        setErrorDetails(err.details);
+        if (err.code === 'REVISION_CONFLICT' || err.code === 'POLICY_CONFLICT') {
           setConflict(true);
-          setDraft((d) => (d ? { ...d, attempt: undefined } : d));
+          setDraft((d) => (d ? { ...d, attempt: undefined, proposalId: undefined } : d));
           await refresh().catch(() => {});
+          if (err.code === 'POLICY_CONFLICT')
+            setErrorDetails(await read('get_catalog_policy', {}).catch(() => err.details));
         } else if (err.status >= 400 && err.status < 500 && err.status !== 401)
-          setDraft((d) => (d ? { ...d, attempt: undefined } : d));
+          setDraft((d) => (d ? { ...d, attempt: undefined, proposalId: undefined } : d));
+        if (err.status >= 400 && err.status < 500 && err.status !== 401) setReview(false);
         setError(err.message);
       } else setError(err instanceof Error ? err.message : '无法保存，请重试。');
     } finally {
@@ -573,6 +679,23 @@ export function ActionSheet({
           </>
         )}
         {storageError && <Notice danger>{storageError}</Notice>}
+        {draft.proposalId && !draft.attempt?.payload.approval_id && (
+          <CatalogReview
+            proposalId={draft.proposalId}
+            onApproved={(id) => {
+              const approved = {
+                ...draft,
+                attempt: draft.attempt
+                  ? { ...draft.attempt, payload: { ...draft.attempt.payload, approval_id: id } }
+                  : undefined,
+              };
+              setDraft(approved);
+              void persist(draftKey, approved);
+            }}
+          />
+        )}
+        {draft.attempt?.payload.approval_id ? <Notice>已批准本次变更，请提交保存。</Notice> : null}
+
         {draft.attempt && !draft.result && (
           <Notice>有一笔尚待确认的提交。重试会核对同一次操作，不会重复入库或消耗。</Notice>
         )}
@@ -581,24 +704,73 @@ export function ActionSheet({
           component={false}
           disabled={busy || !!draft.attempt || !!draft.result || session.can_write === false}
         >
-          <fieldset disabled={busy || !!draft.attempt || !!draft.result} className="stack">
+          <fieldset
+            disabled={busy || !!draft.attempt || !!draft.result}
+            hidden={review && action.kind === 'intake'}
+            className="stack"
+          >
             {action.kind === 'intake' && (
               <>
                 <FormField label="选择商品">
                   <Select
+                    showSearch={{
+                      filterOption: (input, option) =>
+                        (option?.searchText ?? '').includes(
+                          input.normalize('NFKC').trim().toLocaleLowerCase(),
+                        ),
+                    }}
+                    placeholder="搜索名称、品牌、规格或条码"
+                    optionRender={(option) => (
+                      <div className="ac-product-option">
+                        <span>{option.label}</span>
+                        {option.data.details && <small>{option.data.details}</small>}
+                      </div>
+                    )}
+                    notFoundContent="没有匹配商品，可创建新商品"
                     value={values.sku}
                     onChange={(e) => set('sku', e)}
                     options={[
-                      { value: '', label: '\u8BF7\u9009\u62E9\u5DF2\u6709\u5546\u54C1' },
-                      ...(data.catalog
-                        .filter((c) => c.kind === 'SKU' && c.id !== data.container_catalog_id)
-                        .map((c) => ({ value: c.id, label: c.name })) ?? []),
+                      { value: '', label: '请选择已有商品', details: '', searchText: '' },
+                      ...productOptions,
                     ]}
                   />
                 </FormField>
-                <Button htmlType="button" onClick={onCreateProduct} type="default">
-                  创建新商品
+                <Button
+                  htmlType="button"
+                  onClick={() => set('newProduct', values.newProduct === 'true' ? 'false' : 'true')}
+                  type="default"
+                >
+                  {values.newProduct === 'true' ? '改用已有商品' : '创建新商品'}
                 </Button>
+                {values.newProduct === 'true' && (
+                  <>
+                    <Notice>
+                      新商品先保留为草稿，提交时与实物一起保存。此分类需要已有确认规范。
+                    </Notice>
+                    <FormField label="新商品名称">
+                      <Input
+                        required
+                        value={values.productName ?? ''}
+                        onChange={(e) => set('productName', e.target.value)}
+                      />
+                    </FormField>
+                    <FormField label="商品分类">
+                      <Select
+                        value={values.productParent}
+                        onChange={(v) => set('productParent', v)}
+                        options={categories.map((c) => ({ value: c.id, label: c.name }))}
+                      />
+                    </FormField>
+                    <FormField label="归类依据">
+                      <Input
+                        required
+                        value={values.classificationReason ?? ''}
+                        onChange={(e) => set('classificationReason', e.target.value)}
+                        placeholder="说明与已确认分类含义的关系"
+                      />
+                    </FormField>
+                  </>
+                )}
                 <FormField label="入库件数" hint="每件实物都有独立身份；以下属性仅应用于这次入库。">
                   <DecimalInput
                     min="1"
@@ -860,19 +1032,126 @@ export function ActionSheet({
           </section>
         )}
         {review && action.kind === 'intake' && (
-          <Notice>
-            将新增 {values.count} 件「{data.catalog.find((c) => c.id === values.sku)?.name}
-            」，位置：
-            {values.parent
-              ? itemName(
-                  data.items.find((i) => i.id === values.parent)!,
-                  data,
-                )
-              : '未记录'}
-            。请核对以上信息。
-          </Notice>
+          <section
+            ref={reviewRef}
+            tabIndex={-1}
+            aria-labelledby="intake-review-title"
+            className="intake-review stack"
+          >
+            <h2 id="intake-review-title">核对本次入库</h2>
+            <p>确认后保存以下记录。未填写的信息保留为未记录。</p>
+            <Descriptions
+              column={1}
+              size="small"
+              items={[
+                {
+                  key: 'product',
+                  label: '商品',
+                  children:
+                    values.newProduct === 'true'
+                      ? values.productName
+                      : data.catalog.find((c) => c.id === values.sku)?.name,
+                },
+                ...(values.newProduct === 'true'
+                  ? [
+                      {
+                        key: 'category',
+                        label: '商品分类',
+                        children:
+                          data.catalog.find((c) => c.id === values.productParent)?.name ?? '未记录',
+                      },
+                      { key: 'reason', label: '归类依据', children: values.classificationReason },
+                    ]
+                  : []),
+                { key: 'count', label: '入库件数', children: `${values.count} 件` },
+                {
+                  key: 'place',
+                  label: '存放位置',
+                  children: values.parent ? fullPath(values.parent, data) : '未记录',
+                },
+                { key: 'opening', label: '开封状态', children: label(values.opening) },
+                { key: 'expiry', label: '到期日期', children: values.expiry || '未记录' },
+                {
+                  key: 'quantity',
+                  label: '每件剩余量',
+                  children: values.quantity ? amount(values.quantity, values.unit) : '未记录',
+                },
+                {
+                  key: 'accuracy',
+                  label: '数量依据',
+                  children: values.quantity ? label(values.accuracy) : '未记录',
+                },
+              ]}
+            />
+            {!draft.attempt && !draft.result && (
+              <Button
+                htmlType="button"
+                disabled={busy}
+                onClick={() => {
+                  setReview(false);
+                  requestAnimationFrame(() =>
+                    document
+                      .querySelector<HTMLInputElement>('.action-drawer [aria-label="选择商品"]')
+                      ?.focus(),
+                  );
+                }}
+              >
+                返回修改
+              </Button>
+            )}
+          </section>
         )}
         {error && <Notice danger>{error}</Notice>}
+        {error && errorDetails && (
+          <Card title="核对冲突" size="small">
+            {Array.isArray(errorDetails.candidates) &&
+              errorDetails.candidates.map((candidate: any) => (
+                <div key={candidate.id}>
+                  <p>
+                    {candidate.name} ·{' '}
+                    {(candidate.attributes ?? [])
+                      .filter((a: any) => a.template_id === 'product')
+                      .map((a: any) =>
+                        [a.values.brand, a.values.model, a.values.specification]
+                          .filter(Boolean)
+                          .join(' / '),
+                      )
+                      .join('；')}
+                  </p>
+                  {action.kind === 'intake' && candidate.kind === 'SKU' && (
+                    <Button
+                      htmlType="button"
+                      onClick={() => {
+                        setDraft((d) =>
+                          d
+                            ? {
+                                ...d,
+                                values: { ...d.values, sku: candidate.id, newProduct: 'false' },
+                                attempt: undefined,
+                                proposalId: undefined,
+                              }
+                            : d,
+                        );
+                        setReview(false);
+                        setError('');
+                        setErrorDetails(undefined);
+                        setConflict(false);
+                      }}
+                    >
+                      使用这个已有商品
+                    </Button>
+                  )}
+                </div>
+              ))}
+            <details>
+              <summary>查看具体记录、规则与版本差异</summary>
+              <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                {JSON.stringify(errorDetails, null, 2)}
+              </pre>
+            </details>
+          </Card>
+        )}
+
         {conflict && (
           <section className="conflict">
             <h3>核对最新记录</h3>
@@ -967,6 +1246,7 @@ export function ActionSheet({
             disabled={
               busy ||
               session.can_write === false ||
+              (!!draft.proposalId && !draft.attempt?.payload.approval_id) ||
               !online ||
               (stale && !draft.result) ||
               conflict ||
@@ -980,7 +1260,11 @@ export function ActionSheet({
               : draft.result
                 ? '刷新查看结果'
                 : draft.attempt
-                  ? '重试同一次操作'
+                  ? draft.attempt.payload.approval_id
+                    ? '保存'
+                    : draft.proposalId
+                      ? '等待分类确认'
+                      : '重试同一次操作'
                   : action.kind === 'intake'
                     ? review
                       ? '确认入库'

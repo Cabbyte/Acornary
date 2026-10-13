@@ -11,3 +11,7 @@ GRANT INSERT,UPDATE,DELETE ON "user",session,account,verification,jwks,"oauthCli
 GRANT INSERT,UPDATE ON households TO acornary_app;
 GRANT INSERT ON actors,attribute_templates,household_settings TO acornary_app;
 GRANT INSERT,UPDATE,DELETE ON household_members,household_invitations,passkey,auth_enrollments,auth_ceremonies,auth_attempts,auth_oauth_selections TO acornary_app;
+
+GRANT INSERT ON catalog_policy_versions TO acornary_app;
+GRANT INSERT,UPDATE ON catalog_proposals TO acornary_app;
+GRANT INSERT,UPDATE,DELETE ON catalog_identity_keys TO acornary_app;

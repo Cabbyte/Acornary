@@ -50,6 +50,7 @@ import { fullPath, specification } from '../lib/browse';
 import {
   availabilityOptions,
   itemStatus,
+  itemFacts,
   latestNote,
   moveTargets,
   workbenchItems,
@@ -61,6 +62,7 @@ import { eventNames, remaining, time } from '../lib/presentation';
 import { ActionDrawer, Empty, Notice } from './components';
 import { LocationPath, SearchField } from './browser';
 import { useViewport } from './theme';
+import { pageScrollRoot, readPageScroll, setPageScroll } from './viewport';
 import type { Action } from './forms';
 import { InventoryColumns, useContentWidth, useLocationPanelWidth } from './inventory-layout';
 import brand from '../../public/design/workbench/brand.svg?inline';
@@ -408,20 +410,21 @@ export function Workbench({
   current.current = view;
   useLayoutEffect(() => {
     const frame = requestAnimationFrame(() =>
-      window.scrollTo(0, inspectedId && mobile ? 0 : current.current.scroll),
+      setPageScroll(inspectedId && mobile ? 0 : current.current.scroll),
     );
     return () => cancelAnimationFrame(frame);
   }, [inspectedId]);
   useEffect(() => {
     const scroll = () => {
       if (!inspectedId) {
-        const next = { ...current.current, scroll: window.scrollY };
+        const next = { ...current.current, scroll: readPageScroll() };
         current.current = next;
         views.set(key, next);
       }
     };
-    window.addEventListener('scroll', scroll, { passive: true });
-    return () => window.removeEventListener('scroll', scroll);
+    const surface = pageScrollRoot() ?? window;
+    surface.addEventListener('scroll', scroll, { passive: true });
+    return () => surface.removeEventListener('scroll', scroll);
   }, [key, inspectedId]);
   const previousSelectionVersion = useRef(selectionVersion);
   useEffect(() => {
@@ -441,6 +444,14 @@ export function Workbench({
     () => workbenchItems(data, id, view),
     [data, id, view.query, view.descendants, view.status, view.category, view.sort],
   );
+  const nameCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of data.items) {
+      const name = itemName(item, data);
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    return counts;
+  }, [data]);
   const page = Math.min(view.page, Math.max(1, Math.ceil(results.length / view.pageSize)));
   const shown = results.slice((page - 1) * view.pageSize, page * view.pageSize);
   const place = data.items.find((i) => i.id === id && isContainer(i));
@@ -454,7 +465,7 @@ export function Workbench({
       page,
     });
   const inspect = (item?: ItemRecord) => {
-    if (item) setView((old) => ({ ...old, scroll: window.scrollY }));
+    if (item) setView((old) => ({ ...old, scroll: readPageScroll() }));
     if (!item && detailId && params.get('returnTo')) {
       const p = params.get('returnTo')!;
       const u = URL.canParse(p, window.location.origin) ? new URL(p, window.location.origin) : null;
@@ -526,17 +537,19 @@ export function Workbench({
       <section className="wb-inventory" aria-label="库存工作台" hidden={mobile && !!inspected}>
         <div className="wb-title">
           <div className="wb-title-copy">
-            <Typography.Title level={2}>我的物品</Typography.Title>
+            <Typography.Title level={1}>我的物品</Typography.Title>
             <Typography.Text type="secondary">{results.length} 件物品</Typography.Text>
           </div>
           <Space.Compact className="wb-add-actions">
             <Button
+              aria-label="添加物品"
               type="primary"
               icon={<PlusOutlined aria-hidden="true" />}
               disabled={disabled}
               onClick={() => open({ kind: 'intake', parent: id })}
             >
-              添加物品
+              <span className="wb-add-desktop">添加物品</span>
+              <span className="wb-add-mobile">添加</span>
             </Button>
             <Dropdown
               trigger={['click']}
@@ -565,7 +578,9 @@ export function Workbench({
           onRemember={locationWidth.remember}
           tree={
             <>
-              <Typography.Title level={5}>位置</Typography.Title>
+              <Typography.Title level={2} className="wb-location-heading">
+                位置
+              </Typography.Title>
               {locationTree}
             </>
           }
@@ -617,6 +632,20 @@ export function Workbench({
                     ]}
                   />
                   <Button onClick={() => patch({ status: '', category: '' })}>清除筛选</Button>
+                  {mobile && (
+                    <label className="stack">
+                      排序
+                      <Select
+                        aria-label="排序"
+                        value={view.sort}
+                        onChange={(sort) => patch({ sort })}
+                        options={[
+                          { value: 'name', label: '名称排序' },
+                          { value: 'recent', label: '最近入库' },
+                        ]}
+                      />
+                    </label>
+                  )}
                 </div>
               }
             >
@@ -625,15 +654,17 @@ export function Workbench({
                 <DownOutlined aria-hidden="true" />
               </Button>
             </Popover>
-            <Select
-              aria-label="排序"
-              value={view.sort}
-              onChange={(sort) => patch({ sort })}
-              options={[
-                { value: 'name', label: '名称排序' },
-                { value: 'recent', label: '最近入库' },
-              ]}
-            />
+            {!mobile && (
+              <Select
+                aria-label="排序"
+                value={view.sort}
+                onChange={(sort) => patch({ sort })}
+                options={[
+                  { value: 'name', label: '名称排序' },
+                  { value: 'recent', label: '最近入库' },
+                ]}
+              />
+            )}
             {!mobile && (
               <Popover
                 trigger="click"
@@ -747,9 +778,17 @@ export function Workbench({
                   )}
                   <Button type="text" className="row" onClick={() => inspect(item)}>
                     <span className="row-copy">
-                      <strong>{itemName(item, data)}</strong>
+                      <span className="wb-item-heading">
+                        <strong>{itemName(item, data)}</strong>
+                        {(nameCounts.get(itemName(item, data)) ?? 0) > 1 && (
+                          <span className="wb-instance-id" title={item.id}>
+                            尾号 {item.id.slice(-8)}
+                          </span>
+                        )}
+                      </span>
+                      <span className="wb-item-facts">{itemFacts(item)}</span>
                       <Typography.Text type="secondary">
-                        {specs(item)} · {itemStatus(item)} · {fullPath(item.parent_id, data)}
+                        {fullPath(item.parent_id, data).replace(/^全部位置\s*\/\s*/, '')}
                       </Typography.Text>
                     </span>
                   </Button>
@@ -855,7 +894,7 @@ export function Workbench({
             showTotal={(total, range) => `显示 ${range[0]}–${range[1]} / ${total} 件`}
             onChange={(next, size) => {
               patch({ page: size !== view.pageSize ? 1 : next, pageSize: size, scroll: 0 });
-              window.scrollTo(0, 0);
+              setPageScroll(0);
             }}
           />
         </InventoryColumns>
@@ -900,6 +939,7 @@ function ItemInspector({
   open: (a: Action) => void;
   close: () => void;
 }) {
+  const { mobile } = useViewport();
   const { data, stale } = useInventory();
   const { online, session } = useSession();
   const life = attr(item, 'lifecycle');
@@ -923,7 +963,9 @@ function ItemInspector({
         />
         <Link to={`/items/${item.id}/details`}>更多资料与操作</Link>
       </Space>
-      <Typography.Title level={3}>{itemName(item, data)}</Typography.Title>
+      <Typography.Title level={mobile ? 1 : 2} className="wb-detail-heading">
+        {itemName(item, data)}
+      </Typography.Title>
       <Typography.Text type="secondary">{specification(sku) || '规格未记录'}</Typography.Text>
       <Tag>{itemStatus(item)}</Tag>
       <Space>

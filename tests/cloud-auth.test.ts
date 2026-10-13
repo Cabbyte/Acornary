@@ -1,3 +1,4 @@
+import { approvedInput } from './catalog-helpers.js';
 import { beforeAll, afterAll, describe, it, expect, vi } from 'vitest';
 import { createHash, randomUUID } from 'node:crypto';
 import { initialize } from '../apps/server/src/initialize.js';
@@ -222,7 +223,11 @@ describe('cloud OAuth and private inspector', () => {
     expect(claims.sub).toBe(userId);
     expect(claims.aud).toContain(config.resource);
     expect(claims.exp - claims.iat).toBe(300);
-    const args = { name: 'OAuth isolated SKU', kind: 'SKU', idempotency_key: randomUUID() };
+    const args = await approvedInput(ctx, 'create_catalog_node', {
+      name: 'OAuth isolated SKU',
+      kind: 'SKU',
+      idempotency_key: randomUUID(),
+    });
     const first = await call(grantResult.access_token, 'create_catalog_node', args);
     expect(first.statusCode, first.body).toBe(200);
     const second = await call(grantResult.access_token, 'create_catalog_node', args);
@@ -353,7 +358,11 @@ describe('cloud OAuth and private inspector', () => {
     const login = await jsonPost('/api/auth/sign-in/email', { email, password });
     expect(login.statusCode, login.body).toBe(200);
     cookie = (login.headers['set-cookie'] as string[]).map((s) => s.split(';')[0]).join('; ');
-    const payload = { kind: 'SKU', name: 'Web session SKU', idempotency_key: randomUUID() };
+    const payload = await approvedInput(ctx, 'create_catalog_node', {
+      kind: 'SKU',
+      name: 'Web session SKU',
+      idempotency_key: randomUUID(),
+    });
     expect((await inject({ url: '/api/ui/snapshot' })).statusCode).toBe(401);
     expect(
       (await jsonPost('/api/write/create_catalog_node', payload, { 'x-acornary-request': 'web' }))
@@ -391,11 +400,15 @@ describe('cloud OAuth and private inspector', () => {
     const second = created.json().household_id;
     const a = await grant(undefined, ctx.household_id),
       b = await grant(undefined, second);
-    const write = await call(a.access_token, 'create_catalog_node', {
-      kind: 'SKU',
-      name: 'OAuth household A',
-      idempotency_key: randomUUID(),
-    });
+    const write = await call(
+      a.access_token,
+      'create_catalog_node',
+      await approvedInput(ctx, 'create_catalog_node', {
+        kind: 'SKU',
+        name: 'OAuth household A',
+        idempotency_key: randomUUID(),
+      }),
+    );
     const id = write.json().result.structuredContent.affected_objects[0].id;
     const viewA = (await call(a.access_token, 'get_inventory_view')).json().result._meta[
       'acornary/view'
@@ -410,7 +423,11 @@ describe('cloud OAuth and private inspector', () => {
     const boundInput = {
       expected_scope: viewA.session.cache_key,
       operation: 'create_catalog_node',
-      input: { kind: 'SKU', name: 'UI household binding', idempotency_key: randomUUID() },
+      input: await approvedInput(ctx, 'create_catalog_node', {
+        kind: 'SKU',
+        name: 'UI household binding',
+        idempotency_key: randomUUID(),
+      }),
     };
     const foreignWrite = await call(b.access_token, 'apply_inventory_command', boundInput);
     expect(foreignWrite.json().result.structuredContent).toMatchObject({

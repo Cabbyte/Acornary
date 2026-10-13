@@ -1,3 +1,4 @@
+import { approvedExecute, approvedInput } from './catalog-helpers.js';
 import { Client as McpClient, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { beforeAll, beforeEach, afterAll, describe, it, expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
@@ -9,7 +10,7 @@ import { buildApp } from '../apps/server/src/app.js';
 import { pluginScope, type PluginIdentity } from '../apps/server/src/plugin.js';
 let ctx: Context, containerSku: string;
 const key = () => randomUUID();
-const run = (name: any, args: any) => execute(ctx, name, args);
+const run = (name: any, args: any) => approvedExecute(ctx, name, args);
 const write = (name: any, args: any = {}) => run(name, { idempotency_key: key(), ...args });
 const sku = async (name = '牛奶') =>
   (await write('create_catalog_node', { kind: 'SKU', name })).affected_objects[0].id;
@@ -73,7 +74,7 @@ describe('Web product interface', () => {
         scopes: new Set(['inventory:read', 'inventory:write']),
       };
       expect(scope).toBe(pluginScope(identity, false));
-      const input = { kind: 'SKU', name: 'Bound UI identity', idempotency_key: key() };
+      const input = await approvedInput(ctx, 'create_catalog_node', { kind: 'SKU', name: 'Bound UI identity', idempotency_key: key() });
       const args = { expected_scope: scope, operation: 'create_catalog_node', input };
       const call = (arguments_: any) =>
         client.callTool({ name: 'apply_inventory_command', arguments: arguments_ });
@@ -496,7 +497,7 @@ describe('PostgreSQL domain transactions', () => {
           minLength: 1,
           maxLength: 500,
         });
-      const args = { kind: 'SKU', name: '冰淇淋 MCP transport fixture', idempotency_key: key() };
+      const args = await approvedInput(ctx, 'create_catalog_node', { kind: 'SKU', name: '冰淇淋 MCP transport fixture', idempotency_key: key() });
       const result: any = await client.callTool({ name: 'create_catalog_node', arguments: args });
       expect(result.isError).not.toBe(true);
       expect(
@@ -509,12 +510,12 @@ describe('PostgreSQL domain transactions', () => {
       expect(invalid.isError).toBe(true);
       expect((await run('query_catalog_nodes', { name: args.name })).matching_count).toBe(1);
       const catalog_node_id = result.structuredContent.affected_objects[0].id;
-      const rename = {
+      const rename = await approvedInput(ctx, 'update_catalog_node', {
         catalog_node_id,
         name: '  香草冰淇淋  ',
         expected_revisions: rev(catalog_node_id, 1),
         idempotency_key: key(),
-      };
+      });
       const renamed: any = await client.callTool({
         name: 'update_catalog_node',
         arguments: rename,
@@ -945,7 +946,7 @@ it('keeps JSON array checks in SQL and enforces binding semantics in the shared 
   await query(pool, "INSERT INTO actors(id,household_id,name) VALUES($1,$2,'empty')", [actor, hh]);
   const emptyCtx = { household_id: hh, actor_id: actor, source: 'TEST' };
   const cat = (
-    await execute(emptyCtx, 'create_catalog_node', {
+    await approvedExecute(emptyCtx, 'create_catalog_node', {
       kind: 'SKU',
       name: 'empty',
       idempotency_key: key(),

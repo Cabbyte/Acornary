@@ -1,3 +1,4 @@
+import { PendingCatalogReviews } from './ui/catalog-review';
 import { App, Button } from 'antd';
 import type { FunctionComponent } from 'react';
 import type { RouterHistory } from '@tanstack/react-router';
@@ -203,6 +204,7 @@ export function Workspace() {
         </div>
       )}
       {(storageError || cacheWarning) && <Notice danger>{storageError || cacheWarning}</Notice>}
+      {!action && <PendingCatalogReviews key={session.cache_key} />}
       {page}
       {action && (
         <ActionSheet
@@ -211,7 +213,10 @@ export function Workspace() {
           onClose={close}
           onCreateProduct={() => open({ kind: 'catalog', from: 'intake' })}
           onSaved={(result) => {
-            const first = result.affected_objects[0];
+            const first =
+              action.kind === 'intake'
+                ? result.affected_objects.find((o) => o.kind === 'ITEM')
+                : result.affected_objects[0];
             if (action.kind === 'move') resetSelection((v) => v + 1);
             void message.success('已保存，库存和历史已更新');
             if (action.kind === 'catalog' && action.from === 'intake' && first) {

@@ -1,0 +1,455 @@
+{
+  "scope": "synthetic service only; no model, voice, user clarification or platform approval time",
+  "variant": "main@b3d2463",
+  "node": "v24.21.0",
+  "conditions": {
+    "samples_per_path": 20,
+    "warmups_per_path": 2,
+    "physical_items_per_task": 2
+  },
+  "summary": {
+    "restock": {
+      "n": 20,
+      "success_rate": 1,
+      "median_ms": 6.156131000000073,
+      "p90_ms": 7.286549000000036,
+      "tool_calls": 3
+    },
+    "new_product": {
+      "n": 20,
+      "success_rate": 1,
+      "median_ms": 8.318507999999952,
+      "p90_ms": 11.43801099999996,
+      "tool_calls": 4
+    },
+    "new_group": {
+      "n": 20,
+      "success_rate": 1,
+      "median_ms": 14.049931000000015,
+      "p90_ms": 16.138766000000032,
+      "tool_calls": 5
+    }
+  },
+  "samples": [
+    {
+      "scenario": "restock",
+      "sample": 1,
+      "duration_ms": 6.533006999999998,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "restock",
+      "sample": 2,
+      "duration_ms": 7.286549000000036,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "restock",
+      "sample": 3,
+      "duration_ms": 7.802633000000014,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "restock",
+      "sample": 4,
+      "duration_ms": 7.2902990000000045,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "restock",
+      "sample": 5,
+      "duration_ms": 6.156131000000073,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "restock",
+      "sample": 6,
+      "duration_ms": 6.530505999999946,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "restock",
+      "sample": 7,
+      "duration_ms": 6.397256000000084,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "restock",
+      "sample": 8,
+      "duration_ms": 6.3983389999999645,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "restock",
+      "sample": 9,
+      "duration_ms": 6.981423000000063,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "restock",
+      "sample": 10,
+      "duration_ms": 6.379214000000047,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "restock",
+      "sample": 11,
+      "duration_ms": 5.805588999999941,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "restock",
+      "sample": 12,
+      "duration_ms": 6.06913099999997,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "restock",
+      "sample": 13,
+      "duration_ms": 5.859339000000091,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "restock",
+      "sample": 14,
+      "duration_ms": 6.351214000000027,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "restock",
+      "sample": 15,
+      "duration_ms": 5.988296999999989,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "restock",
+      "sample": 16,
+      "duration_ms": 5.499129999999923,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "restock",
+      "sample": 17,
+      "duration_ms": 5.536129999999957,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "restock",
+      "sample": 18,
+      "duration_ms": 5.429588000000081,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "restock",
+      "sample": 19,
+      "duration_ms": 5.296921999999995,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "restock",
+      "sample": 20,
+      "duration_ms": 5.561547000000019,
+      "tool_calls": 3,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 1,
+      "duration_ms": 10.64563499999997,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 2,
+      "duration_ms": 9.474800999999957,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 3,
+      "duration_ms": 9.658634000000006,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 4,
+      "duration_ms": 11.446677000000022,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 5,
+      "duration_ms": 11.43801099999996,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 6,
+      "duration_ms": 10.995468999999957,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 7,
+      "duration_ms": 9.027467000000001,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 8,
+      "duration_ms": 6.143006000000014,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 9,
+      "duration_ms": 8.040090999999961,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 10,
+      "duration_ms": 7.30809099999999,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 11,
+      "duration_ms": 7.162549000000013,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 12,
+      "duration_ms": 7.664174000000003,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 13,
+      "duration_ms": 8.318507999999952,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 14,
+      "duration_ms": 8.021382000000017,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 15,
+      "duration_ms": 7.996424999999931,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 16,
+      "duration_ms": 7.122797999999989,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 17,
+      "duration_ms": 7.673466000000076,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 18,
+      "duration_ms": 11.440260999999964,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 19,
+      "duration_ms": 8.821591000000012,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_product",
+      "sample": 20,
+      "duration_ms": 8.6194670000001,
+      "tool_calls": 4,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 1,
+      "duration_ms": 11.769344000000046,
+      "tool_calls": 5,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 2,
+      "duration_ms": 16.138766000000032,
+      "tool_calls": 5,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 3,
+      "duration_ms": 14.530431000000021,
+      "tool_calls": 5,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 4,
+      "duration_ms": 14.049931000000015,
+      "tool_calls": 5,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 5,
+      "duration_ms": 18.38197600000001,
+      "tool_calls": 5,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 6,
+      "duration_ms": 13.685513000000014,
+      "tool_calls": 5,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 7,
+      "duration_ms": 13.372887999999989,
+      "tool_calls": 5,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 8,
+      "duration_ms": 15.55347299999994,
+      "tool_calls": 5,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 9,
+      "duration_ms": 15.220597999999995,
+      "tool_calls": 5,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 10,
+      "duration_ms": 14.901388999999881,
+      "tool_calls": 5,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 11,
+      "duration_ms": 14.605473000000075,
+      "tool_calls": 5,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 12,
+      "duration_ms": 13.648846999999932,
+      "tool_calls": 5,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 13,
+      "duration_ms": 15.070514000000003,
+      "tool_calls": 5,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 14,
+      "duration_ms": 14.572014000000081,
+      "tool_calls": 5,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 15,
+      "duration_ms": 18.18680900000004,
+      "tool_calls": 5,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 16,
+      "duration_ms": 11.597095000000081,
+      "tool_calls": 5,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 17,
+      "duration_ms": 12.586720999999898,
+      "tool_calls": 5,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 18,
+      "duration_ms": 13.479221000000052,
+      "tool_calls": 5,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 19,
+      "duration_ms": 12.88042900000005,
+      "tool_calls": 5,
+      "success": true
+    },
+    {
+      "scenario": "new_group",
+      "sample": 20,
+      "duration_ms": 14.011054999999942,
+      "tool_calls": 5,
+      "success": true
+    }
+  ]
+}

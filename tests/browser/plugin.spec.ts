@@ -1,3 +1,4 @@
+import { choose } from './controls.js';
 import { test, expect, type Page } from '@playwright/test';
 const origin = 'http://127.0.0.1:3212';
 const view = (page: Page) => page.frameLocator('#inventory');
@@ -7,7 +8,9 @@ async function fixture(page: Page, dialog = '') {
   const f = await page.evaluate(async () => {
     const h = (window as any).host;
     const call = (name: string, args: any) =>
-      h.call(name, { idempotency_key: crypto.randomUUID(), ...args });
+      name === 'create_catalog_node'
+        ? h.fixtureCatalog({ idempotency_key: crypto.randomUUID(), ...args })
+        : h.call(name, { idempotency_key: crypto.randomUUID(), ...args });
     const name = '插件验收 ' + crypto.randomUUID().slice(0, 6);
     const sku = (await call('create_catalog_node', { kind: 'SKU', name })).structuredContent
       .affected_objects[0].id;
@@ -521,7 +524,7 @@ test('a definite barcode rejection remains editable after remount and a correcte
   const f = await fixture(page);
   const barcode = 'PLUGIN-REJECTION-' + f.sku;
   const owner = await page.evaluate(async (barcode) => {
-    const result = await (window as any).host.call('create_catalog_node', {
+    const result = await (window as any).host.fixtureCatalog({
       kind: 'SKU',
       name: '条码已有归属',
       initial_attributes: [
@@ -533,6 +536,9 @@ test('a definite barcode rejection remains editable after remount and a correcte
   }, barcode);
   await restoreRoute(page, `/catalog/${f.sku}?dialog=attributes&template=product&target=${f.sku}`);
   await view(page).getByLabel('商品条码', { exact: true }).fill(barcode);
+  await view(page).getByRole('button', { name: '保存', exact: true }).click();
+  await view(page).getByRole('button', { name: '仅批准本次', exact: true }).click();
+  await expect(view(page).getByText('已批准本次变更，请提交保存。')).toBeVisible();
   await view(page).getByRole('button', { name: '保存', exact: true }).click();
   await expect(view(page).getByText('该条码已被其他商品使用。')).toBeVisible();
   await expect(view(page).getByLabel('商品条码', { exact: true })).toBeEnabled();
@@ -561,8 +567,13 @@ test('a definite barcode rejection remains editable after remount and a correcte
     .getByLabel('商品条码', { exact: true })
     .fill(barcode + '-CORRECTED');
   await view(page).getByRole('button', { name: '保存', exact: true }).click();
+  await view(page).getByRole('button', { name: '仅批准本次', exact: true }).click();
+  await expect(view(page).getByText('已批准本次变更，请提交保存。')).toBeVisible();
+  await view(page).getByRole('button', { name: '保存', exact: true }).click();
   await expect(view(page).getByRole('dialog', { name: /^(?!物品详情$)/ })).toHaveCount(0);
-  const attempts = await writes(page);
+  const attempts = (await writes(page)).filter(
+    (a: any) => a.arguments.operation !== 'propose_catalog_change',
+  );
   expect(attempts).toHaveLength(2);
   expect(attempts[0].arguments.expected_scope).toBe(attempts[1].arguments.expected_scope);
   expect(attempts[0].arguments.input.idempotency_key).not.toBe(
@@ -782,4 +793,83 @@ test('Ant Design location resizing and drawer state survive opaque sandbox stora
   });
   await embedded.getByRole('button', { name: '更多添加选项' }).click();
   await expect(embedded.getByRole('menuitem', { name: '添加位置', exact: true })).toBeVisible();
+});
+
+test('Ant Design policy card confirms only the rule and intake keeps a new product draft until the atomic commit', async ({
+  page,
+}) => {
+  const f = await fixture(page);
+  const branchName = '卡片食品 ' + f.sku.slice(-6);
+  const proposal = await page.evaluate(async (branchName) => {
+    const h = (window as any).host;
+    const created = await h.fixtureCatalog({
+      kind: 'GROUP',
+      name: branchName,
+      idempotency_key: crypto.randomUUID(),
+    });
+    const branch = created.structuredContent.affected_objects[0].id;
+    const context = (await h.call('get_intake_context', { catalog_node_ids: [branch] }))
+      .structuredContent;
+    const result = await h.call('propose_catalog_change', {
+      idempotency_key: crypto.randomUUID(),
+      proposal: {
+        kind: 'policy',
+        policy_revision: context.policy_revision,
+        expected_revisions: context.expected_revisions,
+        rule: {
+          branch_id: branch,
+          meaning: '本次验收的食品',
+          boundaries: '不含容器和位置',
+          subdivision_basis: '食品类型',
+          allow_direct_products: true,
+          allow_new_groups: true,
+          max_new_depth: 1,
+          naming_guidance: '使用具体食物名称',
+        },
+        reason: '确认这个食品分支，保留历史目录',
+      },
+    });
+    return { branch, id: result.structuredContent.proposal_id };
+  }, branchName);
+  await restoreRoute(page, '/items');
+  await expect(view(page).getByText('分类变更确认', { exact: true })).toBeVisible();
+  await expect(view(page).getByText('本次验收的食品', { exact: true })).toBeVisible();
+  await view(page).getByRole('button', { name: '保存为长期规则', exact: true }).click();
+  await expect(view(page).getByText('分类变更确认', { exact: true })).toHaveCount(0);
+  const productName = '原子新商品 ' + f.sku.slice(-6);
+  await restoreRoute(page, '/items?dialog=intake');
+  await view(page).getByRole('button', { name: '创建新商品', exact: true }).click();
+  await view(page).getByLabel('新商品名称', { exact: true }).fill(productName);
+  await choose(view(page), '商品分类', branchName);
+  await view(page).getByLabel('归类依据', { exact: true }).fill('食品分支允许直接挂商品');
+  await view(page).getByLabel('入库件数', { exact: true }).fill('2');
+  const count = () =>
+    page.evaluate(
+      async (name) =>
+        (await (window as any).host.call('query_catalog_nodes', { name })).structuredContent
+          .matching_count,
+      productName,
+    );
+  expect(await count()).toBe(0);
+  await view(page).getByRole('button', { name: '核对入库信息', exact: true }).click();
+  expect(await count()).toBe(0);
+  await page.screenshot({ path: 'output/playwright/intake-draft-before-commit.png' });
+  await view(page).getByRole('button', { name: '确认入库', exact: true }).click();
+  await expect.poll(count).toBe(1);
+  await expect(view(page).getByRole('dialog', { name: /^(?!物品详情$)/ })).toHaveCount(0);
+  const committed = (await writes(page)).filter(
+    (r: any) => r.arguments.operation === 'commit_intake',
+  );
+  expect(committed).toHaveLength(1);
+  const receipt = await page.evaluate(
+    async (key) =>
+      (await (window as any).host.call('get_intake_receipt', { idempotency_key: key }))
+        .structuredContent,
+    committed[0].arguments.input.idempotency_key,
+  );
+  expect(receipt.receipt.item_count).toBe(2);
+  expect(receipt.receipt.created_catalog).toHaveLength(1);
+  expect(receipt.receipt.items.every((i: any) => i.attributes.length === 0)).toBe(true);
+  expect(receipt.receipt.items[0].catalog_node_id).not.toBe(proposal.branch);
+  await page.screenshot({ path: 'output/playwright/intake-atomic-result.png' });
 });

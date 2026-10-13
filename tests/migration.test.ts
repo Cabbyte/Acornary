@@ -193,6 +193,12 @@ it('migrates nonempty 001 records in one transaction, preserving identities, his
       token: 'opaque-refresh-hash',
     });
 
+    const beforeIntake = await businessSnapshot();
+    await c.query('BEGIN');
+    await c.query(await readFile('migrations/006_intake_policy.sql', 'utf8'));
+    await c.query('COMMIT');
+    expect(await businessSnapshot()).toEqual(beforeIntake);
+    expect((await c.query('SELECT count(*) FROM catalog_policy_versions')).rows[0].count).toBe('0');
     await expect(c.query("UPDATE events SET source='changed'")).rejects.toThrow('append-only');
   } finally {
     await c?.end();

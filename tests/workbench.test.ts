@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import type { InventoryData, ItemRecord } from '../packages/contracts/src/web.js';
-import { workbenchItems, moveValidation, moveTargets } from '../apps/web/src/lib/workbench.js';
+import {
+  itemFacts,
+  workbenchItems,
+  moveValidation,
+  moveTargets,
+} from '../apps/web/src/lib/workbench.js';
 const item = (id: string, parent_id: string | null, container = false): ItemRecord => ({
   id,
   parent_id,
@@ -29,6 +34,23 @@ const data: InventoryData = {
 };
 const filter = { query: '', descendants: false, status: '', category: '', sort: 'name' };
 describe('workbench projections', () => {
+  it('shows recorded opening, remaining quantity and expiry without inventing unknown facts', () => {
+    expect(itemFacts(item('unknown', null))).toBe('开封未记录');
+    const opened = item('opened', null);
+    opened.attributes = [
+      {
+        template_id: 'lifecycle',
+        template_version: 1,
+        values: { opening: { state: 'OPENED' }, expiry: { date: '2026-10-31' } },
+      },
+      {
+        template_id: 'contents',
+        template_version: 1,
+        values: { remaining: { value: '800', unit: 'mL' }, accuracy: 'ESTIMATED' },
+      },
+    ];
+    expect(itemFacts(opened)).toBe('已开封 · 剩余 约 800 mL · 到期 2026-10-31');
+  });
   it('distinguishes direct children, descendants and full search before paging', () => {
     expect(workbenchItems(data, '书房', filter).map((i) => i.id)).toEqual(['one']);
     expect(workbenchItems(data, '书房', { ...filter, descendants: true }).map((i) => i.id)).toEqual(

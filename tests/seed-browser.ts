@@ -1,3 +1,4 @@
+import { approvedExecute } from './catalog-helpers.js';
 // Synthetic fixtures in an isolated test database, never the user's inventory.
 import { initialize } from '../apps/server/src/initialize.js';
 import { execute } from '../apps/server/src/service.js';
@@ -8,7 +9,7 @@ const installation = await initialize();
 const ctx = { ...installation, source: 'E2E_FIXTURE' };
 let sequence = 0;
 const call = (name: any, input: any) =>
-  execute(ctx, name, { idempotency_key: `fixture-${++sequence}`, ...input });
+  approvedExecute(ctx, name, { idempotency_key: `fixture-${++sequence}`, ...input });
 const a = (template_id: string, values: any) => ({ template_id, template_version: 1, values });
 try {
   const group = (await call('create_catalog_node', { kind: 'GROUP', name: '验收目录' }))

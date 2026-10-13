@@ -64,6 +64,9 @@ export type PluginEnvelope = z.infer<typeof pluginEnvelopeSchema>;
 export const pluginMetaKey = 'acornary/view';
 export const pluginViewTool = 'get_inventory_view';
 export const pluginOpenTool = 'open_inventory';
+export const pluginReviewTool = 'get_catalog_review';
+export const pluginConfirmTool = 'confirm_catalog_change';
+export const pluginReviewMetaKey = 'acornary/catalog-review';
 export const pluginWriteTool = 'apply_inventory_command';
 export const pluginWriteSchema = z.strictObject({
   expected_scope: z.string().regex(/^mcp:[a-f0-9]{64}$/),
@@ -88,5 +91,7 @@ export const pluginWriteResultSchema = z.strictObject({
   ),
   event_ids: z.array(entityId('event')),
   note_id: entityId('note').optional(),
+  proposal_id: z.uuid().optional(),
+  receipt: z.record(z.string(), z.unknown()).optional(),
   summary: z.string(),
 });

@@ -1,3 +1,4 @@
+import { fixtureCommand } from './governance.js';
 import { test, expect, type Page } from '@playwright/test';
 import { login } from './login.js';
 
@@ -64,14 +65,8 @@ async function fixture(page: Page) {
     'X-Acornary-Household': household,
   };
   const snapshot = await (await page.request.get('/api/ui/snapshot', { headers })).json();
-  const write = async (name: string, input: object) => {
-    const r = await page.request.post(`/api/write/${name}`, {
-      headers,
-      data: { idempotency_key: crypto.randomUUID(), ...input },
-    });
-    expect(r.status(), await r.text()).toBe(200);
-    return (await r.json()).affected_objects;
-  };
+  const write = async (name: string, input: object) =>
+    (await fixtureCommand(page, name, input)).affected_objects;
   const suffix = crypto.randomUUID().slice(0, 6);
   const roomName = `布局厨房 ${suffix}`;
   const room = (

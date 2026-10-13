@@ -1,3 +1,4 @@
+import { approvedExecute } from './catalog-helpers.js';
 // Synthetic design-review fixtures. This script refuses normal application databases.
 import { initialize } from '../apps/server/src/initialize.js';
 import { execute } from '../apps/server/src/service.js';
@@ -8,7 +9,7 @@ const installation = await initialize();
 const ctx = { ...installation, source: 'WORKBENCH_FIXTURE' };
 let seq = 0;
 const call = (name: any, input: any) =>
-  execute(ctx, name, { idempotency_key: `workbench-fixture-${++seq}`, ...input });
+  approvedExecute(ctx, name, { idempotency_key: `workbench-fixture-${++seq}`, ...input });
 const a = (template_id: string, values: unknown) => ({ template_id, template_version: 1, values });
 const place = async (name: string, parent_id: string | null = null) =>
   (

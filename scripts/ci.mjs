@@ -67,6 +67,32 @@ try {
     true,
   );
   for (const task of ['typecheck', 'build', 'test']) docker(['exec', worker, 'pnpm', task]);
+  // Verify a real logical backup/restore of synthetic data, including policies,
+  // approvals, identity keys, events and historical idempotency results.
+  const restoredDb = `acornary_restore_${Date.now()}`;
+  docker([
+    'exec',
+    postgres,
+    'pg_dump',
+    '-U',
+    'acornary',
+    '-Fc',
+    '-f',
+    '/tmp/intake-test.dump',
+    'acornary_test',
+  ]);
+  docker(['exec', postgres, 'createdb', '-U', 'acornary', restoredDb]);
+  docker([
+    'exec',
+    postgres,
+    'pg_restore',
+    '-U',
+    'acornary',
+    '-d',
+    restoredDb,
+    '/tmp/intake-test.dump',
+  ]);
+  docker(['exec', worker, 'pnpm', 'exec', 'tsx', 'apps/server/src/verify-restore.ts', restoredDb]);
   const db = `acornary_e2e_${Date.now()}`;
   docker(['exec', postgres, 'createdb', '-U', 'acornary', db]);
   env.DATABASE_URL = url(db);

@@ -1,0 +1,87 @@
+{
+  "date": "2026-10-13",
+  "baseline_commit": "b3d24639ee48c3c087e2c44d1dbd7a76bfc77ac1",
+  "branch": "codex/voice-intake-policy",
+  "runtime": "Node 24.21.0 / disposable PostgreSQL 18",
+  "baseline": {
+    "typecheck": "passed",
+    "build": "passed",
+    "tests": 66,
+    "chromium": 44,
+    "webkit": 13,
+    "log": "output/intake-baseline-ci.log"
+  },
+  "candidate_broad_regression": {
+    "typecheck": "passed",
+    "build": "passed",
+    "tests": 79,
+    "chromium": 45,
+    "webkit": 14,
+    "log": "output/intake-verified-ci.log"
+  },
+  "final_patch": {
+    "typecheck": "passed",
+    "build": "passed",
+    "tests": 80,
+    "targeted_chromium": 6,
+    "restore_tables": 36,
+    "restore_identical": true,
+    "log": "output/intake-last-ci.log"
+  },
+  "real_voice_samples": 0,
+  "voice_thresholds_frozen": false,
+  "skills_installed_in_host": false,
+  "production_deployed": false,
+  "service_probe": {
+    "baseline": {
+      "restock": {
+        "n": 20,
+        "success_rate": 1,
+        "median_ms": 6.156131000000073,
+        "p90_ms": 7.286549000000036,
+        "tool_calls": 3
+      },
+      "new_product": {
+        "n": 20,
+        "success_rate": 1,
+        "median_ms": 8.318507999999952,
+        "p90_ms": 11.43801099999996,
+        "tool_calls": 4
+      },
+      "new_group": {
+        "n": 20,
+        "success_rate": 1,
+        "median_ms": 14.049931000000015,
+        "p90_ms": 16.138766000000032,
+        "tool_calls": 5
+      }
+    },
+    "candidate": {
+      "restock": {
+        "n": 20,
+        "success_rate": 1,
+        "median_ms": 6.955173999999943,
+        "p90_ms": 9.027467000000001,
+        "tool_calls": 2
+      },
+      "new_product": {
+        "n": 20,
+        "success_rate": 1,
+        "median_ms": 6.563547999999969,
+        "p90_ms": 8.320925000000102,
+        "tool_calls": 2
+      },
+      "new_group": {
+        "n": 20,
+        "success_rate": 1,
+        "median_ms": 8.174716000000103,
+        "p90_ms": 8.878382999999985,
+        "tool_calls": 2
+      }
+    }
+  },
+  "images": [
+    "[acornary-intake-baseline:latest] sha256:9a66d9ae6013bc792b9723d401aeec5fcf324451944632e4a78e48acb7563268",
+    "[acornary-intake-candidate:latest] sha256:d5fab5fd071755e06cf592c4a19d454c16e0c2648099ae09a89ad4fba35d5e56"
+  ]
+}

@@ -1,3 +1,10 @@
+import {
+  intakeReads,
+  readIntake,
+  proposeCatalogChange,
+  authorizeCatalogCommand,
+  commitIntake,
+} from './intake.js';
 import { legacyInput } from './fingerprint.js';
 import { randomUUID, createHash } from 'node:crypto';
 import { Decimal } from 'decimal.js';
@@ -247,7 +254,8 @@ export async function execute(ctx: Context, name: Operation, raw: unknown): Prom
         'FORBIDDEN',
         'Invalid household context.',
       );
-      if (reads.has(name)) return read(c, ctx, name, input);
+      if (reads.has(name))
+        return intakeReads.has(name) ? readIntake(c, ctx, name, input) : read(c, ctx, name, input);
       // Household writes are deliberately serialized for Stage1: one lock order also protects tree/capability races.
       await query(c, 'SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [ctx.household_id]);
       const fingerprint = createHash('sha256').update(canonical({ name, input })).digest('hex');
@@ -272,328 +280,15 @@ export async function execute(ctx: Context, name: Operation, raw: unknown): Prom
         return old.result;
       }
       const operation_id = 'operation_' + randomUUID();
-      const result: any = {
-        operation_id,
-        changed: false,
-        affected_objects: [],
-        event_ids: [],
-        summary: 'No changes.',
-      };
-      const checkRevision = (obj: ObjectState) =>
-        requireFact(
-          input.expected_revisions[obj.row.id] === obj.row.revision,
-          'REVISION_CONFLICT',
-          'Re-query and submit the current revision.',
-          { id: obj.row.id, current_revision: obj.row.revision },
-        );
-      const save = async (
-        obj: ObjectState,
-        before?: ObjectState,
-        extraBefore: Record<string, any> = {},
-        extraAfter: Record<string, any> = {},
-      ) => {
-        await validate(c, ctx, obj, before, name === 'correct_item');
-        const delta = changes(
-          { ...(before ? flatten(before) : {}), ...extraBefore },
-          { ...flatten(obj), ...extraAfter },
-        );
-        if (!delta.length && before) return;
-        const rev = before?.row.revision ?? 0;
-        const now = (await query(c, 'SELECT to_jsonb(now()) AS time')).rows[0].time;
-        const attributes = Object.keys(obj.sets)
-          .sort()
-          .map((template_id) => {
-            const prior = before?.row.attributes.find((a: any) => a.template_id === template_id);
-            return {
-              template_id,
-              template_version: prior?.template_version ?? 1,
-              values: obj.sets[template_id],
-              created_at: prior?.created_at ?? now,
-              updated_at:
-                prior && canonical(prior.values) === canonical(obj.sets[template_id])
-                  ? prior.updated_at
-                  : now,
-            };
-          });
-        await validateBindings(c, ctx, obj, attributes);
-        const embedded = JSON.stringify(attributes);
-        if (!before) {
-          if (obj.kind === 'ITEM')
-            await query(
-              c,
-              'INSERT INTO items(id,household_id,catalog_node_id,parent_id,display_name,attributes) VALUES($1,$2,$3,$4,$5,$6::jsonb)',
-              [
-                obj.row.id,
-                ctx.household_id,
-                obj.row.catalog_node_id,
-                obj.row.parent_id,
-                obj.row.display_name ?? null,
-                embedded,
-              ],
-            );
-          else
-            await query(
-              c,
-              'INSERT INTO catalog_nodes(id,household_id,parent_id,kind,name,attributes) VALUES($1,$2,$3,$4,$5,$6::jsonb)',
-              [
-                obj.row.id,
-                ctx.household_id,
-                obj.row.parent_id,
-                obj.row.kind,
-                obj.row.name,
-                embedded,
-              ],
-            );
-        } else if (obj.kind === 'ITEM')
-          await query(
-            c,
-            'UPDATE items SET catalog_node_id=$1,parent_id=$2,display_name=$3,attributes=$6::jsonb,revision=revision+1,updated_at=now() WHERE household_id=$4 AND id=$5',
-            [
-              obj.row.catalog_node_id,
-              obj.row.parent_id,
-              obj.row.display_name ?? null,
-              ctx.household_id,
-              obj.row.id,
-              embedded,
-            ],
-          );
-        else
-          await query(
-            c,
-            'UPDATE catalog_nodes SET name=$1,parent_id=$2,attributes=$5::jsonb,revision=revision+1,updated_at=now() WHERE household_id=$3 AND id=$4',
-            [obj.row.name, obj.row.parent_id, ctx.household_id, obj.row.id, embedded],
-          );
-        if (obj.kind === 'CATALOG_NODE') {
-          await query(c, 'DELETE FROM barcode_index WHERE household_id=$1 AND catalog_node_id=$2', [
-            ctx.household_id,
-            obj.row.id,
-          ]);
-          for (const barcode of obj.sets.product?.barcodes ?? [])
-            await query(
-              c,
-              'INSERT INTO barcode_index(household_id,barcode,catalog_node_id) VALUES($1,$2,$3)',
-              [ctx.household_id, barcode, obj.row.id],
-            );
-        }
-        const event_id = 'event_' + randomUUID();
-        const enriched = delta.map((d) =>
-          d.path.startsWith('attributes.')
-            ? { ...d, template_id: d.path.split('.')[1], template_version: 1 }
-            : d,
-        );
-        await query(
-          c,
-          'INSERT INTO events(id,household_id,target_kind,target_id,operation_id,event_type,before_revision,after_revision,changes,actor_id,source,occurred_at,reason) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13)',
-          [
-            event_id,
-            ctx.household_id,
-            obj.kind,
-            obj.row.id,
-            operation_id,
-            eventTypes[name],
-            rev,
-            rev + 1,
-            JSON.stringify(enriched),
-            ctx.actor_id,
-            ctx.source,
-            input.occurred_at ?? new Date().toISOString(),
-            input.reason ?? null,
-          ],
-        );
-        result.affected_objects.push({
-          kind: obj.kind,
-          id: obj.row.id,
-          before_revision: rev,
-          after_revision: rev + 1,
-        });
-        result.event_ids.push(event_id);
-      };
-      if (name === 'create_catalog_node') {
-        const obj: ObjectState = {
-          kind: 'CATALOG_NODE',
-          row: {
-            id: 'catalog_node_' + randomUUID(),
-            kind: input.kind,
-            name: input.name,
-            parent_id: input.parent_id,
-          },
-          sets: initialSets(input.initial_attributes),
-        };
-        await save(obj);
-      } else if (name === 'create_items') {
-        for (let i = 0; i < input.count; i++)
-          await save({
-            kind: 'ITEM',
-            row: {
-              id: 'item_' + randomUUID(),
-              catalog_node_id: input.catalog_node_id,
-              parent_id: input.parent_id,
-              display_name: input.display_name ?? null,
-            },
-            sets: initialSets(input.initial_attributes),
-          });
-      } else {
-        let targets: Target[];
-        if (name === 'consume_items' || name === 'move_items') {
-          requireFact(
-            new Set(input.item_ids).size === input.item_ids.length,
-            'ATTRIBUTE_VALIDATION_FAILED',
-            'Duplicate item IDs.',
-          );
-          targets = input.item_ids.map((id: string) => ({ kind: 'ITEM', id }));
-        } else
-          targets = [
-            input.target ??
-              (input.item_id
-                ? { kind: 'ITEM', id: input.item_id }
-                : { kind: 'CATALOG_NODE', id: input.catalog_node_id }),
-          ];
-        for (const t of targets.sort((a, b) => a.id.localeCompare(b.id))) {
-          const before = await load(c, ctx, t);
-          checkRevision(before);
-          const obj = structuredClone(before);
-          switch (name) {
-            case 'update_catalog_node':
-              obj.row.name = input.name;
-              break;
-            case 'update_item':
-              obj.row.display_name = input.display_name;
-              break;
-            case 'move_catalog_node':
-            case 'move_item':
-            case 'move_items':
-              obj.row.parent_id = input.parent_id;
-              break;
-            case 'bind_attributes':
-            case 'update_attributes':
-            case 'remove_attributes':
-              mutateAttributes(obj, input, name);
-              break;
-            case 'open_item': {
-              requireFact(
-                !terminal.has(obj.sets.lifecycle?.state),
-                'INVALID_TRANSITION',
-                'Terminal item cannot be opened.',
-              );
-              const opening = obj.sets.lifecycle?.opening;
-              if (opening?.state !== 'OPENED' && !opening?.opened_at)
-                obj.sets.lifecycle = {
-                  ...obj.sets.lifecycle,
-                  opening: {
-                    state: 'OPENED',
-                    ...(input.opened_at ? { opened_at: input.opened_at } : {}),
-                  },
-                };
-              break;
-            }
-            case 'consume_items':
-            case 'consume_item_content': {
-              requireFact(
-                !terminal.has(obj.sets.lifecycle?.state),
-                'INVALID_TRANSITION',
-                'Terminal item cannot be consumed.',
-              );
-              if (name === 'consume_items') {
-                obj.sets.lifecycle = { ...obj.sets.lifecycle, state: 'CONSUMED' };
-                if (obj.sets.contents?.remaining) obj.sets.contents.remaining.value = '0';
-              } else {
-                requireFact(
-                  obj.sets.contents?.remaining,
-                  'MISSING_FACTS',
-                  'Known contents.remaining is required to subtract.',
-                  { required_paths: ['contents.remaining'], purpose: 'subtract content' },
-                );
-                obj.sets.contents = subtract(
-                  obj.sets.contents.remaining,
-                  input.amount,
-                  obj.sets.contents.accuracy,
-                  input.accuracy,
-                );
-              }
-              break;
-            }
-            case 'correct_item': {
-              if (input.core) obj.row.catalog_node_id = input.core.catalog_node_id;
-              const ids = (input.attributes ?? []).map((a: any) => a.template_id);
-              requireFact(
-                new Set(ids).size === ids.length,
-                'ATTRIBUTE_VALIDATION_FAILED',
-                'Duplicate template patches.',
-              );
-              for (const attr of input.attributes ?? [])
-                mutateAttributes(obj, attr, 'update_attributes');
-              break;
-            }
-            case 'edit_item':
-            case 'add_note':
-            case 'update_note': {
-              if (name === 'edit_item') {
-                if (input.display_name !== undefined) obj.row.display_name = input.display_name;
-                const set: Record<string, unknown> = {},
-                  unset: string[] = [];
-                for (const [field, path] of [
-                  ['availability', 'availability'],
-                  ['acquired_on', 'acquisition.acquired_on'],
-                ]) {
-                  if (input[field] === null) unset.push(path);
-                  else if (input[field] !== undefined) set[path] = input[field];
-                }
-                if (Object.keys(set).length || unset.length)
-                  obj.sets.lifecycle = patch(obj.sets.lifecycle ?? {}, set, unset, [
-                    ...templates.lifecycle.paths,
-                  ]);
-                if (!input.note) break;
-              }
-              const noteInput = name === 'edit_item' ? input.note : input;
-              const prior = noteInput.note_id
-                ? (
-                    await query(
-                      c,
-                      'SELECT * FROM notes WHERE household_id=$1 AND item_id=$2 AND id=$3',
-                      [ctx.household_id, obj.row.id, noteInput.note_id],
-                    )
-                  ).rows[0]
-                : undefined;
-              if (noteInput.note_id)
-                requireFact(prior, 'NOT_FOUND', 'Note not found on this item.');
-              const note_id = prior?.id ?? 'note_' + randomUUID();
-              const title =
-                noteInput.title === undefined ? (prior?.title ?? null) : noteInput.title;
-              const left = prior
-                ? { [`notes.${note_id}.body`]: prior.body, [`notes.${note_id}.title`]: prior.title }
-                : {};
-              const right = {
-                [`notes.${note_id}.body`]: noteInput.body,
-                [`notes.${note_id}.title`]: title,
-              };
-              if (changes(left, right).length) {
-                if (prior)
-                  await query(c, 'UPDATE notes SET title=$1,body=$2,updated_at=now() WHERE id=$3', [
-                    title,
-                    noteInput.body,
-                    note_id,
-                  ]);
-                else
-                  await query(
-                    c,
-                    'INSERT INTO notes(id,household_id,item_id,title,body,created_by) VALUES($1,$2,$3,$4,$5,$6)',
-                    [note_id, ctx.household_id, obj.row.id, title, noteInput.body, ctx.actor_id],
-                  );
-              }
-              await save(obj, before, left, right);
-              result.note_id = note_id;
-              continue;
-            }
-            default:
-              throw new DomainError('ATTRIBUTE_VALIDATION_FAILED', 'Unsupported command.');
-          }
-          await save(obj, before);
-        }
+      let result: any;
+      if (name === 'propose_catalog_change')
+        result = await proposeCatalogChange(c, ctx, input, operation_id);
+      else if (name === 'commit_intake')
+        result = await commitIntake(c, ctx, input, operation_id, applyDomainCommand);
+      else {
+        await authorizeCatalogCommand(c, ctx, name, input, operation_id);
+        result = await applyDomainCommand(c, ctx, name, input, operation_id);
       }
-      result.changed = result.affected_objects.length > 0;
-      result.summary = result.changed
-        ? `${result.affected_objects.length} object(s) changed; inspect affected_objects and get_history.`
-        : 'No changes.';
       await query(
         c,
         'INSERT INTO operations(household_id,actor_id,idempotency_key,fingerprint,result) VALUES($1,$2,$3,$4,$5::jsonb)',
@@ -868,4 +563,333 @@ async function read(c: Client, ctx: Context, name: Operation, input: any): Promi
     unknown_availability_count: current.filter((o) => !o.sets.lifecycle?.availability).length,
     content_totals: { by_unit: totals, unknown_quantity_count, unconvertible_percentage_count },
   };
+}
+
+// Transaction-scoped primitive: caller owns authorization, lock, idempotency and commit.
+async function applyDomainCommand(
+  c: Client,
+  ctx: Context,
+  name: Operation,
+  input: any,
+  operation_id: string,
+) {
+  const result: any = {
+    operation_id,
+    changed: false,
+    affected_objects: [],
+    event_ids: [],
+    summary: 'No changes.',
+  };
+  const checkRevision = (obj: ObjectState) =>
+    requireFact(
+      input.expected_revisions[obj.row.id] === obj.row.revision,
+      'REVISION_CONFLICT',
+      'Re-query and submit the current revision.',
+      { id: obj.row.id, current_revision: obj.row.revision },
+    );
+  const save = async (
+    obj: ObjectState,
+    before?: ObjectState,
+    extraBefore: Record<string, any> = {},
+    extraAfter: Record<string, any> = {},
+  ) => {
+    await validate(c, ctx, obj, before, name === 'correct_item');
+    const delta = changes(
+      { ...(before ? flatten(before) : {}), ...extraBefore },
+      { ...flatten(obj), ...extraAfter },
+    );
+    if (!delta.length && before) return;
+    const rev = before?.row.revision ?? 0;
+    const now = (await query(c, 'SELECT to_jsonb(now()) AS time')).rows[0].time;
+    const attributes = Object.keys(obj.sets)
+      .sort()
+      .map((template_id) => {
+        const prior = before?.row.attributes.find((a: any) => a.template_id === template_id);
+        return {
+          template_id,
+          template_version: prior?.template_version ?? 1,
+          values: obj.sets[template_id],
+          created_at: prior?.created_at ?? now,
+          updated_at:
+            prior && canonical(prior.values) === canonical(obj.sets[template_id])
+              ? prior.updated_at
+              : now,
+        };
+      });
+    await validateBindings(c, ctx, obj, attributes);
+    const embedded = JSON.stringify(attributes);
+    if (!before) {
+      if (obj.kind === 'ITEM')
+        await query(
+          c,
+          'INSERT INTO items(id,household_id,catalog_node_id,parent_id,display_name,attributes) VALUES($1,$2,$3,$4,$5,$6::jsonb)',
+          [
+            obj.row.id,
+            ctx.household_id,
+            obj.row.catalog_node_id,
+            obj.row.parent_id,
+            obj.row.display_name ?? null,
+            embedded,
+          ],
+        );
+      else
+        await query(
+          c,
+          'INSERT INTO catalog_nodes(id,household_id,parent_id,kind,name,attributes) VALUES($1,$2,$3,$4,$5,$6::jsonb)',
+          [obj.row.id, ctx.household_id, obj.row.parent_id, obj.row.kind, obj.row.name, embedded],
+        );
+    } else if (obj.kind === 'ITEM')
+      await query(
+        c,
+        'UPDATE items SET catalog_node_id=$1,parent_id=$2,display_name=$3,attributes=$6::jsonb,revision=revision+1,updated_at=now() WHERE household_id=$4 AND id=$5',
+        [
+          obj.row.catalog_node_id,
+          obj.row.parent_id,
+          obj.row.display_name ?? null,
+          ctx.household_id,
+          obj.row.id,
+          embedded,
+        ],
+      );
+    else
+      await query(
+        c,
+        'UPDATE catalog_nodes SET name=$1,parent_id=$2,attributes=$5::jsonb,revision=revision+1,updated_at=now() WHERE household_id=$3 AND id=$4',
+        [obj.row.name, obj.row.parent_id, ctx.household_id, obj.row.id, embedded],
+      );
+    if (obj.kind === 'CATALOG_NODE') {
+      await query(
+        c,
+        'DELETE FROM catalog_identity_keys WHERE household_id=$1 AND catalog_node_id=$2',
+        [ctx.household_id, obj.row.id],
+      );
+      await query(c, 'DELETE FROM barcode_index WHERE household_id=$1 AND catalog_node_id=$2', [
+        ctx.household_id,
+        obj.row.id,
+      ]);
+      for (const barcode of obj.sets.product?.barcodes ?? [])
+        await query(
+          c,
+          'INSERT INTO barcode_index(household_id,barcode,catalog_node_id) VALUES($1,$2,$3)',
+          [ctx.household_id, barcode, obj.row.id],
+        );
+    }
+    const event_id = 'event_' + randomUUID();
+    const enriched = delta.map((d) =>
+      d.path.startsWith('attributes.')
+        ? { ...d, template_id: d.path.split('.')[1], template_version: 1 }
+        : d,
+    );
+    await query(
+      c,
+      'INSERT INTO events(id,household_id,target_kind,target_id,operation_id,event_type,before_revision,after_revision,changes,actor_id,source,occurred_at,reason) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13)',
+      [
+        event_id,
+        ctx.household_id,
+        obj.kind,
+        obj.row.id,
+        operation_id,
+        eventTypes[name],
+        rev,
+        rev + 1,
+        JSON.stringify(enriched),
+        ctx.actor_id,
+        ctx.source,
+        input.occurred_at ?? new Date().toISOString(),
+        input.reason ?? null,
+      ],
+    );
+    result.affected_objects.push({
+      kind: obj.kind,
+      id: obj.row.id,
+      before_revision: rev,
+      after_revision: rev + 1,
+    });
+    result.event_ids.push(event_id);
+  };
+  if (name === 'create_catalog_node') {
+    const obj: ObjectState = {
+      kind: 'CATALOG_NODE',
+      row: {
+        id: 'catalog_node_' + randomUUID(),
+        kind: input.kind,
+        name: input.name,
+        parent_id: input.parent_id,
+      },
+      sets: initialSets(input.initial_attributes),
+    };
+    await save(obj);
+  } else if (name === 'create_items') {
+    for (let i = 0; i < input.count; i++)
+      await save({
+        kind: 'ITEM',
+        row: {
+          id: 'item_' + randomUUID(),
+          catalog_node_id: input.catalog_node_id,
+          parent_id: input.parent_id,
+          display_name: input.display_name ?? null,
+        },
+        sets: initialSets(input.initial_attributes),
+      });
+  } else {
+    let targets: Target[];
+    if (name === 'consume_items' || name === 'move_items') {
+      requireFact(
+        new Set(input.item_ids).size === input.item_ids.length,
+        'ATTRIBUTE_VALIDATION_FAILED',
+        'Duplicate item IDs.',
+      );
+      targets = input.item_ids.map((id: string) => ({ kind: 'ITEM', id }));
+    } else
+      targets = [
+        input.target ??
+          (input.item_id
+            ? { kind: 'ITEM', id: input.item_id }
+            : { kind: 'CATALOG_NODE', id: input.catalog_node_id }),
+      ];
+    for (const t of targets.sort((a, b) => a.id.localeCompare(b.id))) {
+      const before = await load(c, ctx, t);
+      checkRevision(before);
+      const obj = structuredClone(before);
+      switch (name) {
+        case 'update_catalog_node':
+          obj.row.name = input.name;
+          break;
+        case 'update_item':
+          obj.row.display_name = input.display_name;
+          break;
+        case 'move_catalog_node':
+        case 'move_item':
+        case 'move_items':
+          obj.row.parent_id = input.parent_id;
+          break;
+        case 'bind_attributes':
+        case 'update_attributes':
+        case 'remove_attributes':
+          mutateAttributes(obj, input, name);
+          break;
+        case 'open_item': {
+          requireFact(
+            !terminal.has(obj.sets.lifecycle?.state),
+            'INVALID_TRANSITION',
+            'Terminal item cannot be opened.',
+          );
+          const opening = obj.sets.lifecycle?.opening;
+          if (opening?.state !== 'OPENED' && !opening?.opened_at)
+            obj.sets.lifecycle = {
+              ...obj.sets.lifecycle,
+              opening: {
+                state: 'OPENED',
+                ...(input.opened_at ? { opened_at: input.opened_at } : {}),
+              },
+            };
+          break;
+        }
+        case 'consume_items':
+        case 'consume_item_content': {
+          requireFact(
+            !terminal.has(obj.sets.lifecycle?.state),
+            'INVALID_TRANSITION',
+            'Terminal item cannot be consumed.',
+          );
+          if (name === 'consume_items') {
+            obj.sets.lifecycle = { ...obj.sets.lifecycle, state: 'CONSUMED' };
+            if (obj.sets.contents?.remaining) obj.sets.contents.remaining.value = '0';
+          } else {
+            requireFact(
+              obj.sets.contents?.remaining,
+              'MISSING_FACTS',
+              'Known contents.remaining is required to subtract.',
+              { required_paths: ['contents.remaining'], purpose: 'subtract content' },
+            );
+            obj.sets.contents = subtract(
+              obj.sets.contents.remaining,
+              input.amount,
+              obj.sets.contents.accuracy,
+              input.accuracy,
+            );
+          }
+          break;
+        }
+        case 'correct_item': {
+          if (input.core) obj.row.catalog_node_id = input.core.catalog_node_id;
+          const ids = (input.attributes ?? []).map((a: any) => a.template_id);
+          requireFact(
+            new Set(ids).size === ids.length,
+            'ATTRIBUTE_VALIDATION_FAILED',
+            'Duplicate template patches.',
+          );
+          for (const attr of input.attributes ?? [])
+            mutateAttributes(obj, attr, 'update_attributes');
+          break;
+        }
+        case 'edit_item':
+        case 'add_note':
+        case 'update_note': {
+          if (name === 'edit_item') {
+            if (input.display_name !== undefined) obj.row.display_name = input.display_name;
+            const set: Record<string, unknown> = {},
+              unset: string[] = [];
+            for (const [field, path] of [
+              ['availability', 'availability'],
+              ['acquired_on', 'acquisition.acquired_on'],
+            ]) {
+              if (input[field] === null) unset.push(path);
+              else if (input[field] !== undefined) set[path] = input[field];
+            }
+            if (Object.keys(set).length || unset.length)
+              obj.sets.lifecycle = patch(obj.sets.lifecycle ?? {}, set, unset, [
+                ...templates.lifecycle.paths,
+              ]);
+            if (!input.note) break;
+          }
+          const noteInput = name === 'edit_item' ? input.note : input;
+          const prior = noteInput.note_id
+            ? (
+                await query(
+                  c,
+                  'SELECT * FROM notes WHERE household_id=$1 AND item_id=$2 AND id=$3',
+                  [ctx.household_id, obj.row.id, noteInput.note_id],
+                )
+              ).rows[0]
+            : undefined;
+          if (noteInput.note_id) requireFact(prior, 'NOT_FOUND', 'Note not found on this item.');
+          const note_id = prior?.id ?? 'note_' + randomUUID();
+          const title = noteInput.title === undefined ? (prior?.title ?? null) : noteInput.title;
+          const left = prior
+            ? { [`notes.${note_id}.body`]: prior.body, [`notes.${note_id}.title`]: prior.title }
+            : {};
+          const right = {
+            [`notes.${note_id}.body`]: noteInput.body,
+            [`notes.${note_id}.title`]: title,
+          };
+          if (changes(left, right).length) {
+            if (prior)
+              await query(c, 'UPDATE notes SET title=$1,body=$2,updated_at=now() WHERE id=$3', [
+                title,
+                noteInput.body,
+                note_id,
+              ]);
+            else
+              await query(
+                c,
+                'INSERT INTO notes(id,household_id,item_id,title,body,created_by) VALUES($1,$2,$3,$4,$5,$6)',
+                [note_id, ctx.household_id, obj.row.id, title, noteInput.body, ctx.actor_id],
+              );
+          }
+          await save(obj, before, left, right);
+          result.note_id = note_id;
+          continue;
+        }
+        default:
+          throw new DomainError('ATTRIBUTE_VALIDATION_FAILED', 'Unsupported command.');
+      }
+      await save(obj, before);
+    }
+  }
+  result.changed = result.affected_objects.length > 0;
+  result.summary = result.changed
+    ? `${result.affected_objects.length} object(s) changed; inspect affected_objects and get_history.`
+    : 'No changes.';
+  return result;
 }

@@ -1,3 +1,4 @@
+import { approvedExecute } from './catalog-helpers.js';
 // Fictional household for the Web preview. Refuses non-isolated or populated databases.
 import { initialize } from '../apps/server/src/initialize.js';
 import { execute } from '../apps/server/src/service.js';
@@ -9,7 +10,7 @@ const installation = await initialize();
 const ctx = { ...installation, source: 'WEB_DEMO' };
 let sequence = 0;
 const call = (name: Operation, input: Record<string, unknown>) =>
-  execute(ctx, name, { idempotency_key: `web-demo-${++sequence}`, ...input });
+  approvedExecute(ctx, name, { idempotency_key: `web-demo-${++sequence}`, ...input });
 const attribute = (template_id: string, values: Record<string, unknown>) => ({
   template_id,
   template_version: 1,

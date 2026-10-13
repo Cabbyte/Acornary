@@ -1,4 +1,15 @@
 :root {
+  --ac-safe-top: max(env(safe-area-inset-top, 0px), var(--ac-host-top, 0px));
+  --ac-safe-right: max(env(safe-area-inset-right, 0px), var(--ac-host-right, 0px));
+  --ac-safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--ac-host-bottom, 0px));
+  --ac-safe-left: max(env(safe-area-inset-left, 0px), var(--ac-host-left, 0px));
+  --ac-viewport-height: min(100dvh, var(--ac-visual-height, 100dvh), var(--ac-host-height, 100dvh));
+  --ac-bottom-gap: max(0px, calc(100dvh - var(--ac-viewport-height)));
+  --ac-bottom-inset: calc(var(--ac-bottom-gap) + var(--ac-safe-bottom));
+  --ac-content-height: max(
+    0px,
+    calc(var(--ac-viewport-height) - var(--ac-safe-top) - var(--ac-safe-bottom))
+  );
   color-scheme: light;
   font-synthesis: none;
   -webkit-text-size-adjust: 100%;
@@ -11,10 +22,42 @@ body {
 }
 #root,
 .ant-app {
-  min-height: 100dvh;
+  min-height: var(--ac-content-height);
+}
+.ant-app {
+  padding: var(--ac-safe-top) var(--ac-safe-right) var(--ac-bottom-inset) var(--ac-safe-left);
+}
+/* Embedded hosts may expose a smaller usable region than the iframe viewport. */
+html[data-plugin-layout] {
+  overflow: hidden;
+}
+html[data-plugin-layout] .ant-app {
+  height: max(0px, calc(var(--ac-viewport-height) - var(--ac-safe-bottom)));
+  padding-bottom: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+html[data-plugin-layout] .wb-header {
+  top: 0;
+}
+html[data-plugin-layout] .wb-sidebar {
+  top: 64px;
+}
+.ant-drawer {
+  top: var(--ac-safe-top) !important;
+  right: var(--ac-safe-right) !important;
+  bottom: var(--ac-bottom-inset) !important;
+  left: var(--ac-safe-left) !important;
+}
+fieldset[hidden] {
+  display: none;
+}
+.intake-review:focus-visible {
+  outline: 2px solid var(--ant-color-primary);
+  outline-offset: 4px;
 }
 a {
-  color: var(--ant-color-primary);
+  color: var(--ant-color-link);
   text-decoration: none;
 }
 h1,
@@ -203,7 +246,7 @@ dd {
 }
 .wb-header {
   position: sticky;
-  top: 0;
+  top: var(--ac-safe-top);
   z-index: 10;
   display: flex;
   align-items: center;
@@ -230,8 +273,8 @@ dd {
 }
 .wb-sidebar {
   position: sticky !important;
-  top: 64px;
-  height: calc(100dvh - 64px);
+  top: calc(64px + var(--ac-safe-top));
+  height: calc(var(--ac-content-height) - 64px);
   padding: 16px;
   overflow: auto;
 }
@@ -272,7 +315,7 @@ dd {
 .wb-inventory {
   display: flex;
   flex-direction: column;
-  min-height: calc(100dvh - 112px);
+  min-height: calc(var(--ac-content-height) - 112px);
   flex: 1;
   min-width: 0;
   background: var(--ant-color-bg-container);
@@ -295,8 +338,25 @@ dd {
   margin: 0 0 24px;
   flex-wrap: wrap;
 }
-.wb-title h2 {
+.wb-title h1 {
   margin: 0;
+  font-size: 28px;
+}
+.ac-page-title.ant-typography {
+  font-size: 28px;
+}
+.wb-detail-heading.ant-typography {
+  font-size: 24px;
+}
+.ac-product-option {
+  display: flex;
+  flex-direction: column;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.ac-product-option small {
+  color: var(--ant-color-text-secondary);
+  font-size: 13px;
 }
 .wb-title .wb-add-actions {
   flex-wrap: nowrap;
@@ -328,8 +388,9 @@ dd {
 .with-locations .wb-list-panel {
   padding-left: 16px;
 }
-.wb-location-panel h5 {
+.wb-location-heading.ant-typography {
   margin: 0 0 16px;
+  font-size: 16px;
 }
 .wb-inventory-columns .ant-splitter-bar-dragger {
   touch-action: none;
@@ -426,7 +487,7 @@ dd {
   min-width: 0;
 }
 .wb-location-tree .ant-tree {
-  max-height: max(200px, calc(100dvh - 320px));
+  max-height: max(120px, calc(var(--ac-content-height) - 320px));
   overflow: auto;
 }
 .wb-tree-title {
@@ -448,7 +509,7 @@ dd {
   flex-shrink: 0;
 }
 .wb-tree-root.is-selected {
-  color: var(--ant-color-primary);
+  color: var(--ant-color-primary-text);
   background: var(--ant-color-primary-bg);
 }
 .wb-location-tree .ant-tree-treenode {
@@ -515,7 +576,7 @@ dd {
   bottom: 0;
   z-index: 2;
   background: var(--ant-color-bg-container);
-  padding: 16px 0 max(12px, env(safe-area-inset-bottom));
+  padding: 16px 0 12px;
   margin-top: 16px;
   display: flex;
   gap: 12px;
@@ -561,7 +622,7 @@ dd {
 }
 @media (max-width: 1199px) {
   .wb-inventory {
-    min-height: calc(100dvh - 96px);
+    min-height: calc(var(--ac-content-height) - 96px);
   }
   .app-main {
     padding: 16px;
@@ -576,7 +637,7 @@ dd {
     font-size: 24px;
   }
   .app-main {
-    padding: 16px 12px calc(84px + env(safe-area-inset-bottom));
+    padding: 16px 12px 84px;
   }
   .wb-header {
     padding: 10px 16px;
@@ -589,11 +650,35 @@ dd {
     display: none !important;
   }
   .wb-inventory {
-    min-height: calc(100dvh - 164px);
+    min-height: calc(var(--ac-content-height) - 164px);
     padding: 16px;
   }
   .wb-title-copy {
+    flex-direction: column;
     gap: 4px;
+  }
+  .wb-title {
+    flex-wrap: nowrap;
+    margin-bottom: 16px;
+  }
+  .wb-title h1,
+  .ac-page-title.ant-typography {
+    font-size: 24px;
+  }
+  .wb-item-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .wb-instance-id {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--ant-color-text-secondary);
+  }
+  .wb-item-facts {
+    font-size: 14px;
+    color: var(--ant-color-text);
   }
   .wb-title-copy > span {
     font-size: 14px;
@@ -619,12 +704,12 @@ dd {
   }
   .wb-bottom-nav {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: var(--ac-bottom-inset);
+    left: var(--ac-safe-left);
+    right: var(--ac-safe-right);
     display: flex;
     justify-content: space-around;
-    padding: 8px 12px max(8px, env(safe-area-inset-bottom));
+    padding: 8px 12px;
     border-top: 1px solid var(--ant-color-split);
     background: var(--ant-color-bg-container);
     z-index: 20;
@@ -640,7 +725,7 @@ dd {
     font-size: 12px;
   }
   .wb-bottom-nav a[aria-current='page'] {
-    color: var(--ant-color-primary);
+    color: var(--ant-color-primary-text);
   }
   .wb-workspace.has-detail > .wb-inventory {
     display: none;
@@ -677,6 +762,15 @@ dd {
     flex-wrap: wrap;
   }
 }
+@media (max-width: 767px), (pointer: coarse) {
+  .ant-drawer .ant-drawer-close {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
 @media (pointer: coarse) {
   .ant-btn {
     min-height: 44px;
@@ -698,7 +792,7 @@ dd {
   background: var(--ant-color-bg-layout);
 }
 .workbench-shell {
-  min-height: 100dvh;
+  min-height: var(--ac-content-height);
 }
 .wb-header {
   justify-content: space-between;

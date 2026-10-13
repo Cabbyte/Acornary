@@ -19,7 +19,7 @@ export async function query<T = any>(
   const chunks = text.split(/\$(\d+)/);
   const statement = sql.empty();
   chunks.forEach((chunk, i) =>
-    statement.append(i % 2 ? sql`${values[Number(chunk) - 1]}` : sql.raw(chunk)),
+    statement.append(i % 2 ? sql`${sql.param(values[Number(chunk) - 1])}` : sql.raw(chunk)),
   );
   return (await drizzle(client).execute(statement)) as any;
 }

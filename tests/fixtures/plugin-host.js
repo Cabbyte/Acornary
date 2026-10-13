@@ -2,6 +2,7 @@ const host = (window.host = {
   family: 0,
   saved: undefined,
   context: null,
+  layoutContext: {},
   calls: [],
   contextUpdates: [],
   failContext: 0,
@@ -24,6 +25,15 @@ const host = (window.host = {
   },
   async call(name, args = {}) {
     return this.rpc('tools/call', { name, arguments: args });
+  },
+  // Only explicit test fixture setup uses this helper. Real iframe calls never pass through it.
+  async fixtureCatalog(input) {
+    const proposal = await this.call('propose_catalog_change', { idempotency_key: crypto.randomUUID(), proposal: { kind: 'catalog_command', operation: 'create_catalog_node', input, reason: 'Synthetic plugin fixture' } });
+    const proposal_id = proposal.structuredContent.proposal_id;
+    const expected_scope = (await this.call('open_inventory'))._meta['acornary/view'].session.cache_key;
+    const review = await this.call('get_catalog_review', { proposal_id, expected_scope });
+    const approval = await this.call('confirm_catalog_change', { proposal_id, expected_scope, challenge: review._meta['acornary/catalog-review'].challenge });
+    return this.call('create_catalog_node', { ...input, approval_id: approval.structuredContent.approval_id });
   },
   notify(result) {
     this.frame.contentWindow.postMessage(
@@ -89,6 +99,7 @@ window.addEventListener('message', async (event) => {
           availableDisplayModes: ['fullscreen'],
           theme: 'light',
           locale: 'zh-CN',
+          ...host.layoutContext,
         },
       });
     if (request.method === 'ui/request-display-mode') {

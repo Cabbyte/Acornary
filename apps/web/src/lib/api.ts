@@ -17,6 +17,12 @@ export class ApiError extends Error {
   }
 }
 export const messages: Record<string, string> = {
+  POLICY_REQUIRED: '此分类尚未建立规范。请在对话中提出具体规则，并在确认卡片核对。',
+  POLICY_CONFLICT: '分类规范已更新，请重新核对入库方案。',
+  CLASSIFICATION_CONFLICT: '归类与已确认规则冲突，请核对相关分类。',
+  AMBIGUOUS_PRODUCT: '找到可能的同款，请核对商品差异。',
+  APPROVAL_REQUIRED: '请先在确认卡片批准具体变更。',
+  APPROVAL_EXPIRED: '确认卡片已过期或身份改变，请重新打开。',
   REVISION_CONFLICT: '记录已发生变化。请核对最新内容后重新提交。',
   IDEMPOTENCY_CONFLICT: '这次操作的重试信息不一致，请重新核对。',
   SESSION_CHANGED: '连接账号、家庭或授权已改变，请重新打开操作。',
@@ -115,3 +121,11 @@ export const history = (
     },
     signal,
   );
+
+export const governance = <T>(action: 'review' | 'confirm', input: unknown) =>
+  embeddedRuntime()?.transport.governance<T>(action, input) ??
+  request<T>(`/api/ui/catalog-${action}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Acornary-Request': 'web' },
+    body: JSON.stringify(input),
+  });

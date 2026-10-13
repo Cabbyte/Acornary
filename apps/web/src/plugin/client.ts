@@ -3,6 +3,9 @@ import { App } from '@modelcontextprotocol/ext-apps';
 import {
   pluginEnvelopeSchema,
   pluginMetaKey,
+  pluginReviewTool,
+  pluginConfirmTool,
+  pluginReviewMetaKey,
   pluginViewTool,
   pluginWriteTool,
   type PluginEnvelope,
@@ -16,6 +19,7 @@ import { ApiError, messages } from '../lib/api.js';
 import type { InventoryTransport, Selection } from '../lib/runtime.js';
 import type { Operation } from '../../../../packages/contracts/src/index.js';
 import { domainErrorStatus } from '../../../../packages/contracts/src/errors.js';
+import { applyHostLayout } from '../ui/viewport.js';
 
 export class PluginClient implements InventoryTransport {
   readonly app = new App(
@@ -58,7 +62,7 @@ export class PluginClient implements InventoryTransport {
       } else if (!result._meta?.[pluginMetaKey]) this.onInvalidate(); // Notifications are hints; never apply possibly stale snapshots.
     });
     this.app.addEventListener('hostcontextchanged', (context) => {
-      if (context.theme) document.documentElement.dataset.hostTheme = context.theme;
+      applyHostLayout(context);
     });
   }
   private accept(envelope: PluginEnvelope) {
@@ -79,7 +83,7 @@ export class PluginClient implements InventoryTransport {
     this.selectionSync.activate();
     window.addEventListener('pagehide', () => this.selectionSync.dispose(), { once: true });
     const context = this.app.getHostContext();
-    if (context?.theme) document.documentElement.dataset.hostTheme = context.theme;
+    applyHostLayout(context);
     if (context?.displayMode === 'inline' && context.availableDisplayModes?.includes('fullscreen'))
       await this.app.requestDisplayMode({ mode: 'fullscreen' }).catch(() => {});
     // Initial opener result is the first render. Fetch only if it was not delivered.
@@ -181,6 +185,17 @@ export class PluginClient implements InventoryTransport {
     return (
       await this.call(pluginWriteTool, { expected_scope: scope, operation: name, input: payload })
     ).structuredContent as unknown as WriteResult;
+  }
+  async governance<T>(action: 'review' | 'confirm', input: unknown): Promise<T> {
+    if (!this.envelope?.session.can_write)
+      throw new ApiError('FORBIDDEN', '当前连接只有读取权限。', 403);
+    const response = await this.call(action === 'review' ? pluginReviewTool : pluginConfirmTool, {
+      ...(input as object),
+      expected_scope: this.envelope.session.cache_key,
+    });
+    return (
+      action === 'review' ? response._meta?.[pluginReviewMetaKey] : response.structuredContent
+    ) as T;
   }
   async request<T>(url: string): Promise<T> {
     if (url.startsWith('/api/ui/groups?') && this.envelope) {

@@ -380,7 +380,9 @@ export function InventorySearch() {
   return (
     <div className="ac-page">
       <header className="page-header">
-        <Typography.Title level={2}>搜索</Typography.Title>
+        <Typography.Title level={1} className="ac-page-title">
+          搜索
+        </Typography.Title>
       </header>
       <div className="ac-toolbar">
         <SearchField
@@ -469,7 +471,9 @@ export function ProductCatalog({ open }: { open: (action: Action) => void }) {
     <div className="ac-page">
       <header className="page-header">
         <div>
-          <Typography.Title level={2}>商品目录</Typography.Title>
+          <Typography.Title level={1} className="ac-page-title">
+            商品目录
+          </Typography.Title>
           <Typography.Text type="secondary">{products.length} 款商品</Typography.Text>
         </div>
         <Space wrap>

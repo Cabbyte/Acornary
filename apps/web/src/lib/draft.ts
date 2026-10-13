@@ -7,6 +7,7 @@ export const draftSchema = z
   .object({
     values,
     original: values,
+    proposalId: z.uuid().optional(),
     revisions: z.record(z.string(), z.number().int().positive()),
     attempt: z
       .object({ operation: z.string(), payload: z.record(z.string(), z.unknown()) })

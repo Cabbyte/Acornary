@@ -1,3 +1,4 @@
+import { fixtureCommand } from './governance.js';
 import { choose } from './controls.js';
 import { login } from './login.js';
 import { test, expect, type Page } from '@playwright/test';
@@ -19,18 +20,7 @@ test.beforeEach(async ({ page, context }) => {
   await expect(page.getByRole('heading', { name: '我的物品' })).toBeVisible();
 });
 async function command(page: Page, name: string, input: Record<string, unknown>) {
-  const response = await page.request.post(`/api/write/${name}`, {
-    headers: {
-      Origin: new URL(page.url()).origin,
-      'X-Acornary-Request': 'web',
-      'X-Acornary-Household': await page.evaluate(
-        () => sessionStorage.getItem('acornary-household') ?? '',
-      ),
-    },
-    data: { idempotency_key: crypto.randomUUID(), ...input },
-  });
-  expect(response.status(), await response.text()).toBe(200);
-  return response.json();
+  return fixtureCommand(page, name, input);
 }
 async function fixture(page: Page) {
   const name = `Web 演示饮品 ${crypto.randomUUID().slice(0, 6)}`;
@@ -240,9 +230,9 @@ test('mobile and desktop layouts, long names and accessible touch targets', asyn
   await page.getByRole('button', { name: '添加物品', exact: true }).click();
   await page.getByRole('button', { name: '创建新商品' }).click();
   await page
-    .getByLabel('名称', { exact: true })
+    .getByLabel('新商品名称', { exact: true })
     .fill('长中文名称用于验证小屏幕布局和输入法弹出后的保存按钮是否仍然可达'.repeat(4));
-  const button = page.getByRole('button', { name: '保存', exact: true });
+  const button = page.getByRole('button', { name: '核对入库信息', exact: true });
   await button.scrollIntoViewIfNeeded();
   expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -318,6 +308,9 @@ test('catalog templates, single-item finish and reasoned correction are editable
   await page.getByRole('button', { name: '衣物资料', exact: true }).click();
   await page.getByLabel('材质', { exact: true }).fill('棉');
   await page.getByLabel('尺码', { exact: true }).fill('M');
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '仅批准本次', exact: true }).click();
+  await expect(page.getByText('已批准本次变更，请提交保存。')).toBeVisible();
   await page.getByRole('button', { name: '保存', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.locator('.card').filter({ hasText: '衣物资料' })).toContainText('棉');

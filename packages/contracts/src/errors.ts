@@ -1,6 +1,13 @@
 // Known, definitive domain rejections. Unknown/transport errors must retain the
 // original idempotent request because their commit outcome is not established.
 const statuses: Record<string, number> = {
+  POLICY_REQUIRED: 409,
+  POLICY_CONFLICT: 409,
+  CLASSIFICATION_CONFLICT: 409,
+  AMBIGUOUS_PRODUCT: 409,
+  APPROVAL_REQUIRED: 409,
+  APPROVAL_EXPIRED: 409,
+
   UNAUTHORIZED: 401,
   FORBIDDEN: 403,
   NOT_FOUND: 404,

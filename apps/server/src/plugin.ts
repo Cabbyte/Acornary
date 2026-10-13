@@ -1,3 +1,8 @@
+import { reviewCatalogProposal, confirmCatalogProposal } from './intake.js';
+import {
+  catalogReviewSchema,
+  catalogConfirmSchema,
+} from '../../../packages/contracts/src/intake.js';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
@@ -10,6 +15,9 @@ import {
 } from '@modelcontextprotocol/ext-apps/server';
 import {
   pluginMetaKey,
+  pluginReviewTool,
+  pluginConfirmTool,
+  pluginReviewMetaKey,
   pluginOpenTool,
   pluginViewTool,
   pluginWriteTool,
@@ -57,6 +65,65 @@ export function registerInventoryApp(
   identity: () => PluginIdentity | undefined,
   cloud: boolean,
 ) {
+  for (const tool of [pluginReviewTool, pluginConfirmTool]) {
+    registerAppTool(
+      server,
+      tool,
+      {
+        title: tool === pluginReviewTool ? '查看分类变更确认卡片' : '确认卡片中的分类变更',
+        description:
+          '仅供当前身份的界面使用。确认凭证绑定具体提案、依赖版本和当前会话，不能通过来源或布尔标记替代。',
+        inputSchema: (tool === pluginReviewTool
+          ? catalogReviewSchema
+          : catalogConfirmSchema
+        ).extend({ expected_scope: z.string() }) as any,
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: tool === pluginConfirmTool,
+          openWorldHint: false,
+        },
+        _meta: {
+          ui: { visibility: ['app'] },
+          ...(cloud ? { securitySchemes: [{ type: 'oauth2', scopes: ['inventory:write'] }] } : {}),
+        },
+      },
+      async (args: any) => {
+        try {
+          const current = identity();
+          if (!current?.scopes.has('inventory:write'))
+            throw new DomainError('FORBIDDEN', 'OAuth write scope is required.');
+          const scope = pluginScope(current, cloud);
+          if (args.expected_scope !== scope)
+            throw new DomainError('SESSION_CHANGED', 'The UI authorization context has changed.');
+          const { expected_scope: _, ...input } = args;
+          const result =
+            tool === pluginReviewTool
+              ? await reviewCatalogProposal(current.ctx, scope, input)
+              : await confirmCatalogProposal(current.ctx, scope, input);
+          return tool === pluginReviewTool
+            ? {
+                content: [
+                  { type: 'text' as const, text: '确认卡片已加载。请在界面核对具体变更。' },
+                ],
+                _meta: { [pluginReviewMetaKey]: result },
+              }
+            : {
+                content: [{ type: 'text' as const, text: JSON.stringify(result) }],
+                structuredContent: result,
+              };
+        } catch (e) {
+          if (!(e instanceof DomainError)) throw e;
+          const error = { code: e.code, message: e.message, details: e.details };
+          return {
+            isError: true,
+            content: [{ type: 'text' as const, text: JSON.stringify({ error }) }],
+            structuredContent: { error },
+          };
+        }
+      },
+    );
+  }
   registerAppTool(
     server,
     pluginWriteTool,

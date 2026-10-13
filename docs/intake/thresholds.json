@@ -1,0 +1,13 @@
+{
+  "status": "PENDING_REAL_BASELINE",
+  "frozen_at": null,
+  "baseline_dataset": null,
+  "conditions": null,
+  "new_product_median_ratio_max": null,
+  "new_product_p90_ratio_max": null,
+  "new_group_median_ratio_max": null,
+  "new_group_p90_ratio_max": null,
+  "restock_median_regression_ratio_max": null,
+  "restock_p90_regression_ratio_max": null,
+  "note": "Only freeze after at least 20 real baseline runs for each path and before collecting candidate acceptance runs. Do not derive thresholds from service-only probes."
+}

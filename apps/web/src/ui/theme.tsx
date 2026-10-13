@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import { useEffect, useState, type ReactNode } from 'react';
 import './layout.css';
+import { trackVisualViewport } from './viewport';
 
 dayjs.locale('zh-cn');
 export function useViewport() {
@@ -19,12 +20,18 @@ export const acornaryTheme: ThemeConfig = {
   algorithm: theme.defaultAlgorithm,
   token: {
     colorPrimary: '#AB5F40',
-    colorLink: '#AB5F40',
-    colorLinkHover: '#8F4C32',
+    colorPrimaryHover: '#965136',
+    colorPrimaryActive: '#7D422C',
+    colorPrimaryText: '#87472F',
+    colorPrimaryTextHover: '#723B29',
+    colorLink: '#8F4C32',
+    colorLinkHover: '#723B29',
     colorBgLayout: '#F4F1EE',
     colorBgContainer: '#FFFFFF',
     colorText: '#191A1B',
     colorTextSecondary: '#68615C',
+    colorTextDescription: '#68615C',
+    colorTextPlaceholder: '#756D66',
     borderRadius: 8,
     borderRadiusLG: 12,
     fontSize: 14,
@@ -34,12 +41,14 @@ export const acornaryTheme: ThemeConfig = {
   },
   components: {
     Layout: { headerBg: '#F4F1EE', siderBg: '#F4F1EE' },
-    Menu: { itemBg: 'transparent', activeBarBorderWidth: 0 },
-    Tree: { titleHeight: 36, nodeSelectedColor: '#AB5F40' },
+    Menu: { itemBg: 'transparent', activeBarBorderWidth: 0, itemSelectedColor: '#87472F' },
+    Tree: { titleHeight: 36, nodeSelectedColor: '#87472F' },
+    Descriptions: { labelColor: '#68615C' },
     Table: { cellPaddingBlock: 10 },
   },
 };
 export function AcornaryUIProvider({ children }: { children: ReactNode }) {
+  useEffect(trackVisualViewport, []);
   const { mobile } = useViewport();
   return (
     <ConfigProvider

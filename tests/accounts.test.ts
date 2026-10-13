@@ -252,6 +252,10 @@ describe('email, optional credentials and household isolation', () => {
     expect(joins.map((r) => r.statusCode).sort()).toEqual([200, 400]);
     const joined = joins[0].statusCode === 200 ? b : c;
     const body = { kind: 'SKU', name: 'Shared SKU', idempotency_key: randomUUID() };
+    const proposal = (await a.b.call('/api/write/propose_catalog_change', { idempotency_key: randomUUID(), proposal: { kind: 'catalog_command', operation: 'create_catalog_node', input: body, reason: 'Shared synthetic fixture' } }, home)).json();
+    const review = (await a.b.call('/api/ui/catalog-review', { proposal_id: proposal.proposal_id }, home)).json();
+    const approval = (await a.b.call('/api/ui/catalog-confirm', { proposal_id: proposal.proposal_id, challenge: review.challenge }, home)).json();
+    Object.assign(body, { approval_id: approval.approval_id });
     const write = await a.b.call('/api/write/create_catalog_node', body, home);
     expect(write.statusCode, write.body).toBe(200);
     const id = write.json().affected_objects[0].id;

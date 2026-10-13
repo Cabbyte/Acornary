@@ -8,7 +8,7 @@ import {
   type ItemRecord,
 } from '../../../../packages/contracts/src/web.js';
 import { searchInventory } from './browse.js';
-import { label } from './presentation.js';
+import { label, remaining } from './presentation.js';
 
 export const WORKBENCH_PAGE_SIZE = 20;
 export type WorkbenchFilter = {
@@ -30,6 +30,16 @@ export const availabilityOptions = [
 export function itemStatus(item: ItemRecord) {
   const life = attr(item, 'lifecycle');
   return label(isTerminal(item) ? life?.state : life?.availability);
+}
+/** Only expose recorded facts; unknown opening must never look like sealed. */
+export function itemFacts(item: ItemRecord) {
+  const life = attr(item, 'lifecycle');
+  return [
+    life?.opening?.state ? label(life.opening.state) : '开封未记录',
+    ...(attr(item, 'contents')?.remaining ? [`剩余 ${remaining(item)}`] : []),
+    ...(life?.expiry?.date ? [`到期 ${life.expiry.date}`] : []),
+    ...(isTerminal(item) || life?.availability ? [itemStatus(item)] : []),
+  ].join(' · ');
 }
 export function workbenchItems(
   data: InventoryData,
