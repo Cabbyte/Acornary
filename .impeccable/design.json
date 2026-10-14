@@ -1,0 +1,411 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-14T13:01:20.693512+00:00",
+  "title": "Design System: 松仓 · Acornary",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "陶土主色",
+        "tonalRamp": [
+          "oklch(15.00% 0.10862 42.45)",
+          "oklch(26.43% 0.10862 42.45)",
+          "oklch(37.86% 0.10862 42.45)",
+          "oklch(49.29% 0.10862 42.45)",
+          "oklch(60.71% 0.10862 42.45)",
+          "oklch(72.14% 0.10862 42.45)",
+          "oklch(83.57% 0.10862 42.45)",
+          "oklch(95.00% 0.10862 42.45)"
+        ]
+      },
+      "primary-hover": {
+        "role": "primary",
+        "displayName": "陶土悬停",
+        "tonalRamp": [
+          "oklch(15.00% 0.10056 41.67)",
+          "oklch(26.43% 0.10056 41.67)",
+          "oklch(37.86% 0.10056 41.67)",
+          "oklch(49.29% 0.10056 41.67)",
+          "oklch(60.71% 0.10056 41.67)",
+          "oklch(72.14% 0.10056 41.67)",
+          "oklch(83.57% 0.10056 41.67)",
+          "oklch(95.00% 0.10056 41.67)"
+        ]
+      },
+      "primary-active": {
+        "role": "primary",
+        "displayName": "陶土按下",
+        "tonalRamp": [
+          "oklch(15.00% 0.08840 40.85)",
+          "oklch(26.43% 0.08840 40.85)",
+          "oklch(37.86% 0.08840 40.85)",
+          "oklch(49.29% 0.08840 40.85)",
+          "oklch(60.71% 0.08840 40.85)",
+          "oklch(72.14% 0.08840 40.85)",
+          "oklch(83.57% 0.08840 40.85)",
+          "oklch(95.00% 0.08840 40.85)"
+        ]
+      },
+      "primary-text": {
+        "role": "primary",
+        "displayName": "深陶土文字",
+        "tonalRamp": [
+          "oklch(15.00% 0.09466 40.91)",
+          "oklch(26.43% 0.09466 40.91)",
+          "oklch(37.86% 0.09466 40.91)",
+          "oklch(49.29% 0.09466 40.91)",
+          "oklch(60.71% 0.09466 40.91)",
+          "oklch(72.14% 0.09466 40.91)",
+          "oklch(83.57% 0.09466 40.91)",
+          "oklch(95.00% 0.09466 40.91)"
+        ]
+      },
+      "primary-text-hover": {
+        "role": "primary",
+        "displayName": "深陶土文字悬停",
+        "tonalRamp": [
+          "oklch(15.00% 0.08269 38.78)",
+          "oklch(26.43% 0.08269 38.78)",
+          "oklch(37.86% 0.08269 38.78)",
+          "oklch(49.29% 0.08269 38.78)",
+          "oklch(60.71% 0.08269 38.78)",
+          "oklch(72.14% 0.08269 38.78)",
+          "oklch(83.57% 0.08269 38.78)",
+          "oklch(95.00% 0.08269 38.78)"
+        ]
+      },
+      "link": {
+        "role": "primary",
+        "displayName": "陶土链接",
+        "tonalRamp": [
+          "oklch(15.00% 0.09843 41.49)",
+          "oklch(26.43% 0.09843 41.49)",
+          "oklch(37.86% 0.09843 41.49)",
+          "oklch(49.29% 0.09843 41.49)",
+          "oklch(60.71% 0.09843 41.49)",
+          "oklch(72.14% 0.09843 41.49)",
+          "oklch(83.57% 0.09843 41.49)",
+          "oklch(95.00% 0.09843 41.49)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "暖纸底",
+        "tonalRamp": [
+          "oklch(15.00% 0.01477 80.71)",
+          "oklch(26.43% 0.01477 80.71)",
+          "oklch(37.86% 0.01477 80.71)",
+          "oklch(49.29% 0.01477 80.71)",
+          "oklch(60.71% 0.01477 80.71)",
+          "oklch(72.14% 0.01477 80.71)",
+          "oklch(83.57% 0.01477 80.71)",
+          "oklch(95.00% 0.01477 80.71)"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "浅纸内容面",
+        "tonalRamp": [
+          "oklch(15.00% 0.00854 84.57)",
+          "oklch(26.43% 0.00854 84.57)",
+          "oklch(37.86% 0.00854 84.57)",
+          "oklch(49.29% 0.00854 84.57)",
+          "oklch(60.71% 0.00854 84.57)",
+          "oklch(72.14% 0.00854 84.57)",
+          "oklch(83.57% 0.00854 84.57)",
+          "oklch(95.00% 0.00854 84.57)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "暖墨",
+        "tonalRamp": [
+          "oklch(15.00% 0.01290 51.62)",
+          "oklch(26.43% 0.01290 51.62)",
+          "oklch(37.86% 0.01290 51.62)",
+          "oklch(49.29% 0.01290 51.62)",
+          "oklch(60.71% 0.01290 51.62)",
+          "oklch(72.14% 0.01290 51.62)",
+          "oklch(83.57% 0.01290 51.62)",
+          "oklch(95.00% 0.01290 51.62)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "次要暖灰",
+        "tonalRamp": [
+          "oklch(15.00% 0.01193 58.03)",
+          "oklch(26.43% 0.01193 58.03)",
+          "oklch(37.86% 0.01193 58.03)",
+          "oklch(49.29% 0.01193 58.03)",
+          "oklch(60.71% 0.01193 58.03)",
+          "oklch(72.14% 0.01193 58.03)",
+          "oklch(83.57% 0.01193 58.03)",
+          "oklch(95.00% 0.01193 58.03)"
+        ]
+      },
+      "placeholder": {
+        "role": "neutral",
+        "displayName": "提示暖灰",
+        "tonalRamp": [
+          "oklch(15.00% 0.01470 63.74)",
+          "oklch(26.43% 0.01470 63.74)",
+          "oklch(37.86% 0.01470 63.74)",
+          "oklch(49.29% 0.01470 63.74)",
+          "oklch(60.71% 0.01470 63.74)",
+          "oklch(72.14% 0.01470 63.74)",
+          "oklch(83.57% 0.01470 63.74)",
+          "oklch(95.00% 0.01470 63.74)"
+        ]
+      },
+      "divider": {
+        "role": "neutral",
+        "displayName": "商品分隔",
+        "tonalRamp": [
+          "oklch(15.00% 0.02005 77.31)",
+          "oklch(26.43% 0.02005 77.31)",
+          "oklch(37.86% 0.02005 77.31)",
+          "oklch(49.29% 0.02005 77.31)",
+          "oklch(60.71% 0.02005 77.31)",
+          "oklch(72.14% 0.02005 77.31)",
+          "oklch(83.57% 0.02005 77.31)",
+          "oklch(95.00% 0.02005 77.31)"
+        ]
+      },
+      "instance-divider": {
+        "role": "neutral",
+        "displayName": "实物分隔",
+        "tonalRamp": [
+          "oklch(15.00% 0.01710 76.11)",
+          "oklch(26.43% 0.01710 76.11)",
+          "oklch(37.86% 0.01710 76.11)",
+          "oklch(49.29% 0.01710 76.11)",
+          "oklch(60.71% 0.01710 76.11)",
+          "oklch(72.14% 0.01710 76.11)",
+          "oklch(83.57% 0.01710 76.11)",
+          "oklch(95.00% 0.01710 76.11)"
+        ]
+      },
+      "selection": {
+        "role": "neutral",
+        "displayName": "选中浅陶土",
+        "tonalRamp": [
+          "oklch(15.00% 0.02471 61.64)",
+          "oklch(26.43% 0.02471 61.64)",
+          "oklch(37.86% 0.02471 61.64)",
+          "oklch(49.29% 0.02471 61.64)",
+          "oklch(60.71% 0.02471 61.64)",
+          "oklch(72.14% 0.02471 61.64)",
+          "oklch(83.57% 0.02471 61.64)",
+          "oklch(95.00% 0.02471 61.64)"
+        ]
+      },
+      "location-ink": {
+        "role": "neutral",
+        "displayName": "位置深褐",
+        "tonalRamp": [
+          "oklch(15.00% 0.02101 61.46)",
+          "oklch(26.43% 0.02101 61.46)",
+          "oklch(37.86% 0.02101 61.46)",
+          "oklch(49.29% 0.02101 61.46)",
+          "oklch(60.71% 0.02101 61.46)",
+          "oklch(72.14% 0.02101 61.46)",
+          "oklch(83.57% 0.02101 61.46)",
+          "oklch(95.00% 0.02101 61.46)"
+        ]
+      },
+      "date-past": {
+        "role": "neutral",
+        "displayName": "已过日期红",
+        "tonalRamp": [
+          "oklch(15.00% 0.14463 31.19)",
+          "oklch(26.43% 0.14463 31.19)",
+          "oklch(37.86% 0.14463 31.19)",
+          "oklch(49.29% 0.14463 31.19)",
+          "oklch(60.71% 0.14463 31.19)",
+          "oklch(72.14% 0.14463 31.19)",
+          "oklch(83.57% 0.14463 31.19)",
+          "oklch(95.00% 0.14463 31.19)"
+        ]
+      },
+      "consumption-border": {
+        "role": "neutral",
+        "displayName": "消耗区域边线",
+        "tonalRamp": [
+          "oklch(15.00% 0.03329 64.37)",
+          "oklch(26.43% 0.03329 64.37)",
+          "oklch(37.86% 0.03329 64.37)",
+          "oklch(49.29% 0.03329 64.37)",
+          "oklch(60.71% 0.03329 64.37)",
+          "oklch(72.14% 0.03329 64.37)",
+          "oklch(83.57% 0.03329 64.37)",
+          "oklch(95.00% 0.03329 64.37)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "brand": {
+        "displayName": "brand",
+        "purpose": "品牌字标。"
+      },
+      "headline": {
+        "displayName": "headline",
+        "purpose": "物品工作台页标题。"
+      },
+      "headline-mobile": {
+        "displayName": "headline-mobile",
+        "purpose": "手机物品页标题。"
+      },
+      "dossier-title": {
+        "displayName": "dossier-title",
+        "purpose": "单件档案标题。"
+      },
+      "body": {
+        "displayName": "body",
+        "purpose": "桌面正文和控件。"
+      },
+      "body-mobile": {
+        "displayName": "body-mobile",
+        "purpose": "手机正文和输入。"
+      },
+      "group-title": {
+        "displayName": "group-title",
+        "purpose": "商品摘要名称。"
+      },
+      "instance-meta": {
+        "displayName": "instance-meta",
+        "purpose": "桌面实物说明。"
+      },
+      "instance-meta-mobile": {
+        "displayName": "instance-meta-mobile",
+        "purpose": "手机实物说明。"
+      },
+      "remaining": {
+        "displayName": "remaining",
+        "purpose": "已记录余量，配合 tabular-nums。"
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "reduced-motion-duration",
+        "value": "0.01ms",
+        "purpose": "prefers-reduced-motion: reduce 时的 animation-duration 与 transition-duration 覆盖。"
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "mobile-max",
+        "value": "767px"
+      },
+      {
+        "name": "desktop-min",
+        "value": "768px"
+      },
+      {
+        "name": "wide-min",
+        "value": "1200px"
+      },
+      {
+        "name": "inline-locations-content-min",
+        "value": "836px"
+      },
+      {
+        "name": "inline-dossier-content-min",
+        "value": "1360px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "主按钮",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "主题主按钮；手机至少 44px。",
+      "html": "<button class=\"ds-primary\">添加物品</button>",
+      "css": ".ds-primary {font-family:-apple-system, BlinkMacSystemFont, \"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif;font-size:14px;min-height:36px;padding:4px 15px;border-radius:8px;cursor:pointer;background:#AB5F40;color:var(--ant-color-text-light-solid,#fff);border:1px solid transparent;} .ds-primary:hover {background:#965136;} .ds-primary:active {background:#7D422C;} .ds-primary:focus-visible {outline:2px solid #AB5F40;outline-offset:2px;} @media(max-width:767px) {.ds-primary {min-height:44px;font-size:16px;}}"
+    },
+    {
+      "name": "普通按钮",
+      "kind": "button",
+      "refersTo": "button-default",
+      "description": "返回、移动和编辑等次级操作。",
+      "html": "<button class=\"ds-default\">移动</button>",
+      "css": ".ds-default {font-family:-apple-system, BlinkMacSystemFont, \"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif;font-size:14px;min-height:36px;padding:4px 15px;border-radius:8px;cursor:pointer;background:#FFFCF6;color:#2B2420;border:1px solid var(--ant-color-border,#d9d9d9);} .ds-default:hover {color:#965136;border-color:#965136;} .ds-default:active {color:#7D422C;border-color:#7D422C;} .ds-default:focus-visible {outline:2px solid #AB5F40;outline-offset:2px;} @media(max-width:767px) {.ds-default {min-height:44px;font-size:16px;}}"
+    },
+    {
+      "name": "搜索输入",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "系统字体与暖纸主题，保留明确名称。",
+      "html": "<input class=\"ds-input\" aria-label=\"搜索物品\" placeholder=\"在当前位置搜索…\">",
+      "css": ".ds-input {font-family:-apple-system, BlinkMacSystemFont, \"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif;font-size:14px;height:36px;max-width:100%;padding:4px 11px;border:1px solid var(--ant-color-border,#d9d9d9);border-radius:8px;background:#FFFCF6;color:#2B2420;} .ds-input::placeholder {color:#756D66;} .ds-input:hover {border-color:#965136;} .ds-input:focus-visible {border-color:#AB5F40;outline:2px solid #AB5F40;outline-offset:2px;} @media(max-width:767px) {.ds-input {height:44px;font-size:16px;}}"
+    },
+    {
+      "name": "手机导航",
+      "kind": "nav",
+      "refersTo": "bottom-navigation",
+      "description": "四个页面入口；预览以内联区域显示固定导航的内容。",
+      "html": "<nav class=\"ds-nav\" aria-label=\"主导航\"><a href=\"#items\" aria-current=\"page\">我的物品</a><a href=\"#catalog\">商品目录</a><a href=\"#activity\">动态</a><a href=\"#settings\">设置</a></nav>",
+      "css": ".ds-nav {display:flex;justify-content:space-around;gap:4px;padding:8px 12px;background:#FFFCF6;border-top:1px solid var(--ant-color-split,#f0f0f0);font-family:-apple-system, BlinkMacSystemFont, \"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif;font-size:14px;} .ds-nav a {display:flex;align-items:center;justify-content:center;min-width:64px;min-height:44px;color:#68615C;font-size:12px;text-decoration:none;} .ds-nav a[aria-current=page] {color:#87472F;} .ds-nav a:hover {color:#723B29;} .ds-nav a:focus-visible {outline:2px solid #AB5F40;outline-offset:2px;}"
+    },
+    {
+      "name": "关注筛选",
+      "kind": "chip",
+      "refersTo": "attention-filter",
+      "description": "实际使用按钮；aria-pressed 展示筛选状态。",
+      "html": "<button class=\"ds-filter\" aria-pressed=\"true\">近期日期 2</button>",
+      "css": ".ds-filter {font-family:-apple-system, BlinkMacSystemFont, \"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif;font-size:14px;min-height:36px;padding:4px 15px;border-radius:8px;cursor:pointer;background:#AB5F40;color:var(--ant-color-text-light-solid,#fff);border:1px solid transparent;} .ds-filter:hover {background:#965136;} .ds-filter:active {background:#7D422C;} .ds-filter:focus-visible {outline:2px solid #AB5F40;outline-offset:2px;} @media(max-width:767px) {.ds-filter {min-height:44px;font-size:16px;}}"
+    },
+    {
+      "name": "商品摘要",
+      "kind": "custom",
+      "refersTo": "group-toggle",
+      "description": "紧凑分组；此静态预览不执行展开或写入。",
+      "html": "<section class=\"ds-group\"><button class=\"ds-group-button\" aria-expanded=\"false\"><svg viewBox=\"0 0 16 16\" width=\"16\" height=\"16\" aria-hidden=\"true\"><path d=\"m6 3 5 5-5 5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"/></svg><span><strong>光明全脂牛奶 1L</strong><small>6 件 · 2 个已知位置</small></span></button></section>",
+      "css": ".ds-group {border-bottom:1px solid #E8DFD2;padding-block:10px;} .ds-group-button {font-family:-apple-system, BlinkMacSystemFont, \"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif;font-size:14px;display:flex;align-items:center;gap:8px;min-height:54px;width:100%;padding:8px;border:0;border-radius:8px;background:transparent;color:#2B2420;text-align:left;cursor:pointer;} .ds-group-button strong {display:block;font-size:16px;} .ds-group-button small {display:block;color:#68615C;margin-top:4px;font-weight:400;} .ds-group-button:hover {background:var(--ant-color-bg-text-hover,rgba(0,0,0,.04));} .ds-group-button:active {background:var(--ant-color-bg-text-active,rgba(0,0,0,.08));} .ds-group-button:focus-visible {outline:2px solid #AB5F40;outline-offset:2px;}"
+    },
+    {
+      "name": "余量内容面",
+      "kind": "card",
+      "refersTo": "remaining-panel",
+      "description": "展示已记录余量；无基准示例不绘制进度。",
+      "html": "<section class=\"ds-remaining\" aria-label=\"当前剩余\"><span>当前剩余</span><strong>约 420 mL</strong></section>",
+      "css": ".ds-remaining {font-family:-apple-system, BlinkMacSystemFont, \"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif;font-size:14px;padding:16px;background:#F6F0E6;border-radius:8px;color:#2B2420;} .ds-remaining span {color:#68615C;} .ds-remaining strong {display:block;font-size:26px;font-variant-numeric:tabular-nums;margin-top:8px;}"
+    }
+  ],
+  "narrative": {
+    "northStar": "暖纸家庭储藏工作台",
+    "overview": "松仓用暖纸底与浅色内容面承载家庭物品，陶土色标记主要动作和选择。系统宋体只出现在品牌与少量标题，列表、数字和表单维持系统无衬线字体的清晰密度。\n\n界面以商品摘要、可展开实物和按需出现的单件档案组织阅读。沿用 React 与 Ant Design 的控件行为，通过主题和业务布局表达已批准的方向；当前只提供浅色方案。",
+    "keyCharacteristics": [
+      "暖纸与浅色内容面形成轻层次。",
+      "商品摘要与紧凑实物条目共享同一阅读面。",
+      "陶土强调动作与选择，状态保留语义。",
+      "内容宽度决定分栏，移动端保留可触达操作。"
+    ],
+    "rules": [
+      {
+        "name": "The Semantic Color Rule",
+        "body": "陶土表达动作与选择，已过日期和库内状态提示保留各自语义，不把所有状态统一染成品牌色。",
+        "section": "colors"
+      },
+      {
+        "name": "The Quiet Surface Rule",
+        "body": "自定义内容面以暖色层次和细分隔线建立结构，控件浮层深度交由 Ant Design 处理。",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do 使用前置 token 与现有 Ant Design 组件，继承其表单、焦点和错误反馈行为。",
+      "Do 保留未知事实、估计标识、日期类型与家庭时区语义；只为有效余量数据画进度。",
+      "Do 按可用内容宽度安排位置和详情，保留移动端 44px 主操作与 16px 输入文字。",
+      "Do 保留键盘展开、明确的选择范围、详情返回焦点和同一个编辑草稿实例。"
+    ],
+    "donts": [
+      "Don't 自动切换深色主题或增加远程字体依赖。",
+      "Don't 用装饰打孔、粗阴影或重复大卡片增加实物列表负担。",
+      "Don't 把商品组当成可直接消耗的实物，或用视觉简化隐藏写入目标。",
+      "Don't 把浏览器截图或文档完成称为真机、真实宿主或生产验收完成。"
+    ]
+  }
+}

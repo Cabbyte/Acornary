@@ -23,6 +23,8 @@ test('Ant Design catalog tree filters and preserves browse state on Web', async 
     '224',
   );
   await expect(page.getByRole('columnheader', { name: '收纳位置', exact: true })).toHaveCount(0);
+  await page.getByRole('combobox', { name: '分组方式' }).click();
+  await page.getByRole('option', { name: '不分组', exact: true }).click();
   await page.getByRole('button', { name: '显示列', exact: true }).click();
   await expect(page.getByRole('checkbox', { name: '收纳位置', exact: true })).toHaveCount(0);
   await page.goto('/search');
@@ -137,6 +139,8 @@ test('Ant Design in-page location tree resizing, scope, creation and responsive 
   const f = await fixture(page);
   await page.goto(`/places/${f.room}`);
   await expect(page.getByRole('checkbox', { name: '包含下级位置' })).toBeChecked();
+  await page.getByRole('combobox', { name: '分组方式' }).click();
+  await page.getByRole('option', { name: '不分组', exact: true }).click();
   const rows = page.getByRole('table', { name: '物品列表' }).getByRole('row');
   await expect(rows).toHaveCount(9);
   await page.getByRole('checkbox', { name: '包含下级位置' }).uncheck();
@@ -144,7 +148,7 @@ test('Ant Design in-page location tree resizing, scope, creation and responsive 
   await page.getByRole('checkbox', { name: '包含下级位置' }).check();
   await expect(rows).toHaveCount(9);
   const navigation = page.getByRole('menu', { name: '主导航', exact: true });
-  await expect(navigation.getByRole('menuitem')).toHaveCount(2);
+  await expect(navigation.getByRole('menuitem')).toHaveCount(3);
   await expect(navigation).not.toContainText('位置');
   await expect(navigation).not.toContainText('设置');
   const settings = page.getByRole('menu', { name: '设置导航' });
@@ -254,6 +258,8 @@ test('Ant Design in-page location tree resizing, scope, creation and responsive 
     .getByRole('link', { name: f.roomName, exact: true })
     .click();
 
+  await page.getByRole('combobox', { name: '分组方式' }).click();
+  await page.getByRole('option', { name: '不分组', exact: true }).click();
   await page
     .getByRole('button', { name: new RegExp(`^布局牛奶`) })
     .first()

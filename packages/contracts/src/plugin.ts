@@ -18,7 +18,11 @@ const record = {
 };
 const snapshot = z
   .object({
-    household: z.object({ id: z.string().min(1), name: z.string() }),
+    household: z.object({
+      id: z.string().min(1),
+      name: z.string(),
+      timezone: z.string().optional(),
+    }),
     container_catalog_id: z.string(),
     catalog: z.array(z.object({ ...record, kind: z.enum(['GROUP', 'SKU']), name: z.string() })),
     items: z.array(

@@ -42,7 +42,7 @@ export class WidgetStore implements RecordStore {
   }
   get route() {
     return typeof this.state.route === 'string' &&
-      /^\/(items|places|catalog|search|settings)([/?]|$)/.test(this.state.route)
+      /^\/(items|places|catalog|search|activity|settings)([/?]|$)/.test(this.state.route)
       ? this.state.route
       : '/items';
   }

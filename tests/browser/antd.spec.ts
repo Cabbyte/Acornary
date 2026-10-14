@@ -40,6 +40,7 @@ test('Ant Design cross-page UUID selection, responsive draft, date and keyboard 
   await expect(page.getByRole('heading', { name: '我的物品' })).toBeVisible();
   const f = await fixture(page);
   await page.reload();
+  await choose(page, '分组方式', '不分组');
   await page.getByRole('searchbox', { name: '搜索物品、规格、位置…' }).fill(f.name);
   await page.getByRole('checkbox', { name: '选择本页全部物品' }).check();
   await expect(page.getByText('已选 20 件', { exact: true })).toBeVisible();

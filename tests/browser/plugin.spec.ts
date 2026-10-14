@@ -275,7 +275,7 @@ test('workbench search, query inspector and atomic editing share the sandbox mod
   const search = view(page).getByRole('searchbox', { name: '搜索物品、规格、位置…' });
   await search.fill(f.name);
   await search.press('Enter');
-  await view(page).getByRole('button', { name: f.name, exact: true }).click();
+  await view(page).locator('.stash-item-open').filter({ hasText: f.name }).click();
   await expect
     .poll(() => page.evaluate(() => (window as any).host.context?.selection?.id))
     .toBe(f.id);
@@ -456,7 +456,10 @@ test('Ant Design SKU selection clears when switching households and returning', 
       h.notify({ content: [] });
     }, family);
     await expect(
-      embedded.getByRole('button', { name: family ? '隔离的第二家庭' : firstName, exact: true }),
+      embedded.getByRole('button', {
+        name: `切换家庭：${family ? '隔离的第二家庭' : firstName}`,
+        exact: true,
+      }),
       // A notification during an in-flight read may wait for the 5 s poll and debounce.
     ).toBeVisible({ timeout: 10000 });
     await expect(embedded.getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();

@@ -20,7 +20,7 @@ export async function webSnapshot(ctx: Context, rawFilter: unknown) {
   return transaction(async (c) => {
     await query(c, 'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
     const household = (
-      await query(c, 'SELECT id,name FROM households WHERE id=$1', [ctx.household_id])
+      await query(c, 'SELECT id,name,timezone FROM households WHERE id=$1', [ctx.household_id])
     ).rows[0];
     const installation = (
       await query(c, 'SELECT container_catalog_id FROM household_settings WHERE household_id=$1', [

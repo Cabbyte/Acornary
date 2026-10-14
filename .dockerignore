@@ -14,3 +14,7 @@ playwright-report
 release.json
 
 **/.DS_Store
+
+.playwright-cli
+.impeccable/review
+.impeccable/critique

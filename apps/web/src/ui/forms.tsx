@@ -169,7 +169,7 @@ export function ActionSheet({
       count: '1',
       opening: '',
       expiry: '',
-      expiry_kind: 'ESTIMATED',
+      expiry_kind: '',
       quantity: '',
       unit: 'mL',
       accuracy: '',
@@ -799,52 +799,68 @@ export function ActionSheet({
                   />
                 </FormField>
                 {selectParent()}
-                <FormField label="开封状态">
-                  <Select
-                    value={values.opening}
-                    onChange={(e) => set('opening', e)}
-                    options={[
-                      { value: '', label: '\u672A\u8BB0\u5F55' },
-                      { value: 'SEALED', label: '\u672A\u5F00\u5C01' },
-                      { value: 'OPENED', label: '\u5DF2\u5F00\u5C01' },
-                    ]}
-                  />
-                </FormField>
-                <FormField label="日期类型">
-                  <Select
-                    value={values.expiry_kind ?? ''}
-                    onChange={(v) => set('expiry_kind', v)}
-                    options={[
-                      { value: '', label: '未记录类型' },
-                      { value: 'ESTIMATED', label: '计划吃完（自行设定）' },
-                      { value: 'USE_BY', label: '保质期（原包装）' },
-                      { value: 'BEST_BEFORE', label: '最佳食用期（原包装）' },
-                    ]}
-                  />
-                </FormField>
-                <FormField label={values.expiry_kind === 'ESTIMATED' ? '计划吃完日期' : '到期日期'}>
-                  <CalendarInput value={values.expiry} onChange={(value) => set('expiry', value)} />
-                </FormField>
-                <FormField label="每件剩余量" hint="可选。请填写已知数量，不会自动按包装规格填满。">
-                  <span className="measurement">
-                    <DecimalInput
-                      value={values.quantity}
-                      onChange={(value) => set('quantity', value)}
-                      placeholder="未记录"
-                    />
-                    <Select
-                      aria-label="每件剩余量单位"
-                      value={values.unit}
-                      onChange={(e) => set('unit', e)}
-                      options={[
-                        ...(['mL', 'g', 'count', 'percent'].map((u) => ({
-                          value: u,
-                          label: label(u),
-                        })) ?? []),
-                      ]}
-                    />
-                  </span>
-                </FormField>
+                <details
+                  className="stash-optional"
+                  open={!!(values.opening || values.expiry || values.quantity) || undefined}
+                >
+                  <summary>补充日期、开封与余量（可选）</summary>
+                  <div className="stack">
+                    <FormField label="开封状态">
+                      <Select
+                        value={values.opening}
+                        onChange={(e) => set('opening', e)}
+                        options={[
+                          { value: '', label: '\u672A\u8BB0\u5F55' },
+                          { value: 'SEALED', label: '\u672A\u5F00\u5C01' },
+                          { value: 'OPENED', label: '\u5DF2\u5F00\u5C01' },
+                        ]}
+                      />
+                    </FormField>
+                    <FormField label="日期类型">
+                      <Select
+                        value={values.expiry_kind ?? ''}
+                        onChange={(v) => set('expiry_kind', v)}
+                        options={[
+                          { value: '', label: '未记录类型' },
+                          { value: 'ESTIMATED', label: '计划吃完（自行设定）' },
+                          { value: 'USE_BY', label: '保质期（原包装）' },
+                          { value: 'BEST_BEFORE', label: '最佳食用期（原包装）' },
+                        ]}
+                      />
+                    </FormField>
+                    <FormField
+                      label={values.expiry_kind === 'ESTIMATED' ? '计划吃完日期' : '到期日期'}
+                    >
+                      <CalendarInput
+                        value={values.expiry}
+                        onChange={(value) => set('expiry', value)}
+                      />
+                    </FormField>
+                    <FormField
+                      label="每件剩余量"
+                      hint="可选。请填写已知数量，不会自动按包装规格填满。"
+                    >
+                      <span className="measurement">
+                        <DecimalInput
+                          value={values.quantity}
+                          onChange={(value) => set('quantity', value)}
+                          placeholder="未记录"
+                        />
+                        <Select
+                          aria-label="每件剩余量单位"
+                          value={values.unit}
+                          onChange={(e) => set('unit', e)}
+                          options={[
+                            ...(['mL', 'g', 'count', 'percent'].map((u) => ({
+                              value: u,
+                              label: label(u),
+                            })) ?? []),
+                          ]}
+                        />
+                      </span>
+                    </FormField>
+                  </div>
+                </details>
               </>
             )}
             {['place', 'catalog', 'rename'].includes(action.kind) && (
@@ -960,7 +976,7 @@ export function ActionSheet({
                 </FormField>
               </>
             )}
-            {['intake', 'consume'].includes(action.kind) && (
+            {(action.kind === 'consume' || (action.kind === 'intake' && !!values.quantity)) && (
               <FormField label="数量依据">
                 <Select
                   value={values.accuracy}

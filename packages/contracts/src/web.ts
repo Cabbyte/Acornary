@@ -32,7 +32,7 @@ export interface NoteRecord {
   updated_at: string;
 }
 export interface InventoryData {
-  household: { id: string; name: string };
+  household: { id: string; name: string; timezone?: string };
   container_catalog_id: string;
   catalog: CatalogRecord[];
   items: ItemRecord[];
@@ -77,6 +77,9 @@ export interface WriteResult {
   }[];
 }
 export interface HistoryEvent {
+  operation_id?: string;
+  target_id?: string;
+  target_kind?: 'ITEM' | 'CATALOG_NODE';
   id: string;
   event_type: string;
   occurred_at: string;

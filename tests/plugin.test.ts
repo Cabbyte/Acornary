@@ -184,3 +184,33 @@ it('retries failed context clears and coalesces queued selections to the latest 
   sync.dispose();
   vi.useRealTimers();
 });
+
+it('retains the household timezone in the shared plugin snapshot while accepting legacy caches', () => {
+  const envelope = {
+    version: 1,
+    session: {
+      mode: 'local',
+      authenticated: true,
+      host: 'mcp',
+      household_id: 'home',
+      cache_key: 'home',
+      can_write: true,
+    },
+    snapshot: {
+      household: { id: 'home', name: '家', timezone: 'America/Los_Angeles' },
+      container_catalog_id: '',
+      catalog: [],
+      items: [],
+      notes: [],
+      cached_at: '2026-10-14',
+    },
+  };
+  expect(pluginEnvelopeSchema.parse(envelope).snapshot.household.timezone).toBe(
+    'America/Los_Angeles',
+  );
+  const legacy = {
+    ...envelope,
+    snapshot: { ...envelope.snapshot, household: { id: 'home', name: '家' } },
+  };
+  expect(pluginEnvelopeSchema.parse(legacy).snapshot.household.timezone).toBeUndefined();
+});

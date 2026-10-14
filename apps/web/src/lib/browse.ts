@@ -69,6 +69,7 @@ export function searchInventory(
         specification(sku),
         attr(sku ?? { attributes: [] }, 'product')?.brand,
         item.id,
+        ...data.notes.filter((note) => note.item_id === item.id).map((note) => note.body),
         locationName(item, data),
       ]
         .filter(Boolean)

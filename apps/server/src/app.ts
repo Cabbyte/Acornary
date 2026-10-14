@@ -564,7 +564,7 @@ export async function buildApp(
     app.setNotFoundHandler((req, reply) => {
       if (
         req.method === 'GET' &&
-        /^\/(i|items|places|catalog|search|settings|inspect|register|recover|join|choose-household)(\/|$)/.test(
+        /^\/(i|items|places|catalog|search|activity|settings|inspect|register|recover|join|choose-household)(\/|$)/.test(
           req.url.split('?')[0],
         )
       )

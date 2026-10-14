@@ -35,7 +35,7 @@ const data: InventoryData = {
 const filter = { query: '', descendants: false, status: '', category: '', sort: 'name' };
 describe('workbench projections', () => {
   it('shows recorded opening, remaining quantity and expiry without inventing unknown facts', () => {
-    expect(itemFacts(item('unknown', null))).toBe('开封未记录');
+    expect(itemFacts(item('unknown', null))).toBe('');
     const opened = item('opened', null);
     opened.attributes = [
       {

@@ -415,7 +415,7 @@ dd {
   flex-wrap: wrap;
   margin-bottom: 16px;
 }
-.wb-toolbar .wb-search {
+.wb-toolbar .ac-search {
   flex: 1;
   min-width: 200px;
 }
@@ -695,7 +695,7 @@ dd {
   .wb-select-toggle {
     display: inline-flex;
   }
-  .wb-toolbar .wb-search {
+  .wb-toolbar .ac-search {
     flex-basis: 100%;
   }
   .wb-toolbar .ant-select {
@@ -947,4 +947,241 @@ dd {
   image-rendering: pixelated;
   border: 1px solid #777;
   background: white;
+}
+
+/* Shared warm-paper workbench: component behavior stays with Ant Design. */
+.stash-sidebar-brand {
+  display: grid;
+  gap: 12px;
+  margin: 8px 0 28px;
+  min-width: 0;
+}
+.stash-sidebar-brand .ant-btn {
+  justify-content: space-between;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stash-sidebar-brand.is-collapsed {
+  justify-items: center;
+}
+.wb-brand strong,
+.wb-title h1,
+.wb-detail-heading {
+  font-family: 'Songti SC', 'STSong', 'SimSun', serif;
+  font-weight: 600;
+}
+.wb-brand strong {
+  font-size: 24px;
+  letter-spacing: 0.08em;
+}
+.stash-view-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-block: 12px;
+}
+.stash-view-bar .ant-select {
+  min-width: 130px;
+}
+.stash-attention {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-block: 12px;
+  border-block: 1px solid #e8dfd2;
+}
+.stash-attention > span {
+  color: #68615c;
+  margin-right: 4px;
+}
+.stash-results {
+  margin-block: 12px;
+}
+.stash-group {
+  border-bottom: 1px solid #e8dfd2;
+}
+.stash-group-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-block: 10px;
+}
+.stash-group-toggle.ant-btn {
+  height: auto;
+  min-height: 54px;
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
+  padding: 8px;
+}
+.stash-group-toggle > span:last-child {
+  min-width: 0;
+}
+.stash-group-toggle strong {
+  display: block;
+  color: #2b2420;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+.stash-group-toggle small {
+  display: block;
+  color: #68615c;
+  margin-top: 4px;
+  font-weight: 400;
+}
+.stash-instances {
+  border-top: 1px solid #eee6db;
+  padding-bottom: 10px;
+}
+.stash-instance {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 8px;
+  border-radius: 8px;
+}
+.stash-instance > .ant-checkbox-wrapper {
+  margin-top: 10px;
+}
+.stash-instance.is-selected {
+  background: #f5e5d8;
+}
+.stash-item-open.ant-btn {
+  height: auto;
+  min-height: 52px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  white-space: normal;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 4px;
+}
+.stash-item-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.stash-item-copy > span {
+  color: #68615c;
+  font-size: 13px;
+}
+.stash-item-copy .stash-item-location {
+  color: #51463d;
+}
+.stash-item-copy .stash-date-past {
+  color: #a33828;
+}
+.stash-item-copy .stash-note-match {
+  font-style: italic;
+}
+.stash-empty {
+  padding: 32px 8px;
+}
+.stash-remaining {
+  padding: 16px;
+  background: #f6f0e6;
+  border-radius: 8px;
+}
+.stash-remaining > strong {
+  display: block;
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+  margin-top: 8px;
+}
+.stash-consumption {
+  padding: 12px;
+  border: 1px solid #ddc9b7;
+  border-radius: 8px;
+}
+.stash-note {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.stash-optional {
+  border-top: 1px solid #e8dfd2;
+  padding-top: 12px;
+}
+.stash-optional summary {
+  cursor: pointer;
+  padding-block: 12px;
+  font-weight: 500;
+}
+.stash-activity {
+  max-width: 900px;
+  margin-inline: auto;
+}
+.stash-activity .ant-collapse {
+  margin-block: 12px;
+}
+@media (min-width: 768px) {
+  .wb-sidebar {
+    top: var(--ac-safe-top);
+    height: var(--ac-content-height);
+  }
+  .wb-inventory {
+    min-height: calc(var(--ac-content-height) - 48px);
+  }
+}
+@media (max-width: 767px) {
+  .stash-group-heading {
+    flex-wrap: wrap;
+  }
+  .stash-group-heading > .ant-btn:last-child {
+    min-height: 44px;
+  }
+  .stash-instance {
+    gap: 8px;
+    padding-inline: 0;
+  }
+  .stash-item-open.ant-btn {
+    flex-wrap: wrap;
+  }
+  .stash-item-open .wb-instance-id {
+    font-size: 12px;
+  }
+  .stash-attention .ant-btn {
+    min-height: 44px;
+  }
+  .stash-attention > span {
+    width: 100%;
+  }
+  .stash-item-copy > span {
+    font-size: 14px;
+  }
+}
+.stash-view-bar[hidden] {
+  display: none;
+}
+@media (max-width: 767px) {
+  .wb-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+  .wb-toolbar .ac-search {
+    grid-column: 1 / -1;
+  }
+  .wb-toolbar .stash-group-mode {
+    min-width: 0;
+  }
+  .stash-attention {
+    flex-wrap: wrap;
+    overflow: visible;
+    margin-top: 12px;
+  }
+  .stash-attention > span {
+    width: auto;
+  }
+  .stash-attention > .ant-btn {
+    flex-shrink: 0;
+  }
+  .stash-attention small {
+    flex-basis: 100%;
+  }
 }

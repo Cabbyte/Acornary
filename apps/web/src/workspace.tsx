@@ -1,3 +1,4 @@
+import { Activity } from './ui/activity';
 import { PendingCatalogReviews } from './ui/catalog-review';
 import { App, Button } from 'antd';
 import type { FunctionComponent } from 'react';
@@ -191,6 +192,7 @@ function WorkspaceContent() {
       ) : (
         <ProductCatalog key={session.cache_key} open={open} />
       );
+  else if (section === 'activity') page = <Activity />;
   else if (section === 'settings') page = <Settings section={id} />;
   else if (section === 'login') page = <Home open={open} />;
   else

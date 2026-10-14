@@ -17,6 +17,9 @@ export type WorkbenchFilter = {
   status: string;
   category: string;
   sort: string;
+  opening?: string;
+  condition?: string;
+  lifecycle?: string;
 };
 export const availabilityOptions = [
   ['', '未记录'],
@@ -35,7 +38,7 @@ export function itemStatus(item: ItemRecord) {
 export function itemFacts(item: ItemRecord) {
   const life = attr(item, 'lifecycle');
   return [
-    life?.opening?.state ? label(life.opening.state) : '开封未记录',
+    ...(life?.opening?.state ? [label(life.opening.state)] : []),
     ...(attr(item, 'contents')?.remaining ? [`剩余 ${remaining(item)}`] : []),
     ...(life?.expiry?.date ? [`到期 ${life.expiry.date}`] : []),
     ...(isTerminal(item) || life?.availability ? [itemStatus(item)] : []),
@@ -50,7 +53,10 @@ export function workbenchItems(
     data,
     filter.query,
     place,
-    filter.status === 'terminal' ? 'terminal' : 'current',
+    filter.status === 'terminal' ||
+      ['CONSUMED', 'DISPOSED', 'LOST', 'ARCHIVED'].includes(filter.lifecycle ?? '')
+      ? 'terminal'
+      : 'current',
     filter.category,
   )
     .filter((i) => !isContainer(i) && (!place || filter.descendants || i.parent_id === place))
@@ -61,6 +67,27 @@ export function workbenchItems(
         (filter.status === 'unknown'
           ? !attr(i, 'lifecycle')?.availability
           : attr(i, 'lifecycle')?.availability === filter.status),
+    )
+    .filter(
+      (i) =>
+        !filter.opening ||
+        (filter.opening === 'unknown'
+          ? !attr(i, 'lifecycle')?.opening?.state
+          : attr(i, 'lifecycle')?.opening?.state === filter.opening),
+    )
+    .filter(
+      (i) =>
+        !filter.condition ||
+        (filter.condition === 'unknown'
+          ? !attr(i, 'lifecycle')?.condition
+          : attr(i, 'lifecycle')?.condition === filter.condition),
+    )
+    .filter(
+      (i) =>
+        !filter.lifecycle ||
+        (filter.lifecycle === 'unknown'
+          ? !attr(i, 'lifecycle')?.state
+          : attr(i, 'lifecycle')?.state === filter.lifecycle),
     )
     .sort(
       (a, b) =>
