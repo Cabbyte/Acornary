@@ -19,10 +19,13 @@ import kotlin.coroutines.resumeWithException
 
 class LoginRequired : Exception("请重新登录松仓。")
 
-class TerminalAuth(private val context: Context) {
-    private val vault = TokenVault(context)
+class TerminalAuth internal constructor(
+    private val context: Context,
+    private val vault: TokenVault = TokenVault(context),
+    private val exchangeOverride: (suspend (TokenRequest) -> TokenResponse)? = null,
+) {
     private val mutex = Mutex()
-    private val service = AuthorizationService(context)
+    private val service by lazy { AuthorizationService(context) }
     fun hasCredentials(): Boolean = vault.read()?.let { it.state != null && !it.refreshInFlight } == true
 
     suspend fun begin(activity: Activity, forceLogin: Boolean = false) {
@@ -82,11 +85,14 @@ class TerminalAuth(private val context: Context) {
         state.accessToken ?: throw LoginRequired()
     }
 
-    private suspend fun exchange(request: TokenRequest): TokenResponse = suspendCancellableCoroutine { continuation ->
-        service.performTokenRequest(request) { response, error ->
-            if (continuation.isActive) {
-                if (response != null && error == null) continuation.resume(response)
-                else continuation.resumeWithException(LoginRequired())
+    private suspend fun exchange(request: TokenRequest): TokenResponse {
+        exchangeOverride?.let { return it(request) }
+        return suspendCancellableCoroutine { continuation ->
+            service.performTokenRequest(request) { response, error ->
+                if (continuation.isActive) {
+                    if (response != null && error == null) continuation.resume(response)
+                    else continuation.resumeWithException(LoginRequired())
+                }
             }
         }
     }

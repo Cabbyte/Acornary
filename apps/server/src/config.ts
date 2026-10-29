@@ -29,8 +29,12 @@ export function runtimeConfig(env: NodeJS.ProcessEnv = process.env): RuntimeConf
     throw new Error('ACORNARY_ORIGIN must be an HTTPS origin without a path.');
   if (isIP(trustedProxy) !== 4)
     throw new Error('ACORNARY_TRUSTED_PROXY must be the exact private IPv4 address of Caddy.');
-  const signingFingerprints = (env.ACORNARY_ANDROID_CERT_SHA256 ?? '').split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
-  if (signingFingerprints.some((s) => !/^(?:[0-9A-F]{2}:){31}[0-9A-F]{2}$/.test(s))) throw new Error('Invalid Android signing certificate SHA256 fingerprint.');
+  const signingFingerprints = (env.ACORNARY_ANDROID_CERT_SHA256 ?? '')
+    .split(',')
+    .map((s) => s.trim().toUpperCase())
+    .filter(Boolean);
+  if (signingFingerprints.some((s) => !/^(?:[0-9A-F]{2}:){31}[0-9A-F]{2}$/.test(s)))
+    throw new Error('Invalid Android signing certificate SHA256 fingerprint.');
   return {
     mode,
     origin,
@@ -38,9 +42,13 @@ export function runtimeConfig(env: NodeJS.ProcessEnv = process.env): RuntimeConf
     secret,
     trustedProxy,
     accounts: accountConfig(env),
-    ...(env.ACORNARY_TERMINAL_CLIENT_ID ? { terminal: {
-      clientId: env.ACORNARY_TERMINAL_CLIENT_ID,
-      signingFingerprints,
-    } } : {}),
+    ...(env.ACORNARY_TERMINAL_CLIENT_ID
+      ? {
+          terminal: {
+            clientId: env.ACORNARY_TERMINAL_CLIENT_ID,
+            signingFingerprints,
+          },
+        }
+      : {}),
   };
 }

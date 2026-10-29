@@ -63,7 +63,13 @@ export function createAuth(config: Extract<RuntimeConfig, { mode: 'cloud' }>) {
       }),
       mcp({
         resource: config.resource,
-        resources: [{ identifier: config.origin + terminalPrefix, allowedScopes: ['openid', 'offline_access', ...inventoryScopes], accessTokenTtl: 300 }],
+        resources: [
+          {
+            identifier: config.origin + terminalPrefix,
+            allowedScopes: ['openid', 'offline_access', ...inventoryScopes],
+            accessTokenTtl: 300,
+          },
+        ],
         loginPage: '/login',
         consentPage: '/consent',
         scopes: ['openid', 'profile', 'email', 'offline_access', ...inventoryScopes],

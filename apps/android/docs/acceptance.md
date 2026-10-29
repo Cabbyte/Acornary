@@ -4,16 +4,17 @@
 
 ## 已有证据（2026-10-30）
 
-- 服务端类型检查通过；独立 Node 24 + PostgreSQL 数据库中，16 个测试文件、113 项测试通过。终端专项 11 组，真实 OAuth PKCE、跨家庭隔离、scope/audience/client、提醒、精确小数、三类命令、版本冲突、幂等重放、刷新轮换重用、账号停用与 auth_version 撤销已覆盖。
+- 已接入主分支 `c3f0b1e` 的后续库存与目录确认更新。服务端类型检查、构建通过；独立 Node 24 + PostgreSQL 数据库中，18 个测试文件、135 项测试通过。终端专项 11 组，真实 OAuth PKCE、跨家庭隔离、scope/audience/client、提醒、精确小数、三类命令、版本冲突、幂等重放、刷新轮换重用、账号停用与 auth_version 撤销已覆盖。36 张表的备份恢复比对一致。
 - Android 原生四入口、登录/缓存/库存/操作/扫码/设置与投影已接线。无打印入口和 BLE 权限。
 - Android 单元测试包含标签、保留的 D101 协议、精确数量、临期投影、挥手去抖/遮挡/冷却。
 - Pixel 3 上 5 项仪器测试通过：缓存与待确认请求重开恢复、作用域清理、Keystore 加密/损坏恢复、反向横屏与 1.5 倍字体、已结束物品和容器不出现操作按钮。仅使用测试 fixture，没有消耗真实库存。
+- 新增 5 项 AppAuth/Keystore 仪器测试：并发刷新只轮换一次、刷新响应丢失、进程重启时刷新状态未决、取消刷新、回调 state 不符。已通过编译和 lint，尚待隔离模拟器执行；不能算作实机通过。
 - 新主界面已在 Pixel 3 横屏实际显示。无操作自然进入 AOD，系统 `stay_on_while_plugged_in=0`、`screen_off_timeout=60000`。
 - 正式签名三个 APK 已构建；私钥在本机工程外，密码在 macOS 钥匙串。使用 APK v3 proof of rotation 将主应用和伴随应用从调试证书迁移；静态 overlay 随 Magisk 模块重启后升级为同一正式证书。
 - 重启后再次验证实际 Acornary DreamService、`mCurrentDreamIsDozing=true`、`DOZE`、亮度 10，恢复看门狗验证标记已写入。重启首次解锁前不读取库存。
 - 2026-10-29 的实机前摄释放、物理双击、官方 AOD 恢复往返证据继续保留在 implementation.md。
 
-本机证据位于 Git 忽略目录 `output/android/`：`backend-checks.log`、`terminal-tests.log`、`instrumentation.log`、`android-tests-build.log`、`release-build.log`、`release-install.log`、`aod-verified.txt`、`native-main.png`、`native-aod.png`。仪器测试报告位于 `apps/android/app/build/reports/androidTests/connected/debug/`。后续构建可能覆盖同名日志，以最新成功/失败结果为准。
+本机证据位于 Git 忽略目录 `output/android/`：`ci-current-main.log`、`terminal-tests.log`、`instrumentation.log`、`android-final-checks.log`、`auth-verification-build.log`、`release-build.log`、`release-install.log`、`aod-verified.txt`、`native-main.png`、`native-aod.png`。仪器测试报告位于 `apps/android/app/build/reports/androidTests/connected/debug/`。后续构建可能覆盖同名日志，以最新成功/失败结果为准。
 
 ## 未完成的正式验收
 

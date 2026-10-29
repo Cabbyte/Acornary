@@ -12,7 +12,8 @@ export function terminalCommand(name: string, input: unknown) {
     throw new Error('Terminal commands require exactly one item.');
   const id = 'item_id' in parsed ? parsed.item_id : parsed.item_ids[0];
   if (parsed.expected_revisions?.[id] === undefined) throw new Error('Item revision required.');
-  if (name === 'open_item' && !('opened_at' in parsed && parsed.opened_at)) throw new Error('Opening time required.');
+  if (name === 'open_item' && !('opened_at' in parsed && parsed.opened_at))
+    throw new Error('Opening time required.');
   return parsed;
 }
 export interface TerminalItem {
