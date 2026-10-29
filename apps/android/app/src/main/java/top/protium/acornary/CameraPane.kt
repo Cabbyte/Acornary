@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.Observer
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import com.google.mlkit.vision.barcode.BarcodeScanning
@@ -65,6 +66,10 @@ fun CameraPane(onItem: (String) -> Unit, onActive: (Boolean) -> Unit) {
                     var provider: ProcessCameraProvider? = null
                     var analysis: ImageAnalysis? = null
                     var cameraPreview: Preview? = null
+                    var cameraInfo: CameraInfo? = null
+                    val cameraObserver = Observer<CameraState> {
+                        if (running.get() && it.error != null) error = "相机正被占用或暂时不可用，请关闭其他相机应用后重试。"
+                    }
                     val main = ContextCompat.getMainExecutor(context)
                     future.addListener({
                         if (running.get()) runCatching {
@@ -87,11 +92,13 @@ fun CameraPane(onItem: (String) -> Unit, onActive: (Boolean) -> Unit) {
                                 }
                             }
                             val camera = provider!!.bindToLifecycle(lifecycle, CameraSelector.DEFAULT_FRONT_CAMERA, cameraPreview, analysis)
-                            camera.cameraInfo.cameraState.observe(lifecycle) { if (running.get() && it.error != null) error = "相机正被占用或暂时不可用，请关闭其他相机应用后重试。" }
+                            cameraInfo = camera.cameraInfo
+                            cameraInfo!!.cameraState.observe(lifecycle, cameraObserver)
                         }.onFailure { error = "无法打开前置相机，请检查权限后重试。" }
                     }, main)
                     onDispose {
                         running.set(false)
+                        cameraInfo?.cameraState?.removeObserver(cameraObserver)
                         analysis?.clearAnalyzer()
                         listOfNotNull(cameraPreview, analysis).takeIf { it.isNotEmpty() }?.let { provider?.unbind(*it.toTypedArray()) }
                         scanner.close(); executor.shutdown()

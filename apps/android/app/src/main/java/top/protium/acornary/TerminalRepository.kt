@@ -17,6 +17,7 @@ data class TerminalState(
     val historyCursor: String? = null, val historyLoaded: Boolean = false,
     val syncing: Boolean = false, val busy: Boolean = false, val online: Boolean = false,
     val message: String? = null, val pending: List<PendingOperation> = emptyList(), val selectedOffline: Boolean = false,
+    val authExpired: Boolean = false,
 )
 
 class TerminalRepository(private val context: Context, private val dao: TerminalDao, val auth: TerminalAuth) {
@@ -59,7 +60,7 @@ class TerminalRepository(private val context: Context, private val dao: Terminal
                         val previous = mutable.value.session
                         dao.snapshot(CacheEntry("session", wire.encodeToString(session), System.currentTimeMillis()),
                             CacheEntry("${session.scope}:snapshot", wire.encodeToString(snapshot), System.currentTimeMillis()), previous != null && previous.scope != session.scope)
-                        mutable.update { old -> old.copy(loading = false, session = session, snapshot = snapshot, online = true,
+                        mutable.update { old -> old.copy(loading = false, session = session, snapshot = snapshot, online = true, authExpired = false,
                             selected = old.selected?.let { selected -> snapshot.items.find { it.id == selected.id } ?: selected }, pending = dao.pending(session.scope)) }
                     }
                 }
@@ -181,7 +182,8 @@ class TerminalRepository(private val context: Context, private val dao: Terminal
     private suspend fun handle(error: Exception) {
         if (error is CancellationException && error !is TimeoutCancellationException) throw error
         if (error is LoginRequired || error is ApiFailure && (error.status == 401 || error.code == "TERMINAL_AUTH_INVALID")) {
-            logout(false); message("授权已失效，请重新登录。")
+            logout(false)
+            mutable.update { it.copy(authExpired = true, message = "授权已失效，请重新登录。") }
         } else if (error is ApiFailure) message(when(error.code) {
             "NOT_FOUND" -> "物品不存在或不属于当前家庭。"
             "MISSING_FACTS" -> "物品没有已知剩余量，请在电脑上补充后重试。"

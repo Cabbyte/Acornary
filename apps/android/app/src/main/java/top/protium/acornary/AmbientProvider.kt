@@ -20,6 +20,7 @@ class AmbientProvider : ContentProvider() {
         val items = state.snapshot?.items?.let { upcoming(it, timezone) } ?: emptyList()
         val status = when {
             state.loading -> "正在读取库存"
+            state.authExpired -> "授权已失效 · 请重新登录"
             state.session == null -> "请登录松仓终端"
             !prefs.enabled -> "终端模式已暂停"
             state.snapshot == null -> "等待首次同步"

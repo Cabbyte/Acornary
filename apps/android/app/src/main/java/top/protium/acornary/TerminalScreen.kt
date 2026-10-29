@@ -158,7 +158,7 @@ internal fun InventoryPane(urgent: Boolean, state: TerminalState, model: Termina
                     Surface(color = if (state.selected?.id == item.id) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
                         ListItem(modifier = Modifier.clickable { if (item.is_container) { location = item.id; model.select(item.id) } else model.select(item.id) },
                             headlineContent = { Text(item.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-                            supportingContent = { Text("${item.location}\n${if (item.is_container) "查看容器中的物品" else item.quantity()}${if (urgent) " · ${item.reminder.date}" else " · ${lifecycleLabel(item)}"}", maxLines = 3, overflow = TextOverflow.Ellipsis) })
+                            supportingContent = { Text("${item.location}\n${if (item.is_container) "查看容器中的物品" else item.quantity()}${if (urgent) " · ${item.reminder.date} · ${reminderBasis(item)}" else " · ${lifecycleLabel(item)}"}", maxLines = 3, overflow = TextOverflow.Ellipsis) })
                     }
                 }
             }
