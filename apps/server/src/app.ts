@@ -41,6 +41,7 @@ import { webSnapshot } from './web.js';
 import { pluginResource, registerInventoryApp } from './plugin.js';
 import { pluginWriteTool } from '../../../packages/contracts/src/plugin.js';
 import { domainErrorStatus } from '../../../packages/contracts/src/errors.js';
+import { registerTerminal } from './terminal.js';
 export async function buildApp(
   ctx: Context,
   token: string,
@@ -253,6 +254,7 @@ export async function buildApp(
     };
   });
   if (auth) {
+    registerTerminal(app, auth, cloud!);
     app.addContentTypeParser(
       'application/x-www-form-urlencoded',
       { parseAs: 'string' },

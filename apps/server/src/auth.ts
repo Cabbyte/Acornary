@@ -10,6 +10,7 @@ import { fetchClientMetadataResource } from '@better-auth/cimd/node';
 import type { RuntimeConfig } from './config.js';
 import { pool } from './db.js';
 import type { Context } from './service.js';
+import { terminalPrefix } from '../../../packages/contracts/src/terminal.js';
 
 export const inventoryScopes = ['inventory:read', 'inventory:write'] as const;
 export function createAuth(config: Extract<RuntimeConfig, { mode: 'cloud' }>) {
@@ -62,6 +63,7 @@ export function createAuth(config: Extract<RuntimeConfig, { mode: 'cloud' }>) {
       }),
       mcp({
         resource: config.resource,
+        resources: [{ identifier: config.origin + terminalPrefix, allowedScopes: ['openid', 'offline_access', ...inventoryScopes], accessTokenTtl: 300 }],
         loginPage: '/login',
         consentPage: '/consent',
         scopes: ['openid', 'profile', 'email', 'offline_access', ...inventoryScopes],
