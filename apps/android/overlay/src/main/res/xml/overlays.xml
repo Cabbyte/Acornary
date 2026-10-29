@@ -1,0 +1,3 @@
+<overlay>
+    <item target="string/config_dozeComponent" value="top.protium.acornary.aod/.AcornaryDreamService" />
+</overlay>

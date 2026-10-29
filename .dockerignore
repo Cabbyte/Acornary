@@ -18,3 +18,4 @@ release.json
 .playwright-cli
 .impeccable/review
 .impeccable/critique
+apps/android

@@ -1,0 +1,16 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="top.protium.acornary.permission.READ_AMBIENT" />
+    <!-- This APK is installed as a Magisk system app; device.py grants only this companion. -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <permission android:name="top.protium.acornary.permission.TERMINAL_SETTINGS" android:protectionLevel="signature" />
+    <queries><package android:name="top.protium.acornary" /></queries>
+    <application android:label="松仓 AOD" android:allowBackup="false" android:dataExtractionRules="@xml/backup_rules" android:theme="@android:style/Theme.Material.NoActionBar">
+        <provider android:name=".TerminalSettingsProvider" android:authorities="top.protium.acornary.aod.settings" android:exported="true" android:permission="top.protium.acornary.permission.TERMINAL_SETTINGS" />
+        <service android:name=".AcornaryDreamService" android:exported="true" android:directBootAware="true" android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter><action android:name="android.service.dreams.DreamService" /></intent-filter>
+        </service>
+    </application>
+</manifest>

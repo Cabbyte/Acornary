@@ -18,3 +18,11 @@ release.json
 .playwright-cli/
 .impeccable/review/
 .impeccable/critique/
+# Android local SDK, Gradle caches and build output
+apps/android/.gradle/
+apps/android/.kotlin/
+apps/android/**/build/
+apps/android/local.properties
+apps/android/.idea/
+*.jks
+*.keystore
