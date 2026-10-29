@@ -8,13 +8,14 @@
 - Android 原生四入口、登录/缓存/库存/操作/扫码/设置与投影已接线。无打印入口和 BLE 权限。
 - Android 单元测试包含标签、保留的 D101 协议、精确数量、临期投影、挥手去抖/遮挡/冷却。
 - Pixel 3 上 5 项仪器测试通过：缓存与待确认请求重开恢复、作用域清理、Keystore 加密/损坏恢复、反向横屏与 1.5 倍字体、已结束物品和容器不出现操作按钮。仅使用测试 fixture，没有消耗真实库存。
-- 新增 5 项 AppAuth/Keystore 仪器测试：并发刷新只轮换一次、刷新响应丢失、进程重启时刷新状态未决、取消刷新、回调 state 不符。已通过编译和 lint，尚待隔离模拟器执行；不能算作实机通过。
+- Android 12 隔离模拟器的 10 项仪器测试全部通过，含新增 5 项 AppAuth/Keystore 场景：并发刷新只轮换一次、刷新响应丢失、进程重启时刷新状态未决、取消刷新、回调 state 不符。测试使用合成令牌；不能替代用户实际 Custom Tabs 登录验收。
+- 实现提交 `8e09362` 的[完整 CI](https://github.com/Cabbyte/Acornary/actions/runs/40926032503) 已通过：Android 构建/lint/单元/仪器测试，服务端 135 项测试，Chromium 52 项、WebKit 18 项，15 项发布控制器测试和真实容器迁移/应用恢复检查。代码已准备按既有 Release 流水线发布兼容后端，终端配置仍待注册。
 - 新主界面已在 Pixel 3 横屏实际显示。无操作自然进入 AOD，系统 `stay_on_while_plugged_in=0`、`screen_off_timeout=60000`。
 - 正式签名三个 APK 已构建；私钥在本机工程外，密码在 macOS 钥匙串。使用 APK v3 proof of rotation 将主应用和伴随应用从调试证书迁移；静态 overlay 随 Magisk 模块重启后升级为同一正式证书。
 - 重启后再次验证实际 Acornary DreamService、`mCurrentDreamIsDozing=true`、`DOZE`、亮度 10，恢复看门狗验证标记已写入。重启首次解锁前不读取库存。
 - 2026-10-29 的实机前摄释放、物理双击、官方 AOD 恢复往返证据继续保留在 implementation.md。
 
-本机证据位于 Git 忽略目录 `output/android/`：`ci-current-main.log`、`terminal-tests.log`、`instrumentation.log`、`android-final-checks.log`、`auth-verification-build.log`、`release-build.log`、`release-install.log`、`aod-verified.txt`、`native-main.png`、`native-aod.png`。仪器测试报告位于 `apps/android/app/build/reports/androidTests/connected/debug/`。后续构建可能覆盖同名日志，以最新成功/失败结果为准。
+本机证据位于 Git 忽略目录 `output/android/`：`ci-current-main.log`、`terminal-tests.log`、`instrumentation.log`、`android-final-checks.log`、`auth-verification-build.log`、`github-android-final.log`、`github-final-verification/`、`github-server-verified.log`、`release-manifest.json`、`release-build.log`、`release-install.log`、`aod-verified.txt`、`native-main.png`、`native-aod.png`。6 个正式/迁移 APK 均通过 API 31 签名验证，文件摘要在 release-manifest 中。后续构建可能覆盖同名日志，以最新成功/失败结果为准。
 
 ## 未完成的正式验收
 
@@ -29,7 +30,6 @@
 | 插电五分钟同步、断网/拔电/省电降级、刷新响应丢失 | 调度与恢复已实现，需授权登录后实际连续测量 |
 | 挥手开关、物理持续遮挡 | 状态机测试通过，物理手势仍待验证；默认关闭 |
 | 24 小时稳定性与温度/唤醒锁 | 尚未开始，不以短时 AOD 或构建通过替代 |
-| 远端 Android CI / Web 浏览器回归 | CI job 已加入，尚待提交运行 |
 
 手机最后一次重启后 Mac USB/ADB 连接消失，已请求重新连接并首次解锁。此时原始设置基线仍保留在 `output/android/pixel3-baseline/settings.json`，伴随应用设备保护存储也保留已捕获基线。
 
