@@ -31,6 +31,7 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) model.callback(intent)
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                SyncScheduler.retryFromForeground(this@MainActivity)
                 launch {
                     while (isActive) { model.refresh().join(); delay(60_000) }
                 }
