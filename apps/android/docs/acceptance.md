@@ -8,20 +8,21 @@
 - Android 原生四入口、登录/缓存/库存/操作/扫码/设置与投影已接线。无打印入口和 BLE 权限。
 - Android 单元测试包含标签、保留的 D101 协议、精确数量、临期投影、挥手去抖/遮挡/冷却。
 - Pixel 3 上 5 项仪器测试通过：缓存与待确认请求重开恢复、作用域清理、Keystore 加密/损坏恢复、反向横屏与 1.5 倍字体、已结束物品和容器不出现操作按钮。仅使用测试 fixture，没有消耗真实库存。
-- Android 12 隔离模拟器的 10 项仪器测试全部通过，含新增 5 项 AppAuth/Keystore 场景：并发刷新只轮换一次、刷新响应丢失、进程重启时刷新状态未决、取消刷新、回调 state 不符。测试使用合成令牌；不能替代用户实际 Custom Tabs 登录验收。
-- 实现提交 `8e09362` 的[完整 CI](https://github.com/Cabbyte/Acornary/actions/runs/40926032503) 已通过：Android 构建/lint/单元/仪器测试，服务端 135 项测试，Chromium 52 项、WebKit 18 项，15 项发布控制器测试和真实容器迁移/应用恢复检查。代码已准备按既有 Release 流水线发布兼容后端，终端配置仍待注册。
+- Android 12 隔离模拟器的 11 项仪器测试全部通过，含 5 项 AppAuth/Keystore 场景：并发刷新只轮换一次、刷新响应丢失、进程重启时刷新状态未决、取消刷新、回调 state 不符，以及后台服务拒绝后的持久降级和陈旧时间判断。测试使用合成令牌；不能替代用户实际 Custom Tabs 登录验收。最终 Android 代码 `0c08fb1` 的[构建/lint/单元/仪器测试](https://github.com/Cabbyte/Acornary/actions/runs/40930839424/job/123648518059) 已通过。
+- 实现提交 `8e09362` 的[完整 CI](https://github.com/Cabbyte/Acornary/actions/runs/40926032503) 已通过：Android 验证，服务端 135 项测试，Chromium 52 项、WebKit 18 项，15 项发布控制器测试和真实容器迁移/应用恢复检查。后续代码修复仅涉及 Android 后台同步降级。
+- 兼容后端 [v0.11.0](https://github.com/Cabbyte/Acornary/releases/tag/v0.11.0) 的[正式发布流水线](https://github.com/Cabbyte/Acornary/actions/runs/40928830607) 全部通过。2026-10-30 公网 `/health` 确认版本与提交 `4a818ea`；既有 MCP 授权和只读库存查询正常。终端配置返回 `TERMINAL_UNAVAILABLE`，assetlinks 为空，客户端尚待注册。这不等于手机已完成正式登录。
 - 新主界面已在 Pixel 3 横屏实际显示。无操作自然进入 AOD，系统 `stay_on_while_plugged_in=0`、`screen_off_timeout=60000`。
 - 正式签名三个 APK 已构建；私钥在本机工程外，密码在 macOS 钥匙串。使用 APK v3 proof of rotation 将主应用和伴随应用从调试证书迁移；静态 overlay 随 Magisk 模块重启后升级为同一正式证书。
 - 重启后再次验证实际 Acornary DreamService、`mCurrentDreamIsDozing=true`、`DOZE`、亮度 10，恢复看门狗验证标记已写入。重启首次解锁前不读取库存。
 - 2026-10-29 的实机前摄释放、物理双击、官方 AOD 恢复往返证据继续保留在 implementation.md。
 
-本机证据位于 Git 忽略目录 `output/android/`：`ci-current-main.log`、`terminal-tests.log`、`instrumentation.log`、`android-final-checks.log`、`auth-verification-build.log`、`github-android-final.log`、`github-final-verification/`、`github-server-verified.log`、`release-manifest.json`、`release-build.log`、`release-install.log`、`aod-verified.txt`、`native-main.png`、`native-aod.png`。6 个正式/迁移 APK 均通过 API 31 签名验证，文件摘要在 release-manifest 中。后续构建可能覆盖同名日志，以最新成功/失败结果为准。
+本机证据位于 Git 忽略目录 `output/android/`：`ci-current-main.log`、`terminal-tests.log`、`instrumentation.log`、`android-final-checks.log`、`auth-verification-build.log`、`github-android-scheduler.log`、`github-scheduler-verification/`、`github-server-verified.log`、`production-release-checks.json`、`release-manifest.json`、`release-build.log`、`release-install.log`、`aod-verified.txt`、`native-main.png`、`native-aod.png`。6 个正式/迁移 APK 均通过 API 31 签名验证，文件摘要在 release-manifest 中。后续构建可能覆盖同名日志，以最新成功/失败结果为准。
 
 ## 未完成的正式验收
 
 | 验收 | 当前状态 / 必要条件 |
 | --- | --- |
-| 后端正式发布、注册客户端、发布 assetlinks | 本机实现和隔离测试完成，尚未部署；等待已验证的服务器 SSH 运维连接信息 |
+| 注册客户端、发布 assetlinks | 兼容后端 v0.11.0 已正式部署；仍需已验证的服务器 SSH 运维连接完成客户端注册及公开指纹配置 |
 | 手机 Chrome 更新 / Custom Tabs / App Link | Chrome 仍为 91；手机需要本人解锁后继续 |
 | 手机正式账号登录、真实库存与电脑核对 | 未进行；由用户本人在浏览器登录，不复制现有 cookie 或 MCP 凭证 |
 | 最新源码 APK 安装 | 正式签名版本已迁移安装，后续小修仍需手机重新连接后更新 |

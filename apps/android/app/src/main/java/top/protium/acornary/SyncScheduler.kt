@@ -15,11 +15,25 @@ object SyncScheduler {
     private fun alarm(context: Context) = PendingIntent.getBroadcast(context, 30, Intent(context, SyncReceiver::class.java).setAction("top.protium.acornary.SYNC"), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     fun fast(context: Context): Boolean {
         val plugged = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
-        return plugged && !context.getSystemService(PowerManager::class.java).isPowerSaveMode && context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
+        return plugged && !context.getSystemService(PowerManager::class.java).isPowerSaveMode &&
+            !context.getSystemService(ActivityManager::class.java).isBackgroundRestricted &&
+            !diagnostics(context).getBoolean("foregroundDenied", false) &&
+            context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
     }
     private fun diagnostics(context: Context) = context.getSharedPreferences("sync-diagnostics", Context.MODE_PRIVATE)
-    fun description(context: Context) = if (!context.terminal.preferences.state.value.enabled) "终端模式已暂停" else if (diagnostics(context).getBoolean("alarmFailed", false)) "精确闹钟不可用：已降级为 15 分钟以上更新" else if (fast(context)) "插电：约每 5 分钟更新" else "节能或权限降级：15 分钟以上更新"
-    fun isStale(context: Context, synced: String?) = synced?.let { runCatching { System.currentTimeMillis() - Instant.parse(it).toEpochMilli() > if (fast(context)) 600_000 else 1_800_000 }.getOrDefault(true) } ?: true
+    fun description(context: Context) = if (!context.terminal.preferences.state.value.enabled) "终端模式已暂停" else if (diagnostics(context).getBoolean("foregroundDenied", false) || context.getSystemService(ActivityManager::class.java).isBackgroundRestricted) "后台同步受限：已降级为 15 分钟以上更新" else if (diagnostics(context).getBoolean("alarmFailed", false)) "精确闹钟不可用：已降级为 15 分钟以上更新" else if (fast(context)) "插电：约每 5 分钟更新" else "节能或权限降级：15 分钟以上更新"
+    fun isStale(context: Context, synced: String?) = synced?.let { runCatching { System.currentTimeMillis() - Instant.parse(it).toEpochMilli() > if (fast(context) && !diagnostics(context).getBoolean("alarmFailed", false)) 600_000 else 1_800_000 }.getOrDefault(true) } ?: true
+    fun foregroundDenied(context: Context) {
+        diagnostics(context).edit().putBoolean("foregroundDenied", true).apply()
+        context.contentResolver.notifyChange(ambientUri, null)
+        schedule(context)
+    }
+    fun retryFromForeground(context: Context) {
+        if (diagnostics(context).getBoolean("foregroundDenied", false)) {
+            diagnostics(context).edit().remove("foregroundDenied").apply()
+            schedule(context)
+        }
+    }
     fun schedule(context: Context, enabled: Boolean = context.terminal.preferences.state.value.enabled && context.terminal.repository.state.value.session != null) {
         val manager = context.getSystemService(AlarmManager::class.java)
         val wm = WorkManager.getInstance(context)
@@ -39,7 +53,8 @@ class SyncReceiver : BroadcastReceiver() {
         if (!context.getSystemService(UserManager::class.java).isUserUnlocked) return
         if (intent.action == "top.protium.acornary.SYNC") {
             try { context.startForegroundService(Intent(context, SyncService::class.java)) }
-            catch (_: IllegalStateException) { SyncScheduler.schedule(context) }
+            catch (_: IllegalStateException) { SyncScheduler.foregroundDenied(context) }
+            catch (_: SecurityException) { SyncScheduler.foregroundDenied(context) }
         } else {
             val pending = goAsync()
             context.terminal.scope.launch {

@@ -1,5 +1,7 @@
 # 项目进度
 
+2026-10-30：兼容后端 [v0.11.0](https://github.com/Cabbyte/Acornary/releases/tag/v0.11.0) 已发布，公网版本和既有 MCP 只读链路已核对。新增可选的 Android 终端 API、原生横屏应用与 Pixel 3 AOD 工程；服务器终端客户端及 App Link 尚未配置，手机正式登录、完整日常闭环和 24 小时稳定性仍待验收，见 [终端验收记录](../apps/android/docs/acceptance.md)。
+
 2026-10-05 维护：响应式工作台和 MCP Apps 共用界面已合入 `main`，自 `v0.4.2` 起正式发布。用户已反馈初步验收通过；未提供逐项设备和宿主记录，因此不扩大为全部平台验收。
 
 后续版本以 [GitHub Releases](https://github.com/Cabbyte/Acornary/releases) 和线上 `/health` 为准。普通分支和 main push 只运行 CI，正式标签才触发生产更新，流程见 [发布手册](./releases.md)。
@@ -13,6 +15,7 @@
 | 账号与家庭 | 邮箱、Passkey、可选密码、多家庭成员关系及独立 OAuth 授权；公开注册和邮箱找回默认关闭，见 [账号系统](./accounts.md) |
 | Web 产品 | 桌面与手机共用工作台，搜索、筛选、排序、UUID 多选、原子批量移动和物品／备注编辑；保留消耗、纠错、笔记、历史和只读检查器，见 [Web UI](./webui.md)、[工作台](./responsive-workbench.md) |
 | MCP Apps | Web 和插件复用 Workspace；宿主桥、身份作用域、选中项上下文、私有草稿及精确重试见 [插件实现](./plugin.md) |
+| Android 终端 | Kotlin / Compose / Material 3、前摄扫码、库存操作、Room 缓存、PKCE 与独立 AOD；代码和自动化验证已交付，正式账号与实机验收未完成，打印暂不开放 |
 | 交付 | Node 24 / PostgreSQL 18 的 CI、公开 GHCR 镜像、受限 SSH 和独立发布任务已运行；[v0.4.2 Release](https://github.com/Cabbyte/Acornary/releases/tag/v0.4.2) 记录镜像、任务和公网验证 |
 
 ## 本轮维护
