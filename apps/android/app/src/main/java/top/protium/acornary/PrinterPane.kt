@@ -122,7 +122,9 @@ fun PrintLabelDialog(original: StockItem, scope: String, model: TerminalViewMode
     val state by printer.state.collectAsStateWithLifecycle()
     val inventory by model.state.collectAsStateWithLifecycle()
     val size = LabelSize.from(prefs.labelSize)
-    val rendered = remember(item, size) { runCatching { LabelRenderer.render(LabelContent.item(item), size) } }
+    // Keep the verification target tied to this exact bitmap, including before the next recomposition.
+    val preview = item
+    val rendered = remember(preview, size) { runCatching { LabelRenderer.render(LabelContent.item(preview), size) } }
     PrintWindow("打印物品标签", state.busy, dismiss) {
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             Column(Modifier.weight(1.15f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -138,7 +140,6 @@ fun PrintLabelDialog(original: StockItem, scope: String, model: TerminalViewMode
                 Text(state.deviceName ?: "尚未连接打印机", style = MaterialTheme.typography.titleMedium)
                 PrinterFeedback(state, printer)
                 Button(onClick = {
-                    val preview = item
                     printer.print(rendered.getOrThrow(), prefs.printDensity, completed = { printed = true }) {
                         val fresh = model.repo.itemForLabel(preview.id, scope)
                         if (fresh.revision != preview.revision || LabelContent.item(fresh) != LabelContent.item(preview)) { item = fresh; false } else true
