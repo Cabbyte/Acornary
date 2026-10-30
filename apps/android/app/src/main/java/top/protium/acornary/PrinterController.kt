@@ -90,17 +90,19 @@ class PrinterController(context: Context, private val scope: CoroutineScope) {
     }
     fun print(bitmap: Bitmap, density: Int, completed: () -> Unit = {}, validate: suspend () -> Boolean = { true }) {
         val current = protocol
-        if (state.value.busy || recovery.pending()) return
+        if (state.value.busy || state.value.uncertain || recovery.pending()) return
         if (!state.value.connected || current == null) { message("请先在设置中连接 D101。"); return }
         stopScan()
         mutable.update { it.copy(busy = true, progress = 0, message = "正在核对标签…") }
         job = scope.launch {
+            var mayHavePrinted = false
             try {
                 withTimeout(45_000) {
                     if (!validate()) { message("物品资料已变化，预览已刷新。请核对后再次点击打印。"); return@withTimeout }
                     val raster = withContext(Dispatchers.Default) { LabelRenderer.raster(bitmap) }
                     current.print(raster, density, starting = {
                         withContext(NonCancellable + Dispatchers.IO) { recovery.mark() }
+                        mayHavePrinted = true
                         currentCoroutineContext().ensureActive()
                         mutable.update { it.copy(printing = true, message = "正在打印 1 张，请保持应用在前台…") }
                         Log.i("AcornaryPrint", "Single label started")
@@ -112,7 +114,9 @@ class PrinterController(context: Context, private val scope: CoroutineScope) {
                 }
             } catch (error: Exception) {
                 connection?.close(); protocol = null
-                val uncertain = recovery.pending()
+                // A failed receipt clear must never turn a physically sent label into "not sent".
+                val uncertain = mayHavePrinted || recovery.pending()
+                if (uncertain) withContext(NonCancellable + Dispatchers.IO) { runCatching { recovery.mark() } }
                 mutable.update { it.copy(connected = false, uncertain = uncertain, message = if (uncertain) "${readable(error)} 出纸结果待核对；不会自动重打。" else "${readable(error)} 标签未发送。") }
                 Log.i("AcornaryPrint", if (uncertain) "Print result uncertain; retry disabled" else "Print stopped before output")
             } finally { mutable.update { it.copy(busy = false, printing = false) } }
