@@ -49,4 +49,17 @@ class TerminalUiTest {
         compose.onNodeWithText("容器作为位置浏览，编辑请在电脑上完成。").assertExists()
         compose.onNodeWithText("整件消耗").assertDoesNotExist()
     }
+    @Test fun printerTestActionStaysVisibleInReverseLandscapeWithLargeFont() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as Application
+        val model = TerminalViewModel(app)
+        compose.activityRule.scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE }
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {
+                MaterialTheme { PrinterPane(model) {} }
+            }
+        }
+        compose.onNodeWithText("打印测试标签（1 张）").assertIsDisplayed().assertIsNotEnabled()
+        compose.onNodeWithContentDescription("关闭打印窗口").assertIsDisplayed()
+    }
 }

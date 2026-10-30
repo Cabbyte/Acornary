@@ -1,6 +1,6 @@
 # 松仓 Android 终端
 
-Kotlin、Jetpack Compose、Material 3 原生应用，专为已核验的 Pixel 3 / Android 12 双向横屏使用。打印入口及蓝牙权限已移除，D101 协议源码暂存，未参与日常流程。
+Kotlin、Jetpack Compose、Material 3 原生应用，专为已核验的 Pixel 3 / Android 12 双向横屏使用。支持前摄扫码和 NIIMBOT D101 单件标签打印，打印接入说明见 [D101 打印](docs/printing.md)。
 
 当前实现与真实验收的边界见 [验收记录](docs/acceptance.md)。APK 构建成功不代表已完成正式账号、真实库存或 24 小时运行验收。
 
@@ -23,7 +23,7 @@ cd apps/android
 
 | 模块 | 职责 |
 | --- | --- |
-| `app` | Compose / ViewModel / StateFlow、AppAuth、OkHttp、Room、DataStore、前摄 ML Kit、同步调度 |
+| `app` | Compose / ViewModel / StateFlow、AppAuth、OkHttp、Room、DataStore、前摄 ML Kit、D101 BLE 打印、同步调度 |
 | `aod` | 无网络和令牌的 DreamService、原生 Canvas、双击及可选接近手势、有限待机设置接口 |
 | `overlay` | 静态 RRO，仅替换 Android `config_dozeComponent` |
 
@@ -81,6 +81,7 @@ adb -s 8AJX0TMS5 shell pm get-app-links top.protium.acornary
 
 - 临期：服务端提醒日期，包含已过提醒日及未来 7 天；库存：名称/品牌搜索、位置和开封状态筛选，未知状态单独显示。
 - 扫码：仅正式 `/i/<短 ID>` 标签，识别后暂停并显示详情；120 秒无结果释放相机，离开页面或后台也释放。
+- 打印：在设置中允许附近设备权限并连接 D101；物品详情标题旁的打印按钮打开预览。支持 30 × 12 mm / 40 × 20 mm，浓度 1–3，单次一张。发送前重新读取物品，资料变化时刷新预览并要求再次确认。打印中暂时保持亮屏；退到后台断开连接，出纸结果不确定时先核对纸张，不自动补打。
 - 消耗使用十进制字符串和 `BigDecimal`，固定原单位。整件消耗需要确认；完成后保留该物品。数量未知不能部分消耗，容器只作为位置浏览。
 - Room 是缓存，云端是唯一库存。写入前持久化原参数、revision 和幂等键；超时核对结果，重试保留原请求。没有离线写入队列。
 - 网络可用性先检查互联网能力，再通过真实接口验证；不把 Google 网络探测失败等同于松仓服务不可达。

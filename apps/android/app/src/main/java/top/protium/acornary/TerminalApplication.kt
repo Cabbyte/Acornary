@@ -48,6 +48,11 @@ class TerminalViewModel(application: Application) : AndroidViewModel(application
     val repo get() = app.repository
     val state = repo.state
     val prefs = app.preferences.state
+    val printer = PrinterController(application, viewModelScope)
+    init {
+        viewModelScope.launch { state.map { it.session?.scope }.distinctUntilChanged().drop(1).collect { printer.disconnect() } }
+    }
+    override fun onCleared() { printer.disconnect(); super.onCleared() }
     val page = MutableStateFlow(0)
     val lastInteraction = MutableStateFlow(android.os.SystemClock.elapsedRealtime())
     fun interact() { lastInteraction.value = android.os.SystemClock.elapsedRealtime() }

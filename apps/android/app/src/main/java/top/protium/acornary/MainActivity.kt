@@ -58,7 +58,7 @@ class MainActivity : ComponentActivity() {
         if (rotation in listOf(1, 3)) model.preferences { it.copy(rotation = rotation) }
     }
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); model.callback(intent) }
-    override fun onStop() { super.onStop(); window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+    override fun onStop() { model.printer.background(); super.onStop(); window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
     fun keepAwake(keep: Boolean) {
         if (keep) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

@@ -51,6 +51,10 @@ fun TerminalScreen(model: TerminalViewModel, activity: MainActivity) {
     val prefs by model.prefs.collectAsStateWithLifecycle()
     val page by model.page.collectAsStateWithLifecycle()
     val interaction by model.lastInteraction.collectAsStateWithLifecycle()
+    val printerState by model.printer.state.collectAsStateWithLifecycle()
+    var printerSettings by remember { mutableStateOf(false) }
+    var labelItem by remember { mutableStateOf<StockItem?>(null) }
+    LaunchedEffect(state.session?.scope) { labelItem = null }
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     var scanning by remember { mutableStateOf(false) }
@@ -67,7 +71,7 @@ fun TerminalScreen(model: TerminalViewModel, activity: MainActivity) {
         submissionAwake = state.busy
         if (state.busy) { delay(30_000); submissionAwake = false }
     }
-    val keep = lifecycle.isAtLeast(Lifecycle.State.RESUMED) && (submissionAwake || scanning || inputAwake)
+    val keep = lifecycle.isAtLeast(Lifecycle.State.RESUMED) && (submissionAwake || scanning || inputAwake || printerState.busy || printerState.scanning)
     DisposableEffect(keep) { activity.keepAwake(keep); onDispose { activity.keepAwake(false) } }
     LaunchedEffect(state.message) { state.message?.let { snackbar.showSnackbar(it); model.repo.message(null) } }
     fun login(switch: Boolean = false) { scope.launch {
@@ -108,7 +112,7 @@ fun TerminalScreen(model: TerminalViewModel, activity: MainActivity) {
                 Spacer(Modifier.height(8.dp))
                 when {
                     state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                    page == 3 -> SettingsPane(state, prefs, model, activity, { login(true) }, { login() })
+                    page == 3 -> SettingsPane(state, prefs, model, activity, { login(true) }, { login() }, { printerSettings = true })
                     state.session == null -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Outlined.Inventory2, null, Modifier.size(48.dp))
                         Text("把家里的物品放在眼前", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(16.dp))
@@ -117,17 +121,21 @@ fun TerminalScreen(model: TerminalViewModel, activity: MainActivity) {
                     }
                     page == 2 -> Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Box(Modifier.weight(0.9f).fillMaxHeight()) { CameraPane(onItem = { model.select(it) }, onActive = { scanning = it }) }
-                        Box(Modifier.weight(1.1f).fillMaxHeight()) { DetailPane(state, model, { editing = it }) }
+                        Box(Modifier.weight(1.1f).fillMaxHeight()) { DetailPane(state, model, { labelItem = it }) { editing = it } }
                     }
-                    else -> InventoryPane(page == 0, state, model) { editing = it }
+                    else -> InventoryPane(page == 0, state, model, { labelItem = it }) { editing = it }
                 }
             }
         }
     }
+    if (printerSettings) PrinterPane(model) { printerSettings = false }
+    val label = labelItem
+    val session = state.session
+    if (label != null && session != null) PrintLabelDialog(label, session.scope, model, { labelItem = null }, { labelItem = null; printerSettings = true })
 }
 
 @Composable
-internal fun InventoryPane(urgent: Boolean, state: TerminalState, model: TerminalViewModel, editing: (Boolean) -> Unit) {
+internal fun InventoryPane(urgent: Boolean, state: TerminalState, model: TerminalViewModel, onPrint: ((StockItem) -> Unit)? = null, editing: (Boolean) -> Unit) {
     var search by rememberSaveable { mutableStateOf("") }
     var location by rememberSaveable { mutableStateOf<String?>(null) }
     var opening by rememberSaveable { mutableIntStateOf(0) }
@@ -164,12 +172,12 @@ internal fun InventoryPane(urgent: Boolean, state: TerminalState, model: Termina
             }
         }
         VerticalDivider()
-        Box(Modifier.weight(1.05f)) { DetailPane(state, model, editing) }
+        Box(Modifier.weight(1.05f)) { DetailPane(state, model, onPrint, editing) }
     }
 }
 
 @Composable
-internal fun DetailPane(state: TerminalState, model: TerminalViewModel, editing: (Boolean) -> Unit) {
+internal fun DetailPane(state: TerminalState, model: TerminalViewModel, onPrint: ((StockItem) -> Unit)? = null, editing: (Boolean) -> Unit) {
     val item = state.selected
     var action by remember(item?.id) { mutableStateOf<String?>(null) }
     var amount by rememberSaveable(item?.id) { mutableStateOf("") }
@@ -185,7 +193,10 @@ internal fun DetailPane(state: TerminalState, model: TerminalViewModel, editing:
     val enabled = state.online && !state.busy && state.pending.isEmpty() && !state.selectedOffline
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(item.name, style = MaterialTheme.typography.titleLarge)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(item.name, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+                if (onPrint != null) IconButton(onClick = { onPrint(item) }, enabled = state.session != null && !state.busy) { Icon(Icons.Outlined.Print, "打印标签") }
+            }
             if (item.brand.isNotBlank() || item.specification.isNotBlank()) Text("${item.brand} ${item.specification}", style = MaterialTheme.typography.bodyMedium)
             Text(item.location, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("${lifecycleLabel(item)} · ${item.quantity()}", style = MaterialTheme.typography.titleMedium)
@@ -237,7 +248,7 @@ internal fun DetailPane(state: TerminalState, model: TerminalViewModel, editing:
 }
 
 @Composable
-private fun SettingsPane(state: TerminalState, prefs: TerminalPrefs, model: TerminalViewModel, activity: MainActivity, switch: () -> Unit, login: () -> Unit) {
+private fun SettingsPane(state: TerminalState, prefs: TerminalPrefs, model: TerminalViewModel, activity: MainActivity, switch: () -> Unit, login: () -> Unit, printer: () -> Unit) {
     var maintenance by remember { mutableStateOf("正在检查…") }
     LaunchedEffect(prefs.enabled) { maintenance = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { TerminalMaintenance.apply(activity, prefs.enabled) } }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -245,6 +256,7 @@ private fun SettingsPane(state: TerminalState, prefs: TerminalPrefs, model: Term
             Row { if (state.session != null) { TextButton(onClick = switch) { Text("切换家庭") }; IconButton(onClick = { model.logout() }) { Icon(Icons.AutoMirrored.Outlined.Logout, "退出账号") } } else Button(onClick = login) { Text("登录") } }
         })
         HorizontalDivider()
+        ListItem(headlineContent = { Text("打印机与标签") }, supportingContent = { Text("NIIMBOT D101 · ${LabelSize.from(prefs.labelSize).title} · 浓度 ${prefs.printDensity}") }, trailingContent = { TextButton(onClick = printer) { Text("连接与设置") } })
         ListItem(headlineContent = { Text("终端模式") }, supportingContent = { Text("60 秒无操作后待机；插电约 5 分钟同步") }, trailingContent = { Switch(prefs.enabled, { next -> model.preferences { it.copy(enabled = next) } }) })
         ListItem(headlineContent = { Text("挥手唤醒") }, supportingContent = { Text("AOD 时短暂靠近并移开屏幕顶部；双击始终可用") }, trailingContent = { Switch(prefs.wave, { next -> model.preferences { it.copy(wave = next) } }, enabled = prefs.enabled) })
         ListItem(headlineContent = { Text("明暗主题") }, trailingContent = { Row { listOf("system" to "系统", "light" to "浅色", "dark" to "深色").forEach { (key, label) -> FilterChip(selected = prefs.theme == key, onClick = { model.preferences { it.copy(theme = key) } }, label = { Text(label) }, modifier = Modifier.padding(2.dp)) } } })
