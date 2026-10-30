@@ -1,6 +1,6 @@
 # 项目进度
 
-2026-10-30：兼容后端 [v0.11.0](https://github.com/Cabbyte/Acornary/releases/tag/v0.11.0) 已发布，公网版本和既有 MCP 只读链路已核对。新增可选的 Android 终端 API、原生横屏应用与 Pixel 3 AOD 工程；服务器终端客户端及 App Link 尚未配置，手机正式登录、完整日常闭环和 24 小时稳定性仍待验收，见 [终端验收记录](../apps/android/docs/acceptance.md)。
+2026-10-30：兼容后端 [v0.11.0](https://github.com/Cabbyte/Acornary/releases/tag/v0.11.0) 已发布，公网版本和既有 MCP 只读链路已核对。Android 终端 public client 已注册，公开签名及 App Link 声明已发布并通过 Google 声明查询，匿名授权校验通过；最终正式签名 APK 已安装到 Pixel 3 并核对摘要。手机当前锁屏且未联网，Chrome 更新、本机 App Link 验证、正式登录、完整日常闭环和 24 小时稳定性仍待验收，见 [终端验收记录](../apps/android/docs/acceptance.md)。
 
 2026-10-05 维护：响应式工作台和 MCP Apps 共用界面已合入 `main`，自 `v0.4.2` 起正式发布。用户已反馈初步验收通过；未提供逐项设备和宿主记录，因此不扩大为全部平台验收。
 

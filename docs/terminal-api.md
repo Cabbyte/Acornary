@@ -48,6 +48,8 @@ ACORNARY_ANDROID_CERT_SHA256=43:86:9E:7E:B6:34:F1:4A:18:FC:EE:65:1B:C8:FF:60:2E:
 
 证书指纹格式错误会拒绝启动，不静默过滤。服务器不接收 Android 私钥。发布后核对公开配置、assetlinks、匿名私有接口 401 和现有 Web/MCP 回归。手机验证 App Link 后由用户本人完成登录。
 
+2026-10-30 已在正式 v0.11.0 环境完成注册和配置，公开 client ID 为 `acornary_android_4a31c01a-49d0-4553-9c40-071c55c6b466`。`/config`、`assetlinks.json`、Google Digital Asset Links 声明查询及匿名 PKCE 请求检查均通过；设备本机验证和真实账号登录仍待完成，见 [验收记录](../apps/android/docs/acceptance.md)。该 ID 是公开标识，不是凭据。后续环境应运行注册工具取得各自 ID，不复制正式环境数据库或令牌。
+
 ## Android 持久化与恢复
 
 - Room 原子写入 session + 完整解析后的 snapshot；家庭切换清理旧缓存，退出或授权失效清理展示。
