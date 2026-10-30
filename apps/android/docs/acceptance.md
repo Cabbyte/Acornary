@@ -7,11 +7,13 @@
 用户现已要求接入打印，确认 D101 开机且装入 30 × 12 mm 标签纸，扩展范围见 [打印说明](printing.md)。主应用 `0.3.0-terminal` 新增按需附近设备权限、D101 型号核验、原生预览和单张打印、纸张/浓度偏好、发送前资料核对和中断后待确认标记。打印不修改库存。
 
 - Android 编译、lint 和主应用 17 项 JVM 测试通过。两种尺寸的完整图像编码摘要与既有 Web 驱动一致，覆盖错误型号、上盖打开、丢失响应不重发和结束确认失败。
+- 最终代码 `d6f3e97` 的 [Android CI](https://github.com/Cabbyte/Acornary/actions/runs/41092608325/job/124190104201) 已通过：构建、lint、单元测试和 Android 12 隔离模拟器的 16 项仪器测试全部成功，包括反向横屏、1.5 倍字体下测试打印按钮可见。
 - 已使用现有发布密钥更新主应用，保留数据与 AOD 系统模块。手动安装同签名测试包，仅运行新的 `LabelPrinterTest`，4 项实机测试通过：两种尺寸的最终黑白位图可解码为原物品 ID、测试码与库存分离、长名称换行、持久待确认标记。未运行会卸载正式主应用的 Gradle 仪器任务。
+- 最终代码 `d6f3e97` 的主应用 APK 已安装到 Pixel 3，设备文件 SHA256 与本机发布文件一致，记录于 `output/android/printer/release-manifest.json`；更新后崩溃缓冲为空。AOD 继续显示正式家庭及临期投影，但不扩大为全天稳定性验收。
 - 手机已联网，并在原生页面显示现有账号家庭和实时临期信息；未读取或迁移登录令牌。Chrome 仍为 91，本机 App Link 状态仍为 1024，因此浏览器更新和正常域名验证仍未完成。
 - 实机点击“允许附近设备”后 Android 要求输入 PIN，目前等待用户在手机完成解锁和授权。D101 BLE 连接、物理出纸和纸上二维码尚未验收，不能将位图测试算作打印成功。
 
-本轮证据保存于 `output/android/printer/`：`tests.log`、`final-checks.log`、`label-instrumentation.txt`、`release-build.log`、`signing.log` 和页面取证。此前无打印版本的证据保留如下；其中“无 BLE 权限”描述的是当时版本。
+本轮证据保存于 `output/android/printer/`：`tests.log`、`final-checks.log`、`label-instrumentation.txt`、`final-release-build.log`、`final-signing.log`、`final-install.txt`、`release-manifest.json`、`ci-d6f3e97/` 和页面取证。最终 APK 另存为 `acornary-terminal-0.3.0-d6f3e97.apk`，避免后续构建覆盖。此前无打印版本的证据保留如下；其中“无 BLE 权限”描述的是当时版本。
 
 ## 已有证据（2026-10-30）
 
@@ -45,7 +47,7 @@
 | 挥手开关、物理持续遮挡 | 状态机测试通过，物理手势仍待验证；默认关闭 |
 | 24 小时稳定性与温度/唤醒锁 | 尚未开始，不以短时 AOD 或构建通过替代 |
 
-手机现已恢复 USB/ADB，用户存储为 `RUNNING_UNLOCKED`，但当前屏幕仍锁定且无默认网络；这两种“解锁”状态不能混为一谈。用户暂时无法操作手机，已暂缓浏览器及交互验收。没有绕过 PIN、强制把 App Link 标记为成功或迁入其他客户端凭据。原始设置基线仍保留在 `output/android/pixel3-baseline/settings.json`，伴随应用设备保护存储也保留已捕获基线。
+10 月 30 日验收结束时，手机已恢复 USB/ADB，用户存储为 `RUNNING_UNLOCKED`，但屏幕仍锁定且无默认网络。10 月 31 日已恢复网络并显示正式账号库存，打印授权仍需用户解锁当前屏幕；这两种“解锁”状态不能混为一谈。没有绕过 PIN、强制把 App Link 标记为成功或迁入其他客户端凭据。原始设置基线仍保留在 `output/android/pixel3-baseline/settings.json`，伴随应用设备保护存储也保留已捕获基线。
 
 ## 恢复实机验收的顺序
 
