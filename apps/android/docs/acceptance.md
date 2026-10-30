@@ -8,6 +8,7 @@
 
 - Android 编译、lint 和主应用 17 项 JVM 测试通过。两种尺寸的完整图像编码摘要与既有 Web 驱动一致，覆盖错误型号、上盖打开、丢失响应不重发和结束确认失败。
 - 最终代码 `d6f3e97` 的 [Android CI](https://github.com/Cabbyte/Acornary/actions/runs/41092608325/job/124190104201) 已通过：构建、lint、单元测试和 Android 12 隔离模拟器的 16 项仪器测试全部成功，包括反向横屏、1.5 倍字体下测试打印按钮可见。
+- 同一代码的[完整 CI](https://github.com/Cabbyte/Acornary/actions/runs/41092608325) 也已通过，包含 Web、OAuth、PostgreSQL、浏览器以及真实容器迁移/应用恢复回归；日志保存在 `output/android/printer/ci-full-d6f3e97.log`。
 - 已使用现有发布密钥更新主应用，保留数据与 AOD 系统模块。手动安装同签名测试包，仅运行新的 `LabelPrinterTest`，4 项实机测试通过：两种尺寸的最终黑白位图可解码为原物品 ID、测试码与库存分离、长名称换行、持久待确认标记。未运行会卸载正式主应用的 Gradle 仪器任务。
 - 最终代码 `d6f3e97` 的主应用 APK 已安装到 Pixel 3，设备文件 SHA256 与本机发布文件一致，记录于 `output/android/printer/release-manifest.json`；更新后崩溃缓冲为空。AOD 继续显示正式家庭及临期投影，但不扩大为全天稳定性验收。
 - 手机已联网，并在原生页面显示现有账号家庭和实时临期信息；未读取或迁移登录令牌。Chrome 仍为 91，本机 App Link 状态仍为 1024，因此浏览器更新和正常域名验证仍未完成。
