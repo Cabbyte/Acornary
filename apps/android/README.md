@@ -60,11 +60,13 @@ python3 apps/android/tools/device.py validate-aod
 
 `overlay` 为系统静态覆盖，不能用 `adb install -r` 更新，必须通过 Magisk 模块并重启。主应用和 AOD 伴随应用可同签名热更新；AOD 的 `/data` 更新和模块 APK 必须保持一致。
 
+热更新 AOD 会断开正在运行的 DreamService，屏幕可能暂时完全熄灭。亮屏后再正常待机应重新进入 Acornary AOD；更新后用 `tools/device.py status` 检查实际服务和 `DOZE` 状态，不能只凭安装成功判断恢复。
+
 脚本限定序列号 `8AJX0TMS5`、固件 `SP1A.210812.016.C2`，只管理 `/data/adb/modules/acornary_pixel3_aod`。首次系统设置基线必须保留在 `output/android/pixel3-baseline/settings.json`。新模块未在启动后 300 秒内验证会自动禁用并重启；此保护不能替代设备恢复模式。
 
 ## 接入账号与后端
 
-后端契约及运营命令见 [终端 API](../../../docs/terminal-api.md)。发布顺序：兼容后端 → 注册专用 public client → 配置客户端 ID 与公开证书指纹 → 核对 `config` / `assetlinks.json` → 手机验证 App Link → 用户在 Custom Tab 中登录并选择家庭。
+后端契约及运营命令见 [终端 API](../../docs/terminal-api.md)。发布顺序：兼容后端 → 注册专用 public client → 配置客户端 ID 与公开证书指纹 → 核对 `config` / `assetlinks.json` → 手机验证 App Link → 用户在 Custom Tab 中登录并选择家庭。
 
 ```sh
 adb -s 8AJX0TMS5 shell pm verify-app-links --re-verify top.protium.acornary
@@ -72,6 +74,8 @@ adb -s 8AJX0TMS5 shell pm get-app-links top.protium.acornary
 ```
 
 只接受 `https://acornary.protium.top/android/oauth/callback`。AppAuth 验证 state、PKCE、客户端及回调；没有自建 WebView 登录。不要从浏览器或 MCP 提取现成凭证到手机。
+
+正式后端已完成客户端和签名配置。`pm get-app-links` 必须看到域名状态 `verified` 才算本机验证通过；服务器声明或 Google 查询成功不能代替此项。若设备没有网络，先恢复联网再重新验证，不使用 shell 强制设置成功状态。Chrome 更新通过 Google Play 完成，当前实机进度见 [验收记录](docs/acceptance.md)。
 
 ## 日常运行与异常
 
