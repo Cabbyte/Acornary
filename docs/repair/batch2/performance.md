@@ -20,9 +20,9 @@
 
 | 场景 | p50 | p95 | 预算 | 结果 |
 | --- | --- | --- | --- | --- |
-| `query_items` 首页（50 条） | 50.0 ms | **53.9 ms** | 300 ms | PASS |
-| `query_items` 中文双字搜索 | 92.4 ms | **97.1 ms** | 200 ms | PASS |
-| `get_history` household 首页 | 2.4 ms | **3.2 ms** | 150 ms | PASS |
+| `query_items` 首页（50 条） | 67.1 ms | **70.3 ms** | 300 ms | PASS |
+| `query_items` 中文双字搜索 | 108.0 ms | **112.3 ms** | 200 ms | PASS |
+| `get_history` household 首页 | 3.1 ms | **6.0 ms** | 150 ms | PASS |
 | `query_catalog_nodes` GROUP 首页 | 2.2 ms | **3.1 ms** | 300 ms | PASS |
 
 Node 26.7.0；本地容器；查询包含 `BEGIN`/`SET TRANSACTION`/`COMMIT` 与 service 层处理。未跑完整的 `query-performance.test.ts` 3×1000 轮和 11 个 case 矩阵，也未测并发读者/写者。
@@ -31,14 +31,19 @@ Node 26.7.0；本地容器；查询包含 `BEGIN`/`SET TRANSACTION`/`COMMIT` 与
 
 首次首页查询为 **~1.9 s**。`EXPLAIN ANALYZE` 显示每个日期状态子查询都在调用 `acornary_date_timezone`，而该函数对每一行扫描 `pg_timezone_names`。`itemDatesJsonSql` 每页约 51 行，乘以目录视图扫描，形成 1.8 s 的 SubPlan。
 
-迁移 `020_timezone_read_perf.sql` 把已通过 `acornary_validate_household_timezone` 校验的 household timezone 直接交给 `AT TIME ZONE`，不再逐行解析时区目录：
+迁移 `020_timezone_read_perf.sql` 先去掉逐行目录解析，`021_timezone_names.sql` 再用迁移时快照的小表保留非法时区回退 UTC 的兼容性：
 
 ```sql
 CREATE OR REPLACE FUNCTION acornary_date_timezone(zone text) RETURNS text
-LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$ SELECT coalesce(zone, 'UTC') $$;
+LANGUAGE sql STABLE AS $$
+  SELECT coalesce((SELECT name FROM acornary_timezone_names
+    WHERE lower(name)=lower(zone) LIMIT 1), 'UTC')
+$$;
 ```
 
-修复后同一查询 **~54 ms p95**。这不是索引缺失问题；索引已存在，瓶颈是读路径中的目录解析。
+修复后同一查询 **~70 ms p95**。这不是索引缺失问题；索引已存在，瓶颈是读路径中的目录解析。
+
+`020` 的 identity 版本会让历史非法时区行在 `AT TIME ZONE` 直接报错，因此 `021_timezone_names.sql` 增加了迁移时快照的 `acornary_timezone_names` 小表和 `lower(name)` 索引：合法名称走索引，非法/空值回退 UTC，既保留旧兼容行为，也避免逐行扫描 `pg_timezone_names`。
 
 ## 复现
 

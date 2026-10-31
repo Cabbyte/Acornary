@@ -629,7 +629,7 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
     const { ctx, sku, item } = await fixture();
     expect(await execute(ctx, 'get_connection_context', {})).toMatchObject({
       protocol: { current: 2, min: 2 },
-      features: ['query_v2', 'history_v2', 'snapshot_v2', 'groups_v2', 'sync_v2', 'profile_capabilities', 'deadline', 'notes_v2', 'attachments', 'stock', 'void', 'split', 'references', 'units_v2'],
+      features: ['frozen_export', 'query_v2', 'history_v2', 'snapshot_v2', 'groups_v2', 'sync_v2', 'profile_capabilities', 'deadline', 'notes_v2', 'attachments', 'stock', 'void', 'split', 'references', 'units_v2'],
     });
     for (const assignment of ["profile='OTHER'", "record_state='INVALID'", 'one_off=NULL'])
       await expect(

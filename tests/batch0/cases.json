@@ -324,7 +324,7 @@
     "status": "PASS",
     "acceptance": "索引执行计划SQL计数及性能样本；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "10k items/100k events: items p95 53.9ms, history 3.2ms, search 97.1ms; docs/repair/batch2/performance.md"
+      "10k items/100k events: items p95 70.3ms, history 6.0ms, search 112.3ms; docs/repair/batch2/performance.md"
     ]
   },
   {
