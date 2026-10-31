@@ -105,6 +105,17 @@ class PrintJournalTest {
   assertEquals("UNCERTAIN",restored.state.value!!.pages.first().status)
   delay(100);assertEquals(1,f.link.commands.count {it==0x01})
  }
+ @Test fun cancelledPreflightCannotOverwriteANewSelectionWhenItsReadReturnsLate()=fixture {f->
+  prepare(f);val entered=CompletableDeferred<Unit>();val gate=CompletableDeferred<Unit>()
+  f.beforeMany={withContext(NonCancellable) {entered.complete(Unit);gate.await()}}
+  f.journal.start();entered.await();f.journal.leave()
+  val chosen=f.source.values.take(2)
+  f.journal.open(chosen,LabelSize.SMALL,2);until {f.journal.state.value?.preparing==false}
+  gate.complete(Unit);delay(100)
+  assertEquals(chosen.map {it.id}.toSet(),f.journal.state.value!!.selected)
+  assertTrue(f.journal.state.value!!.visible);assertNull(f.journal.state.value!!.message)
+  assertEquals(0,f.link.commands.count {it==0x01})
+ }
  @Test fun unrelatedRevisionDoesNotBlockButChangedLabelRequiresAnotherConfirmation()=fixture {f->
   prepare(f)
   val item=f.source.values.first();f.source[item.id]=item.copy(revision=10,location="新的位置",remaining=Amount("10","mL"))

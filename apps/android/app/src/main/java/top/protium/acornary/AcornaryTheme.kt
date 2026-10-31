@@ -52,7 +52,8 @@ enum class AcGlyph(@param:DrawableRes val resource: Int) {
 }
 
 @Composable internal fun AcPanel(title: String,onClose:()->Unit,content:@Composable androidx.compose.foundation.layout.ColumnScope.()->Unit) {
-    androidx.compose.ui.window.Dialog(onDismissRequest=onClose,properties=androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth=false)) {
+    androidx.compose.ui.window.Dialog(onDismissRequest=onClose,properties=androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth=false,decorFitsSystemWindows=false)) {
+      Box(Modifier.fillMaxSize().safeDrawingPadding().imePadding(),contentAlignment=androidx.compose.ui.Alignment.Center) {
         Surface(shape=MaterialTheme.shapes.medium,modifier=Modifier.widthIn(max=680.dp).fillMaxWidth(.94f).fillMaxHeight(.94f)) {
             androidx.compose.foundation.layout.Column(Modifier.padding(12.dp)) {
                 androidx.compose.foundation.layout.Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
@@ -62,5 +63,6 @@ enum class AcGlyph(@param:DrawableRes val resource: Int) {
                 content()
             }
         }
+      }
     }
 }

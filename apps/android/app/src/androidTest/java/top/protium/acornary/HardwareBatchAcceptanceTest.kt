@@ -1,6 +1,6 @@
 package top.protium.acornary
 
-import android.app.KeyguardManager
+import android.os.UserManager
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -31,7 +31,7 @@ class HardwareBatchAcceptanceTest {
         specification="30 × 12 mm · 非库存",location="本地测试，不对应实际物品")}
     private fun requireHardware() {
         assumeTrue(InstrumentationRegistry.getArguments().getString("hardwareD101")=="true")
-        assertFalse("请由用户解锁手机",context.getSystemService(KeyguardManager::class.java).isKeyguardLocked)
+        assertTrue("重启后需先由用户解锁一次",context.getSystemService(UserManager::class.java).isUserUnlocked)
     }
     private fun screenshot(name:String) {
         val directory=File(context.getExternalFilesDir("hardware-batch-qa"),"")

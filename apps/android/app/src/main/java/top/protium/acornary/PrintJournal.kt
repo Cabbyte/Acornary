@@ -26,11 +26,12 @@ class PrintJournal(
     private var initialized = false
     private var generation = 0
     private var preparation: Job? = null
+    private var preparationTicket = 0
     private var afterStop: (() -> Unit)? = null
     private fun current(value: BatchReview) = sessionScope() == value.scope
     suspend fun scopeChanged(value: String?) {
         if (initialized && household == value) return
-        initialized = true; preparation?.cancel(); household = value; generation++; afterStop = null; mutable.value = null
+        initialized = true; preparationTicket++; preparation?.cancel(); household = value; generation++; afterStop = null; mutable.value = null
         if (value == null) return
         val epoch = generation
         val restored = withContext(Dispatchers.IO) {
@@ -48,9 +49,10 @@ class PrintJournal(
     fun show() { mutable.update { it?.copy(visible = true) } }
     fun open(items: List<StockItem>, size: LabelSize, density: Int, forceSingle: Boolean = false) {
         val account = sessionScope() ?: return
-        if (mutable.value?.busy == true || printer.state.value.busy) return
+        if (mutable.value?.busy == true || mutable.value?.preparing == true || printer.state.value.busy) return
         if (mutable.value?.pages?.any { it.status == "UNCERTAIN" } == true) { show(); return }
         val epoch = generation
+        val ticket = ++preparationTicket
         mutable.value = BatchReview(account, size, density, emptyList(), emptySet(), preparing = true)
         preparation = scope.launch {
             try {
@@ -60,10 +62,10 @@ class PrintJournal(
                     BatchLabel(item, hash, alreadyPrinted = hash in printed)
                 }
                 val candidates = if (forceSingle) pages else pages.filterNot { it.alreadyPrinted }
-                if (epoch == generation && sessionScope() == account) mutable.value = BatchReview(account, size, density, pages,
+                if (epoch == generation && ticket == preparationTicket && sessionScope() == account) mutable.value = BatchReview(account, size, density, pages,
                     if (candidates.size <= 100) candidates.map { it.item.id }.toSet() else emptySet(),
                     message = if (candidates.size > 100) "候选超过 100 件，请手动选择最多 100 件，或取消后缩小筛选范围。" else null)
-            } catch (error: Exception) { if (epoch == generation) mutable.update { it?.copy(preparing = false, message = error.message ?: "无法读取本机打印记录。") } }
+            } catch (error: Exception) { if (epoch == generation && ticket == preparationTicket) mutable.update { it?.copy(preparing = false, message = error.message ?: "无法读取本机打印记录。") } }
         }
     }
     fun toggle(id: String) {
@@ -89,23 +91,25 @@ class PrintJournal(
     }
     fun leave(action: () -> Unit = {}) {
         if (mutable.value?.busy == true) { afterStop = { mutable.update { it?.copy(visible = false) }; action() }; printer.requestStop() }
-        else { preparation?.cancel(); mutable.update { it?.copy(visible = false, preparing = false) }; action() }
+        else { preparationTicket++; preparation?.cancel(); mutable.update { it?.copy(visible = false, preparing = false) }; action() }
     }
-    fun background() { if (mutable.value?.preparing == true) { preparation?.cancel(); mutable.update { it?.copy(preparing = false, message = "核对已暂停，返回后重新点击开始。") } } }
+    fun background() { if (mutable.value?.preparing == true) { preparationTicket++; preparation?.cancel(); mutable.update { it?.copy(preparing = false, message = "核对已暂停，返回后重新点击开始。") } } }
     fun acknowledge(id: String, printed: Boolean) {
         val review = mutable.value ?: return
         val batchId = review.id ?: return
         if (review.busy || review.preparing || !current(review)) return
         val position = review.pages.indexOfFirst { it.item.id == id && it.status == "UNCERTAIN" }
         if (position < 0) return
+        val epoch = generation
         scope.launch {
             try {
                 val status = if (printed) "CONFIRMED" else pendingPage
                 withContext(Dispatchers.IO) { check(dao.printPageStatus(batchId, position, status, System.currentTimeMillis()) == 1) }
+                if (epoch != generation || !current(review) || mutable.value?.id != batchId) return@launch
                 mutable.update { it?.copy(pages = it.pages.mapIndexed { index, page -> if (index == position) page.copy(status = status) else page },
                     selected = if (printed) it.selected - id else it.selected + id, message = "已核对纸张；补打仍需点击开始。") }
                 if (mutable.value?.pages?.none { it.status == "UNCERTAIN" } == true) printer.acknowledge()
-            } catch (error: Exception) { mutable.update { it?.copy(message = error.message ?: "未能保存核对结果。") } }
+            } catch (error: Exception) { if (epoch == generation && mutable.value?.id == batchId) mutable.update { it?.copy(message = error.message ?: "未能保存核对结果。") } }
         }
     }
     fun start() {
@@ -114,12 +118,13 @@ class PrintJournal(
         if (review.pages.any { it.status == "UNCERTAIN" }) return
         val chosen = review.pages.filter { it.item.id in review.selected }
         val epoch = generation
+        val ticket = ++preparationTicket
         mutable.update { it?.copy(preparing = true, message = null) }
         preparation = scope.launch {
             var createdId: String? = null
             try {
                 val fresh = readMany(chosen.map { it.item.id }, review.scope).associateBy { it.id }
-                check(epoch == generation && current(review)) { "家庭已变化。" }
+                check(epoch == generation && ticket == preparationTicket && current(review)) { "家庭或打印选择已变化。" }
                 val changed = chosen.any { page -> fresh[page.item.id]?.let { !it.canConsume || printFingerprint(it, review.size) != page.fingerprint } != false }
                 if (changed) {
                     mutable.update { old -> old?.copy(preparing = false,
@@ -131,7 +136,7 @@ class PrintJournal(
                 val id = UUID.randomUUID().toString(); createdId = id
                 val frozen = chosen.map { page -> page.copy(item = fresh.getValue(page.item.id), status = pendingPage) }
                 withContext(Dispatchers.IO) {
-                    check(epoch == generation && current(review))
+                    check(epoch == generation && ticket == preparationTicket && current(review))
                     dao.createPrintBatch(PrintBatchRecord(id, review.scope, review.size.key, review.density, "RUNNING", System.currentTimeMillis()),
                         frozen.mapIndexed { position, page -> PrintPageRecord(id, position, review.scope, page.item.id, page.fingerprint, wire.encodeToString(page.item), pendingPage, System.currentTimeMillis()) })
                 }
@@ -174,7 +179,7 @@ class PrintJournal(
                 }
             } catch (error: Exception) {
                 createdId?.let { id -> withContext(NonCancellable + Dispatchers.IO) { runCatching { dao.printBatchStatus(id, "STOPPED") } } }
-                if (epoch == generation) mutable.update { it?.copy(preparing = false, busy = false, message = error.message ?: "无法开始打印。") }
+                if (epoch == generation && ticket == preparationTicket) mutable.update { it?.copy(preparing = false, busy = false, message = error.message ?: "无法开始打印。") }
             }
         }
     }

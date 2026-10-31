@@ -74,6 +74,8 @@ class WorkspaceDesignTest {
   screenshot("workspace-pixel3-light-130")
   compose.onNodeWithText("消耗",useUnmergedTree=true).performClick()
   compose.onNodeWithText("消耗量（mL）").performClick().performTextInput("50")
+  android.os.SystemClock.sleep(500)
+  compose.waitForIdle()
   compose.onNodeWithText("整件用完",useUnmergedTree=true).assertIsDisplayed()
   compose.onNodeWithText("扣减该数量",useUnmergedTree=true).assertIsDisplayed()
   screenshot("consumption-keyboard-130")
