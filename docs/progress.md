@@ -1,6 +1,6 @@
 # 项目进度
 
-2026-10-31：Android 主应用接入 D101 单张标签打印，支持双尺寸预览、浓度、联网核对和出纸结果待确认；正式签名 APK 已安装并核对摘要。本地 17 项主应用单元测试、4 项标签实机仪器测试、最终 CI 的 16 项模拟器仪器测试及完整仓库回归通过。Pixel 已通过 BLE 核验 D101 并收到单张完成确认，用户确认 30 × 12 mm 测试标签成功出纸；纸上版式与二维码仍待反馈，见 [打印说明](../apps/android/docs/printing.md) 和 [验收记录](../apps/android/docs/acceptance.md)。
+2026-10-31：Android 主应用接入 D101 单张标签打印，支持双尺寸预览、浓度、联网核对和出纸结果待确认；正式签名 APK 已安装并核对摘要。本地 17 项主应用单元测试、4 项标签实机仪器测试、最终 CI 的 16 项模拟器仪器测试及完整仓库回归通过。Pixel 已通过 BLE 核验 D101 并收到单张完成确认，用户确认 30 × 12 mm 测试标签成功出纸、版式正常且二维码可识别，见 [打印说明](../apps/android/docs/printing.md) 和 [验收记录](../apps/android/docs/acceptance.md)。
 
 2026-10-30：兼容后端 [v0.11.0](https://github.com/Cabbyte/Acornary/releases/tag/v0.11.0) 已发布，公网版本和既有 MCP 只读链路已核对。Android 终端 public client 已注册，公开签名及 App Link 声明已发布并通过 Google 声明查询，匿名授权校验通过；最终正式签名 APK 已安装到 Pixel 3 并核对摘要。手机当前锁屏且未联网，Chrome 更新、本机 App Link 验证、正式登录、完整日常闭环和 24 小时稳定性仍待验收，见 [终端验收记录](../apps/android/docs/acceptance.md)。
 
