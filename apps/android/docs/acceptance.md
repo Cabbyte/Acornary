@@ -12,7 +12,9 @@
 - 已使用现有发布密钥更新主应用，保留数据与 AOD 系统模块。手动安装同签名测试包，仅运行新的 `LabelPrinterTest`，4 项实机测试通过：两种尺寸的最终黑白位图可解码为原物品 ID、测试码与库存分离、长名称换行、持久待确认标记。未运行会卸载正式主应用的 Gradle 仪器任务。
 - 最终代码 `d6f3e97` 的主应用 APK 已安装到 Pixel 3，设备文件 SHA256 与本机发布文件一致，记录于 `output/android/printer/release-manifest.json`；更新后崩溃缓冲为空。AOD 继续显示正式家庭及临期投影，但不扩大为全天稳定性验收。
 - 手机已联网，并在原生页面显示现有账号家庭和实时临期信息；未读取或迁移登录令牌。Chrome 仍为 91，本机 App Link 状态仍为 1024，因此浏览器更新和正常域名验证仍未完成。
-- 实机点击“允许附近设备”后 Android 要求输入 PIN，目前等待用户在手机完成解锁和授权。D101 BLE 连接、物理出纸和纸上二维码尚未验收，不能将位图测试算作打印成功。
+- 用户已通过系统界面解锁并允许附近设备权限。首次 Pixel 扫描未发现 D101，Mac 的 BLE/经典蓝牙交叉扫描也未发现；用户重启打印机并在系统设置配对后，Mac 可发现 D101 广播，Pixel 原生应用连接成功，无需改动打印代码。
+- 2026-10-31 09:53:40（Asia/Shanghai）主应用核验型号 2560；09:53:45 开始单张打印，09:53:50 收到完成确认。用户随后明确确认成功出纸。纸张设置为 30 × 12 mm、浓度 2；`output/android/printer/physical-print-log.txt` 保留不含标签内容的协议完成记录。只打印测试样张，没有修改库存。
+- 物理出纸已确认；纸上方向、边距、字迹和二维码解码尚待用户反馈。40 × 20 mm 纸卷以及真实物品标签的联网资料核对仍未做物理验收。此次手机暂无默认网络，实际物品打印会按设计要求联网，测试样张可独立打印。
 
 本轮证据保存于 `output/android/printer/`：`tests.log`、`final-checks.log`、`label-instrumentation.txt`、`final-release-build.log`、`final-signing.log`、`final-install.txt`、`release-manifest.json`、`ci-d6f3e97/` 和页面取证。最终 APK 另存为 `acornary-terminal-0.3.0-d6f3e97.apk`，避免后续构建覆盖。此前无打印版本的证据保留如下；其中“无 BLE 权限”描述的是当时版本。
 
