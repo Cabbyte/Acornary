@@ -240,6 +240,24 @@ const filters = z
   )
   .max(20)
   .optional();
+const itemQuerySchema = z.strictObject({
+    ...page,
+    cursor: z.string().optional(),
+    sort: z
+      .strictObject({
+        field: z.enum(['created_at', 'updated_at', 'name', 'reminder_date']).default('created_at'),
+        direction: z.enum(['asc', 'desc']).default('desc'),
+      })
+      .default({ field: 'created_at', direction: 'desc' }),
+    search: z.string().max(500).optional(),
+    include_path: z.boolean().default(false),
+    name: z.string().max(500).optional(),
+    barcode: z.string().max(128).optional(),
+    catalog_node_ids: z.array(id).max(100).optional(),
+    catalog_subtree_id: id.optional(),
+    within_item_id: uuid.optional(),
+    attribute_filters: filters,
+  });
 export const schemas = {
   ...intakeSchemas,
   get_connection_context: z.strictObject({}),
@@ -310,24 +328,8 @@ export const schemas = {
   }),
   update_catalog_node: z.strictObject({ ...write, catalog_node_id: id, name: catalogName }),
   move_catalog_node: z.strictObject({ ...write, catalog_node_id: id, parent_id: id.nullable() }),
-  query_items: z.strictObject({
-    ...page,
-    cursor: z.string().optional(),
-    sort: z
-      .strictObject({
-        field: z.enum(['created_at', 'updated_at', 'name', 'reminder_date']).default('created_at'),
-        direction: z.enum(['asc', 'desc']).default('desc'),
-      })
-      .default({ field: 'created_at', direction: 'desc' }),
-    search: z.string().max(500).optional(),
-    include_path: z.boolean().default(false),
-    name: z.string().max(500).optional(),
-    barcode: z.string().max(128).optional(),
-    catalog_node_ids: z.array(id).max(100).optional(),
-    catalog_subtree_id: id.optional(),
-    within_item_id: uuid.optional(),
-    attribute_filters: filters,
-  }),
+  query_items: itemQuerySchema,
+  query_inventory_groups: itemQuerySchema.omit({ include_path: true, sort: true }),
   get_item: z.strictObject({ item_id: uuid, include_path: z.boolean().default(false) }),
   create_items: z.strictObject({
     ...create,
@@ -413,6 +415,7 @@ export const reads = new Set<Operation>([
   'query_catalog_nodes',
   'get_catalog_node',
   'query_items',
+  'query_inventory_groups',
   'get_item',
   'list_attribute_templates',
   'get_attribute_template',
@@ -420,6 +423,7 @@ export const reads = new Set<Operation>([
   'get_history',
 ]);
 export const descriptions: Record<Operation, string> = {
+  query_inventory_groups: '按 query_items 的完整匹配集合读取服务端商品分组与统计。',
   get_intake_context:
     '日常入库先批量查询整批名称、已知位置和明确 ID，获得当前规范、候选与版本。检索覆盖范围不等于语义上全库无匹配；截断时继续查询。',
   commit_intake:
@@ -529,3 +533,5 @@ export function parseCommand(name: Operation, raw: unknown): any {
   }
   return input;
 }
+
+export * as syncContracts from './sync.js';
