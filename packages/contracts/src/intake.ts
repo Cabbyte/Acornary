@@ -46,9 +46,10 @@ export const catalogRuleSchema = z.strictObject({
         'clothing.size',
         'device.connector',
         'device.rated_power_w',
+        'device.electrical',
       ]),
     )
-    .max(9)
+    .max(10)
     .default([
       'product.brand',
       'product.model',
@@ -67,6 +68,7 @@ const defaults = z.strictObject({
   initial_attributes: attributes.optional(),
 });
 export const newIntakeProduct = z.strictObject({
+  one_off: z.boolean().optional(),
   name,
   parent_id: catalogId.nullable(),
   initial_attributes: attributes.optional(),
@@ -115,6 +117,7 @@ export const catalogProposalSchema = z.discriminatedUnion('kind', [
   z.strictObject({
     kind: z.literal('catalog_command'),
     operation: z.enum([
+      'void_catalog_node',
       'create_catalog_node',
       'update_catalog_node',
       'move_catalog_node',

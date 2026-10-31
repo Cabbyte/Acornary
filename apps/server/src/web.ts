@@ -1,5 +1,6 @@
+import { findTemplate } from '../../../packages/contracts/src/registry.js';
+import { splitInfoSql } from './semantics.js';
 import { Decimal } from 'decimal.js';
-import { templates } from '../../../packages/contracts/src/index.js';
 import type {
   CatalogRecord as CatalogRecordV2,
   ItemRecord as ItemRecordV2,
@@ -44,14 +45,14 @@ export async function webSnapshot(ctx: Context, rawFilter: unknown) {
       catalog: (
         await query(
           c,
-          'SELECT id,parent_id,kind,name,revision,attributes,profile,capabilities,one_off,record_state,created_at,updated_at FROM catalog_nodes WHERE household_id=$1 ORDER BY created_at,id',
+          "SELECT id,parent_id,kind,name,revision,attributes,profile,capabilities,one_off,record_state,voided_at,created_at,updated_at FROM catalog_nodes WHERE household_id=$1 AND record_state='VALID' ORDER BY created_at,id",
           [ctx.household_id],
         )
       ).rows,
       items: (
         await query(
           c,
-          'SELECT id,parent_id,catalog_node_id,display_name,revision,attributes,record_state,created_at,updated_at FROM items WHERE household_id=$1 ORDER BY created_at,id',
+          "SELECT id,parent_id,catalog_node_id,display_name,revision,attributes,record_state,voided_at,created_at,updated_at FROM items WHERE household_id=$1 AND record_state='VALID' ORDER BY created_at,id",
           [ctx.household_id],
         )
       ).rows,
@@ -138,12 +139,7 @@ function baseRecord(row: any) {
       template_id: a.template_id,
       template_version: a.template_version,
       values: a.values,
-      status:
-        a.status ??
-        (Object.hasOwn(templates, a.template_id) &&
-        (a.template_version === 1 || (a.template_id === 'product' && a.template_version === 2))
-          ? 'KNOWN'
-          : 'UNKNOWN'),
+      status: a.status ?? (findTemplate(a.template_id, a.template_version) ? 'KNOWN' : 'UNKNOWN'),
     })),
     created_at: iso(row.created_at),
     updated_at: iso(row.updated_at),
@@ -169,7 +165,7 @@ export function itemRecordV2(row: any): ItemRecordV2 {
     note_count: Number(row.note_count ?? 0),
     attachment_count: 0,
     next_date: null,
-    split: null,
+    split: row.split ?? null,
   };
 }
 /** Whitelisted DTOs deliberately exclude household internals, note bodies and label hashes. */
@@ -180,7 +176,7 @@ export async function readCatalogV2(c: Client, household: string, selection: Rec
       c,
       `SELECT o.*,v.last_change_id::text FROM catalog_nodes o
     LEFT JOIN sync_object_versions v ON v.household_id=o.household_id AND v.object_kind='CATALOG_NODE' AND v.object_id=o.id
-    WHERE o.household_id=$1 AND coalesce(v.change_kind,'UPSERT') <> 'TOMBSTONE'
+    WHERE o.household_id=$1 AND o.record_state='VALID' AND coalesce(v.change_kind,'UPSERT') <> 'TOMBSTONE'
     AND ($2::text[] IS NULL OR o.id=ANY($2::text[])) AND o.id > $3 ORDER BY o.id LIMIT $4`,
       [household, selection.ids ?? null, selection.after ?? '', selection.limit ?? null],
     )
@@ -192,10 +188,10 @@ export async function readItemsV2(c: Client, household: string, selection: Recor
   const rows = (
     await query(
       c,
-      `SELECT o.*,v.last_change_id::text,
+      `SELECT o.*,v.last_change_id::text,${splitInfoSql()} AS split,
     (SELECT count(*) FROM notes n WHERE n.household_id=o.household_id AND n.item_id=o.id) AS note_count
     FROM items o LEFT JOIN sync_object_versions v ON v.household_id=o.household_id AND v.object_kind='ITEM' AND v.object_id=o.id
-    WHERE o.household_id=$1 AND coalesce(v.change_kind,'UPSERT') <> 'TOMBSTONE'
+    WHERE o.household_id=$1 AND o.record_state='VALID' AND coalesce(v.change_kind,'UPSERT') <> 'TOMBSTONE'
     AND ($2::text[] IS NULL OR o.id=ANY($2::text[])) AND o.id > $3
     AND ($5::text[] IS NULL OR o.catalog_node_id=ANY($5::text[])) ORDER BY o.id LIMIT $4`,
       [
@@ -210,11 +206,10 @@ export async function readItemsV2(c: Client, household: string, selection: Recor
   const skuIds = [...new Set(rows.map((row) => row.catalog_node_id))];
   const catalog = skuIds.length
     ? (
-        await query(
-          c,
-          `SELECT * FROM catalog_nodes WHERE household_id=$1 AND id=ANY($2::text[])`,
-          [household, skuIds],
-        )
+        await query(c, `SELECT * FROM catalog_nodes WHERE household_id=$1 AND id=ANY($2::text[])`, [
+          household,
+          skuIds,
+        ])
       ).rows
     : [];
   await decorateRecords(c, household, catalog, rows);
