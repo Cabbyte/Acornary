@@ -230,5 +230,6 @@ describe('Evidence inventory integrity', () => {
 });
 
 describe('Future repair acceptance — NOT_RUN, never counted as passed', () => {
-  for (const c of cases) it.todo(`${c.id} · ${c.title}`);
+  for (const c of cases.filter((x) => x.status === 'NOT_RUN'))
+    it.todo(`${c.id} · ${c.title}`);
 });

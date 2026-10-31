@@ -22,7 +22,7 @@
 
 | 验证 | 结果 | 证据 |
 | --- | --- | --- |
-| 全仓库单元/集成 | **157 passed / 76 todo / 0 failed**，20 个文件 | `DATABASE_URL=.../acornary_test vitest run` |
+| 全仓库单元/集成 | **157 passed / 52 todo / 0 failed**，20 个文件 | `DATABASE_URL=.../acornary_test vitest run`（Batch 0 历史记录仍写 76 项 todo；当前 24 项已有 PASS/PARTIAL 证据，故 todo 为 52） |
 | Batch 1 operations | **26 passed** | `tests/batch1/ops-postgres.test.ts`、`ops-runner.test.ts` |
 | Batch 1 tree guards | **25 passed / 1 todo** | `tests/batch1/tree-guards.test.ts` |
 | TREE04 写隔离 | **1 passed** | `tests/batch1/tree-service-isolation.test.ts` |
