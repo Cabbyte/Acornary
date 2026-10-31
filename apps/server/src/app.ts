@@ -6,7 +6,8 @@ import { deferredInput } from './mcp-input.js';
 import { newTrace, traces, traceMetadata, failure, timed, type Trace } from './telemetry.js';
 import { performance } from 'node:perf_hooks';
 import { intakeInstructions } from '../../../packages/contracts/src/intake.js';
-import { release, verifyReleaseMigrations } from './release.js';
+import { release, healthStatus } from './release.js';
+import { implementedFeatures } from '../../../packages/contracts/src/index.js';
 import Fastify from 'fastify';
 import staticFiles from '@fastify/static';
 import { localhostHostValidation } from '@modelcontextprotocol/fastify';
@@ -208,11 +209,41 @@ export async function buildApp(
       });
     }
   });
+  const requireProtocol = process.env.ACORNARY_REQUIRE_PROTOCOL_V2 === '1';
+  const rejectProtocol = (req: FastifyRequest) => {
+    if (requireProtocol && req.headers['x-acornary-protocol'] !== '2')
+      throw new DomainError(
+        'PROTOCOL_VERSION_UNSUPPORTED',
+        'This server requires X-Acornary-Protocol: 2.',
+      );
+  };
+  app.addHook('onRequest', async (req) => {
+    const path = req.url.split('?')[0];
+    const negotiation = [
+      '/api/context',
+      '/api/version',
+      '/api/read/get_connection_context',
+      '/api/terminal/v1/context',
+      '/api/terminal/v1/config',
+    ];
+    if (
+      !negotiation.includes(path) &&
+      /^\/api\/(read|write|ui|sync|attachments|debug|terminal\/v1)(\/|$)/.test(path)
+    )
+      rejectProtocol(req);
+  });
+  app.addHook('preValidation', async (req) => {
+    if (req.url.split('?')[0] !== '/mcp') return;
+    const calls = Array.isArray(req.body) ? req.body : [req.body];
+    if (
+      calls.some((call: any) =>
+        call?.method === 'tools/call' && call.params?.name !== 'get_connection_context',
+      )
+    )
+      rejectProtocol(req);
+  });
   app.setErrorHandler((error: any, _req, reply) => {
     const result = failure(error);
-    if (error.code === 'INVALID_CURSOR') result.recovery = 'FIX_REQUEST';
-    if (['SYNC_RESET_REQUIRED', 'PROTOCOL_VERSION_UNSUPPORTED'].includes(error.code))
-      return reply.code(409).send({ error: { ...result, recovery: 'REREAD_AND_REVIEW' } });
     return reply
       .code(
         error instanceof DomainError
@@ -221,11 +252,11 @@ export async function buildApp(
       )
       .send({ error: result });
   });
-  app.get('/health', async () => {
-    await query(pool, 'SELECT 1');
-    await verifyReleaseMigrations();
-    return { status: 'ok', version: release.version, commit: release.commit };
+  app.get('/health', async (_req, reply) => {
+    const status = await healthStatus();
+    return reply.code(status.status === 'ok' ? 200 : 503).send(status);
   });
+  app.get('/api/version', async () => ({ version: release.version, commit: release.commit }));
   app.get('/api/session', async (req) => {
     if (!auth)
       return {
@@ -402,7 +433,7 @@ export async function buildApp(
       )
     ).rows[0];
     return { household, container_catalog_id: install?.container_catalog_id,
-      protocol: { current: 2, min: 2 }, features: ['query_v2', 'history_v2', 'snapshot_v2', 'groups_v2', 'sync_v2'] };
+      protocol: { current: 2, min: 2 }, features: [...implementedFeatures] };
   });
   app.get('/api/read/:operation', async (req) => {
     const name = (req.params as any).operation as Operation;

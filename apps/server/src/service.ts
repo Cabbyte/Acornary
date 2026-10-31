@@ -1,3 +1,7 @@
+import {
+  implementedFeatures,
+  eventTypes as registeredEventTypes,
+} from '../../../packages/contracts/src/index.js';
 import { maintainReferences, reverseReferences } from './references.js';
 import {
   splitInfoSql,
@@ -96,7 +100,11 @@ type ObjectState = {
 const versionOf = (obj: ObjectState, name: string) => obj.versions?.[name] ?? 1;
 const table = (kind: string) => (kind === 'ITEM' ? 'items' : 'catalog_nodes');
 
-const eventTypes: Record<string, string> = {
+const eventTypes: Record<string, (typeof registeredEventTypes)[number]> = {
+  add_deadline: 'ADD_DEADLINE',
+  update_deadline: 'UPDATE_DEADLINE',
+  remove_deadline: 'REMOVE_DEADLINE',
+  complete_deadline: 'COMPLETE_DEADLINE',
   void_item: 'VOID',
   void_catalog_node: 'VOID',
   dispose_item: 'DISPOSE',
@@ -514,6 +522,8 @@ export async function execute(ctx: Context, name: Operation, raw: unknown): Prom
     const trace = traces.getStore();
     if (trace) trace.outcome = 'SUCCESS';
     return result;
+  }).catch((error) => {
+    throw mapDatabaseError(error);
   });
 }
 export async function assertWriteIsolation(c: Client): Promise<void> {
@@ -605,12 +615,7 @@ async function executeCommand(ctx: Context, name: Operation, raw: unknown): Prom
       return result;
     });
   } catch (e: any) {
-    if (e instanceof DomainError) throw e;
-    const code = e.code ?? e.cause?.code;
-    if (code === '23505')
-      throw new DomainError('ATTRIBUTE_VALIDATION_FAILED', 'Unique constraint conflict.');
-    if (code === '23503') throw new DomainError('INVALID_PARENT', 'Invalid household reference.');
-    throw e;
+    throw mapDatabaseError(e);
   }
 }
 async function bindingRecords(c: Client, ctx: Context, obj: ObjectState) {
@@ -1137,22 +1142,7 @@ async function read(c: Client, ctx: Context, name: Operation, input: any): Promi
       household,
       actor,
       protocol: { current: 2, min: 2 },
-      features: [
-        'query_v2',
-        'history_v2',
-        'snapshot_v2',
-        'groups_v2',
-        'sync_v2',
-        'profile_capabilities',
-        'deadline',
-        'notes_v2',
-        'attachments',
-        'stock',
-        'void',
-        'split',
-        'references',
-        'units_v2',
-      ],
+      features: [...implementedFeatures],
     };
   }
   if (name === 'list_attribute_templates') {
@@ -1442,7 +1432,7 @@ async function applyDomainCommand(
         obj.kind,
         obj.row.id,
         operation_id,
-        name.endsWith('_deadline') ? name.toUpperCase() : eventTypes[name],
+        eventTypes[name],
         rev,
         rev + 1,
         JSON.stringify(enriched),
@@ -1876,4 +1866,58 @@ function originalQuantityInputs(input: any, path = ''): any[] {
       originalQuantityInputs(value, path ? `${path}.${key}` : key),
     ),
   ];
+}
+
+// Never expose PostgreSQL detail (it can contain user data). Unknown SQL failures
+// retain their original cause and uncertain-outcome recovery behavior.
+export function mapDatabaseError(error: any): any {
+  if (error instanceof DomainError) return error;
+  const pg = error?.cause?.code ? error.cause : error;
+  if (!['23505', '23503', '23514'].includes(pg?.code)) return error;
+  const named: Record<string, string> = {
+    barcode_index_pkey: 'BARCODE_CONFLICT',
+    operations_pkey: 'IDEMPOTENCY_CONFLICT',
+    operations_household_operation_unique: 'IDEMPOTENCY_CONFLICT',
+    catalog_identity_keys_pkey: 'CLASSIFICATION_CONFLICT',
+    catalog_policy_versions_pkey: 'POLICY_CONFLICT',
+    events_target_guard: 'REFERENCE_INVALID',
+    notes_target_guard: 'REFERENCE_INVALID',
+    attachments_target_guard: 'REFERENCE_INVALID',
+    uploads_target_guard: 'REFERENCE_INVALID',
+    attribute_references_guard: 'REFERENCE_INVALID',
+    item_splits_guard: 'STATE_CONFLICT',
+    immutable_events: 'STATE_CONFLICT',
+    immutable_item_splits: 'STATE_CONFLICT',
+    events_source_check: 'ATTRIBUTE_VALIDATION_FAILED',
+    events_event_type_check: 'ATTRIBUTE_VALIDATION_FAILED',
+    attachment_blobs_file_size_check: 'ATTACHMENT_TOO_LARGE',
+    upload_sessions_file_size_check: 'ATTACHMENT_TOO_LARGE',
+    attachment_blobs_mime_type_check: 'ATTACHMENT_TYPE_UNSUPPORTED',
+    items_household_id_parent_id_fkey: 'INVALID_PARENT',
+    catalog_nodes_household_id_parent_id_fkey: 'INVALID_PARENT',
+  };
+  // Older tree guards predate PostgreSQL CONSTRAINT diagnostics; their stable
+  // message prefix is the trigger's public identifier, never the full message.
+  const legacy: Record<string, string> = {
+    TREE_ITEM_SKU: 'REFERENCE_INVALID',
+    TREE_ITEM_PARENT: 'INVALID_PARENT',
+    TREE_CATALOG_PARENT: 'INVALID_PARENT',
+    TREE_ITEM_CYCLE: 'CYCLE_DETECTED',
+    TREE_CATALOG_CYCLE: 'CYCLE_DETECTED',
+    TREE_ITEM_SELF_PARENT: 'CYCLE_DETECTED',
+    TREE_CATALOG_SELF_PARENT: 'CYCLE_DETECTED',
+    TREE_IMMUTABLE_IDENTITY: 'STATE_CONFLICT',
+    TREE_CONTAINER_IN_USE: 'STATE_CONFLICT',
+    TREE_SKU_IN_USE: 'STATE_CONFLICT',
+    TREE_SKU_CHILDREN: 'STATE_CONFLICT',
+  };
+  const code =
+    named[pg.constraint] ??
+    legacy[String(pg.message).split(':')[0]] ??
+    (pg.code === '23503'
+      ? 'REFERENCE_INVALID'
+      : pg.code === '23505'
+        ? 'STATE_CONFLICT'
+        : 'ATTRIBUTE_VALIDATION_FAILED');
+  return new DomainError(code, 'Database integrity check rejected the request.');
 }
