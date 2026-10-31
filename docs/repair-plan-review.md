@@ -240,3 +240,5 @@ Batch 0 的五份契约、存储约定和证据质量足够支撑开工；76 项
 | D 加固与切换 | Batch 8 | 6 | OP08/OPS05–09 + 恢复演练 + 44 条证据 |
 
 不要把 Batch 1 与 Batch 3 合并成一次评审；Batch 3 的 21 项同步/标签用例是最容易“看起来通过、实际漏写路径”的部分，必须有独立门禁。
+
+上述 3 个缺口已在 Batch 0 契约补丁中修正：`CONSUMABLE` 默认包含 `lifecycle.expiry`，`date_facts` 与 `label_hash` 投影已写入存储契约，`sync_changes.after_image` 明确为 Batch 1 不使用、客户端按 ID 取当前投影。
