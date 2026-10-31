@@ -38,7 +38,7 @@ export const eventTypes = [
   'COMPLETE_DEADLINE',
 ] as const;
 export const implementedFeatures = [
-  'query_v2',
+  'frozen_export', 'query_v2',
   'history_v2',
   'snapshot_v2',
   'groups_v2',
@@ -54,6 +54,8 @@ export const implementedFeatures = [
   'units_v2',
 ] as const;
 export * from './errors.js';
+export * from './export.js';
+import { exportSchemas, exportReads, exportDescriptions } from './export.js';
 export * from './semantics.js';
 export * from './units.js';
 import { dispositionSchema, referenceSchema } from './semantics.js';
@@ -352,7 +354,7 @@ export const schemas = {
   bind_attributes: z.strictObject({ ...write, target, ...attr, values }),
   update_attributes: z.strictObject({ ...write, target, ...patchShape }),
   remove_attributes: z.strictObject({ ...write, target, ...attr }),
-  ...fileSchemas,
+  ...exportSchemas, ...fileSchemas,
   get_history: z.strictObject({
     ...page,
     cursor: z.string().optional(),
@@ -365,7 +367,7 @@ export const schemas = {
 };
 export type Operation = keyof typeof schemas;
 export const reads = new Set<Operation>([
-  'query_stock',
+  ...exportReads, 'query_stock',
   'query_references',
   ...(fileReads as Set<Operation>),
   'get_intake_context',
@@ -383,6 +385,7 @@ export const reads = new Set<Operation>([
   'get_history',
 ]);
 export const descriptions: Record<Operation, string> = {
+  ...exportDescriptions,
   query_references: '查询同家庭对象的反向引用。',
   query_stock: '按 SKU 的 COUNT 或 CONTENT 策略查询完整范围的补货状态，未知量单列。',
   void_item: '作废误建实物，保留身份和历史。',
