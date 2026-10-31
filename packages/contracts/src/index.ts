@@ -1,3 +1,59 @@
+// Audited producer vocabulary; keep historical aliases and tooling sources explicit.
+export const eventSources = [
+  'WEB',
+  'MCP',
+  'MCP_UI',
+  'ANDROID',
+  'TERMINAL',
+  'IMPORT',
+  'SYSTEM',
+  'TEST',
+  'BENCHMARK',
+  'MIGRATION_TEST',
+] as const;
+export const eventTypes = [
+  'CREATE',
+  'UPDATE',
+  'MOVE',
+  'OPEN',
+  'CONSUME_ITEMS',
+  'CONSUME_CONTENT',
+  'CORRECT',
+  'ATTRIBUTE_BIND',
+  'ATTRIBUTE_UPDATE',
+  'ATTRIBUTE_REMOVE',
+  'ATTRIBUTE_UPGRADE',
+  'EDIT',
+  'VOID',
+  'DISPOSE',
+  'SPLIT',
+  'NOTE_CREATE',
+  'NOTE_UPDATE',
+  'NOTE_ARCHIVE',
+  'ATTACHMENT_ATTACH',
+  'ATTACHMENT_DETACH',
+  'ADD_DEADLINE',
+  'UPDATE_DEADLINE',
+  'REMOVE_DEADLINE',
+  'COMPLETE_DEADLINE',
+] as const;
+export const implementedFeatures = [
+  'query_v2',
+  'history_v2',
+  'snapshot_v2',
+  'groups_v2',
+  'sync_v2',
+  'profile_capabilities',
+  'deadline',
+  'notes_v2',
+  'attachments',
+  'stock',
+  'void',
+  'split',
+  'references',
+  'units_v2',
+] as const;
+export * from './errors.js';
 export * from './semantics.js';
 export * from './units.js';
 import { dispositionSchema, referenceSchema } from './semantics.js';
