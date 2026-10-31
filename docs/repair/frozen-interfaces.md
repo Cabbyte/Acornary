@@ -1015,15 +1015,17 @@ type SyncBootstrap = {
 | --- | --- | --- |
 | `query_items` / `query_catalog_nodes` / `get_history` 新参数 | I | Wave 1 已实现；列表不内联笔记 |
 | `get_item` / `get_catalog_node` | I（旧形状） | v2 包装形状 `F` |
-| 快照 v2 | F | 当前 v1 仍有 notes 正文；重构按 v2 类型 |
-| `query_inventory_groups` | F | 当前只有 snapshot.groups |
-| `profile` / `capabilities` | F | 表列/协议未实现 |
-| `deadline` / `DateFact` | F | 未实现 |
-| 笔记 target / summaries | F | 当前 Note 只挂 Item、返回正文 |
-| 附件 | F | 未实现 |
-| `void` / `split` / `dispose` / `references` / 单位 / `stock` | F | 设计冻结，未实现 |
-| 同步 v2 | F | 只有内部 `sync_changes` 表和 hook |
-| 协议 v2 强制 | F | 当前未按最低版本拒绝 |
+| 快照 v2 | I | 协议头 `X-Acornary-Protocol: 2` 返回；无头保持 v1 |
+| `query_inventory_groups` | I | 服务端同匹配集合聚合 |
+| `profile` / `capabilities` | I | 表列、默认/覆盖、`effective_capabilities`、表单过滤 |
+| `deadline` / `DateFact` | I | 模板、四个命令、`date_facts`、`date_filters` |
+| 笔记 target / summaries | I | Item/CatalogNode、摘要/归档/敏感度；正文走 `get_note` |
+| 附件 | PARTIAL | 元数据/票据/上传/下载/脱敏已实现；缩略图/EXIF/备份字节门禁未完成 |
+| `void` / `split` / `dispose` / `references` / 单位 / `stock` | I | 服务端命令、反向索引、`query_stock` |
+| 同步 v2 | I | state/changes/fetch/bootstrap、generation/prune |
+| 协议 v2 强制 | I | `ACORNARY_REQUIRE_PROTOCOL_V2=1` 开启；默认兼容 |
+| 冻结导出（QUERY04/05） | F | 未实现；当前只有浏览分页 |
+| 全路径脱敏 | PARTIAL | 笔记/附件/检查器/详情已覆盖；非全部读取路径 |
 
 ## 14. 变更流程
 
