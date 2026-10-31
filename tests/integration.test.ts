@@ -389,7 +389,7 @@ describe('PostgreSQL domain transactions', () => {
     });
     expect(absent.changed).toBe(false);
   });
-  it('rejects invalid values atomically and enforces zero content through generic updates', async () => {
+  it('rejects invalid values atomically and requires a terminal command to zero contents', async () => {
     const [id] = await create(await sku());
     const base = {
       target: { kind: 'ITEM', id },
@@ -400,7 +400,10 @@ describe('PostgreSQL domain transactions', () => {
     await expect(
       write('update_attributes', { ...base, set: { remaining: { value: '20' } } }),
     ).rejects.toMatchObject({ code: 'ATTRIBUTE_VALIDATION_FAILED' });
-    await write('update_attributes', { ...base, set: { remaining: { value: '0', unit: 'mL' } } });
+    await expect(
+      write('update_attributes', { ...base, set: { remaining: { value: '0', unit: 'mL' } } }),
+    ).rejects.toThrow('Use a consumption command or reasoned correction');
+    await write('consume_items', { item_ids: [id], expected_revisions: rev(id, 1) });
     expect((await run('query_items', {})).current_count).toBe(0);
   });
   it('exposes only read HTTP and rejects unauthorized MCP and foreign origins', async () => {
@@ -899,7 +902,7 @@ it('preserves embedded binding times, no-op rows and other bindings across patch
     write('update_attributes', {
       ...patchInput,
       expected_revisions: rev(id, 4),
-      set: { availability: 'IN_USE' },
+      set: { condition: 'DAMAGED' },
     }),
   ]);
   expect(concurrent.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
@@ -1046,7 +1049,6 @@ describe('Responsive workbench commands', () => {
       idempotency_key: key(),
       item_id: ids[0],
       display_name: '我的线材',
-      availability: 'IN_USE',
       acquired_on: '2026-10-01',
       note: { body: '随身使用' },
       expected_revisions: rev(ids[0], 1),
@@ -1062,7 +1064,6 @@ describe('Responsive workbench commands', () => {
     expect(item.attributes.find((a: any) => a.template_id === 'lifecycle').values).toEqual({
       opening: { state: 'SEALED' },
       expiry: { date: '2027-01-01' },
-      availability: 'IN_USE',
       acquisition: { acquired_on: '2026-10-01' },
     });
     expect((await run('get_item', { item_id: ids[1] })).revision).toBe(1);
@@ -1072,7 +1073,6 @@ describe('Responsive workbench commands', () => {
     await write('edit_item', {
       item_id: ids[0],
       display_name: null,
-      availability: null,
       acquired_on: null,
       note: { note_id: saved.note_id, body: '' },
       expected_revisions: rev(ids[0], 2),
