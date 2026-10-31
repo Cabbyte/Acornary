@@ -1,3 +1,6 @@
+import { fileOperations, type fileSchemas } from '../../../packages/contracts/src/notes.js';
+import { executeFiles, listNotes, mutateNote, noteSummary, noteRow } from './notes.js';
+import { attachmentRead } from './attachments.js';
 import {
   intakeReads,
   readIntake,
@@ -293,7 +296,9 @@ function mutateAttributes(obj: ObjectState, input: any, mode: string) {
 }
 export async function execute(ctx: Context, name: Operation, raw: unknown): Promise<any> {
   return timed('business_ms', async () => {
-    const result = await executeCommand(ctx, name, raw);
+    const result = fileOperations.has(name)
+      ? await executeFiles(ctx, name as keyof typeof fileSchemas, raw)
+      : await executeCommand(ctx, name, raw);
     const trace = traces.getStore();
     if (trace) trace.outcome = 'SUCCESS';
     return result;
@@ -359,6 +364,8 @@ async function executeCommand(ctx: Context, name: Operation, raw: unknown): Prom
           trace.idempotency_replay = true;
           trace.operation_id = old.result.operation_id;
         }
+        if (name === 'edit_item' && old.result.note_id)
+          return { ...old.result, note: noteSummary(await noteRow(c, ctx, old.result.note_id)) };
         return old.result;
       }
       const operation_id = 'operation_' + randomUUID();
@@ -424,13 +431,9 @@ async function view(c: Client, ctx: Context, obj: ObjectState, includePath = fal
         obj.row.catalog_node_id,
       ])
     ).rows[0].name;
-    row.notes = (
-      await query(
-        c,
-        'SELECT * FROM notes WHERE household_id=$1 AND item_id=$2 ORDER BY created_at,id',
-        [ctx.household_id, obj.row.id],
-      )
-    ).rows;
+    const target = { kind: 'ITEM' as const, id: obj.row.id };
+    row.notes = (await listNotes(c, ctx, { target, limit: 200 })).data;
+    row.attachments = (await attachmentRead(c, ctx, { target, limit: 200 })).data;
     const household = (
       await query(c, 'SELECT timezone FROM households WHERE id=$1', [ctx.household_id])
     ).rows[0];
@@ -1215,9 +1218,7 @@ async function applyDomainCommand(
             mutateAttributes(obj, attr, 'update_attributes');
           break;
         }
-        case 'edit_item':
-        case 'add_note':
-        case 'update_note': {
+        case 'edit_item': {
           if (name === 'edit_item') {
             if (input.display_name !== undefined) obj.row.display_name = input.display_name;
             const set: Record<string, unknown> = {},
@@ -1235,42 +1236,10 @@ async function applyDomainCommand(
               ]);
             if (!input.note) break;
           }
-          const noteInput = name === 'edit_item' ? input.note : input;
-          const prior = noteInput.note_id
-            ? (
-                await query(
-                  c,
-                  'SELECT * FROM notes WHERE household_id=$1 AND item_id=$2 AND id=$3',
-                  [ctx.household_id, obj.row.id, noteInput.note_id],
-                )
-              ).rows[0]
-            : undefined;
-          if (noteInput.note_id) requireFact(prior, 'NOT_FOUND', 'Note not found on this item.');
-          const note_id = prior?.id ?? 'note_' + randomUUID();
-          const title = noteInput.title === undefined ? (prior?.title ?? null) : noteInput.title;
-          const left = prior
-            ? { [`notes.${note_id}.body`]: prior.body, [`notes.${note_id}.title`]: prior.title }
-            : {};
-          const right = {
-            [`notes.${note_id}.body`]: noteInput.body,
-            [`notes.${note_id}.title`]: title,
-          };
-          if (changes(left, right).length) {
-            if (prior)
-              await query(c, 'UPDATE notes SET title=$1,body=$2,updated_at=now() WHERE id=$3', [
-                title,
-                noteInput.body,
-                note_id,
-              ]);
-            else
-              await query(
-                c,
-                'INSERT INTO notes(id,household_id,item_id,title,body,created_by) VALUES($1,$2,$3,$4,$5,$6)',
-                [note_id, ctx.household_id, obj.row.id, title, noteInput.body, ctx.actor_id],
-              );
-          }
-          await save(obj, before, left, right);
-          result.note_id = note_id;
+          const note = await mutateNote(c, ctx, { kind: obj.kind, id: obj.row.id }, input.note);
+          await save(obj, before, note.left, note.right);
+          result.note_id = note.row.id;
+          result.note = noteSummary(note.row);
           continue;
         }
         default:

@@ -1,3 +1,4 @@
+import { putAttachment, downloadAttachment, MAX_FILE_SIZE } from './attachments.js';
 import { reviewCatalogProposal, confirmCatalogProposal, compactIntakeResult } from './intake.js';
 import { pluginReviewTool, pluginConfirmTool } from '../../../packages/contracts/src/plugin.js';
 import { debugRead } from './debug.js';
@@ -158,7 +159,9 @@ export async function buildApp(
       );
     if (
       auth &&
-      /^\/api\/(context|read(?:\/|$)|write(?:\/|$)|ui(?:\/|$)|debug(?:\?|$))/.test(req.url)
+      /^\/api\/(context|read(?:\/|$)|attachments(?:\/|$)|write(?:\/|$)|ui(?:\/|$)|debug(?:\?|$))/.test(
+        req.url,
+      )
     ) {
       return timed('auth_ms', async () => {
         const session = await auth.api.getSession({ headers: headersFor(req) });
@@ -316,6 +319,72 @@ export async function buildApp(
     app.route({ method: ['GET', 'POST'], url: '/api/auth/*', handler });
     app.get('/.well-known/*', handler);
   }
+  // Encapsulation keeps the binary parser and size limit confined to attachment routes.
+  await app.register(async (files) => {
+    files.setErrorHandler((error: any, _req, reply) => {
+      const statuses: Record<string, number> = {
+        ATTACHMENT_TOO_LARGE: 413,
+        ATTACHMENT_QUOTA_EXCEEDED: 409,
+        STATE_CONFLICT: 409,
+        PROTOCOL_VERSION_UNSUPPORTED: 409,
+      };
+      return reply
+        .code(
+          error instanceof DomainError
+            ? (statuses[error.code] ?? domainErrorStatus(error.code) ?? 400)
+            : (error.statusCode ?? 500),
+        )
+        .send({ error: failure(error) });
+    });
+    files.addContentTypeParser(
+      'application/octet-stream',
+      { parseAs: 'buffer', bodyLimit: MAX_FILE_SIZE },
+      (_req, body, done) => done(null, body),
+    );
+    const attachmentContext = (req: FastifyRequest) => {
+      if (!cloud) {
+        const supplied = Buffer.from(req.headers.authorization ?? '');
+        const expected = Buffer.from(`Bearer ${token}`);
+        if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected))
+          throw new DomainError('UNAUTHORIZED', 'Attachment authentication required.');
+      }
+      if (req.headers['x-acornary-protocol'] !== '2')
+        throw new DomainError(
+          'PROTOCOL_VERSION_UNSUPPORTED',
+          'Attachment routes require protocol 2.',
+        );
+      return { ...(webContexts.get(req) ?? ctx), source: 'WEB' };
+    };
+    files.put('/api/attachments/upload/:upload_id', { bodyLimit: MAX_FILE_SIZE }, async (req) => {
+      const context = attachmentContext(req);
+      if (
+        req.headers.origin !== (cloud?.origin ?? `http://${req.headers.host}`) ||
+        req.headers['x-acornary-request'] !== 'web' ||
+        !Buffer.isBuffer(req.body)
+      )
+        throw new DomainError('FORBIDDEN', 'Same-origin binary upload required.');
+      const ticket = req.headers['x-acornary-upload-ticket'];
+      if (typeof ticket !== 'string') throw new DomainError('FORBIDDEN', 'Upload ticket required.');
+      return putAttachment(context, (req.params as any).upload_id, ticket, req.body as Buffer);
+    });
+    files.get('/api/attachments/:id', async (req, reply) => {
+      const context = attachmentContext(req);
+      const input = req.query as { variant?: string; reveal_sensitive?: string };
+      if (
+        input.reveal_sensitive === 'true' &&
+        (req.headers.origin !== (cloud?.origin ?? `http://${req.headers.host}`) ||
+          req.headers['x-acornary-request'] !== 'web')
+      )
+        throw new DomainError('FORBIDDEN', 'Same-origin sensitive reveal required.');
+      const result = await downloadAttachment(
+        context,
+        (req.params as any).id,
+        input.variant,
+        input.reveal_sensitive === 'true',
+      );
+      return reply.headers(result.headers).send(result.bytes);
+    });
+  });
   app.get('/api/context', async (req) => {
     const context = webContexts.get(req) ?? ctx;
     const household = (

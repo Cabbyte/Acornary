@@ -1,3 +1,5 @@
+import { fileSchemas, fileReads, fileOperations } from './notes.js';
+export * from './notes.js';
 import { intakeSchemas } from './intake.js';
 import { entityId } from './ids.js';
 import { z } from 'zod';
@@ -381,19 +383,7 @@ export const schemas = {
   bind_attributes: z.strictObject({ ...write, target, ...attr, values }),
   update_attributes: z.strictObject({ ...write, target, ...patchShape }),
   remove_attributes: z.strictObject({ ...write, target, ...attr }),
-  add_note: z.strictObject({
-    ...write,
-    item_id: uuid,
-    title: text.optional(),
-    body: z.string().max(100000),
-  }),
-  update_note: z.strictObject({
-    ...write,
-    item_id: uuid,
-    note_id: entityId('note'),
-    title: text.nullable().optional(),
-    body: z.string().max(100000),
-  }),
+  ...fileSchemas,
   get_history: z.strictObject({
     ...page,
     cursor: z.string().optional(),
@@ -406,6 +396,7 @@ export const schemas = {
 };
 export type Operation = keyof typeof schemas;
 export const reads = new Set<Operation>([
+  ...(fileReads as Set<Operation>),
   'get_intake_context',
   'get_intake_receipt',
   'get_catalog_policy',
@@ -468,12 +459,20 @@ export const descriptions: Record<Operation, string> = {
   bind_attributes: '绑定尚未存在的模板，不覆盖已有值。',
   update_attributes: '按模板内路径 set/unset 更新，未涉及字段保留；Measurement 整体更新。',
   remove_attributes: '移除目标模板，不能绕过容纳或生命周期约束。',
-  add_note: '为明确 UUID 添加文字笔记；不隐式修改库存。',
+  add_note: '为 Item 或 CatalogNode 添加笔记并更新目标版本。',
+  archive_note: '归档或恢复笔记并更新目标版本。',
+  list_notes: '列出笔记摘要，不返回正文。',
+  get_note: '读取笔记正文；敏感原文需显式展开并审计。',
+  create_attachment_upload: '预留私有附件上传会话。',
+  complete_attachment_upload: '确认上传并关联到目标。',
+  detach_attachment: '解除附件关联。',
+  list_attachments: '列出附件元数据摘要。',
   update_note: '修改属于明确 UUID 的文字笔记。',
   get_history: '查询对象或操作的追加式历史。',
 };
 
 export const creates = new Set<Operation>([
+  'create_attachment_upload',
   'create_catalog_node',
   'create_items',
   'create_items_batch',
@@ -513,7 +512,8 @@ export function parseCommand(name: Operation, raw: unknown): any {
     !reads.has(name) &&
     !creates.has(name) &&
     name !== 'propose_catalog_change' &&
-    name !== 'commit_intake'
+    name !== 'commit_intake' &&
+    !fileOperations.has(name)
   ) {
     const ids: string[] = input.item_ids ??
       input.items?.map((i: any) => i.item_id) ?? [
