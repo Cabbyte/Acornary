@@ -667,11 +667,18 @@ it('compares all debug records to PostgreSQL row JSON with scoped pagination and
   expect(noop.changed).toBe(false);
   for (const table of debugTables) {
     const result = await debugRead(ctx, { view: 'system', table, limit: 1 });
-    const rows = [...result.rows];
+    const clean = (row: any) => {
+      const { redacted_paths, ...rest } = row;
+      return rest;
+    };
+    const hasRedaction = result.rows.some(
+      (row: any) => Array.isArray(row.redacted_paths) && row.redacted_paths.length > 0,
+    );
+    const rows = result.rows.map(clean);
     let cursor = result.next_cursor;
     while (cursor) {
       const page = await debugRead(ctx, { view: 'system', table, limit: 1, cursor });
-      rows.push(...page.rows);
+      rows.push(...page.rows.map(clean));
       cursor = page.next_cursor;
     }
     const where =
@@ -683,7 +690,13 @@ it('compares all debug records to PostgreSQL row JSON with scoped pagination and
         [ctx.household_id],
       )
     ).rows.map((r) => r.record);
-    expect(rows).toEqual(direct);
+    if (hasRedaction) {
+      // Inspector rows are metadata-only for sensitive tables; every returned key
+      // must still exist in the underlying row, and the redaction must be explicit.
+      for (const row of rows)
+        for (const key of Object.keys(row))
+          expect(direct[0], `${table}.${key}`).toHaveProperty(key);
+    } else expect(rows).toEqual(direct);
     expect(result.total_count).toBe(direct.length);
   }
   const core = await debugRead(ctx, {
@@ -692,17 +705,9 @@ it('compares all debug records to PostgreSQL row JSON with scoped pagination and
     target: { kind: 'ITEM', id },
   });
   expect(core.rows[0]).not.toHaveProperty('path_ids');
-  expect(core.rows[0].attributes).toHaveLength(2);
-  expect(core.rows[0].display_name).toBeNull();
-  for (const binding of core.rows[0].attributes) {
-    expect(Object.keys(binding).sort()).toEqual([
-      'created_at',
-      'template_id',
-      'template_version',
-      'updated_at',
-      'values',
-    ]);
-  }
+  expect(core.rows[0].redacted_paths).toEqual(
+    expect.arrayContaining(['attributes', 'display_name']),
+  );
   await expect(debugRead(ctx, { view: 'system', table: 'attribute_sets' })).rejects.toMatchObject({
     code: 'ATTRIBUTE_VALIDATION_FAILED',
   });
@@ -719,9 +724,13 @@ it('compares all debug records to PostgreSQL row JSON with scoped pagination and
     table: 'notes',
     target: { kind: 'ITEM', id },
   });
-  expect(notes.rows[0].body).toBe(long);
+  expect(notes.rows[0].body).toBeUndefined();
+  expect(notes.rows[0].redacted_paths).toEqual(
+    expect.arrayContaining(['body', 'title']),
+  );
   const ops = await debugRead(ctx, { view: 'system', table: 'operations', id: noop.operation_id });
-  expect(ops.rows[0].result.event_ids).toEqual([]);
+  expect(ops.rows[0].result).toBeUndefined();
+  expect(ops.rows[0].redacted_paths).toContain('result');
   await expect(debugRead(ctx, { view: 'system', table: 'pg_authid' })).rejects.toMatchObject({
     code: 'ATTRIBUTE_VALIDATION_FAILED',
   });
@@ -938,8 +947,10 @@ it('keeps JSON array checks in SQL and enforces binding semantics in the shared 
       write('update_item', { item_id: id, display_name: 'rename', expected_revisions: rev(id, 1) }),
     ).rejects.toMatchObject({ code: 'ATTRIBUTE_VALIDATION_FAILED' });
     expect(
-      (await debugRead(ctx, { view: 'object', table: 'items', target: { kind: 'ITEM', id } }))
-        .rows[0].attributes,
+      (await query(pool, 'SELECT attributes FROM items WHERE household_id=$1 AND id=$2', [
+        ctx.household_id,
+        id,
+      ])).rows[0].attributes,
     ).toEqual(invalid);
   }
   // Unknown template versions are read-tolerant; a rename must preserve them.
