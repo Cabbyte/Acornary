@@ -17,10 +17,20 @@ import java.io.File
 import java.time.Instant
 import org.junit.Rule
 import org.junit.Test
+import org.junit.Before
+import org.junit.After
+import kotlinx.coroutines.runBlocking
 
 /** Fixture UI only; never submit a real inventory command. Full suite runs on the isolated emulator. */
 class WorkspaceDesignTest {
  @get:Rule val compose=createAndroidComposeRule<TerminalTestActivity>()
+ private var originalDraft=""
+ @Before fun preserveInputDraft()=runBlocking {
+  InstrumentationRegistry.getInstrumentation().targetContext.terminal.preferences.update {originalDraft=it.draft;it}
+ }
+ @After fun restoreInputDraft()=runBlocking {
+  InstrumentationRegistry.getInstrumentation().targetContext.terminal.preferences.update {it.copy(draft=originalDraft)}
+ }
  private val item=StockItem("item_11111111-1111-4111-8111-000000000001","原味鲜奶",1,location="厨房 / 冰箱 / 冷藏",remaining=Amount("500","mL"),specification="500 mL / 盒",expiry_date="2026-11-15",label_updated_at=Instant.now().toString())
  private val household=Household("fixture","布局测试家庭","Asia/Shanghai")
  private val fixture=TerminalState(loading=false,online=true,session=SessionContext(Account("fixture","测试"),household),snapshot=StockSnapshot(household=household,synced_at=Instant.now().toString(),items=listOf(item,item.copy(id="item_11111111-1111-4111-8111-000000000002",name="长名称测试：家庭常备低糖酸奶原味大包装"))),selected=item)
@@ -78,6 +88,11 @@ class WorkspaceDesignTest {
   compose.waitForIdle()
   compose.onNodeWithText("整件用完",useUnmergedTree=true).assertIsDisplayed()
   compose.onNodeWithText("扣减该数量",useUnmergedTree=true).assertIsDisplayed()
+  val minimum=with(compose.density) {48.dp.toPx()}
+  for(label in listOf("整件用完","扣减该数量")) {
+   val bounds=compose.onNode(hasText(label) and hasClickAction()).fetchSemanticsNode().boundsInRoot
+   org.junit.Assert.assertTrue("$label 必须保留完整触控高度",bounds.height>=minimum-1)
+  }
   screenshot("consumption-keyboard-130")
  }
  @Test fun searchReplacesToolbarRatherThanAddingAnotherRow() {

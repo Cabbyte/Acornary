@@ -82,23 +82,53 @@ private fun ConsumptionPanel(item:StockItem,state:TerminalState,model:TerminalVi
     LaunchedEffect(item.id) {val prefix="${item.id}|";if(prefs.draft.startsWith(prefix)) amount=prefs.draft.removePrefix(prefix)}
     val enabled=state.online&&!state.busy&&state.pending.isEmpty()&&!state.selectedOffline
     val remaining=item.remaining
-    AcPanel("消耗物品",dismiss) {
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-            Text(item.name,style=MaterialTheme.typography.titleMedium);Text(item.location,color=MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("当前剩余 ${item.quantity()}")
-            if(remaining!=null&&java.math.BigDecimal(remaining.value).signum()>0) {
-                OutlinedTextField(amount,{amount=it;error=null;model.interact();model.preferences {p->p.copy(draft="${item.id}|$it")}},label={Text("消耗量（${remaining.unit}）")},
-                    singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Decimal),isError=error!=null,modifier=Modifier.fillMaxWidth())
-                error?.let {Text(it,color=MaterialTheme.colorScheme.error)}
-            } else Text("余量未知或为零，可确认整件用完。",style=MaterialTheme.typography.bodySmall)
-        }
-        Row(Modifier.fillMaxWidth().padding(top=8.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick={model.command("consume_items",item);dismiss()},enabled=enabled,shape=MaterialTheme.shapes.small,modifier=Modifier.heightIn(min=48.dp)) {Text("整件用完")}
-            if(remaining!=null&&java.math.BigDecimal(remaining.value).signum()>0) Button(onClick={
-                val parsed=runCatching {validateAmount(amount,remaining)}
-                if(parsed.isFailure) error=parsed.exceptionOrNull()?.message
-                else {model.command("consume_item_content",item,parsed.getOrThrow());model.preferences {it.copy(draft="")};dismiss()}
-            },enabled=enabled&&amount.isNotBlank(),shape=MaterialTheme.shapes.small,modifier=Modifier.weight(1f).heightIn(min=48.dp)) {Text("扣减该数量")}
+    @Composable fun PartialSubmit(modifier:Modifier) {
+        Button(onClick={
+            val parsed=runCatching {validateAmount(amount,remaining!!)}
+            if(parsed.isFailure) error=parsed.exceptionOrNull()?.message
+            else {model.command("consume_item_content",item,parsed.getOrThrow());model.preferences {it.copy(draft="")};dismiss()}
+        },enabled=enabled&&amount.isNotBlank(),shape=MaterialTheme.shapes.small,
+            contentPadding=PaddingValues(horizontal=8.dp),modifier=modifier.heightIn(min=48.dp)) {Text("扣减该数量",maxLines=1)}
+    }
+    @Composable fun WholeSubmit(modifier:Modifier) {
+        OutlinedButton(onClick={model.command("consume_items",item);dismiss()},enabled=enabled,shape=MaterialTheme.shapes.small,
+            contentPadding=PaddingValues(horizontal=8.dp),modifier=modifier.heightIn(min=48.dp)) {Text("整件用完",maxLines=1)}
+    }
+    val partial=remaining!=null&&java.math.BigDecimal(remaining.value).signum()>0
+    androidx.compose.ui.window.Dialog(onDismissRequest=dismiss,
+        properties=androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth=false,decorFitsSystemWindows=false)) {
+        BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding().imePadding(),contentAlignment=Alignment.Center) {
+            val compact=maxHeight<132.dp
+            Surface(Modifier.widthIn(max=740.dp).fillMaxWidth(.96f),shape=MaterialTheme.shapes.medium) {
+                Row(Modifier.padding(8.dp),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f).heightIn(max=if(compact)72.dp else 104.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(2.dp)) {
+                        Row(verticalAlignment=Alignment.CenterVertically) {
+                            Text(item.name,Modifier.weight(1f),style=MaterialTheme.typography.titleSmall,maxLines=1,overflow=TextOverflow.Ellipsis)
+                            IconButton(onClick=dismiss) {AcIcon(AcGlyph.CLOSE,"关闭消耗物品")}
+                        }
+                        if(compact) Text("${item.quantity()} · ${item.location.substringAfterLast(" / ")}",style=MaterialTheme.typography.bodySmall,maxLines=1,overflow=TextOverflow.Ellipsis)
+                        else {
+                            Text(item.location,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,overflow=TextOverflow.Ellipsis)
+                            Text("剩余 ${item.quantity()}",style=MaterialTheme.typography.bodySmall,maxLines=1,overflow=TextOverflow.Ellipsis)
+                        }
+                    }
+                    Column(Modifier.weight(1f).heightIn(max=if(compact)72.dp else 104.dp).verticalScroll(rememberScrollState())) {
+                        if(partial) {
+                            OutlinedTextField(amount,{amount=it;error=null;model.interact();model.preferences {p->p.copy(draft="${item.id}|$it")}},
+                                label={Text("消耗量（${remaining!!.unit}）",maxLines=1)},singleLine=true,
+                                keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Decimal),isError=error!=null,modifier=Modifier.fillMaxWidth())
+                            error?.let {Text(it,color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall)}
+                        } else Text("余量未知或为零，可确认整件用完。",style=MaterialTheme.typography.bodySmall)
+                    }
+                    if(compact) Row(Modifier.width(if(partial)260.dp else 140.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                        if(partial) PartialSubmit(Modifier.weight(1f))
+                        WholeSubmit(Modifier.weight(1f))
+                    } else Column(Modifier.width(140.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                        if(partial) PartialSubmit(Modifier.fillMaxWidth())
+                        WholeSubmit(Modifier.fillMaxWidth())
+                    }
+                }
+            }
         }
     }
 }

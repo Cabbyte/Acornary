@@ -34,6 +34,9 @@ class HardwareBatchAcceptanceTest {
         assertTrue("重启后需先由用户解锁一次",context.getSystemService(UserManager::class.java).isUserUnlocked)
     }
     private fun screenshot(name:String) {
+        compose.waitForIdle()
+        instrumentation.waitForIdleSync()
+        android.os.SystemClock.sleep(350)
         val directory=File(context.getExternalFilesDir("hardware-batch-qa"),"")
         directory.mkdirs()
         val bitmap=instrumentation.uiAutomation.takeScreenshot()
