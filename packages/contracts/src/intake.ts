@@ -1,3 +1,4 @@
+import { templateId } from './registry.js';
 import { z } from 'zod';
 import { entityId } from './ids.js';
 
@@ -10,19 +11,11 @@ const catalogId = entityId('catalog_node');
 const itemId = entityId('item');
 export const revisionMap = z.record(z.union([catalogId, itemId]), z.int().positive());
 export const intakeAttribute = z.strictObject({
-  template_id: z.enum([
-    'product',
-    'lifecycle',
-    'contents',
-    'container',
-    'catalog',
-    'clothing',
-    'device',
-  ]),
+  template_id: templateId,
   template_version: z.int().positive(),
   values: z.record(z.string(), z.unknown()),
 });
-const attributes = z.array(intakeAttribute).max(7);
+const attributes = z.array(intakeAttribute).max(16);
 export const catalogRuleSchema = z.strictObject({
   branch_id: catalogId,
   standard_name: name.optional(),

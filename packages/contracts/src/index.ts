@@ -1,7 +1,8 @@
+export * from './registry.js';
+import { templates, templateId, measurement, profileSchema, capabilitySchema } from './registry.js';
 import { intakeSchemas } from './intake.js';
 import { entityId } from './ids.js';
 import { z } from 'zod';
-import { Decimal } from 'decimal.js';
 import { DomainError } from '../../domain/src/index.js';
 const text = z.string().min(1).max(500),
   id = entityId('catalog_node'),
@@ -9,188 +10,6 @@ const text = z.string().min(1).max(500),
 // Keep the nonblank check on the server: some connectors misinterpret an exported /\S/ pattern.
 // Do not trim names; parsed input is also used for idempotency fingerprints.
 const catalogName = text.refine((value) => /\S/.test(value), 'Name must not be blank.');
-const decimal = z
-  .string()
-  .max(80)
-  .regex(/^(0|[1-9]\d*)(\.\d+)?$/);
-export const measurement = z.strictObject({
-  value: decimal,
-  unit: z.enum(['mL', 'g', 'count', 'percent']),
-});
-const positive = z
-  .string()
-  .max(80)
-  .regex(/^(0|[1-9]\d*)(\.\d+)?$/);
-const lifeState = z.enum(['ACTIVE', 'CONSUMED', 'DISPOSED', 'LOST', 'ARCHIVED']);
-export const templates = {
-  product: {
-    target_kind: 'CATALOG_NODE',
-    paths: ['brand', 'model', 'specification', 'barcodes', 'net_content', 'storage.requirement'],
-    schema: z.strictObject({
-      brand: text.optional(),
-      model: text.optional(),
-      specification: text.optional(),
-      barcodes: z
-        .array(
-          z
-            .string()
-            .min(1)
-            .max(128)
-            .regex(/^[\x21-\x7e]+$/),
-        )
-        .min(1)
-        .max(32)
-        .optional(),
-      net_content: z
-        .strictObject({ value: positive, unit: z.enum(['mL', 'g', 'count']) })
-        .optional(),
-      storage: z
-        .strictObject({ requirement: z.enum(['AMBIENT', 'REFRIGERATED', 'FROZEN']).optional() })
-        .optional(),
-    }),
-  },
-  lifecycle: {
-    target_kind: 'ITEM',
-    paths: [
-      'state',
-      'condition',
-      'availability',
-      'opening.state',
-      'opening.opened_at',
-      'expiry.date',
-      'expiry.date_kind',
-      'expiry.after_opening_days',
-      'acquisition.acquired_on',
-      'acquisition.batch_label',
-    ],
-    schema: z.strictObject({
-      state: lifeState.optional(),
-      condition: z.enum(['NEW', 'GOOD', 'WORN', 'DAMAGED', 'BROKEN']).optional(),
-      availability: z
-        .enum(['AVAILABLE', 'IN_USE', 'LOANED', 'CLEANING', 'MAINTENANCE', 'IN_TRANSIT'])
-        .optional(),
-      opening: z
-        .strictObject({
-          state: z.enum(['SEALED', 'OPENED']).optional(),
-          opened_at: z.iso.datetime({ offset: true }).optional(),
-        })
-        .optional(),
-      expiry: z
-        .strictObject({
-          date: z.iso.date().optional(),
-          date_kind: z.enum(['BEST_BEFORE', 'USE_BY', 'ESTIMATED']).optional(),
-          after_opening_days: z.int().positive().max(36500).optional(),
-        })
-        .optional(),
-      acquisition: z
-        .strictObject({ acquired_on: z.iso.date().optional(), batch_label: text.optional() })
-        .optional(),
-    }),
-  },
-  contents: {
-    target_kind: 'ITEM',
-    paths: ['remaining', 'accuracy'],
-    schema: z.strictObject({
-      remaining: measurement.optional(),
-      accuracy: z.enum(['ESTIMATED', 'MEASURED']).optional(),
-    }),
-  },
-  container: {
-    target_kind: 'ITEM',
-    paths: ['can_contain'],
-    schema: z.strictObject({ can_contain: z.boolean().optional() }),
-  },
-  catalog: {
-    target_kind: 'CATALOG_NODE',
-    paths: ['visibility'],
-    schema: z.strictObject({ visibility: z.enum(['VISIBLE', 'HIDDEN']).optional() }),
-  },
-  clothing: {
-    target_kind: 'CATALOG_NODE',
-    paths: ['material', 'color', 'size'],
-    schema: z.strictObject({
-      material: text.optional(),
-      color: text.optional(),
-      size: text.optional(),
-    }),
-  },
-  device: {
-    target_kind: 'CATALOG_NODE',
-    paths: ['connector', 'rated_power_w'],
-    schema: z.strictObject({ connector: text.optional(), rated_power_w: positive.optional() }),
-  },
-} as const;
-export type TemplateId = keyof typeof templates;
-export const templateId = z.enum([
-  'product',
-  'lifecycle',
-  'contents',
-  'container',
-  'catalog',
-  'clothing',
-  'device',
-]);
-export const productV2 = {
-  ...templates.product,
-  paths: [
-    ...templates.product.paths,
-    'shelf_life_days',
-    'shelf_life_basis',
-    'shelf_life_basis_note',
-  ],
-  schema: templates.product.schema.extend({
-    shelf_life_days: z.int().positive().max(36500).optional(),
-    shelf_life_basis: z.enum(['PRODUCTION_DATE', 'PACKAGING_DATE', 'OTHER']).optional(),
-    shelf_life_basis_note: text.optional(),
-  }),
-};
-export const latestTemplateVersion = (name: TemplateId) => (name === 'product' ? 2 : 1);
-export function templateFor(name: TemplateId, version = 1) {
-  if (name === 'product' && version === 2) return productV2;
-  if (version === 1 && Object.hasOwn(templates, name)) return templates[name];
-  throw new DomainError('ATTRIBUTE_VALIDATION_FAILED', 'Unsupported template version.', {
-    template_id: name,
-    template_version: version,
-  });
-}
-export function templateDefinition(name: TemplateId, version = 1) {
-  const t = templateFor(name, version);
-  return {
-    id: name,
-    version,
-    name,
-    target_kind: t.target_kind,
-    allowed_catalog_node_kinds: t.target_kind === 'CATALOG_NODE' ? ['SKU'] : [],
-    paths: t.paths,
-    schema: z.toJSONSchema(t.schema),
-    fields_optional: true,
-  };
-}
-export function validateValues(name: TemplateId, values: unknown, version = 1): any {
-  const result = templateFor(name, version).schema.safeParse(values);
-  if (!result.success)
-    throw new DomainError(
-      'ATTRIBUTE_VALIDATION_FAILED',
-      'Invalid template values.',
-      result.error.issues,
-    );
-  const v: any = result.data;
-  const fail = (message: string) => {
-    throw new DomainError('ATTRIBUTE_VALIDATION_FAILED', message);
-  };
-  if (name === 'lifecycle' && v.opening?.state === 'SEALED' && v.opening.opened_at)
-    fail('SEALED cannot have opened_at.');
-  const m = v.net_content ?? v.remaining;
-  if (m) {
-    const d = new Decimal(m.value);
-    if (name === 'product' && !d.gt(0)) fail('Net content must be positive.');
-    if (m.unit === 'count' && !d.isInteger()) fail('count must be an integer.');
-    if (m.unit === 'percent' && d.gt(100)) fail('percent must be at most 100.');
-  }
-  if (v.rated_power_w && !new Decimal(v.rated_power_w).gt(0)) fail('Power must be positive.');
-  if (v.barcodes && new Set(v.barcodes).size !== v.barcodes.length) fail('Duplicate barcodes.');
-  return v;
-}
 export const target = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('ITEM'), id: uuid }),
   z.strictObject({ kind: z.literal('CATALOG_NODE'), id }),
@@ -214,7 +33,7 @@ const create = {
     .default({})
     .describe('创建新对象不需要旧版本，可省略；保留此字段以兼容既有幂等请求。'),
 };
-const attr = { template_id: templateId, template_version: z.union([z.literal(1), z.literal(2)]) };
+const attr = { template_id: templateId, template_version: z.int().positive() };
 const values = z.record(z.string(), z.unknown());
 const patchShape = {
   ...attr,
@@ -223,7 +42,7 @@ const patchShape = {
 };
 const initial = z
   .array(z.strictObject({ ...attr, values }))
-  .max(7)
+  .max(16)
   .optional();
 const page = {
   limit: z.int().min(1).max(200).default(100),
@@ -264,7 +83,7 @@ export const schemas = {
       .array(
         z.strictObject({
           item_id: uuid,
-          template_version: z.literal(1),
+          template_version: z.int().positive(),
           set: patchShape.set,
           unset: patchShape.unset,
         }),
@@ -272,13 +91,26 @@ export const schemas = {
       .min(1)
       .max(100),
   }),
-  upgrade_attributes: z.strictObject({
-    ...write,
-    target: z.strictObject({ kind: z.literal('CATALOG_NODE'), id }),
-    template_id: z.literal('product'),
-    template_version: z.literal(2),
-    values,
-  }),
+  upgrade_attributes: z
+    .strictObject({
+      ...write,
+      target,
+      template_id: templateId,
+      from_version: z.int().positive().optional(),
+      to_version: z.int().positive().optional(),
+      template_version: z.int().positive().optional(),
+      values,
+    })
+    .refine(
+      (v) =>
+        (v.from_version !== undefined &&
+          v.to_version !== undefined &&
+          v.template_version === undefined) ||
+        (v.template_version !== undefined &&
+          v.from_version === undefined &&
+          v.to_version === undefined),
+      'Supply from_version/to_version, or the legacy template_version.',
+    ),
   query_catalog_nodes: z.strictObject({
     ...page,
     cursor: z.string().optional(),
@@ -302,13 +134,23 @@ export const schemas = {
     include_path: z.boolean().default(false),
   }),
   create_catalog_node: z.strictObject({
-    ...create,
+    ...write,
+    profile: profileSchema.nullable().optional(),
+    capabilities: z.array(capabilitySchema).nullable().optional(),
+    one_off: z.boolean().optional(),
     kind: z.enum(['GROUP', 'SKU']),
     name: catalogName,
     parent_id: id.nullable().default(null),
     initial_attributes: initial,
   }),
-  update_catalog_node: z.strictObject({ ...write, catalog_node_id: id, name: catalogName }),
+  update_catalog_node: z.strictObject({
+    ...write,
+    catalog_node_id: id,
+    name: catalogName.optional(),
+    profile: profileSchema.nullable().optional(),
+    capabilities: z.array(capabilitySchema).nullable().optional(),
+    one_off: z.boolean().optional(),
+  }),
   move_catalog_node: z.strictObject({ ...write, catalog_node_id: id, parent_id: id.nullable() }),
   query_items: z.strictObject({
     ...page,
@@ -371,10 +213,13 @@ export const schemas = {
     item_id: uuid,
     reason: text,
     core: z.strictObject({ catalog_node_id: id }).optional(),
-    attributes: z.array(z.strictObject(patchShape)).max(7).optional(),
+    attributes: z.array(z.strictObject(patchShape)).max(16).optional(),
   }),
   list_attribute_templates: z.strictObject({
     target_kind: z.enum(['ITEM', 'CATALOG_NODE']).optional(),
+    catalog_node_id: id.optional(),
+    profile: profileSchema.nullable().optional(),
+    capability: capabilitySchema.optional(),
   }),
   get_attribute_template: z.strictObject(attr),
   get_attribute_sets: z.strictObject({ target }),
@@ -436,7 +281,7 @@ export const descriptions: Record<Operation, string> = {
   update_items_lifecycle:
     '原子更新明确物品的生命周期；每条使用 lifecycle v1 的 set/unset，全部 item_id 必须提供 expected_revisions，任一失败整批回滚。',
   upgrade_attributes:
-    '显式升级已绑定的 product v1 至 v2；提交完整目标 values 和目标 template_version=2，保留需继续使用的旧值。须提供对象 revision；不会从规格文字推断保质期。',
+    '按登记的升级规则显式升级绑定；提交 from_version、to_version、完整目标 values 和对象 revision；保留需继续使用的旧值。',
   query_catalog_nodes:
     '查询分类 GROUP、商品 SKU、名称和条码，返回稳定 ID 和版本。建商品前先查同款及相关分类分支，include_path=true 返回 path_ids，补读未知节点名称并沿 next_cursor 翻页；按含义和完整路径复用，不只匹配短名称，不因首屏未找到就创建。近义名称或多条合理路径有歧义时先确认。',
   get_catalog_node:
@@ -462,7 +307,8 @@ export const descriptions: Record<Operation, string> = {
   consume_item_content:
     '从明确 UUID 扣减正数内容量。需要已知剩余量，不从 SKU 猜测。percent 是初始内容的百分点。',
   correct_item: '带原因纠正明确 UUID 的属性或商品关联，可修复终结状态。',
-  list_attribute_templates: '发现内置七种可选属性模板的最新版本；已有绑定使用其固定版本。',
+  list_attribute_templates:
+    '发现已登记模板的最新版本，可按对象、档案和能力筛选；已有绑定使用其固定版本。',
   get_attribute_template: '读取指定模板版本和允许字段。',
   get_attribute_sets: '读取目标已绑定的模板和值。',
   bind_attributes: '绑定尚未存在的模板，不覆盖已有值。',

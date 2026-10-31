@@ -1,3 +1,4 @@
+import { decorateRecords } from './registry.js';
 import { query, transaction } from './db.js';
 import type { Context } from './service.js';
 import { DomainError } from '../../../packages/domain/src/index.js';
@@ -34,14 +35,14 @@ export async function webSnapshot(ctx: Context, rawFilter: unknown) {
       catalog: (
         await query(
           c,
-          'SELECT id,parent_id,kind,name,revision,attributes FROM catalog_nodes WHERE household_id=$1 ORDER BY created_at,id',
+          'SELECT id,parent_id,kind,name,revision,attributes,profile,capabilities,one_off,record_state,created_at,updated_at FROM catalog_nodes WHERE household_id=$1 ORDER BY created_at,id',
           [ctx.household_id],
         )
       ).rows,
       items: (
         await query(
           c,
-          'SELECT id,parent_id,catalog_node_id,display_name,revision,attributes,created_at FROM items WHERE household_id=$1 ORDER BY created_at,id',
+          'SELECT id,parent_id,catalog_node_id,display_name,revision,attributes,record_state,created_at,updated_at FROM items WHERE household_id=$1 ORDER BY created_at,id',
           [ctx.household_id],
         )
       ).rows,
@@ -53,6 +54,7 @@ export async function webSnapshot(ctx: Context, rawFilter: unknown) {
         )
       ).rows,
     };
+    await decorateRecords(c, ctx.household_id, data.catalog, data.items);
     return { ...data, groups: productGroups(data, parsed.data) };
   });
 }
