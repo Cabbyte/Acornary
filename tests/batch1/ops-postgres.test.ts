@@ -72,7 +72,9 @@ describe.skipIf(!url)('Batch 1 operations on isolated PostgreSQL 18', () => {
     });
     c = await pool.connect();
     dir = await mkdtemp(join(tmpdir(), 'acornary-ops-db-'));
-    for (const name of (await readdir('migrations')).filter((n) => /^00[1-8]_.*\.sql$/.test(n)))
+    for (const name of (await readdir('migrations')).filter(
+      (n) => /^00[1-8]_.*\.sql$/.test(n) || n === '011_sync_changes.sql',
+    ))
       await copyFile(join('migrations', name), join(dir, name));
     // Exercise an actual old ledger row, not a synthesized checksum.
     await c.query(await readFile('migrations/001_initial.sql', 'utf8'));

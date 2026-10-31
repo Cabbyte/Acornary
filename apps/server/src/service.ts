@@ -299,6 +299,14 @@ export async function execute(ctx: Context, name: Operation, raw: unknown): Prom
     return result;
   });
 }
+export async function assertWriteIsolation(c: Client): Promise<void> {
+  const isolation = (await query(c, 'SHOW transaction_isolation')).rows[0]?.transaction_isolation;
+  requireFact(
+    isolation === 'read committed',
+    'UNSUPPORTED_WRITE_ISOLATION',
+    'Writes require READ COMMITTED transactions.',
+  );
+}
 async function executeCommand(ctx: Context, name: Operation, raw: unknown): Promise<any> {
   const trace = traces.getStore();
   if (trace) trace.tool = name;
@@ -327,6 +335,7 @@ async function executeCommand(ctx: Context, name: Operation, raw: unknown): Prom
       await timed('lock_wait_ms', () =>
         query(c, 'SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [ctx.household_id], false),
       );
+      await assertWriteIsolation(c);
       const fingerprint = createHash('sha256').update(canonical({ name, input })).digest('hex');
       const old = (
         await query(

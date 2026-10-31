@@ -1,8 +1,8 @@
 # 数据模型修复 · Batch 0 评审入口
 
-状态：`AWAITING_DESIGN_REVIEW`。本目录是实施规格，不是已实现能力声明。
+状态：`WAVE1_INTEGRATED`（Batch 1 + Batch 2）。Batch 0 契约已评审通过；Batch 1 的四条 lane 与 Batch 2 查询已合并并在隔离 PostgreSQL 18.6 上完成验收。Batch 3–8 尚未开始。
 
-本轮仅交付契约、测试骨架、审计工具和证据；不增加生产 migration、不改变服务端或客户端业务语义、不推进 Batch 1–8。用户要求的“评审通过前，不连续推进 Batch 1–8”是下一批的明确门禁。
+Batch 1/2 的集成结果、测试证据和已知缺口见 [Batch 1 + Batch 2 集成验收](./batch1/integration.md)。本目录其余文件是实施规格，不是未完成能力的声明。
 
 ## 五份技术契约
 

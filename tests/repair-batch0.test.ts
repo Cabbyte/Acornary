@@ -196,11 +196,15 @@ describe('Frozen historical oracle (not replacement projection verification)', (
 });
 
 describe('Evidence inventory integrity', () => {
-  it('keeps future acceptance cases NOT_RUN with no fabricated evidence', () => {
+  it('keeps not-run cases evidence-free and requires evidence for pass/partial', () => {
     expect(new Set(cases.map((c) => c.id)).size).toBe(cases.length);
     for (const c of cases) {
-      expect(c.status).toBe('NOT_RUN');
-      expect(c.evidence).toEqual([]);
+      expect(['NOT_RUN', 'PASS', 'PARTIAL']).toContain(c.status);
+      if (c.status === 'NOT_RUN') expect(c.evidence).toEqual([]);
+      else {
+        expect(Array.isArray(c.evidence)).toBe(true);
+        expect(c.evidence.length).toBeGreaterThan(0);
+      }
       expect(c.acceptance.length).toBeGreaterThan(20);
     }
     for (const group of ['OP', 'TREE', 'SYNC', 'QUERY', 'LABEL', 'MODEL', 'FILE', 'OPS'])

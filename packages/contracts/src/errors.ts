@@ -24,6 +24,7 @@ const statuses: Record<string, number> = {
   INVALID_TRANSITION: 400,
   BARCODE_CONFLICT: 400,
   TEMPLATE_IN_USE: 400,
+  UNSUPPORTED_WRITE_ISOLATION: 400,
 };
 export const domainErrorStatus = (code: string): number | undefined =>
   Object.hasOwn(statuses, code) ? statuses[code] : undefined;
