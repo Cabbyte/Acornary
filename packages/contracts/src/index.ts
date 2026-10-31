@@ -1,3 +1,18 @@
+import {
+  deadlineTemplate,
+  deadlineServiceTemplate,
+  deadlineInput,
+  deadlineId,
+  dateFilter,
+} from './deadline.js';
+export type {
+  DeadlineEntry,
+  DeadlineKind,
+  DateFact,
+  DateFilter,
+  DateSource,
+  DateState,
+} from './deadline.js';
 import { intakeSchemas } from './intake.js';
 import { entityId } from './ids.js';
 import { z } from 'zod';
@@ -23,6 +38,8 @@ const positive = z
   .regex(/^(0|[1-9]\d*)(\.\d+)?$/);
 const lifeState = z.enum(['ACTIVE', 'CONSUMED', 'DISPOSED', 'LOST', 'ARCHIVED']);
 export const templates = {
+  deadline: deadlineTemplate,
+  service: deadlineServiceTemplate,
   product: {
     target_kind: 'CATALOG_NODE',
     paths: ['brand', 'model', 'specification', 'barcodes', 'net_content', 'storage.requirement'],
@@ -242,6 +259,20 @@ const filters = z
   .optional();
 export const schemas = {
   ...intakeSchemas,
+  add_deadline: z.strictObject({ ...write, item_id: uuid, entry: deadlineInput }),
+  update_deadline: z.strictObject({
+    ...write,
+    item_id: uuid,
+    entry_id: deadlineId,
+    patch: deadlineInput.partial(),
+  }),
+  remove_deadline: z.strictObject({ ...write, item_id: uuid, entry_id: deadlineId }),
+  complete_deadline: z.strictObject({
+    ...write,
+    item_id: uuid,
+    entry_id: deadlineId,
+    completed_on: z.iso.date(),
+  }),
   get_connection_context: z.strictObject({}),
   create_items_batch: z.strictObject({
     ...create,
@@ -326,6 +357,7 @@ export const schemas = {
     catalog_node_ids: z.array(id).max(100).optional(),
     catalog_subtree_id: id.optional(),
     within_item_id: uuid.optional(),
+    date_filters: z.array(dateFilter).max(20).optional(),
     attribute_filters: filters,
   }),
   get_item: z.strictObject({ item_id: uuid, include_path: z.boolean().default(false) }),
@@ -376,7 +408,10 @@ export const schemas = {
   list_attribute_templates: z.strictObject({
     target_kind: z.enum(['ITEM', 'CATALOG_NODE']).optional(),
   }),
-  get_attribute_template: z.strictObject(attr),
+  get_attribute_template: z.strictObject({
+    ...attr,
+    template_id: z.enum([...templateId.options, 'deadline', 'service']),
+  }),
   get_attribute_sets: z.strictObject({ target }),
   bind_attributes: z.strictObject({ ...write, target, ...attr, values }),
   update_attributes: z.strictObject({ ...write, target, ...patchShape }),
@@ -420,6 +455,11 @@ export const reads = new Set<Operation>([
   'get_history',
 ]);
 export const descriptions: Record<Operation, string> = {
+  add_deadline: '按物品添加期限，服务端生成稳定条目 ID。',
+  update_deadline: '按稳定条目 ID 修改期限，不接受数组下标或完成日。',
+  remove_deadline: '按稳定条目 ID 移除期限，历史事件保留。',
+  complete_deadline:
+    '以明确完成日完成期限；周期从完成日推进，维护完成同时记录 service.last_service_on。',
   get_intake_context:
     '日常入库先批量查询整批名称、已知位置和明确 ID，获得当前规范、候选与版本。检索覆盖范围不等于语义上全库无匹配；截断时继续查询。',
   commit_intake:
