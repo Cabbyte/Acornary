@@ -1,0 +1,8 @@
+{
+  "source": "apps/server/src/terminal-label-history.ts",
+  "source_commit": "216439a94485dd5428c6c21b7f9f84e1963e3a6d",
+  "source_sha256": "8a6e3438b54d113049467e7956b2c8ce5e89f74d3cceaf9f88c1ff363c1b5392",
+  "oracle_sha256": "ea3e6794fdd6db7691bc97a73c1e30332fc33a186d6e895d845e2695ce625fe9",
+  "adaptation": "Only import replaced with frozen structural types and direct attribute lookup; algorithm body unchanged.",
+  "purpose": "Historical oracle only; does not establish replacement projection correctness."
+}

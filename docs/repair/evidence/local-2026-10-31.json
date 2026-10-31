@@ -1,0 +1,175 @@
+{
+  "scope": "Batch 0 local design/tooling verification only",
+  "status": "PASS",
+  "run_id": "2026-10-31T10-52-06.426Z-6003c322",
+  "source_commit": "216439a94485dd5428c6c21b7f9f84e1963e3a6d",
+  "lockfile_sha256": "474c1b3a7b4db194be8076f9ef7761da15f8db76b12c296bbe629e5b9d3bed8f",
+  "node": "v24.22.2",
+  "postgres": "postgres (PostgreSQL) 18.6 (Debian 18.6-1.pgdg12+2)",
+  "tests": {
+    "typecheck": "PASS",
+    "build": "PASS",
+    "targeted": {
+      "passed": 21,
+      "todo": 76,
+      "note": "Included again in the full regression suite; do not double-count."
+    },
+    "full_regression": {
+      "files_passed": 20,
+      "passed": 157,
+      "todo": 76,
+      "failed": 0
+    },
+    "postgres_reference": {
+      "passed": 9,
+      "failed": 0,
+      "production_implementation": false
+    }
+  },
+  "audit": {
+    "verdict": "REVIEW_REQUIRED",
+    "counts": {
+      "households": 2,
+      "actors": 2,
+      "catalog_nodes": 6,
+      "items": 10000,
+      "attribute_templates": 16,
+      "barcode_index": 0,
+      "notes": 10000,
+      "events": 100000,
+      "operations": 100000,
+      "migrations": 7,
+      "catalog_policy_versions": 0,
+      "catalog_identity_keys": 0
+    },
+    "errors": 0,
+    "reviews": 7,
+    "findings": [
+      {
+        "check": "MIGRATION_CHECKSUM_UNVERIFIED",
+        "severity": "REVIEW",
+        "household_id": null,
+        "object_kind": "MIGRATION",
+        "object_id": "001_initial.sql",
+        "related_ids": [],
+        "disposition": "REVIEW_REQUIRED"
+      },
+      {
+        "check": "MIGRATION_CHECKSUM_UNVERIFIED",
+        "severity": "REVIEW",
+        "household_id": null,
+        "object_kind": "MIGRATION",
+        "object_id": "002_unified_ids.sql",
+        "related_ids": [],
+        "disposition": "REVIEW_REQUIRED"
+      },
+      {
+        "check": "MIGRATION_CHECKSUM_UNVERIFIED",
+        "severity": "REVIEW",
+        "household_id": null,
+        "object_kind": "MIGRATION",
+        "object_id": "003_embed_attributes.sql",
+        "related_ids": [],
+        "disposition": "REVIEW_REQUIRED"
+      },
+      {
+        "check": "MIGRATION_CHECKSUM_UNVERIFIED",
+        "severity": "REVIEW",
+        "household_id": null,
+        "object_kind": "MIGRATION",
+        "object_id": "004_cloud_auth.sql",
+        "related_ids": [],
+        "disposition": "REVIEW_REQUIRED"
+      },
+      {
+        "check": "MIGRATION_CHECKSUM_UNVERIFIED",
+        "severity": "REVIEW",
+        "household_id": null,
+        "object_kind": "MIGRATION",
+        "object_id": "005_accounts.sql",
+        "related_ids": [],
+        "disposition": "REVIEW_REQUIRED"
+      },
+      {
+        "check": "MIGRATION_CHECKSUM_UNVERIFIED",
+        "severity": "REVIEW",
+        "household_id": null,
+        "object_kind": "MIGRATION",
+        "object_id": "007_product_v2.sql",
+        "related_ids": [],
+        "disposition": "REVIEW_REQUIRED"
+      },
+      {
+        "check": "MIGRATION_CHECKSUM_UNVERIFIED",
+        "severity": "REVIEW",
+        "household_id": null,
+        "object_kind": "MIGRATION",
+        "object_id": "008_intake_policy.sql",
+        "related_ids": [],
+        "disposition": "REVIEW_REQUIRED"
+      }
+    ],
+    "audited_projection_sha256": "88e13d1a658f555e5f679bbf92e595ba79a18378af7f1131ca97f764cd442e57",
+    "label_oracle": {
+      "status": "BASELINE_ONLY",
+      "count": 10000,
+      "sha256": "83c83828349abb94daf3a99eb120c5e4512920d5928e1c0ac0749ec654ede9ee",
+      "source_sha256": "8a6e3438b54d113049467e7956b2c8ce5e89f74d3cceaf9f88c1ff363c1b5392",
+      "new_projection_comparison": "NOT_RUN"
+    }
+  },
+  "fixture_manifest": {
+    "source_kind": "synthetic_fixture",
+    "seed": 20261031,
+    "mode": "performance",
+    "sha256": "07163ccfdec5649cc7c10391cc746478ffedefe6c12f0897087f3fad63392970",
+    "counts": {
+      "households": 2,
+      "actors": 2,
+      "catalog_nodes": 6,
+      "items": 10000,
+      "attribute_templates": 16,
+      "barcode_index": 0,
+      "notes": 10000,
+      "events": 100000,
+      "operations": 100000,
+      "migrations": 0,
+      "catalog_policy_versions": 0,
+      "catalog_identity_keys": 0
+    },
+    "distribution": {
+      "households": 2,
+      "container_items": 20,
+      "maximum_container_depth": 10,
+      "events_per_item": 10,
+      "notes_per_item": 1
+    },
+    "performance_measured": false,
+    "production_evidence": false
+  },
+  "restore_comparison": {
+    "status": "PASS",
+    "source": "synthetic_fixture",
+    "audited_projection_sha256": "88e13d1a658f555e5f679bbf92e595ba79a18378af7f1131ca97f764cd442e57",
+    "label_baseline_sha256": "83c83828349abb94daf3a99eb120c5e4512920d5928e1c0ac0749ec654ede9ee",
+    "full_database_comparison": "NOT_RUN",
+    "attachments_and_restic": "NOT_RUN",
+    "production_evidence": false
+  },
+  "production_audit": "DEFERRED_BY_USER",
+  "repair_acceptance": "NOT_RUN",
+  "performance_benchmark": "NOT_RUN",
+  "evidence_directory": "output/repair-batch0/2026-10-31T10-52-06.426Z-6003c322",
+  "evidence_sha256": {
+    "run.json": "0c74a34366a83bd25c5024427d75fb94d71ed2769fad582aefec7ad58cb147ee",
+    "source-manifest.json": "00c52dfce8ef2b9bf3cfb7e75eca58167cd0d2ead48d353bda558f95ef1e4206",
+    "08-typecheck.log": "d97c5e1f1ea874f6058901fd1c301672586da7fc9f6cba1af00d3d81c5e3abb4",
+    "09-unit-tests.log": "d0f6cccb89b4b4a99c6ede69ceba9c2dcb544dde3924567bde5b3dc830ad98a2",
+    "11-build-current-ui.log": "c4e529e4d1fd16085eb3de5c69f3c9ea2af0e55bbab8444fe1aaa864a8d94c50",
+    "12-regression-tests.log": "f71e37a8178ff37d7506504607716b9cd95ca0933801d4c513e55310d468be3d",
+    "14-postgres-reference-tests.log": "63450fba63b619fa3f7390b5acf93a273b87260d6fc82c0e69e99c28aae265c1",
+    "artifacts/performance/audit.json": "bbf317f7a1091a5a33a0fca7724ce0c28de1546e30070e98f99fb30eedc338eb",
+    "artifacts/restored/audit.json": "0967992d79da04f6c444bc1473e63df5ebcc257dffb4702225043431d1cd1cfd",
+    "restore-comparison.json": "63e139d355090cc8501f4444484db6ab0b39dcb7bfddca654d9cffd98e9ad5fd"
+  }
+}
