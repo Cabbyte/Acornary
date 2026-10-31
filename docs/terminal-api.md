@@ -63,3 +63,5 @@ ACORNARY_ANDROID_CERT_SHA256=43:86:9E:7E:B6:34:F1:4A:18:FC:EE:65:1B:C8:FF:60:2E:
 ## 验证
 
 `tests/terminal.test.ts` 使用独立 PostgreSQL 和真实 OAuth 流程；覆盖 PKCE 错误、cookie 不可用、scope/audience/client 错误、跨家庭读取、日期与十进制、三类写入、幂等与冲突、轮换重用、账号停用、auth_version 撤销。正式库存仅做只读验收。
+
+2026-10-31：v0.12.0 已部署兼容的最近字段，正式家庭同事务只读投影已核对；手机端因当前没有默认网络仍待正常同步。显式 `ProductionReadAuditTest` 只刷新现有手机会话并核对快照与 AOD，不导出令牌、不提交库存命令；仅在 `readOnlyProductionAudit=true` 时运行。

@@ -16,7 +16,16 @@
 - `bc2544a` 的[完整 CI](https://github.com/Cabbyte/Acornary/actions/runs/41178600025) 全部通过：37 项隔离模拟器仪器测试成功，2 项真实硬件夹具按设计跳过；主应用 21 项 JVM 测试、构建、lint，以及完整服务端／Web／真实容器恢复均通过。
 - Pixel 3 已安装同一正式证书签名的临时测试宿主，保留账号和缓存；未运行 Gradle 的安装卸载测试任务。14:56:58–14:57:16（Asia/Shanghai）D101 三张“打印测试 1／2／3”逐张取得完成确认。测试先勾选／取消、打印一张后停止，重建本机批次后只继续未完成的两张。独立测试库共 3 个 `DONE` 收据，正式库存 API 请求为 0。证据为 `physical-batch-test.log`、`physical-evidence/receipts.json` 和进度截图。纸上字迹及前摄摆放识别仍等待用户核对；首轮相机测试因等待 120 秒超时，不记为通过。
 - 15:13 在 Pixel 3 上执行最终五项 `WorkspaceDesignTest`，全部通过：600×360dp／1.5 倍字体／反向横屏、1.3 倍字体键盘、深色、搜索、批次预览。保留原用户输入草稿。Gboard 完全展开后，消耗面板横排输入和两个提交按钮，实际可见触控高度至少 48dp；没有提交任何消耗命令。最终截图在 `physical-ui-final/`，测试日志为 `physical-ui-tests.log`。
-- 关闭测试取景后 `Active Camera Clients` 为空，崩溃缓冲为空；临时修改的屏幕超时已恢复 60000 ms。最终正式 APK 覆盖、真实最近投影核对、AOD 常连及后端发布仍在收尾，完成后继续补录。
+- 关闭测试取景后 `Active Camera Clients` 为空，崩溃缓冲为空；临时修改的屏幕超时已恢复 60000 ms。最终正式包与服务器核对结果见下。
+
+最终部署与当前边界：
+
+- [v0.12.0 正式流水线](https://github.com/Cabbyte/Acornary/actions/runs/41180114382) 全部通过，包括最终消耗布局的 37 项模拟器仪器测试（2 项硬件夹具按设计跳过）、完整服务端／浏览器回归、镜像与受限部署。公网 `/health` 已核对 `v0.12.0` / `ce6979921a23ff8c9f4c905300eea7f94130fddc`，终端公开配置正常，匿名 Web／MCP／终端私有接口仍为 401。
+- 使用既有 MCP 读取及服务器内同一只读投影核对正式家庭：111 件当前库存，全部包含有效创建／标签更新时间，最近 7 天为 2 件；未提交任何库存命令。记录在 `production-projection-read.json`、`production-release-checks.json`。这验证服务端真实投影，不代替手机正常 bearer 链路的同步验收。
+- 正式主 APK `0.4.0-terminal` / code 5 已覆盖临时测试宿主；设备与本机 SHA256 一致，且安装标志无 `DEBUGGABLE`。主应用源代码与发布标签一致。三个同证书恢复包及摘要在 `output/android/design/release/`，清单为 `manifest.json` / `SHA256SUMS`；主应用证据为 `final-device-manifest.json`。AOD 与 overlay 本轮不需安装更新。
+- 最终设备设置页显示 `Owner · 我的家庭`、`已连接 · 30 × 12 mm`；原登录与缓存仍在，打印常连服务处于前台。60 秒待机与插电常亮 0 已核对，相机客户端为空。真实离线主界面截图为 `final-native-recent.png`，设置读证为 `final-settings.xml`。
+- 手机当前 `Active default network: none`，Wi-Fi 开启但未连接。正式包上的 `ProductionReadAuditTest` 因无法联网而未通过，日志为 `production-read-audit.log`；未导出凭据或用其他客户端令牌代替。旧缓存缺少新增时间字段，因此最近明确显示“同步后可查看最近变化”，允许浏览全部库存。**手机联网后的真实最近列表／AOD 同步、纸样外观与前摄实物识别仍待复核。** 用户联网后可显式启用只读仪器核对，默认模拟器运行会跳过此测试。
+- GitHub 的 APK 上传两次遇到网络超时，未留下部分资产；[公开发布](https://github.com/Cabbyte/Acornary/releases/tag/v0.12.0) 提供源码与构建说明，本机签名 APK 已交付并安装。没有将发布私钥送入仓库或 CI。
 
 ## D101 待机连接与前摄扫码改进（2026-10-31，0.3.1）
 

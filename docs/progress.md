@@ -1,6 +1,6 @@
 # 项目进度
 
-2026-10-31 小屏改版：Android `0.4.0-terminal` 完成固定 Figma 品牌主题、双入口侧栏、最近默认筛选、紧凑消耗与扫码、Room v2 逐张批量打印。服务端新增标签有效更新时间，兼容 v1，无业务表迁移。完整 CI、Pixel 五项界面检查和 D101 三张停止／恢复测试通过，正式后端及最终 APK 发布正在收尾。详见 [本轮验收](../apps/android/docs/acceptance.md)。
+2026-10-31 小屏改版：Android `0.4.0-terminal` 的 Figma 品牌横屏界面、最近筛选与逐张批量打印已实现并同签名更新；兼容后端 [v0.12.0](https://github.com/Cabbyte/Acornary/releases/tag/v0.12.0) 已部署。完整 CI、Pixel 五项界面检查和 D101 三张停止／恢复测试通过；服务器只读核对当前 111 件、最近 7 天 2 件，未修改库存。手机 Wi-Fi 尚未连接，真实客户端同步与纸样前摄复核仍待完成，详见 [验收记录](../apps/android/docs/acceptance.md)。
 
 2026-10-31 后续：Android `0.3.1-terminal` 默认保持 D101 连接并自动重连；已实测 AOD 下心跳持续、应用进程重启和 APK 更新后恢复连接。二维码含白边铺满纸张短边，前摄改用标准自动对焦镜头及 1920 × 1440 分析，加入点按对焦和变焦；用户确认新样张前摄可识别。最终 APK 已安装，60 秒待机设置已恢复，详见 [验收记录](../apps/android/docs/acceptance.md)。
 
