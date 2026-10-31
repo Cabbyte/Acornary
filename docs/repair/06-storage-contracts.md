@@ -6,15 +6,19 @@
 
 写接口枚举从 registry 生成；读 DTO 的 template_id 是字符串、version 是正整数，允许未知/退役数据。版本和绑定数上限不再依赖内置模板数量；绑定最多 16。未知绑定的 values、version、时间和数组位置不变，用数据库 JSONB 规范化文本比较原样保留；不是承诺还原已被 JSONB 丢弃的原始空白/键顺序。退役不删除，写未知/退役值明确拒绝；已知值使用其绑定版本校验。升级是带 expected_revisions 和完整目标值的显式操作。
 
-核心列 `catalog_nodes.profile` 与 `capabilities`：profile 为 CONSUMABLE/DURABLE/WEARABLE/SPACE/MISC 或 NULL；capabilities=NULL 继承默认，显式数组完整覆盖，[] 关闭可选能力。通用 identity/lifecycle 状态等基础字段始终可用。唯一解析器 resolveCapabilities 同时控制 UI 和新绑定写入，不另保留 applies_to_profiles。
+核心列 `catalog_nodes.profile`（text，CONSUMABLE/DURABLE/WEARABLE/SPACE/MISC 或 NULL）、`catalog_nodes.capabilities`（text[] NULL；NULL 继承默认，显式数组完整覆盖，[] 关闭可选能力）、`catalog_nodes.one_off`（boolean NOT NULL DEFAULT false）与 `catalog_nodes.record_state` / `items.record_state`（text NOT NULL DEFAULT 'VALID'，CHECK VALID/VOID）。通用 identity/lifecycle 状态等基础字段始终可用。唯一解析器 resolveCapabilities 同时控制 UI 和新绑定写入，不另保留 applies_to_profiles。
 
-默认可选能力：CONSUMABLE=opening/contents/stock；DURABLE=asset/custody/service；WEARABLE=clothing/asset/custody/service；SPACE=container；MISC=asset/custody；未知=[]，可手动发现合法能力。expiry 必须显式声明，不能从消耗品或分类名猜测。container 独立可选，实物冰箱/行李箱可同时表达商品和容纳能力。变更能力不删除已知事实，不隐式创建绑定。能力词表在 registry 中映射到模板/字段组，允许 lifecycle.expiry 这样的细粒度键。
+默认可选能力：CONSUMABLE=lifecycle.expiry/opening/contents/stock；DURABLE=asset/custody/service/deadline；WEARABLE=clothing/wardrobe/asset/custody/service；SPACE=container；MISC=asset/custody；未知=[]，可手动发现合法能力。expiry 不从名称或分类猜；CONSUMABLE 默认提供，纸巾等非食品用显式 capabilities 关闭；其他 profile 需显式声明。container 独立可选，实物冰箱/行李箱可同时表达商品和容纳能力。变更能力不删除已知事实，不隐式创建绑定。能力词表在 registry 中映射到模板/字段组，允许 lifecycle.expiry 这样的细粒度键。
 
 ## 日期 / 状态 / 引用
 
 deadline.entries 条目用 deadline_<UUID>，kind 为 WARRANTY_END/SERVICE_DUE/RETURN_BY/RENEWAL/REORDER_BY，due_on 为 YYYY-MM-DD，recurrence_days 可选且为正整数。按稳定 ID upsert/remove/complete，不能按数组位置 patch。完成日由用户明确提交，按家庭时区自然日加 recurrence_days；不按打开页面的日期或原到期日自动滚动。无周期的条目完成后退出待办集合，历史保留。last_completed_on 是完成事件的读投影。
 
-食品 expiry 仍由 lifecycle 适配为 EXPIRY 日期视图；开封后期限依原家庭时区算法派生，不重复写 deadline。购入日在 acquisition；维护完成日是 service.last_service_on；完成维护和推进 deadline 原子提交。日期视图为 item_id、entry/source_key、kind、due_on、basis、完成状态；同一行满足 kind/范围过滤。AOD 显示最近可执行日期并标类型，D101 保持旧食品日期版式。
+食品 expiry 仍由 lifecycle 适配为 EXPIRY 日期视图；开封后期限依原家庭时区算法派生，不重复写 deadline。购入日在 acquisition；维护完成日是 service.last_service_on；完成维护和推进 deadline 原子提交。
+
+日期视图落一张可重建投影 `date_facts`：`household_id, item_id, source_key, entry_id, kind, due_on, basis, completed_on, source_template, source_version, projected_through_change_id`；主键 `(household_id, item_id, source_key, entry_id)`；索引 `(household_id, due_on) WHERE completed_on IS NULL`。`source_key` 区分 lifecycle expiry / opening-derived / deadline / service；同一行同时满足 kind 与范围过滤。投影随写入事务维护，可按源事实重建；`last_completed_on` 是完成事件的读投影，不直接改写历史记录。
+
+`items` 增加 `label_hash text`、`label_updated_at timestamptz`、`projected_through_change_id bigint`；三者是可重建读投影，不参与核心 revision。AOD 显示最近可执行日期并标类型，D101 保持旧食品日期版式。
 
 usage/custody/service 独立，运输独立于使用/借出状态，位置始终为 parent_id。旧 availability 明确标成旧资料，不回填它与新模板双写；不能从 AVAILABLE 补肯定事实或从 LOANED 编造持有人。新综合可用性遇阻断事实为不可用，所需事实不足为未知。REFERENCE 支持 ACTOR/ITEM/CATALOG_NODE，同家庭、可反向查；外部人使用明确的 name 分支，不创建虚假 Actor。
 

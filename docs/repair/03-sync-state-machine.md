@@ -2,7 +2,7 @@
 
 ## 日志与事务
 
-Batch 1 建立 sync_changes：`change_id bigserial PK, household_id, object_kind, object_id, revision, change_kind, operation_id?, payload_version, after_image?, created_at`。索引 `(household_id, change_id)`。change_kind 仅 UPSERT/TOMBSTONE；墓碑保留身份和顺序，不保留业务正文。operation_id 对有领域回执的变更必填；初始化/维护来源必须显式登记，不能伪造用户操作。
+Batch 1 建立 sync_changes：`change_id bigserial PK, household_id, object_kind, object_id, revision, change_kind, operation_id?, payload_version, after_image jsonb NULL, created_at`。Batch 1 只存引用，`after_image` 不使用；客户端按对象 ID 批量取当前投影。索引 `(household_id, change_id)`。change_kind 仅 UPSERT/TOMBSTONE；墓碑保留身份和顺序，不保留业务正文。operation_id 对有领域回执的变更必填；初始化/维护来源必须显式登记，不能伪造用户操作。
 
 数据库钩子收集事务内 dirty 对象（键为事务、家庭、对象种类及 ID），延迟 flush 写最终像；同一事务修改同一对象多次只发最终记录。flush 后删除本事务 dirty 项，后续延迟回调为空操作。角色不能自行修改 dirty 集合、日志或水位。所有写入在分配 change_id 前持有家庭锁；单个家庭的新序号不得越过同家庭仍未提交的事务。
 
