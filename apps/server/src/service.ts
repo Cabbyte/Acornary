@@ -45,6 +45,8 @@ import {
   advanceDeadline,
 } from './dates.js';
 import { recordSyncChange } from './sync.js';
+import { projectLabels } from './label-projection.js';
+import { inventoryGroupsV2 } from './web.js';
 import { timed, traces } from './telemetry.js';
 export type Context = {
   household_id: string;
@@ -620,12 +622,14 @@ async function readHistory(c: Client, ctx: Context, input: any) {
   };
 }
 async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
-  const isItem = name === 'query_items';
+  const isGroups = name === 'query_inventory_groups';
+  if (isGroups) input = { ...input, sort: { field: 'name', direction: 'asc' } };
+  const isItem = name === 'query_items' || isGroups;
   const kind = isItem ? 'ITEM' : 'CATALOG_NODE';
   const { expected, cursor } = queryCursorContext(ctx, name, input);
   if (cursor)
     requireFact(
-      cursor.last.id.startsWith(isItem ? 'item_' : 'catalog_node_'),
+      cursor.last.id.startsWith(isItem && !isGroups ? 'item_' : 'catalog_node_'),
       'INVALID_CURSOR',
       'Invalid object cursor.',
     );
@@ -762,6 +766,22 @@ async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
     CROSS JOIN LATERAL (SELECT coalesce(jsonb_object_agg(a->>'template_id',a->'values'),'{}'::jsonb) AS __sets
       FROM jsonb_array_elements(o.attributes) a) bindings
     WHERE ${where.join(' AND ')})`);
+  if (isGroups) {
+    const watermark = String(await currentChangeId(c, ctx.household_id));
+    const result = (await query(c, `WITH RECURSIVE ${ctes.join(',\n')}
+      SELECT (${scopeChecks.join(' AND ') || 'TRUE'}) AS scope_exists,
+      (SELECT coalesce(jsonb_agg(to_jsonb(m)), '[]'::jsonb) FROM matching m) AS items`, params)).rows[0];
+    requireFact(result.scope_exists, 'NOT_FOUND', 'Scope not found in this household.');
+    const catalog = [...new Map<string, any>(result.items.map((i: any) => [i.catalog_node_id, { id: i.catalog_node_id, name: i.catalog_name }])).values()];
+    const groups = inventoryGroupsV2(result.items, catalog);
+    groups.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+    const remaining = groups.filter(g => !cursor || g.id > cursor.last.id);
+    const page = remaining.slice(0, input.limit);
+    return { groups: page, matching_group_count: groups.length, as_of_change_id: watermark,
+      stale: !!cursor && cursor.as_of_change_id !== watermark,
+      next_cursor: remaining.length > input.limit ? encodeQueryCursor({ version: 1, ...expected,
+        last: { key: page.at(-1)!.id, id: page.at(-1)!.id }, as_of_change_id: cursor?.as_of_change_id ?? watermark }) : null };
+  }
   const after = cursorPredicate(
     cursor,
     '__key',
@@ -874,6 +894,8 @@ async function read(c: Client, ctx: Context, name: Operation, input: any): Promi
         : {}),
       household,
       actor,
+      protocol: { current: 2, min: 2 },
+      features: ['query_v2', 'history_v2', 'snapshot_v2', 'groups_v2', 'sync_v2'],
     };
   }
   if (name === 'list_attribute_templates')
@@ -1062,6 +1084,7 @@ async function applyDomainCommand(
     );
     await recordSyncChange(c, ctx.household_id, obj.kind, obj.row.id, rev + 1, operation_id);
     if (obj.kind === 'ITEM') await recomputeItemDates(c, ctx.household_id, obj.row.id);
+    await projectLabels(c, ctx.household_id, obj.kind, obj.row.id, event_id, operation_id);
     result.affected_objects.push({
       kind: obj.kind,
       id: obj.row.id,

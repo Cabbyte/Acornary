@@ -38,7 +38,8 @@ import {
 import { DomainError } from '../../../packages/domain/src/index.js';
 import { execute, type Context } from './service.js';
 import { pool, query } from './db.js';
-import { webSnapshot } from './web.js';
+import { webSnapshot, webSnapshotV2 } from './web.js';
+import { syncState, syncChanges, syncFetch, syncBootstrap } from './sync-api.js';
 import { pluginResource, registerInventoryApp } from './plugin.js';
 import { pluginWriteTool } from '../../../packages/contracts/src/plugin.js';
 import { domainErrorStatus } from '../../../packages/contracts/src/errors.js';
@@ -159,7 +160,7 @@ export async function buildApp(
       );
     if (
       auth &&
-      /^\/api\/(context|read(?:\/|$)|attachments(?:\/|$)|write(?:\/|$)|ui(?:\/|$)|debug(?:\?|$))/.test(
+      /^\/api\/(context|sync(?:\/|$)|read(?:\/|$)|attachments(?:\/|$)|write(?:\/|$)|ui(?:\/|$)|debug(?:\?|$))/.test(
         req.url,
       )
     ) {
@@ -209,6 +210,9 @@ export async function buildApp(
   });
   app.setErrorHandler((error: any, _req, reply) => {
     const result = failure(error);
+    if (error.code === 'INVALID_CURSOR') result.recovery = 'FIX_REQUEST';
+    if (['SYNC_RESET_REQUIRED', 'PROTOCOL_VERSION_UNSUPPORTED'].includes(error.code))
+      return reply.code(409).send({ error: { ...result, recovery: 'REREAD_AND_REVIEW' } });
     return reply
       .code(
         error instanceof DomainError
@@ -397,7 +401,8 @@ export async function buildApp(
         [context.household_id],
       )
     ).rows[0];
-    return { household, container_catalog_id: install?.container_catalog_id };
+    return { household, container_catalog_id: install?.container_catalog_id,
+      protocol: { current: 2, min: 2 }, features: ['query_v2', 'history_v2', 'snapshot_v2', 'groups_v2', 'sync_v2'] };
   });
   app.get('/api/read/:operation', async (req) => {
     const name = (req.params as any).operation as Operation;
@@ -410,10 +415,26 @@ export async function buildApp(
     }
     return execute({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }, name, input);
   });
+  app.post('/api/read/query_inventory_groups', async req =>
+    execute({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }, 'query_inventory_groups', req.body));
+  const syncContext = (req: FastifyRequest) => {
+    if (req.headers['x-acornary-protocol'] !== '2')
+      throw new DomainError('PROTOCOL_VERSION_UNSUPPORTED', 'Sync requires protocol 2.');
+    return webContexts.get(req) ?? ctx;
+  };
+  app.get('/api/sync/state', req => syncState(syncContext(req)));
+  app.get('/api/sync/changes', req => syncChanges(syncContext(req), req.query));
+  app.get('/api/sync/bootstrap', req => syncBootstrap(syncContext(req), req.query));
+  app.post('/api/sync/fetch', req => syncFetch(syncContext(req), req.body));
   const snapshotFor = (req: FastifyRequest) => {
     const trace = traces.getStore();
     if (trace) trace.tool = 'web_snapshot';
-    return timed('business_ms', () => webSnapshot(webContexts.get(req) ?? ctx, req.query));
+    const protocol = req.headers['x-acornary-protocol'];
+    if (protocol !== undefined && protocol !== '2')
+      throw new DomainError('PROTOCOL_VERSION_UNSUPPORTED', 'Unsupported snapshot protocol.');
+    return timed('business_ms', async () => protocol === '2'
+      ? webSnapshotV2(webContexts.get(req) ?? ctx)
+      : webSnapshot(webContexts.get(req) ?? ctx, req.query));
   };
   app.get('/api/ui/snapshot', snapshotFor);
   app.get('/api/ui/groups', async (req) => (await snapshotFor(req)).groups);
