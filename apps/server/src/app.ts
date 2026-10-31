@@ -1,3 +1,4 @@
+import { registerExportRoutes } from './exports.js';
 import { putAttachment, downloadAttachment, MAX_FILE_SIZE } from './attachments.js';
 import { reviewCatalogProposal, confirmCatalogProposal, compactIntakeResult } from './intake.js';
 import { pluginReviewTool, pluginConfirmTool } from '../../../packages/contracts/src/plugin.js';
@@ -446,6 +447,7 @@ export async function buildApp(
     }
     return execute({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }, name, input);
   });
+  registerExportRoutes(app, token, !!cloud, req => ({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }), execute);
   app.post('/api/read/query_inventory_groups', async req =>
     execute({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }, 'query_inventory_groups', req.body));
   const syncContext = (req: FastifyRequest) => {

@@ -1,3 +1,4 @@
+import { executeExport, exportOperations } from './exports.js';
 import {
   implementedFeatures,
   eventTypes as registeredEventTypes,
@@ -535,6 +536,7 @@ export async function assertWriteIsolation(c: Client): Promise<void> {
   );
 }
 async function executeCommand(ctx: Context, name: Operation, raw: unknown): Promise<any> {
+  if (exportOperations.has(name)) return executeExport(ctx, name, raw, readQuery);
   const trace = traces.getStore();
   if (trace) trace.tool = name;
   const input = parseCommand(name, raw);
