@@ -80,8 +80,9 @@ class PrinterController(
         if (adapter?.isEnabled != true) { message("请先开启系统蓝牙。"); return }
         try {
             scanner = adapter.bluetoothLeScanner ?: error("蓝牙扫描不可用。")
-            val paired = adapter.bondedDevices.filter { it.name?.startsWith("D101", true) == true }.map { PrinterDevice(it.address, it.name) }
-            mutable.update { it.copy(scanning = true, devices = paired, message = "正在搜索 D101…") }
+            // D101 may expose separate Classic and BLE addresses with the same name.
+            // Only re-offer the BLE address we actually verified, never a Classic-only bond.
+            mutable.update { it.copy(scanning = true, devices = listOfNotNull(memory.device()), message = "正在搜索 D101…") }
             scanner!!.startScan(null, ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build(), scanCallback)
             scanJob = scope.launch { delay(12_000); stopScan(); message(if (state.value.devices.isEmpty()) "未找到 D101，请检查电源和其他应用的连接。" else "选择下方打印机进行连接。") }
         } catch (_: SecurityException) { stopScan(); message("需要附近设备权限，请在系统设置中允许。") }
