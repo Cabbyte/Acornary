@@ -65,7 +65,12 @@ INSERT INTO date_facts
 SELECT i.household_id,i.id,d.*,coalesce(s.last_committed_change_id,0)
 FROM items i JOIN households h ON h.id=i.household_id
 LEFT JOIN household_sync_state s ON s.household_id=i.household_id
-CROSS JOIN LATERAL acornary_item_date_sources(i.attributes,h.timezone) d;
+CROSS JOIN LATERAL acornary_item_date_sources(i.attributes,h.timezone) d
+ON CONFLICT (household_id,item_id,source_key,entry_id) DO UPDATE SET
+  kind=EXCLUDED.kind,due_on=EXCLUDED.due_on,basis=EXCLUDED.basis,
+  completed_on=EXCLUDED.completed_on,source_template=EXCLUDED.source_template,
+  source_version=EXCLUDED.source_version,
+  projected_through_change_id=EXCLUDED.projected_through_change_id;
 
 -- A timezone change can change opening-derived dates, without changing core revisions/events.
 CREATE FUNCTION acornary_refresh_timezone_dates() RETURNS trigger
@@ -78,7 +83,12 @@ BEGIN
     SELECT i.household_id,i.id,d.*,coalesce(s.last_committed_change_id,0)
     FROM items i LEFT JOIN household_sync_state s ON s.household_id=i.household_id
     CROSS JOIN LATERAL acornary_item_date_sources(i.attributes,NEW.timezone) d
-    WHERE i.household_id=NEW.id;
+    WHERE i.household_id=NEW.id
+    ON CONFLICT (household_id,item_id,source_key,entry_id) DO UPDATE SET
+      kind=EXCLUDED.kind,due_on=EXCLUDED.due_on,basis=EXCLUDED.basis,
+      completed_on=EXCLUDED.completed_on,source_template=EXCLUDED.source_template,
+      source_version=EXCLUDED.source_version,
+      projected_through_change_id=EXCLUDED.projected_through_change_id;
   END IF;
   RETURN NEW;
 END $$;

@@ -237,6 +237,7 @@ async function validate(
           )
         ).rows[0];
   const capabilities = resolveCapabilities(catalog?.profile ?? null, catalog?.capabilities ?? null);
+  const configured = catalog?.profile != null || catalog?.capabilities != null;
   for (const [name, value] of Object.entries(obj.sets)) {
     const unchanged =
       before &&
@@ -250,8 +251,9 @@ async function validate(
       'ATTRIBUTE_VALIDATION_FAILED',
       'Template not applicable to this object.',
     );
-    // Capabilities govern new bindings; disabling a capability never erases existing facts.
-    if (!before?.sets[name]) {
+    // Capabilities govern new bindings for explicitly configured SKUs; legacy
+    // unprofiled SKUs remain writable so existing clients keep working.
+    if (configured && !before?.sets[name]) {
       for (const path of t.paths) {
         const capability = pathCapability(name, path);
         requireFact(

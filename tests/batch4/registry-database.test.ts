@@ -392,7 +392,7 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
         kind: 'SKU',
         name: 'missing revisions',
       }),
-    ).rejects.toMatchObject({ code: 'ATTRIBUTE_VALIDATION_FAILED' });
+    ).rejects.toMatchObject({ code: 'APPROVAL_REQUIRED' });
   });
 
   it('filters templates by target/profile/capability/catalog overrides; unfiltered discovery returns all latest definitions', async () => {
@@ -404,15 +404,19 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
       'clothing',
       'container',
       'contents',
+      'deadline',
       'device',
       'lifecycle',
       'product',
+      'service',
     ]);
     expect((await list()).find((t: any) => t.id === 'product').version).toBe(2);
     expect((await list({ target_kind: 'ITEM' })).map((t: any) => t.id).sort()).toEqual([
       'container',
       'contents',
+      'deadline',
       'lifecycle',
+      'service',
     ]);
     expect(
       (await list({ target_kind: 'ITEM', profile: 'CONSUMABLE' })).map((t: any) => t.id).sort(),
@@ -421,7 +425,7 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
       'lifecycle',
     ]);
     expect(await list({ profile: 'DURABLE', capability: 'lifecycle.expiry' })).toEqual([]);
-    expect(await list({ capability: 'deadline' })).toEqual([]);
+    expect((await list({ capability: 'deadline' })).map((t: any) => t.id)).toEqual(['deadline']);
     const unknown = await list({ profile: null, target_kind: 'ITEM' });
     expect(unknown.map((t: any) => t.id)).toEqual(['lifecycle']);
     expect(unknown[0].fields.map((f: any) => f.path)).not.toContain('expiry.date');
@@ -635,7 +639,7 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
     const { ctx, sku, item } = await fixture();
     expect(await execute(ctx, 'get_connection_context', {})).toMatchObject({
       protocol: { current: 2, min: 2 },
-      features: ['query_v2', 'history_v2', 'profile_capabilities'],
+      features: ['query_v2', 'history_v2', 'snapshot_v2', 'groups_v2', 'sync_v2', 'profile_capabilities', 'deadline', 'notes_v2', 'attachments'],
     });
     for (const assignment of ["profile='OTHER'", "record_state='INVALID'", 'one_off=NULL'])
       await expect(

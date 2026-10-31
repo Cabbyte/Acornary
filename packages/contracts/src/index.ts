@@ -185,7 +185,7 @@ export const schemas = {
     include_path: z.boolean().default(false),
   }),
   create_catalog_node: z.strictObject({
-    ...write,
+    ...create,
     profile: profileSchema.nullable().optional(),
     capabilities: z.array(capabilitySchema).nullable().optional(),
     one_off: z.boolean().optional(),

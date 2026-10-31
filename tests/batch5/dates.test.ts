@@ -453,16 +453,16 @@ describe.skipIf(!enabled)('Batch 5 dates on migrated PostgreSQL', () => {
         entry: { kind: 'RENEWAL', due_on: '2026-01-01', recurrence_days: 0 },
       }),
     ).rejects.toMatchObject({ code: 'ATTRIBUTE_VALIDATION_FAILED' });
-    expect(() =>
-      parseCommand('update_attributes', {
+    await expect(
+      execute(ctx, 'update_attributes', {
         target: { kind: 'ITEM', id: item_id },
         template_id: 'deadline',
         template_version: 1,
         set: { 'entries.0.due_on': '2026-01-01' },
-        expected_revisions: { [item_id]: 1 },
+        expected_revisions: { [item_id]: (await get(item_id)).revision },
         idempotency_key: randomUUID(),
       }),
-    ).toThrow();
+    ).rejects.toMatchObject({ code: 'ATTRIBUTE_VALIDATION_FAILED' });
     await expect(scoped(item_id, [{ from: '2026-02-01', to: '2026-01-01' }])).rejects.toMatchObject(
       { code: 'ATTRIBUTE_VALIDATION_FAILED' },
     );

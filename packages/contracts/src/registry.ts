@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { Decimal } from 'decimal.js';
 import { DomainError } from '../../domain/src/index.js';
+import { deadlineTemplate, deadlineServiceTemplate } from './deadline.js';
 const text = z.string().min(1).max(500);
 
 export const profileSchema = z.enum(['CONSUMABLE', 'DURABLE', 'WEARABLE', 'SPACE', 'MISC']);
@@ -84,6 +85,8 @@ const templateCapabilities: Partial<Record<TemplateId, CapabilityKey>> = {
   contents: 'contents',
   container: 'container',
   clothing: 'clothing',
+  deadline: 'deadline',
+  service: 'service',
 };
 // Fine-grained capabilities select field groups; base lifecycle facts always remain available.
 export function pathCapability(id: string, path: string): CapabilityKey | undefined {
@@ -275,6 +278,8 @@ export const templates = {
     paths: ['connector', 'rated_power_w'],
     schema: z.strictObject({ connector: text.optional(), rated_power_w: positive.optional() }),
   },
+  deadline: deadlineTemplate,
+  service: deadlineServiceTemplate,
 } as const;
 export type TemplateId = keyof typeof templates;
 export const productV2 = {
