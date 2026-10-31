@@ -17,13 +17,18 @@ class TerminalApplication : Application() {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     lateinit var repository: TerminalRepository
     lateinit var preferences: TerminalPreferences
+    lateinit var printJournal: PrintJournal
+    val printer by lazy { PrinterController(this, scope) }
     lateinit var ready: Deferred<Unit>
     override fun onCreate() {
         super.onCreate()
-        val database = Room.databaseBuilder(this, TerminalDatabase::class.java, "terminal.db").build()
+        val database = Room.databaseBuilder(this, TerminalDatabase::class.java, "terminal.db").addMigrations(TerminalDatabase.MIGRATION_1_2).build()
         preferences = TerminalPreferences(this, scope)
         repository = TerminalRepository(this, database.dao(), TerminalAuth(this))
+        printJournal = PrintJournal(database.dao(), repository, printer, scope)
         ready = scope.async { repository.initialize() }
+        scope.launch { ready.await(); printJournal.scopeChanged(repository.state.value.session?.scope) }
+        scope.launch { ready.await(); repository.state.map { it.session?.scope }.distinctUntilChanged().drop(1).collect { printer.scopeChanged(); printJournal.scopeChanged(it) } }
         scope.launch {
             ready.await()
             combine(repository.state, preferences.state) { state, prefs -> state to prefs }.collect {
@@ -48,7 +53,12 @@ class TerminalViewModel(application: Application) : AndroidViewModel(application
     val repo get() = app.repository
     val state = repo.state
     val prefs = app.preferences.state
+    val printer get() = app.printer
+    val printJournal get() = app.printJournal
     val page = MutableStateFlow(0)
+    val browse = MutableStateFlow(BrowseState())
+    val settingsPage = MutableStateFlow("root")
+    init { viewModelScope.launch { state.map { it.session?.scope }.distinctUntilChanged().drop(1).collect { browse.value = BrowseState(); page.value = 0 } } }
     val lastInteraction = MutableStateFlow(android.os.SystemClock.elapsedRealtime())
     fun interact() { lastInteraction.value = android.os.SystemClock.elapsedRealtime() }
     fun refresh() = viewModelScope.launch {

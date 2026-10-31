@@ -26,6 +26,8 @@ import {
   type TerminalSnapshot,
 } from '../../../packages/contracts/src/terminal.js';
 
+import { labelHistoryPaths, terminalLabelTimes, type LabelHistoryEvent } from './terminal-label-history.js';
+
 type Cloud = Extract<RuntimeConfig, { mode: 'cloud' }>;
 type Identity = Context & { account: { id: string; name: string } };
 
@@ -59,6 +61,12 @@ export async function terminalSnapshot(
         )
       ).rows,
     };
+    const history = (await query<LabelHistoryEvent>(c,
+      `SELECT id,target_kind,target_id,before_revision,recorded_at,changes FROM events
+       WHERE household_id=$1 AND EXISTS (
+         SELECT 1 FROM jsonb_array_elements(changes) change WHERE change->>'path'=ANY($2::text[])
+       ) ORDER BY recorded_at DESC,id DESC`, [ctx.household_id, labelHistoryPaths])).rows;
+    const labelTimes = terminalLabelTimes(data, history);
     const catalog = new Map(data.catalog.map((r) => [r.id, r]));
     const selected = data.items.filter((i) => (itemId ? i.id === itemId : !isTerminal(i)));
     if (itemId && !selected.length)
@@ -70,6 +78,8 @@ export async function terminalSnapshot(
       const product = sku && attr(sku, 'product');
       return {
         id: i.id,
+        created_at: new Date(i.created_at).toISOString(),
+        label_updated_at: labelTimes.get(i.id)!,
         name: itemName(i, data),
         brand: product?.brand ?? '',
         specification: product?.specification ?? '',

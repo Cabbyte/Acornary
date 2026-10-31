@@ -96,6 +96,34 @@ class TerminalRepository(private val context: Context, private val dao: Terminal
         } catch (error: Exception) { if (epoch == generation && selectedRequest == id) handle(error) }
     }
     private var selectedRequest: String? = null
+    /** Fresh read for a physical label; never fall back to cached data or change the selected item. */
+    suspend fun itemForLabel(id: String, scope: String): StockItem {
+        val epoch = generation
+        val session = mutable.value.session
+        check(session != null && session.scope == scope) { "家庭已变化，请重新选择物品。" }
+        check(connected()) { "请联网核对最新资料后再打印。" }
+        try {
+            val detail = wire.decodeFromString<ItemDetail>(api.get("/items/$id"))
+            check(epoch == generation && mutable.value.session?.scope == scope) { "家庭已变化，请重新选择物品。" }
+            require(detail.item.id == id && detail.household.id == session.household.id)
+            return detail.item
+        } catch (error: Exception) {
+            if (epoch == generation) handle(error)
+            throw error
+        }
+    }
+    suspend fun freshPrintItems(ids: List<String>, scope: String): List<StockItem> {
+        val epoch = generation
+        val session = mutable.value.session
+        check(session != null && session.scope == scope) { "家庭已变化，请重新选择物品。" }
+        check(connected()) { "请联网核对最新资料后再打印。" }
+        try {
+            val snapshot = wire.decodeFromString<StockSnapshot>(api.get("/snapshot"))
+            check(epoch == generation && mutable.value.session?.scope == scope && snapshot.household.id == session.household.id) { "家庭已变化，请重新选择物品。" }
+            val current = snapshot.items.associateBy { it.id }
+            return ids.map { current[it] ?: itemForLabel(it, scope) }
+        } catch (error: Exception) { if (epoch == generation) handle(error); throw error }
+    }
     suspend fun history() {
         val item = mutable.value.selected ?: return
         val cursor = mutable.value.historyCursor

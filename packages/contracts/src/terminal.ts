@@ -18,6 +18,8 @@ export function terminalCommand(name: string, input: unknown) {
 }
 export interface TerminalItem {
   id: string;
+  created_at: string;
+  label_updated_at: string;
   name: string;
   brand: string;
   specification: string;

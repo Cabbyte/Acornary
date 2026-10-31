@@ -6,9 +6,9 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.core.*
-import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,19 +18,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.Observer
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.BarcodeScannerOptions
-import com.google.mlkit.vision.barcode.common.Barcode
-import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.delay
-import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.Locale
 
 @Composable
-@androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
+@OptIn(ExperimentalLayoutApi::class)
 fun CameraPane(onItem: (String) -> Unit, onActive: (Boolean) -> Unit) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current
@@ -40,6 +34,12 @@ fun CameraPane(onItem: (String) -> Unit, onActive: (Boolean) -> Unit) {
     var result by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var attempt by remember { mutableIntStateOf(0) }
+    var automaticZoom by remember { mutableStateOf(true) }
+    var zoom by remember { mutableFloatStateOf(1f) }
+    var maxZoom by remember { mutableFloatStateOf(1f) }
+    var zoomMenu by remember { mutableStateOf(false) }
+    var session by remember { mutableStateOf<FrontScanner?>(null) }
+    val currentAuto by rememberUpdatedState(automaticZoom)
     val currentItem by rememberUpdatedState(onItem)
     val currentActive by rememberUpdatedState(onActive)
     LaunchedEffect(lifecycleState) {
@@ -56,56 +56,40 @@ fun CameraPane(onItem: (String) -> Unit, onActive: (Boolean) -> Unit) {
             TextButton(onClick = { context.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))) }) { Text("打开权限设置") }
         } else {
             if (active) {
-                val preview = remember { PreviewView(context).apply { implementationMode = PreviewView.ImplementationMode.COMPATIBLE } }
+                val preview = remember { PreviewView(context).apply {
+                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                    scaleType = PreviewView.ScaleType.FIT_CENTER
+                } }
                 DisposableEffect(lifecycle, preview, attempt) {
-                    val running = AtomicBoolean(true)
-                    val recognized = AtomicBoolean(false)
-                    val executor = Executors.newSingleThreadExecutor()
-                    val scanner = BarcodeScanning.getClient(BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build())
-                    val future = ProcessCameraProvider.getInstance(context)
-                    var provider: ProcessCameraProvider? = null
-                    var analysis: ImageAnalysis? = null
-                    var cameraPreview: Preview? = null
-                    var cameraInfo: CameraInfo? = null
-                    val cameraObserver = Observer<CameraState> {
-                        if (running.get() && it.error != null) error = "相机正被占用或暂时不可用，请关闭其他相机应用后重试。"
-                    }
-                    val main = ContextCompat.getMainExecutor(context)
-                    future.addListener({
-                        if (running.get()) runCatching {
-                            provider = future.get()
-                            cameraPreview = Preview.Builder().build().also { it.setSurfaceProvider(preview.surfaceProvider) }
-                            analysis = ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build().also { stream ->
-                                stream.setAnalyzer(executor) { frame ->
-                                    val media = frame.image
-                                    if (!running.get() || recognized.get() || media == null) frame.close()
-                                    else scanner.process(InputImage.fromMediaImage(media, frame.imageInfo.rotationDegrees))
-                                        .addOnSuccessListener(main) { codes ->
-                                            if (running.get() && !recognized.get()) codes.firstOrNull()?.rawValue?.let { raw ->
-                                                recognized.set(true)
-                                                val id = ItemLink.parse(raw)
-                                                result = if (id == null) "不是有效的松仓物品二维码。" else "已识别物品，详情显示在右侧。"
-                                                if (id != null) currentItem(id)
-                                            }
-                                        }.addOnFailureListener(main) { if (running.get()) error = "识别暂时不可用，请重试。" }
-                                        .addOnCompleteListener { frame.close() }
-                                }
+                    val capture = FrontScanner(context, lifecycle, preview, { currentAuto },
+                        { ratio, maximum -> zoom = ratio; maxZoom = maximum },
+                        { raw ->
+                            val id = ItemLink.parse(raw)
+                            result = when {
+                                id != null -> "已识别物品，详情显示在右侧。"
+                                raw.startsWith("acornary:print-test:") -> "打印测试二维码已识别，前摄可以正常扫码。"
+                                else -> "不是有效的松仓物品二维码。"
                             }
-                            val camera = provider!!.bindToLifecycle(lifecycle, CameraSelector.DEFAULT_FRONT_CAMERA, cameraPreview, analysis)
-                            cameraInfo = camera.cameraInfo
-                            cameraInfo!!.cameraState.observe(lifecycle, cameraObserver)
-                        }.onFailure { error = "无法打开前置相机，请检查权限后重试。" }
-                    }, main)
-                    onDispose {
-                        running.set(false)
-                        cameraInfo?.cameraState?.removeObserver(cameraObserver)
-                        analysis?.clearAnalyzer()
-                        listOfNotNull(cameraPreview, analysis).takeIf { it.isNotEmpty() }?.let { provider?.unbind(*it.toTypedArray()) }
-                        scanner.close(); executor.shutdown()
+                            if (id != null) currentItem(id)
+                        }, { error = it })
+                    session = capture; capture.start()
+                    onDispose { session = null; capture.close() }
+                }
+                Card(Modifier.weight(1f).fillMaxWidth()) {
+                    AndroidView({ preview }, Modifier.fillMaxSize().pointerInput(Unit) {
+                        detectTapGestures { point -> session?.focus(point.x, point.y) }
+                    })
+                }
+                Row(Modifier.fillMaxWidth(),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
+                    Text("点按对焦 · 距离约 10–20 cm",Modifier.weight(1f),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    Box {
+                        TextButton(onClick={zoomMenu=true}) {Text(if(automaticZoom) "自动 · ${String.format(Locale.ROOT,"%.1f",zoom)}×" else "${String.format(Locale.ROOT,"%.1f",zoom)}×");AcIcon(AcGlyph.DOWN)}
+                        DropdownMenu(expanded=zoomMenu,onDismissRequest={zoomMenu=false}) {
+                            DropdownMenuItem(text={Text("自动放大")},onClick={automaticZoom=true;session?.zoom(1f);zoomMenu=false})
+                            listOf(1f,2f,3f).filter {it<=maxZoom}.forEach {ratio->DropdownMenuItem(text={Text("${ratio.toInt()}×")},onClick={automaticZoom=false;session?.zoom(ratio);zoomMenu=false})}
+                        }
                     }
                 }
-                Card(Modifier.weight(1f).fillMaxWidth()) { AndroidView({ preview }, Modifier.fillMaxSize()) }
-                Text("把物品标签朝向前置摄像头", style = MaterialTheme.typography.bodyMedium)
             } else {
                 Text(error ?: result ?: "相机已暂停", style = MaterialTheme.typography.bodyLarge)
                 Button(onClick = { error = null; result = null; attempt++ }) { Text("继续扫描") }

@@ -31,6 +31,7 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) model.callback(intent)
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                PrinterService.resume(this@MainActivity)
                 SyncScheduler.retryFromForeground(this@MainActivity)
                 launch {
                     while (isActive) { model.refresh().join(); delay(60_000) }
@@ -46,8 +47,7 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             val prefs by model.prefs.collectAsState()
-            val dark = when (prefs.theme) { "dark" -> true; "light" -> false; else -> isSystemInDarkTheme() }
-            MaterialTheme(colorScheme = if (dark) dynamicDarkColorScheme(this) else dynamicLightColorScheme(this)) {
+            AcornaryTheme(prefs.theme) {
                 Surface(Modifier.fillMaxSize()) { TerminalScreen(model, this) }
             }
         }
@@ -58,7 +58,7 @@ class MainActivity : ComponentActivity() {
         if (rotation in listOf(1, 3)) model.preferences { it.copy(rotation = rotation) }
     }
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); model.callback(intent) }
-    override fun onStop() { super.onStop(); window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+    override fun onStop() { model.printJournal.background(); model.printer.background(); super.onStop(); window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
     fun keepAwake(keep: Boolean) {
         if (keep) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

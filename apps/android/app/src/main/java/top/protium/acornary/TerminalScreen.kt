@@ -1,18 +1,35 @@
 package top.protium.acornary
 
 import android.content.Intent
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import android.view.WindowManager
 import android.net.Uri
 import android.os.SystemClock
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.border
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Logout
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -46,210 +63,197 @@ fun changeLabel(path: String) = mapOf("display_name" to "名称", "parent_id" to
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun TerminalScreen(model: TerminalViewModel, activity: MainActivity) {
+fun TerminalScreen(model: TerminalViewModel, activity: ComponentActivity) {
     val state by model.state.collectAsStateWithLifecycle()
+    TerminalWorkspace(state,model,activity)
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun TerminalWorkspace(state:TerminalState,model:TerminalViewModel,activity:ComponentActivity) {
     val prefs by model.prefs.collectAsStateWithLifecycle()
     val page by model.page.collectAsStateWithLifecycle()
+    val browse by model.browse.collectAsStateWithLifecycle()
     val interaction by model.lastInteraction.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
-    val snackbar = remember { SnackbarHostState() }
+    val printerState by model.printer.state.collectAsStateWithLifecycle()
+    val batch by model.printJournal.state.collectAsStateWithLifecycle()
+    BackHandler(enabled=batch?.visible==true) {model.printJournal.leave()}
+    val inventoryScroll = rememberLazyListState()
+    val detailScroll = remember(state.selected?.id) { androidx.compose.foundation.ScrollState(0) }
+    var printerSettings by remember { mutableStateOf(false) }
+    var filters by remember { mutableStateOf(false) }
     var scanning by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
-    val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
-    val inputActive = editing || WindowInsets.isImeVisible
     var inputAwake by remember { mutableStateOf(false) }
     var submissionAwake by remember { mutableStateOf(false) }
+    val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
+    val inputActive = editing || WindowInsets.isImeVisible
+    val scope = rememberCoroutineScope()
+    val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(inputActive, interaction) {
         inputAwake = inputActive
         if (inputActive) { delay((300_000 - (SystemClock.elapsedRealtime() - interaction)).coerceAtLeast(0)); inputAwake = false }
     }
-    LaunchedEffect(state.busy) {
-        submissionAwake = state.busy
-        if (state.busy) { delay(30_000); submissionAwake = false }
+    LaunchedEffect(state.busy) { submissionAwake = state.busy; if (state.busy) { delay(30_000); submissionAwake = false } }
+    val keep = lifecycle.isAtLeast(Lifecycle.State.RESUMED) && (submissionAwake || scanning || inputAwake || (printerState.busy && !printerState.automaticConnection) || printerState.scanning || batch?.busy == true || batch?.preparing == true)
+    DisposableEffect(keep) {
+        if(keep) activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) else activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onDispose { activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
     }
-    val keep = lifecycle.isAtLeast(Lifecycle.State.RESUMED) && (submissionAwake || scanning || inputAwake)
-    DisposableEffect(keep) { activity.keepAwake(keep); onDispose { activity.keepAwake(false) } }
     LaunchedEffect(state.message) { state.message?.let { snackbar.showSnackbar(it); model.repo.message(null) } }
+    LaunchedEffect(browse.filter, browse.days, browse.query, browse.location, browse.opening) { inventoryScroll.scrollToItem(0) }
+    fun navigate(index: Int) { model.printJournal.leave { model.page.value = index; if (index == 2) model.settingsPage.value = "root" } }
     fun login(switch: Boolean = false) { scope.launch {
-        try {
-            if (switch) model.repo.logout()
-            model.repo.auth.begin(activity, switch)
-        } catch (_: Exception) { model.repo.message("无法打开登录页面，请检查网络及浏览器。") }
+        try { if (switch) model.repo.logout(); model.repo.auth.begin(activity, switch) }
+        catch (_: Exception) { model.repo.message("无法打开登录页面，请检查网络及浏览器。") }
     } }
+    fun printItem(item: StockItem) { model.printJournal.open(listOf(item), LabelSize.from(prefs.labelSize), prefs.printDensity, forceSingle = true) }
+    val visible = remember(state.snapshot, state.session, browse) { visibleInventory(state, browse) }
     Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
         Row(Modifier.fillMaxSize().padding(padding).safeDrawingPadding().imePadding()) {
-            NavigationRail(Modifier.verticalScroll(rememberScrollState())) {
-                Text("松仓", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(12.dp))
-                listOf("临期", "库存", "扫码", "设置").forEachIndexed { index, label ->
-                    NavigationRailItem(selected = page == index, onClick = { model.page.value = index },
-                        icon = { Icon(listOf(Icons.Outlined.Schedule, Icons.Outlined.Inventory2, Icons.Outlined.QrCodeScanner, Icons.Outlined.Settings)[index], label) }, label = { Text(label) })
+            Surface(color = MaterialTheme.colorScheme.background) {
+                Column(Modifier.width(56.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Image(painterResource(R.drawable.ac_brand), "松仓", Modifier.padding(top=12.dp,bottom=8.dp).size(24.dp))
+                    CompactNavigation("物品", AcGlyph.ITEMS, page == 0 && batch?.visible != true) { navigate(0) }
+                    CompactNavigation("扫码", AcGlyph.SCAN, page == 1 && batch?.visible != true) { navigate(1) }
+                    Spacer(Modifier.weight(1f))
+                    CompactNavigation("设置", AcGlyph.SETTINGS, page == 2 && batch?.visible != true) { navigate(2) }
                 }
             }
             VerticalDivider()
-            Column(Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(listOf("临期提醒", "家庭库存", "扫描物品", "终端设置")[page], style = MaterialTheme.typography.titleLarge)
-                        val stale = SyncScheduler.isStale(activity, state.snapshot?.synced_at)
-                        Text(state.session?.let { "${it.household.name} · ${if (!state.online) "离线 · " else ""}${if (stale) "数据待更新 · " else ""}${friendlyDate(state.snapshot?.synced_at, it.household.timezone)}" } ?: "登录后连接家庭库存",
-                            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(Modifier.weight(1f).fillMaxHeight().background(MaterialTheme.colorScheme.surface).padding(horizontal=8.dp)) {
+                val review = batch
+                if (review?.visible == true) {
+                    BatchPrintPane(review, model) { printerSettings = true }
+                } else {
+                    if (page != 2) BrowseToolbar(page, state, browse, model, { filters = true }, {
+                        model.printJournal.open(visible, LabelSize.from(prefs.labelSize), prefs.printDensity)
+                    })
+                    if (state.authExpired) StatusLine("授权已失效") { TextButton(onClick = { login() }) { Text("重新登录") } }
+                    else if (state.session != null && !state.online) StatusLine("离线，显示上次缓存")
+                    else if (state.session != null && SyncScheduler.isStale(activity, state.snapshot?.synced_at)) StatusLine("库存数据待更新") {
+                        TextButton(onClick = { model.refresh() }, enabled = !state.syncing) { Text("刷新") }
                     }
-                    if (state.syncing) CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
-                    IconButton(onClick = { model.refresh() }, enabled = !state.syncing && state.session != null) { Icon(Icons.Outlined.Refresh, "刷新库存") }
-                }
-                if (state.pending.isNotEmpty()) {
-                    val pending = state.pending.first()
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("上一笔操作结果待确认", Modifier.weight(1f), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge)
-                        TextButton(onClick = { model.resolve(pending, false) }, enabled = !state.busy) { Text("核对结果") }
-                        TextButton(onClick = { model.resolve(pending, true) }, enabled = !state.busy) { Text("原请求重试") }
+                    if (state.pending.isNotEmpty()) FlowRow(Modifier.fillMaxWidth(), verticalArrangement=Arrangement.Center) {
+                        Text("上一笔操作结果待确认", color=MaterialTheme.colorScheme.error,modifier=Modifier.padding(vertical=12.dp))
+                        TextButton(onClick = { model.resolve(state.pending.first(), false) }, enabled = !state.busy) { Text("核对结果") }
+                        TextButton(onClick = { model.resolve(state.pending.first(), true) }, enabled = !state.busy) { Text("原请求重试") }
                     }
-                }
-                Spacer(Modifier.height(8.dp))
-                when {
-                    state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                    page == 3 -> SettingsPane(state, prefs, model, activity, { login(true) }, { login() })
-                    state.session == null -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Outlined.Inventory2, null, Modifier.size(48.dp))
-                        Text("把家里的物品放在眼前", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(16.dp))
-                        Text("登录松仓，选择家庭后即可查看和管理库存。")
-                        Button(onClick = { login() }, modifier = Modifier.padding(16.dp)) { Text("登录松仓") }
+                    if (review?.id != null && review.pages.any { it.status == "PENDING" || it.status == "UNCERTAIN" }) StatusLine("上次打印批次尚未完成") {
+                        TextButton(onClick = model.printJournal::show) { Text("查看") }
                     }
-                    page == 2 -> Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Box(Modifier.weight(0.9f).fillMaxHeight()) { CameraPane(onItem = { model.select(it) }, onActive = { scanning = it }) }
-                        Box(Modifier.weight(1.1f).fillMaxHeight()) { DetailPane(state, model, { editing = it }) }
-                    }
-                    else -> InventoryPane(page == 0, state, model) { editing = it }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-internal fun InventoryPane(urgent: Boolean, state: TerminalState, model: TerminalViewModel, editing: (Boolean) -> Unit) {
-    var search by rememberSaveable { mutableStateOf("") }
-    var location by rememberSaveable { mutableStateOf<String?>(null) }
-    var opening by rememberSaveable { mutableIntStateOf(0) }
-    var menu by remember { mutableStateOf(false) }
-    val all = state.snapshot?.items ?: emptyList()
-    val visible = (if (urgent) upcoming(all, state.session!!.household.timezone) else all).filter {
-        it.matches(search) && (location == null || it.location_ids.contains(location)) &&
-            (opening == 0 || !it.is_container && when(opening) { 1 -> it.opening_state == "OPENED" || it.opened_at != null; 2 -> it.opening_state == "SEALED"; else -> it.opening_state == null && it.opened_at == null })
-    }
-    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(Modifier.weight(0.95f)) {
-            if (!urgent) {
-                OutlinedTextField(search, { search = it; model.interact() }, singleLine = true, label = { Text("名称或品牌") }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, modifier = Modifier.fillMaxWidth())
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.weight(1f)) {
-                        TextButton(onClick = { menu = true }) { Text(all.find { it.id == location }?.name ?: "全部位置", maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                            DropdownMenuItem(text = { Text("全部位置") }, onClick = { location = null; menu = false })
-                            all.filter { it.is_container }.forEach { container -> DropdownMenuItem(text = { Text(container.name) }, onClick = { location = container.id; menu = false }) }
+                    when {
+                        state.loading -> Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) { CircularProgressIndicator() }
+                        page == 2 -> SettingsPane(state,prefs,model,activity,{ login(true) },{ login() },{ printerSettings = true })
+                        state.session == null -> Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally) {
+                            Text("登录松仓，查看家庭库存",style=MaterialTheme.typography.titleLarge)
+                            Button(onClick = { login() },shape=MaterialTheme.shapes.small,modifier=Modifier.padding(16.dp).heightIn(min=48.dp)) { Text("登录") }
+                        }
+                        else -> BoxWithConstraints(Modifier.weight(1f).padding(bottom=8.dp)) {
+                            val left = (maxWidth * .4f).coerceIn(224.dp,320.dp).coerceAtMost(maxWidth - 297.dp)
+                            Row(Modifier.fillMaxSize(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                                Box(Modifier.width(left).fillMaxHeight()) {
+                                    if (page == 1) CameraPane({ model.select(it) }, { scanning = it })
+                                    else InventoryList(visible,state,browse,model,inventoryScroll)
+                                }
+                                VerticalDivider()
+                                Box(Modifier.weight(1f).fillMaxHeight()) { DetailPane(state,model,::printItem,detailScroll) { editing = it } }
+                            }
                         }
                     }
-                    TextButton(onClick = { opening = (opening + 1) % 4 }) { Text(listOf("全部状态", "已开封", "未开封", "状态未知")[opening]) }
                 }
-            } else Text("已过提醒日及未来 7 天", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(bottom = 8.dp))
-            if (visible.isEmpty()) Text(if (urgent) "没有需要提醒的物品" else "没有符合条件的库存", Modifier.padding(16.dp))
-            LazyColumn(Modifier.weight(1f)) {
-                items(visible, key = { it.id }) { item ->
-                    Surface(color = if (state.selected?.id == item.id) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
-                        ListItem(modifier = Modifier.clickable { if (item.is_container) { location = item.id; model.select(item.id) } else model.select(item.id) },
-                            headlineContent = { Text(item.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-                            supportingContent = { Text("${item.location}\n${if (item.is_container) "查看容器中的物品" else item.quantity()}${if (urgent) " · ${item.reminder.date} · ${reminderBasis(item)}" else " · ${lifecycleLabel(item)}"}", maxLines = 3, overflow = TextOverflow.Ellipsis) })
+            }
+        }
+    }
+    if (filters) InventoryFilters(state,browse,{ model.browse.value = it },{ filters = false })
+    if (printerSettings) PrinterPane(model) { printerSettings = false }
+}
+
+@Composable
+private fun CompactNavigation(label: String,glyph: AcGlyph,active: Boolean,onClick:()->Unit) {
+    Surface(color=if(active) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.background,
+        shape=MaterialTheme.shapes.small,modifier=Modifier.width(56.dp).heightIn(min=56.dp).semantics { selected=active }.clickable(role=Role.Tab,onClick=onClick)) {
+        Column(Modifier.padding(vertical=6.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(2.dp)) {
+            AcIcon(glyph);Text(label,style=MaterialTheme.typography.labelSmall)
+        }
+    }
+}
+@Composable internal fun StatusLine(text:String,content:@Composable RowScope.()->Unit = {}) {
+    Row(Modifier.fillMaxWidth().heightIn(min=32.dp),verticalAlignment=Alignment.CenterVertically) {
+        Text(text,Modifier.weight(1f),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.error)
+        content()
+    }
+}
+@Composable
+private fun BrowseToolbar(page:Int,state:TerminalState,browse:BrowseState,model:TerminalViewModel,filters:()->Unit,batch:()->Unit) {
+    var more by remember { mutableStateOf(false) }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focus = remember { FocusRequester() }
+    Row(Modifier.fillMaxWidth().heightIn(min=48.dp),verticalAlignment=Alignment.CenterVertically) {
+        if (page == 0 && state.session != null) {
+            if (browse.searching) {
+                IconButton(onClick={ model.browse.value=browse.copy(query="",searching=false);keyboard?.hide() }) { AcIcon(AcGlyph.BACK,"退出搜索") }
+                BasicTextField(value=browse.query,onValueChange={ model.browse.value=browse.copy(query=it);model.interact() },singleLine=true,
+                    textStyle=MaterialTheme.typography.bodyMedium.copy(color=MaterialTheme.colorScheme.onSurface),
+                    keyboardOptions=KeyboardOptions(imeAction=ImeAction.Search),keyboardActions=KeyboardActions(onSearch={keyboard?.hide()}),
+                    modifier=Modifier.weight(1f).heightIn(min=48.dp).focusRequester(focus).testTag("inventory-search"),
+                    decorationBox={ inner -> Box(Modifier.fillMaxWidth().padding(vertical=12.dp),contentAlignment=Alignment.CenterStart) { if(browse.query.isEmpty()) Text("搜索名称、品牌、规格",color=MaterialTheme.colorScheme.onSurfaceVariant);inner() } })
+                IconButton(onClick={model.browse.value=browse.copy(query="")}) {AcIcon(AcGlyph.CLOSE,"清除搜索")}
+                LaunchedEffect(Unit) {focus.requestFocus()}
+            } else {
+                InventoryFilter.entries.forEach { option ->
+                    TextButton(onClick={model.browse.value=browse.copy(filter=option)},shape=MaterialTheme.shapes.small,
+                        colors=ButtonDefaults.textButtonColors(contentColor=if(browse.filter==option) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)) {
+                        Text(option.title,style=if(browse.filter==option) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium)
                     }
                 }
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick={model.browse.value=browse.copy(searching=true)}) {AcIcon(AcGlyph.SEARCH,"搜索物品")}
+            }
+            IconButton(onClick=filters) {AcIcon(AcGlyph.FILTER,"筛选物品")}
+            IconButton(onClick=batch,enabled=state.snapshot!=null && !state.busy && visibleInventory(state,browse).any {it.canConsume}) {AcIcon(AcGlyph.SELECT,"批量打印当前结果")}
+        } else { Text(if(page==1) "扫码" else "松仓",Modifier.weight(1f),style=MaterialTheme.typography.titleLarge) }
+        Box {
+            IconButton(onClick={more=true}) { AcIcon(AcGlyph.MORE,"更多选项") }
+            DropdownMenu(expanded=more,onDismissRequest={more=false}) {
+                DropdownMenuItem(text={Text("刷新库存")},enabled=state.session!=null&&!state.syncing,onClick={more=false;model.refresh()})
+                DropdownMenuItem(text={Text("设备状态")},onClick={more=false;model.settingsPage.value="device";model.page.value=2})
             }
         }
-        VerticalDivider()
-        Box(Modifier.weight(1.05f)) { DetailPane(state, model, editing) }
     }
+    if(state.syncing) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp))
 }
 
 @Composable
-internal fun DetailPane(state: TerminalState, model: TerminalViewModel, editing: (Boolean) -> Unit) {
-    val item = state.selected
-    var action by remember(item?.id) { mutableStateOf<String?>(null) }
-    var amount by rememberSaveable(item?.id) { mutableStateOf("") }
-    var error by remember { mutableStateOf<String?>(null) }
-    val prefs by model.prefs.collectAsStateWithLifecycle()
-    LaunchedEffect(item?.id) {
-        val prefix = "${item?.id}|"
-        if (prefs.draft.startsWith(prefix)) amount = prefs.draft.removePrefix(prefix)
-    }
-    DisposableEffect(action) { editing(action == "partial"); onDispose { editing(false) } }
-    if (item == null) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("选择或扫描一个物品", color = MaterialTheme.colorScheme.onSurfaceVariant) }; return }
-    val timezone = state.session?.household?.timezone
-    val enabled = state.online && !state.busy && state.pending.isEmpty() && !state.selectedOffline
+private fun InventoryList(items:List<StockItem>,state:TerminalState,browse:BrowseState,model:TerminalViewModel,scroll:androidx.compose.foundation.lazy.LazyListState) {
+    val timezone=state.session!!.household.timezone
     Column(Modifier.fillMaxSize()) {
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(item.name, style = MaterialTheme.typography.titleLarge)
-            if (item.brand.isNotBlank() || item.specification.isNotBlank()) Text("${item.brand} ${item.specification}", style = MaterialTheme.typography.bodyMedium)
-            Text(item.location, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("${lifecycleLabel(item)} · ${item.quantity()}", style = MaterialTheme.typography.titleMedium)
-            if (state.selectedOffline) Text("缓存详情 · 联网核对后可操作", color = MaterialTheme.colorScheme.error)
-            Text("提醒日期：${item.reminder.date ?: "未记录"}${reminderBasis(item).takeIf { it.isNotEmpty() }?.let { "（$it）" } ?: ""}")
-            Text("到期日期：${item.expiry_date ?: "未记录"}")
-            Text("开封时间：${item.opened_at?.let { friendlyDate(it, timezone) } ?: if (item.opening_state == "OPENED") "已开封，日期未知" else if (item.opening_state == "SEALED") "未开封" else "状态未记录"}")
-            item.after_opening_days?.let { Text("开封后保质期：$it 天") }
-            if (item.remaining == null && !item.is_container && !item.terminal) Text("未记录剩余量，无法部分消耗。", style = MaterialTheme.typography.bodySmall)
-            if (item.terminal) Text("此物品已结束，不能继续消耗或开封。")
-            if (item.is_container) Text("容器作为位置浏览，编辑请在电脑上完成。")
-            HorizontalDivider()
-            Text("笔记", style = MaterialTheme.typography.titleSmall)
-            if (state.notes.isEmpty()) Text("没有笔记", style = MaterialTheme.typography.bodySmall)
-            state.notes.forEach { note -> note.title?.let { Text(it, style = MaterialTheme.typography.titleSmall) }; Text(note.body) }
-            HorizontalDivider()
-            TextButton(onClick = { model.history() }, enabled = state.online && (!state.historyLoaded || state.historyCursor != null)) { Text(if (!state.historyLoaded) "查看操作历史" else if (state.historyCursor != null) "加载更多历史" else "已显示全部历史") }
-            state.history.forEach { event ->
-                Text("${friendlyDate(event.occurred_at, timezone)} · ${historyLabel(event.event_type)}", style = MaterialTheme.typography.labelLarge)
-                event.changes.forEach { change -> Text("${changeLabel(change.path)}：${change.before ?: "—"} → ${change.after ?: "—"}", style = MaterialTheme.typography.bodySmall) }
+        val qualifier=when(browse.filter) {InventoryFilter.RECENT->"${if(browse.days==1) "今天" else "近 ${browse.days} 天"} · ${items.size} 件";InventoryFilter.URGENT->"未来 7 天及已过提醒日 · ${items.size} 件";else->"${items.size} 件"}
+        Text(qualifier,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(vertical=4.dp))
+        if(items.isEmpty()) {
+            val missing=browse.filter==InventoryFilter.RECENT && state.snapshot?.items?.any {it.canConsume && it.label_updated_at==null}==true
+            Column(Modifier.fillMaxWidth().padding(top=16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text(if(missing) "同步后可查看最近变化" else "没有符合条件的物品",style=MaterialTheme.typography.bodyMedium)
+                TextButton(onClick={model.browse.value=BrowseState(filter=InventoryFilter.ALL)}) {Text("查看全部")}
             }
         }
-        if (!item.is_container && !item.terminal) {
-            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (item.canOpen) FilledTonalButton(onClick = { model.command("open_item", item) }, enabled = enabled) { Text("开封") }
-                if (item.remaining != null) FilledTonalButton(onClick = { action = "partial"; error = null }, enabled = enabled && java.math.BigDecimal(item.remaining.value).signum() > 0) { Text("部分消耗") }
-                OutlinedButton(onClick = { action = "whole" }, enabled = enabled) { Text("整件消耗") }
+        LazyColumn(state=scroll,modifier=Modifier.weight(1f).testTag("inventory-list")) {
+            items(items,key={it.id}) { item ->
+                val selected=state.selected?.id==item.id
+                Surface(color=if(selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,shape=MaterialTheme.shapes.small,
+                    modifier=Modifier.fillMaxWidth().clickable { if(item.is_container) model.browse.value=browse.copy(location=item.id);model.select(item.id) }.semantics { this.selected=selected }) {
+                    Row(Modifier.heightIn(min=60.dp).padding(horizontal=8.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(2.dp)) {
+                            Text(item.name,style=MaterialTheme.typography.titleSmall,maxLines=2,overflow=TextOverflow.Ellipsis)
+                            Text(if(item.is_container) "查看位置" else "${item.quantity()} · ${item.location.substringAfterLast(" / ")}",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,overflow=TextOverflow.Ellipsis)
+                        }
+                        Text(when(browse.filter) {InventoryFilter.RECENT->recentLabel(item,timezone);InventoryFilter.URGENT->item.reminder.date?.removePrefix("${java.time.LocalDate.now().year}-") ?: "未记录";else->lifecycleLabel(item)},
+                            style=MaterialTheme.typography.bodySmall,color=if(browse.filter==InventoryFilter.URGENT) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier=Modifier.widthIn(max=76.dp),maxLines=2,overflow=TextOverflow.Ellipsis)
+                    }
+                }
+                HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
             }
         }
-    }
-    if (action != null) AlertDialog(onDismissRequest = { action = null },
-        title = { Text(if (action == "partial") "部分消耗" else "确认整件消耗") },
-        text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(item.name); Text(item.location)
-            if (action == "partial") {
-                Text("当前剩余 ${item.quantity()}")
-                OutlinedTextField(amount, { amount = it; error = null; model.interact(); model.preferences { p -> p.copy(draft = "${item.id}|$it") } },
-                    label = { Text("消耗量（${item.remaining!!.unit}）") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), isError = error != null)
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            } else Text("将这件物品标记为已消耗。")
-        } }, confirmButton = { TextButton(onClick = {
-            if (action == "partial") {
-                val validated = runCatching { validateAmount(amount, item.remaining!!) }
-                if (validated.isFailure) { error = validated.exceptionOrNull()?.message; return@TextButton }
-                model.command("consume_item_content", item, validated.getOrThrow()); amount = ""; model.preferences { it.copy(draft = "") }
-            } else model.command("consume_items", item)
-            action = null
-        }, enabled = enabled) { Text("确认") } }, dismissButton = { TextButton(onClick = { action = null }) { Text("取消") } })
-}
-
-@Composable
-private fun SettingsPane(state: TerminalState, prefs: TerminalPrefs, model: TerminalViewModel, activity: MainActivity, switch: () -> Unit, login: () -> Unit) {
-    var maintenance by remember { mutableStateOf("正在检查…") }
-    LaunchedEffect(prefs.enabled) { maintenance = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { TerminalMaintenance.apply(activity, prefs.enabled) } }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        ListItem(headlineContent = { Text(state.session?.account?.name ?: "尚未登录") }, supportingContent = { Text(state.session?.household?.let { "${it.name} · ${it.timezone}" } ?: "使用现有松仓账号和家庭") }, trailingContent = {
-            Row { if (state.session != null) { TextButton(onClick = switch) { Text("切换家庭") }; IconButton(onClick = { model.logout() }) { Icon(Icons.AutoMirrored.Outlined.Logout, "退出账号") } } else Button(onClick = login) { Text("登录") } }
-        })
-        HorizontalDivider()
-        ListItem(headlineContent = { Text("终端模式") }, supportingContent = { Text("60 秒无操作后待机；插电约 5 分钟同步") }, trailingContent = { Switch(prefs.enabled, { next -> model.preferences { it.copy(enabled = next) } }) })
-        ListItem(headlineContent = { Text("挥手唤醒") }, supportingContent = { Text("AOD 时短暂靠近并移开屏幕顶部；双击始终可用") }, trailingContent = { Switch(prefs.wave, { next -> model.preferences { it.copy(wave = next) } }, enabled = prefs.enabled) })
-        ListItem(headlineContent = { Text("明暗主题") }, trailingContent = { Row { listOf("system" to "系统", "light" to "浅色", "dark" to "深色").forEach { (key, label) -> FilterChip(selected = prefs.theme == key, onClick = { model.preferences { it.copy(theme = key) } }, label = { Text(label) }, modifier = Modifier.padding(2.dp)) } } })
-        ListItem(headlineContent = { Text("同步状态") }, supportingContent = { Text("${SyncScheduler.description(activity)}\n最后成功：${friendlyDate(state.snapshot?.synced_at, state.session?.household?.timezone)}") }, trailingContent = { TextButton(onClick = { model.refresh() }, enabled = state.session != null && !state.syncing) { Text("立即刷新") } })
-        if (!activity.getSystemService(android.app.AlarmManager::class.java).canScheduleExactAlarms()) TextButton(onClick = { activity.startActivity(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${activity.packageName}"))) }) { Text("允许精确同步闹钟") }
-        ListItem(headlineContent = { Text("设备维护") }, supportingContent = { Text("$maintenance\nPixel 3 · Android ${android.os.Build.VERSION.RELEASE} · ${BuildConfig.VERSION_NAME}") })
     }
 }

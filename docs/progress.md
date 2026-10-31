@@ -1,5 +1,9 @@
 # 项目进度
 
+2026-10-31 后续：Android `0.3.1-terminal` 默认保持 D101 连接并自动重连；已实测 AOD 下心跳持续、应用进程重启和 APK 更新后恢复连接。二维码含白边铺满纸张短边，前摄改用标准自动对焦镜头及 1920 × 1440 分析，加入点按对焦和变焦；用户确认新样张前摄可识别。最终 APK 已安装，60 秒待机设置已恢复，详见 [验收记录](../apps/android/docs/acceptance.md)。
+
+2026-10-31：Android 主应用接入 D101 单张标签打印，支持双尺寸预览、浓度、联网核对和出纸结果待确认；正式签名 APK 已安装并核对摘要。本地 17 项主应用单元测试、4 项标签实机仪器测试、最终 CI 的 16 项模拟器仪器测试及完整仓库回归通过。Pixel 已通过 BLE 核验 D101 并收到单张完成确认，用户确认 30 × 12 mm 测试标签成功出纸、版式正常且二维码可识别，见 [打印说明](../apps/android/docs/printing.md) 和 [验收记录](../apps/android/docs/acceptance.md)。
+
 2026-10-30：兼容后端 [v0.11.0](https://github.com/Cabbyte/Acornary/releases/tag/v0.11.0) 已发布，公网版本和既有 MCP 只读链路已核对。Android 终端 public client 已注册，公开签名及 App Link 声明已发布并通过 Google 声明查询，匿名授权校验通过；最终正式签名 APK 已安装到 Pixel 3 并核对摘要。手机当前锁屏且未联网，Chrome 更新、本机 App Link 验证、正式登录、完整日常闭环和 24 小时稳定性仍待验收，见 [终端验收记录](../apps/android/docs/acceptance.md)。
 
 2026-10-05 维护：响应式工作台和 MCP Apps 共用界面已合入 `main`，自 `v0.4.2` 起正式发布。用户已反馈初步验收通过；未提供逐项设备和宿主记录，因此不扩大为全部平台验收。
@@ -15,7 +19,7 @@
 | 账号与家庭 | 邮箱、Passkey、可选密码、多家庭成员关系及独立 OAuth 授权；公开注册和邮箱找回默认关闭，见 [账号系统](./accounts.md) |
 | Web 产品 | 桌面与手机共用工作台，搜索、筛选、排序、UUID 多选、原子批量移动和物品／备注编辑；保留消耗、纠错、笔记、历史和只读检查器，见 [Web UI](./webui.md)、[工作台](./responsive-workbench.md) |
 | MCP Apps | Web 和插件复用 Workspace；宿主桥、身份作用域、选中项上下文、私有草稿及精确重试见 [插件实现](./plugin.md) |
-| Android 终端 | Kotlin / Compose / Material 3、前摄扫码、库存操作、Room 缓存、PKCE 与独立 AOD；代码和自动化验证已交付，正式账号与实机验收未完成，打印暂不开放 |
+| Android 终端 | Kotlin / Compose / Material 3、前摄扫码、库存操作、Room 缓存、PKCE、独立 AOD 与 D101 单件打印；已显示正式账号库存，完整实机验收仍未完成 |
 | 交付 | Node 24 / PostgreSQL 18 的 CI、公开 GHCR 镜像、受限 SSH 和独立发布任务已运行；[v0.4.2 Release](https://github.com/Cabbyte/Acornary/releases/tag/v0.4.2) 记录镜像、任务和公网验证 |
 
 ## 本轮维护
