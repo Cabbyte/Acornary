@@ -86,7 +86,7 @@ type FeatureKey =
   | 'protocol_v2';
 ```
 
-`I`：`query_v2`、`history_v2` 已实现；`protocol_v2` 仍是 `F`——当前 `get_connection_context` 不返回 `protocol`/`features`，前端可先按“无 features”降级。其余 `F`。  
+`I`（服务端）：`query_v2`、`history_v2`、`snapshot_v2`、`groups_v2`、`sync_v2`、`profile_capabilities`、`deadline`、`notes_v2`、`attachments`（媒体/字节门禁除外）、`stock`、`void`、`split`、`references`、`units_v2`。`protocol_v2` 由 `ACORNARY_REQUIRE_PROTOCOL_V2=1` 启用；`redaction_v2` 为 PARTIAL；冻结导出仍为 `F`。  
 前端规则：**任何 `F` 功能在 `features` 未返回前不得显示入口**；不要用“后端已合并”推断功能可用。
 
 ### 1.3 传输、鉴权与 CSRF
