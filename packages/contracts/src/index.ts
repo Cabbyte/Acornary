@@ -281,6 +281,15 @@ export const schemas = {
   }),
   query_catalog_nodes: z.strictObject({
     ...page,
+    cursor: z.string().optional(),
+    sort: z
+      .strictObject({
+        field: z.enum(['created_at', 'updated_at', 'name']).default('created_at'),
+        direction: z.enum(['asc', 'desc']).default('desc'),
+      })
+      .default({ field: 'created_at', direction: 'desc' }),
+    search: z.string().max(500).optional(),
+    kind: z.enum(['GROUP', 'SKU']).optional(),
     include_path: z.boolean().default(false),
     name: z.string().max(500).optional(),
     barcode: z.string().max(128).optional(),
@@ -303,6 +312,14 @@ export const schemas = {
   move_catalog_node: z.strictObject({ ...write, catalog_node_id: id, parent_id: id.nullable() }),
   query_items: z.strictObject({
     ...page,
+    cursor: z.string().optional(),
+    sort: z
+      .strictObject({
+        field: z.enum(['created_at', 'updated_at', 'name', 'reminder_date']).default('created_at'),
+        direction: z.enum(['asc', 'desc']).default('desc'),
+      })
+      .default({ field: 'created_at', direction: 'desc' }),
+    search: z.string().max(500).optional(),
     include_path: z.boolean().default(false),
     name: z.string().max(500).optional(),
     barcode: z.string().max(128).optional(),
@@ -379,6 +396,10 @@ export const schemas = {
   }),
   get_history: z.strictObject({
     ...page,
+    cursor: z.string().optional(),
+    event_type: z.string().min(1).max(100).optional(),
+    recorded_from: z.iso.datetime({ offset: true }).optional(),
+    recorded_to: z.iso.datetime({ offset: true }).optional(),
     target: target.optional(),
     operation_id: entityId('operation').optional(),
   }),

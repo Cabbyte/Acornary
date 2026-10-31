@@ -5,6 +5,7 @@ import {
   authorizeCatalogCommand,
   commitIntake,
 } from './intake.js';
+import { currentChangeId } from './change-watermark.js';
 import { legacyInput } from './fingerprint.js';
 import { randomUUID, createHash } from 'node:crypto';
 import { Decimal } from 'decimal.js';
@@ -384,18 +385,6 @@ async function executeCommand(ctx: Context, name: Operation, raw: unknown): Prom
     throw e;
   }
 }
-async function subtree(c: Client, ctx: Context, kind: 'ITEM' | 'CATALOG_NODE', id: string) {
-  await load(c, ctx, { kind, id } as Target);
-  return new Set(
-    (
-      await query(
-        c,
-        `WITH RECURSIVE tree AS (SELECT id FROM ${table(kind)} WHERE household_id=$1 AND id=$2 UNION SELECT n.id FROM ${table(kind)} n JOIN tree t ON n.parent_id=t.id WHERE n.household_id=$1) SELECT id FROM tree`,
-        [ctx.household_id, id],
-      )
-    ).rows.map((r) => r.id),
-  );
-}
 async function bindingRecords(c: Client, ctx: Context, obj: ObjectState) {
   return obj.row.attributes.map(({ template_id, template_version, values }: any) => ({
     template_id,
@@ -440,23 +429,400 @@ async function view(c: Client, ctx: Context, obj: ObjectState, includePath = fal
   }
   return row;
 }
-function paged(rows: any[], input: any) {
-  let offset = 0;
-  if (input.cursor) {
-    const parsed = Buffer.from(input.cursor, 'base64url').toString();
-    requireFact(/^\d+$/.test(parsed), 'ATTRIBUTE_VALIDATION_FAILED', 'Invalid cursor.');
-    offset = Number(parsed);
-    requireFact(Number.isSafeInteger(offset), 'ATTRIBUTE_VALIDATION_FAILED', 'Invalid cursor.');
+export function normalizeQuerySearch(value: string): string {
+  return value.normalize('NFKC').toLowerCase().replace(/\s+/gu, ' ').trim();
+}
+export type BrowseCursor = {
+  version: 1;
+  household: string;
+  query_hash: string;
+  sort: { field: string; direction: 'asc' | 'desc' };
+  last: { key: string | null; id: string };
+  as_of_change_id: string;
+};
+export function encodeQueryCursor(cursor: BrowseCursor): string {
+  return Buffer.from(JSON.stringify(cursor)).toString('base64url');
+}
+export function decodeQueryCursor(
+  encoded: string,
+  expected: Pick<BrowseCursor, 'household' | 'query_hash' | 'sort'>,
+): BrowseCursor {
+  const invalid = () =>
+    new DomainError('INVALID_CURSOR', 'Invalid cursor or changed query conditions.');
+  try {
+    if (!encoded || encoded.length > 8192 || !/^[A-Za-z0-9_-]+$/.test(encoded)) throw invalid();
+    const bytes = Buffer.from(encoded, 'base64url');
+    if (bytes.toString('base64url') !== encoded) throw invalid();
+    const value = JSON.parse(bytes.toString('utf8'));
+    if (
+      value.version !== 1 ||
+      value.household !== expected.household ||
+      value.query_hash !== expected.query_hash ||
+      canonical(value.sort) !== canonical(expected.sort) ||
+      typeof value.as_of_change_id !== 'string' ||
+      !/^(0|[1-9]\d*)$/.test(value.as_of_change_id) ||
+      !value.last ||
+      typeof value.last.id !== 'string' ||
+      !/^(item|catalog_node|event)_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+        value.last.id,
+      ) ||
+      !(value.last.key === null || typeof value.last.key === 'string')
+    )
+      throw invalid();
+    if (
+      ['created_at', 'updated_at', 'recorded_at'].includes(expected.sort.field) &&
+      (typeof value.last.key !== 'string' ||
+        !/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}(:\d{2})?)$/.test(
+          value.last.key,
+        ) ||
+        !Number.isFinite(Date.parse(value.last.key)) ||
+        new Date(value.last.key.slice(0, 10)).toISOString().slice(0, 10) !==
+          value.last.key.slice(0, 10))
+    )
+      throw invalid();
+    if (
+      expected.sort.field === 'reminder_date' &&
+      value.last.key !== null &&
+      (!/^\d{4}-\d{2}-\d{2}$/.test(value.last.key) ||
+        !Number.isFinite(Date.parse(value.last.key)) ||
+        new Date(value.last.key).toISOString().slice(0, 10) !== value.last.key)
+    )
+      throw invalid();
+    return value;
+  } catch {
+    throw invalid();
   }
-  const data = rows.slice(offset, offset + input.limit);
+}
+function queryCursorContext(ctx: Context, name: string, input: any) {
+  const { cursor: _, limit: __, include_path: ___, ...conditions } = input;
+  for (const field of ['name', 'search'])
+    if (conditions[field] !== undefined)
+      conditions[field] = normalizeQuerySearch(conditions[field]);
+  const sort = input.sort ?? { field: 'recorded_at', direction: 'desc' };
+  const expected = {
+    household: ctx.household_id,
+    query_hash: createHash('sha256').update(canonical({ name, conditions })).digest('hex'),
+    sort,
+  };
   return {
-    data,
-    next_cursor:
-      offset + input.limit < rows.length
-        ? Buffer.from(String(offset + input.limit)).toString('base64url')
-        : null,
+    expected,
+    cursor: input.cursor === undefined ? undefined : decodeQueryCursor(input.cursor, expected),
   };
 }
+// Only whitelisted sort expressions reach SQL. Values, paths and cursor keys are parameters.
+function cursorPredicate(
+  cursor: BrowseCursor | undefined,
+  key: string,
+  id: string,
+  cast: string,
+  direction: string,
+  params: unknown[],
+): string {
+  if (!cursor) return 'TRUE';
+  const bind = (value: unknown) => {
+    params.push(value);
+    return `$${params.length}`;
+  };
+  const op = direction === 'asc' ? '>' : '<';
+  const lastId = bind(cursor.last.id);
+  if (cursor.last.key === null) return `(${key} IS NULL AND ${id} ${op} ${lastId})`;
+  const lastKey = `${bind(cursor.last.key)}::${cast}`;
+  const tuple = `(${key},${id}) ${op} (${lastKey},${lastId})`;
+  return cast === 'timestamptz' ? `(${tuple})` : `(${tuple} OR ${key} IS NULL)`;
+}
+function queryPage(
+  rows: any[],
+  input: any,
+  expected: ReturnType<typeof queryCursorContext>['expected'],
+  cursor: BrowseCursor | undefined,
+  watermark: string,
+) {
+  const more = rows.length > input.limit;
+  const data = rows.slice(0, input.limit);
+  const last = data.at(-1);
+  return {
+    data: data.map(({ __key, ...row }) => row),
+    next_cursor: more
+      ? encodeQueryCursor({
+          version: 1,
+          ...expected,
+          last: { key: last.__key, id: last.id },
+          as_of_change_id: cursor?.as_of_change_id ?? watermark,
+        })
+      : null,
+    as_of_change_id: cursor?.as_of_change_id ?? watermark,
+    stale: cursor !== undefined && cursor.as_of_change_id !== watermark,
+  };
+}
+async function readHistory(c: Client, ctx: Context, input: any) {
+  const { expected, cursor } = queryCursorContext(ctx, 'get_history', input);
+  if (cursor)
+    requireFact(cursor.last.id.startsWith('event_'), 'INVALID_CURSOR', 'Invalid history cursor.');
+  if (input.target) {
+    const found = await query(
+      c,
+      `SELECT 1 FROM ${table(input.target.kind)} WHERE household_id=$1 AND id=$2`,
+      [ctx.household_id, input.target.id],
+    );
+    requireFact(found.rows.length, 'NOT_FOUND', 'Object not found in this household.');
+  }
+  const params: unknown[] = [ctx.household_id];
+  const bind = (value: unknown) => {
+    params.push(value);
+    return `$${params.length}`;
+  };
+  const where = ['e.household_id=$1'];
+  if (input.target)
+    where.push(`e.target_kind=${bind(input.target.kind)} AND e.target_id=${bind(input.target.id)}`);
+  if (input.operation_id) where.push(`e.operation_id=${bind(input.operation_id)}`);
+  if (input.event_type) where.push(`e.event_type=${bind(input.event_type)}`);
+  if (input.recorded_from) where.push(`e.recorded_at >= ${bind(input.recorded_from)}::timestamptz`);
+  if (input.recorded_to) where.push(`e.recorded_at <= ${bind(input.recorded_to)}::timestamptz`);
+  where.push(cursorPredicate(cursor, 'e.recorded_at', 'e.id', 'timestamptz', 'desc', params));
+  const watermark = String(await currentChangeId(c, ctx.household_id));
+  // JSON preserves PostgreSQL microseconds; a JS Date would truncate the key and skip ties.
+  const rows = (
+    await query(
+      c,
+      `SELECT to_jsonb(e) || jsonb_build_object('__key',e.recorded_at::text) AS row
+    FROM events e WHERE ${where.join(' AND ')} ORDER BY e.recorded_at DESC,e.id DESC LIMIT ${bind(input.limit + 1)}`,
+      params,
+    )
+  ).rows.map((r) => r.row);
+  return {
+    ...queryPage(rows, input, expected, cursor, watermark),
+    summary: { as_of_change_id: watermark },
+  };
+}
+async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
+  const isItem = name === 'query_items';
+  const kind = isItem ? 'ITEM' : 'CATALOG_NODE';
+  const { expected, cursor } = queryCursorContext(ctx, name, input);
+  if (cursor)
+    requireFact(
+      cursor.last.id.startsWith(isItem ? 'item_' : 'catalog_node_'),
+      'INVALID_CURSOR',
+      'Invalid object cursor.',
+    );
+  const params: unknown[] = [ctx.household_id];
+  const bind = (value: unknown) => {
+    params.push(value);
+    return `$${params.length}`;
+  };
+  const ctes: string[] = [];
+  const where = ['o.household_id=$1'];
+  const catalogId = isItem ? 'o.catalog_node_id' : 'o.id';
+  const scopeChecks: string[] = [];
+  for (const [field, relation, column] of [
+    ['catalog_subtree_id', 'catalog_nodes', catalogId],
+    ['within_item_id', 'items', 'o.id'],
+  ]) {
+    if (!input[field]) continue;
+    const scope = `${field}_scope`;
+    ctes.push(`${scope} AS (SELECT id FROM ${relation} WHERE household_id=$1 AND id=${bind(input[field])}
+      UNION SELECT child.id FROM ${relation} child JOIN ${scope} parent ON child.parent_id=parent.id
+      WHERE child.household_id=$1)`);
+    where.push(`${column} IN (SELECT id FROM ${scope})`);
+    scopeChecks.push(`EXISTS(SELECT 1 FROM ${scope})`);
+  }
+  if (input.catalog_node_ids)
+    where.push(`${catalogId}=ANY(${bind(input.catalog_node_ids)}::text[])`);
+  if (input.kind) where.push(`o.kind=${bind(input.kind)}`);
+  if (input.barcode)
+    where.push(`EXISTS(SELECT 1 FROM barcode_index b WHERE b.household_id=$1
+    AND b.catalog_node_id=${catalogId} AND b.barcode=${bind(input.barcode)})`);
+  if (!isItem && !input.include_hidden)
+    where.push(
+      `NOT o.attributes @> '[{"template_id":"catalog","values":{"visibility":"HIDDEN"}}]'::jsonb`,
+    );
+
+  // All predicates on a template share one array element, including date kind + both bounds.
+  const grouped = new Map<string, string[]>();
+  const candidates = new Map<string, Record<string, any>>();
+  for (const f of input.attribute_filters ?? []) {
+    const t = templateFor(f.template_id, latestTemplateVersion(f.template_id));
+    requireFact(
+      t.target_kind === kind && (t.paths as readonly string[]).includes(f.path),
+      'ATTRIBUTE_VALIDATION_FAILED',
+      'Unknown filter path.',
+    );
+    if (f.op !== 'eq')
+      requireFact(
+        ['expiry.date', 'acquisition.acquired_on'].includes(f.path),
+        'ATTRIBUTE_VALIDATION_FAILED',
+        'Range filters support date fields only.',
+      );
+    validateValues(
+      f.template_id,
+      patch({}, { [f.path]: f.value }, [], [...t.paths]),
+      latestTemplateVersion(f.template_id),
+    );
+    if (f.op === 'eq')
+      candidates.set(
+        f.template_id,
+        patch(candidates.get(f.template_id) ?? {}, { [f.path]: f.value }, [], [...t.paths]),
+      );
+    const path = bind(['values', ...f.path.split('.')]);
+    const predicate =
+      f.op === 'eq'
+        ? `(a #> ${path}::text[]) = ${bind(JSON.stringify(f.value))}::jsonb`
+        : `(a #>> ${path}::text[]) ${f.op === 'gte' ? '>=' : '<='} ${bind(f.value)}::text`;
+    grouped.set(f.template_id, [...(grouped.get(f.template_id) ?? []), predicate]);
+  }
+  for (const [template, predicates] of grouped) {
+    // Indexable candidate predicate plus same-element typed verification.
+    where.push(
+      `o.attributes @> ${bind(JSON.stringify([{ template_id: template, ...(candidates.has(template) ? { values: candidates.get(template) } : {}) }]))}::jsonb`,
+    );
+    where.push(`EXISTS(SELECT 1 FROM jsonb_array_elements(o.attributes) a WHERE a->>'template_id'=${bind(template)}
+      AND ${predicates.join(' AND ')})`);
+  }
+  const current = `coalesce(__sets->'lifecycle'->>'state','') NOT IN ('CONSUMED','DISPOSED','LOST','ARCHIVED')`;
+  if (
+    (input.attribute_filters ?? []).some(
+      (f: any) =>
+        f.template_id === 'lifecycle' && f.path === 'availability' && f.value === 'AVAILABLE',
+    )
+  )
+    where.push(current);
+
+  for (const term of [input.name, input.search]) {
+    if (!term || !normalizeQuerySearch(term)) continue;
+    const pattern = bind('%' + normalizeQuerySearch(term).replace(/[\\%_]/g, '\\$&') + '%');
+    const match = (expr: string) =>
+      `acornary_normalize_search(${expr}) ILIKE ${pattern} ESCAPE E'\\\\'`;
+    const productAttributes = isItem ? 'sku.attributes' : 'o.attributes';
+    const fields = [match(isItem ? 'o.display_name' : 'o.name'), match('o.id')];
+    if (isItem) fields.push(match('sku.name'), match('sku.id'));
+    fields.push(`EXISTS(SELECT 1 FROM jsonb_array_elements(${productAttributes}) a
+      CROSS JOIN LATERAL (SELECT a->'values'->>'specification' AS value UNION ALL SELECT a->'values'->>'brand'
+        UNION ALL SELECT a->'values'->>'model'
+        UNION ALL SELECT jsonb_array_elements_text(coalesce(a->'values'->'barcodes','[]'::jsonb))) f
+      WHERE a->>'template_id'='product' AND ${match('f.value')})`);
+    if (isItem)
+      fields.push(
+        `EXISTS(SELECT 1 FROM notes n WHERE n.household_id=$1 AND n.item_id=o.id AND ${match('n.body')})`,
+      );
+    where.push(`(${fields.join(' OR ')})`);
+  }
+  const dateKey = `LEAST((__sets #>> '{lifecycle,expiry,date}')::date,
+    ((__sets #>> '{lifecycle,opening,opened_at}')::timestamptz AT TIME ZONE h.timezone)::date
+      + (__sets #>> '{lifecycle,expiry,after_opening_days}')::integer)`;
+  const keys: Record<string, string> = {
+    created_at: 'o.created_at',
+    updated_at: 'o.updated_at',
+    name: isItem
+      ? 'acornary_normalize_search(coalesce(o.display_name,sku.name))'
+      : 'acornary_normalize_search(o.name)',
+    reminder_date: dateKey,
+  };
+  const field = input.sort.field;
+  const direction = input.sort.direction === 'asc' ? 'ASC' : 'DESC';
+  ctes.push(`matching AS MATERIALIZED (SELECT o.*,${keys[field]} AS __key,__sets
+    ${isItem ? ',sku.name AS catalog_name,h.timezone AS __timezone' : ''}
+    FROM ${table(kind)} o
+    ${isItem ? 'JOIN catalog_nodes sku ON sku.household_id=o.household_id AND sku.id=o.catalog_node_id JOIN households h ON h.id=o.household_id' : ''}
+    CROSS JOIN LATERAL (SELECT coalesce(jsonb_object_agg(a->>'template_id',a->'values'),'{}'::jsonb) AS __sets
+      FROM jsonb_array_elements(o.attributes) a) bindings
+    WHERE ${where.join(' AND ')})`);
+  const after = cursorPredicate(
+    cursor,
+    '__key',
+    'id',
+    field === 'reminder_date' ? 'date' : field === 'name' ? 'text' : 'timestamptz',
+    input.sort.direction,
+    params,
+  );
+  ctes.push(`page AS (SELECT * FROM matching WHERE ${after}
+    ORDER BY __key ${direction} NULLS LAST,id ${direction} LIMIT ${bind(input.limit + 1)})`);
+  if (isItem)
+    ctes.push(`page_notes AS (SELECT n.item_id,jsonb_agg(n ORDER BY n.created_at,n.id) AS notes
+    FROM notes n JOIN page p ON p.id=n.item_id WHERE n.household_id=$1 GROUP BY n.item_id)`);
+  if (input.include_path)
+    ctes.push(`ancestors AS (
+    SELECT id AS origin,id,parent_id,0 AS depth,ARRAY[id] AS visited FROM page
+    UNION ALL SELECT a.origin,p.id,p.parent_id,a.depth+1,a.visited || p.id
+    FROM ancestors a JOIN ${table(kind)} p ON p.household_id=$1 AND p.id=a.parent_id
+    WHERE NOT p.id=ANY(a.visited))`);
+  if (isItem)
+    ctes.push(`current_items AS (SELECT * FROM matching WHERE ${current}),
+    units AS (SELECT __sets #>> '{contents,remaining,unit}' AS unit,
+      trim_scale(sum((__sets #>> '{contents,remaining,value}')::numeric))::text AS value,
+      count(*) FILTER (WHERE __sets #>> '{contents,accuracy}'='MEASURED') AS measured_count,
+      count(*) FILTER (WHERE __sets #>> '{contents,accuracy}'='ESTIMATED') AS estimated_count,
+      count(*) FILTER (WHERE coalesce(__sets #>> '{contents,accuracy}','') NOT IN ('MEASURED','ESTIMATED')) AS unknown_accuracy_count
+      FROM current_items WHERE (__sets #>> '{contents,remaining,unit}') <> 'percent' GROUP BY 1)`);
+  const summary = isItem
+    ? `jsonb_build_object(
+    'matching_count',(SELECT count(*) FROM matching),
+    'current_count',count(*),
+    'unknown_lifecycle_count',count(*) FILTER (WHERE (__sets #>> '{lifecycle,state}') IS NULL),
+    'unknown_availability_count',count(*) FILTER (WHERE (__sets #>> '{lifecycle,availability}') IS NULL),
+    'content_totals',jsonb_build_object(
+      'by_unit',(SELECT coalesce(jsonb_object_agg(unit,to_jsonb(units)-'unit'),'{}'::jsonb) FROM units),
+      'unknown_quantity_count',count(*) FILTER (WHERE (__sets #> '{contents,remaining}') IS NULL),
+      'unconvertible_percentage_count',count(*) FILTER (WHERE __sets #>> '{contents,remaining,unit}'='percent')))
+    FROM current_items`
+    : `jsonb_build_object('matching_count',count(*)) FROM matching`;
+  const watermark = String(await currentChangeId(c, ctx.household_id));
+  const result = (
+    await query(
+      c,
+      `WITH RECURSIVE ${ctes.join(',\n')}
+    SELECT (${scopeChecks.join(' AND ') || 'TRUE'}) AS scope_exists,
+      (SELECT ${summary}) AS summary,
+      (SELECT coalesce(jsonb_agg(
+        (to_jsonb(p)-'__sets'-'__timezone') || jsonb_build_object('__key',p.__key::text)
+        ${
+          isItem
+            ? `|| jsonb_build_object('__lifecycle',p.__sets->'lifecycle','__timezone',p.__timezone,
+          'notes',coalesce(pn.notes,'[]'::jsonb))`
+            : ''
+        }
+        ${
+          input.include_path
+            ? `|| jsonb_build_object('path_ids',(SELECT jsonb_agg(a.id ORDER BY a.depth DESC)
+          FROM ancestors a WHERE a.origin=p.id))`
+            : ''
+        }
+        ORDER BY p.__key ${direction} NULLS LAST,p.id ${direction}), '[]'::jsonb) FROM page p ${isItem ? 'LEFT JOIN page_notes pn ON pn.item_id=p.id' : ''}) AS data`,
+      params,
+    )
+  ).rows[0];
+  requireFact(result.scope_exists, 'NOT_FOUND', 'Scope not found in this household.');
+  for (const row of result.data) {
+    requireFact(
+      Array.isArray(row.attributes) &&
+        row.attributes.every(
+          (a: any) =>
+            a &&
+            typeof a.template_id === 'string' &&
+            Number.isInteger(a.template_version) &&
+            a.values &&
+            typeof a.values === 'object' &&
+            !Array.isArray(a.values),
+        ),
+      'ATTRIBUTE_VALIDATION_FAILED',
+      'Invalid embedded binding shape.',
+    );
+    row.attributes = row.attributes.map(({ template_id, template_version, values }: any) => ({
+      template_id,
+      template_version,
+      values,
+    }));
+    if (isItem) {
+      row.reminder = reminderDate(row.__lifecycle, row.__timezone);
+      delete row.__lifecycle;
+      delete row.__timezone;
+    }
+  }
+  return {
+    ...queryPage(result.data, input, expected, cursor, watermark),
+    ...result.summary,
+    summary: { ...result.summary, as_of_change_id: watermark },
+  };
+}
+
 async function read(c: Client, ctx: Context, name: Operation, input: any): Promise<any> {
   if (name === 'get_connection_context') {
     const household = (
@@ -485,22 +851,7 @@ async function read(c: Client, ctx: Context, name: Operation, input: any): Promi
     };
   if (name === 'get_attribute_template')
     return templateDefinition(input.template_id, input.template_version);
-  if (name === 'get_history') {
-    if (input.target) await load(c, ctx, input.target);
-    const rows = (
-      await query(
-        c,
-        'SELECT * FROM events WHERE household_id=$1 ORDER BY recorded_at DESC,id DESC',
-        [ctx.household_id],
-      )
-    ).rows.filter(
-      (r) =>
-        (!input.target ||
-          (r.target_kind === input.target.kind && r.target_id === input.target.id)) &&
-        (!input.operation_id || r.operation_id === input.operation_id),
-    );
-    return paged(rows, input);
-  }
+  if (name === 'get_history') return readHistory(c, ctx, input);
   if (name === 'get_attribute_sets') {
     const obj = await load(c, ctx, input.target);
     return {
@@ -517,149 +868,7 @@ async function read(c: Client, ctx: Context, name: Operation, input: any): Promi
       } as Target),
       input.include_path,
     );
-  const kind = name === 'query_items' ? 'ITEM' : 'CATALOG_NODE';
-  const catalogScope = input.catalog_subtree_id
-    ? await subtree(c, ctx, 'CATALOG_NODE', input.catalog_subtree_id)
-    : undefined;
-  const itemScope = input.within_item_id
-    ? await subtree(c, ctx, 'ITEM', input.within_item_id)
-    : undefined;
-  let barcodeIds: Set<string> | undefined;
-  if (input.barcode)
-    barcodeIds = new Set(
-      (
-        await query(
-          c,
-          'SELECT catalog_node_id FROM barcode_index WHERE household_id=$1 AND barcode=$2',
-          [ctx.household_id, input.barcode],
-        )
-      ).rows.map((r) => r.catalog_node_id),
-    );
-  for (const f of input.attribute_filters ?? []) {
-    const t = templateFor(f.template_id, latestTemplateVersion(f.template_id));
-    requireFact(
-      t.target_kind === kind && (t.paths as readonly string[]).includes(f.path),
-      'ATTRIBUTE_VALIDATION_FAILED',
-      'Unknown filter path.',
-    );
-    if (f.op !== 'eq')
-      requireFact(
-        ['expiry.date', 'acquisition.acquired_on'].includes(f.path),
-        'ATTRIBUTE_VALIDATION_FAILED',
-        'Range filters support date fields only.',
-      );
-    validateValues(
-      f.template_id,
-      patch({}, { [f.path]: f.value }, [], [...t.paths]),
-      latestTemplateVersion(f.template_id),
-    );
-  }
-  const rows = (
-    await query(c, `SELECT id FROM ${table(kind)} WHERE household_id=$1 ORDER BY id`, [
-      ctx.household_id,
-    ])
-  ).rows;
-  const matching: ObjectState[] = [];
-  for (const row of rows) {
-    const obj = await load(c, ctx, { kind, id: row.id } as Target);
-    const catalogId = kind === 'ITEM' ? obj.row.catalog_node_id : obj.row.id;
-    if (
-      (catalogScope && !catalogScope.has(catalogId)) ||
-      (itemScope && !itemScope.has(row.id)) ||
-      (barcodeIds && !barcodeIds.has(catalogId)) ||
-      (input.catalog_node_ids && !input.catalog_node_ids.includes(catalogId))
-    )
-      continue;
-    if (
-      kind === 'CATALOG_NODE' &&
-      !input.include_hidden &&
-      obj.sets.catalog?.visibility === 'HIDDEN'
-    )
-      continue;
-    if (input.name) {
-      const name =
-        kind === 'ITEM'
-          ? (obj.row.display_name ??
-            (
-              await query(c, 'SELECT name FROM catalog_nodes WHERE id=$1 AND household_id=$2', [
-                catalogId,
-                ctx.household_id,
-              ])
-            ).rows[0].name)
-          : obj.row.name;
-      if (!name.toLocaleLowerCase().includes(input.name.toLocaleLowerCase())) continue;
-    }
-    if (
-      (input.attribute_filters ?? []).some((f: any) => {
-        const value = getPath(obj.sets[f.template_id], f.path);
-        return (
-          value === undefined ||
-          (f.op === 'eq'
-            ? canonical(value) !== canonical(f.value)
-            : f.op === 'gte'
-              ? value < f.value
-              : value > f.value)
-        );
-      })
-    )
-      continue;
-    if (
-      (input.attribute_filters ?? []).some(
-        (f: any) =>
-          f.template_id === 'lifecycle' && f.path === 'availability' && f.value === 'AVAILABLE',
-      ) &&
-      terminal.has(obj.sets.lifecycle?.state)
-    )
-      continue;
-    matching.push(obj);
-  }
-  const selected = paged(matching, input);
-  const data = [];
-  for (const obj of selected.data) data.push(await view(c, ctx, obj, input.include_path));
-  if (kind === 'CATALOG_NODE') return { ...selected, data, matching_count: matching.length };
-  const current = matching.filter((o) => !terminal.has(o.sets.lifecycle?.state));
-  const totals: Record<
-    string,
-    {
-      value: string;
-      estimated_count: number;
-      unknown_accuracy_count: number;
-      measured_count: number;
-    }
-  > = {};
-  let unknown_quantity_count = 0,
-    unconvertible_percentage_count = 0;
-  for (const obj of current) {
-    const contents = obj.sets.contents;
-    if (!contents?.remaining) {
-      unknown_quantity_count++;
-      continue;
-    }
-    const m = contents.remaining;
-    if (m.unit === 'percent') {
-      unconvertible_percentage_count++;
-      continue;
-    }
-    const group = (totals[m.unit] ??= {
-      value: '0',
-      estimated_count: 0,
-      unknown_accuracy_count: 0,
-      measured_count: 0,
-    });
-    group.value = new Decimal(group.value).plus(m.value).toFixed();
-    if (contents.accuracy === 'MEASURED') group.measured_count++;
-    else if (contents.accuracy === 'ESTIMATED') group.estimated_count++;
-    else group.unknown_accuracy_count++;
-  }
-  return {
-    ...selected,
-    data,
-    matching_count: matching.length,
-    current_count: current.length,
-    unknown_lifecycle_count: current.filter((o) => !o.sets.lifecycle?.state).length,
-    unknown_availability_count: current.filter((o) => !o.sets.lifecycle?.availability).length,
-    content_totals: { by_unit: totals, unknown_quantity_count, unconvertible_percentage_count },
-  };
+  return readQuery(c, ctx, name, input);
 }
 
 // Transaction-scoped primitive: caller owns authorization, lock, idempotency and commit.
