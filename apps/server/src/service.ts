@@ -1,3 +1,14 @@
+import { maintainReferences, reverseReferences } from './references.js';
+import {
+  splitInfoSql,
+  splitInfo,
+  assertVoidable,
+  assertNoSplitRestore,
+  prepareSplit,
+  stockStatus,
+} from './semantics.js';
+import { derivedAvailability } from '../../../packages/contracts/src/semantics.js';
+import { rebuildIdentityIndex } from './intake.js';
 import { fileOperations, type fileSchemas } from '../../../packages/contracts/src/notes.js';
 import { executeFiles, listNotes, mutateNote, noteSummary, noteRow } from './notes.js';
 import { attachmentRead } from './attachments.js';
@@ -59,6 +70,7 @@ import {
   advanceDeadline,
 } from './dates.js';
 import { recordSyncChange } from './sync.js';
+import { publishSyncTombstone } from './sync-api.js';
 import { projectLabels } from './label-projection.js';
 import { inventoryGroupsV2 } from './web.js';
 import { timed, traces } from './telemetry.js';
@@ -85,6 +97,10 @@ const versionOf = (obj: ObjectState, name: string) => obj.versions?.[name] ?? 1;
 const table = (kind: string) => (kind === 'ITEM' ? 'items' : 'catalog_nodes');
 
 const eventTypes: Record<string, string> = {
+  void_item: 'VOID',
+  void_catalog_node: 'VOID',
+  dispose_item: 'DISPOSE',
+  split_item: 'SPLIT',
   create_catalog_node: 'CREATE',
   create_items: 'CREATE',
   create_items_batch: 'CREATE',
@@ -193,8 +209,17 @@ async function validateBindings(c: Client, ctx: Context, obj: ObjectState, bindi
 function flatten(obj: ObjectState): Record<string, any> {
   const r: Record<string, any> = {};
   for (const field of obj.kind === 'ITEM'
-    ? ['catalog_node_id', 'parent_id', 'display_name']
-    : ['kind', 'name', 'parent_id', 'profile', 'capabilities', 'one_off'])
+    ? ['catalog_node_id', 'parent_id', 'display_name', 'record_state', 'voided_at']
+    : [
+        'kind',
+        'name',
+        'parent_id',
+        'profile',
+        'capabilities',
+        'one_off',
+        'record_state',
+        'voided_at',
+      ])
     if (Object.hasOwn(obj.row, field)) r[field] = obj.row[field];
   for (const [name, value] of Object.entries(obj.sets)) {
     r[`attributes.${name}.$binding`] = {
@@ -219,7 +244,60 @@ async function validate(
   obj: ObjectState,
   before?: ObjectState,
   correction = false,
+  command = '',
 ) {
+  requireFact(
+    !before || before.row.record_state !== 'VOID' || correction,
+    'STATE_CONFLICT',
+    'Restore a void record through correct_item before editing.',
+  );
+  if (JSON.stringify(obj.sets.disposition) !== JSON.stringify(before?.sets.disposition))
+    requireFact(
+      ['dispose_item', 'correct_item'].includes(command),
+      'STATE_CONFLICT',
+      'Disposition changes require dispose_item or a reasoned correction.',
+    );
+  requireFact(
+    JSON.stringify(obj.sets.lifecycle?.availability) ===
+      JSON.stringify(before?.sets.lifecycle?.availability),
+    'ATTRIBUTE_VALIDATION_FAILED',
+    'Legacy availability is read-only.',
+  );
+  if (
+    obj.kind === 'ITEM' &&
+    terminal.has(obj.sets.lifecycle?.state) &&
+    obj.sets.lifecycle?.state !== before?.sets.lifecycle?.state
+  )
+    requireFact(
+      [
+        'dispose_item',
+        'consume_items',
+        'consume_item_content',
+        'split_item',
+        'correct_item',
+      ].includes(command),
+      'STATE_CONFLICT',
+      'Use a terminal-state command or reasoned correction.',
+    );
+  if (
+    obj.kind === 'ITEM' &&
+    before &&
+    ((terminal.has(before.sets.lifecycle?.state) && !terminal.has(obj.sets.lifecycle?.state)) ||
+      (before.row.record_state === 'VOID' && obj.row.record_state === 'VALID'))
+  )
+    await assertNoSplitRestore(c, ctx.household_id, obj.row.id);
+  if (
+    obj.kind === 'CATALOG_NODE' &&
+    obj.row.kind === 'GROUP' &&
+    (!before || before.row.name !== obj.row.name || before.row.parent_id !== obj.row.parent_id)
+  ) {
+    const duplicate = await query(
+      c,
+      `SELECT 1 FROM catalog_nodes WHERE household_id=$1 AND kind='GROUP' AND record_state='VALID' AND parent_id IS NOT DISTINCT FROM $2 AND acornary_normalize_search(name)=acornary_normalize_search($3) AND id<>$4 LIMIT 1`,
+      [ctx.household_id, obj.row.parent_id, obj.row.name, obj.row.id],
+    );
+    requireFact(!duplicate.rows.length, 'STATE_CONFLICT', 'Sibling GROUP names must be distinct.');
+  }
   requireFact(
     Object.keys(obj.sets).length <= 16,
     'ATTRIBUTE_VALIDATION_FAILED',
@@ -268,7 +346,11 @@ async function validate(
   }
   if (obj.kind === 'ITEM') {
     const catalog = await load(c, ctx, { kind: 'CATALOG_NODE', id: obj.row.catalog_node_id });
-    requireFact(catalog.row.kind === 'SKU', 'ATTRIBUTE_VALIDATION_FAILED', 'Item requires a SKU.');
+    requireFact(
+      catalog.row.kind === 'SKU' && catalog.row.record_state !== 'VOID',
+      'ATTRIBUTE_VALIDATION_FAILED',
+      'Item requires a SKU.',
+    );
     if (obj.sets.container?.can_contain !== true) {
       const children = (
         await query(c, 'SELECT 1 FROM items WHERE household_id=$1 AND parent_id=$2 LIMIT 1', [
@@ -294,6 +376,11 @@ async function validate(
       new Decimal(obj.sets.contents.remaining.value).isZero() &&
       obj.sets.lifecycle?.state !== 'CONSUMED'
     ) {
+      requireFact(
+        ['consume_items', 'consume_item_content', 'split_item', 'correct_item'].includes(command),
+        'STATE_CONFLICT',
+        'Use a consumption command or reasoned correction to zero contents.',
+      );
       await assertWritableTemplate(c, ctx.household_id, 'lifecycle', versionOf(obj, 'lifecycle'));
       obj.sets.lifecycle = { ...obj.sets.lifecycle, state: 'CONSUMED' };
     }
@@ -301,9 +388,10 @@ async function validate(
   if (obj.row.parent_id) {
     const parent = await load(c, ctx, { kind: obj.kind, id: obj.row.parent_id } as Target);
     requireFact(
-      obj.kind === 'ITEM'
-        ? parent.sets.container?.can_contain === true
-        : parent.row.kind === 'GROUP',
+      parent.row.record_state !== 'VOID' &&
+        (obj.kind === 'ITEM'
+          ? parent.sets.container?.can_contain === true
+          : parent.row.kind === 'GROUP'),
       'INVALID_PARENT',
       'Parent must be a GROUP or capable container.',
     );
@@ -554,6 +642,8 @@ async function view(c: Client, ctx: Context, obj: ObjectState, includePath = fal
     attributes: await bindingRecords(c, ctx, obj),
   };
   if (obj.kind === 'ITEM') {
+    row.split = await splitInfo(c, ctx.household_id, obj.row.id);
+    row.derived_availability = derivedAvailability(obj.sets);
     row.catalog_name = (
       await query(c, 'SELECT name FROM catalog_nodes WHERE household_id=$1 AND id=$2', [
         ctx.household_id,
@@ -760,6 +850,25 @@ async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
   };
   const ctes: string[] = [];
   const where = ['o.household_id=$1'];
+  if (!input.include_void) where.push("o.record_state='VALID'");
+  if (!isItem && !input.include_one_off) where.push('NOT o.one_off');
+  if (isItem && !input.include_terminal)
+    where.push(
+      "coalesce(__sets->'lifecycle'->>'state','') NOT IN ('CONSUMED','DISPOSED','LOST','ARCHIVED')",
+    );
+  const profileAlias = isItem ? 'sku' : 'o';
+  if (input.profile) where.push(`${profileAlias}.profile=${bind(input.profile)}`);
+  if (input.capabilities?.length) {
+    const defaults = Object.fromEntries(
+      ['CONSUMABLE', 'DURABLE', 'WEARABLE', 'SPACE', 'MISC'].map((p) => [
+        p,
+        resolveCapabilities(p as any, null),
+      ]),
+    );
+    where.push(
+      `coalesce(${profileAlias}.capabilities, ARRAY(SELECT jsonb_array_elements_text(${bind(JSON.stringify(defaults))}::jsonb -> ${profileAlias}.profile))) @> ${bind(input.capabilities)}::text[]`,
+    );
+  }
   const catalogId = isItem ? 'o.catalog_node_id' : 'o.id';
   const scopeChecks: string[] = [];
   for (const [field, relation, column] of [
@@ -801,11 +910,14 @@ async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
         'ATTRIBUTE_VALIDATION_FAILED',
         'Range filters support date fields only.',
       );
-    validateValues(
-      f.template_id,
-      patch({}, { [f.path]: f.value }, [], [...t.paths]),
-      latestTemplateVersion(f.template_id),
-    );
+    const filterValues = patch({}, { [f.path]: f.value }, [], [...t.paths]);
+    if (f.template_id === 'disposition' || f.template_id === 'stock')
+      requireFact(
+        t.schema.partial().safeParse(filterValues).success,
+        'ATTRIBUTE_VALIDATION_FAILED',
+        'Invalid filter value.',
+      );
+    else validateValues(f.template_id, filterValues, latestTemplateVersion(f.template_id));
     if (f.op === 'eq')
       candidates.set(
         f.template_id,
@@ -880,7 +992,7 @@ async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
   const field = input.sort.field;
   const direction = input.sort.direction === 'asc' ? 'ASC' : 'DESC';
   ctes.push(`matching AS MATERIALIZED (SELECT o.*,${keys[field]} AS __key,__sets
-    ${isItem ? ',sku.name AS catalog_name,h.timezone AS __timezone' : ''}
+    ${isItem ? ',sku.name AS catalog_name,sku.profile AS __profile,sku.capabilities AS __capabilities,h.timezone AS __timezone' : ''}
     FROM ${table(kind)} o
     ${isItem ? 'JOIN catalog_nodes sku ON sku.household_id=o.household_id AND sku.id=o.catalog_node_id JOIN households h ON h.id=o.household_id' : ''}
     CROSS JOIN LATERAL (SELECT coalesce(jsonb_object_agg(a->>'template_id',a->'values'),'{}'::jsonb) AS __sets
@@ -892,7 +1004,7 @@ async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
       SELECT (${scopeChecks.join(' AND ') || 'TRUE'}) AS scope_exists,
       (SELECT coalesce(jsonb_agg(to_jsonb(m)), '[]'::jsonb) FROM matching m) AS items`, params)).rows[0];
     requireFact(result.scope_exists, 'NOT_FOUND', 'Scope not found in this household.');
-    const catalog = [...new Map<string, any>(result.items.map((i: any) => [i.catalog_node_id, { id: i.catalog_node_id, name: i.catalog_name }])).values()];
+    const catalog = [...new Map<string, any>(result.items.map((i: any) => [i.catalog_node_id, { id: i.catalog_node_id, name: i.catalog_name, profile: i.__profile }])).values()];
     const groups = inventoryGroupsV2(result.items, catalog);
     groups.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
     const remaining = groups.filter(g => !cursor || g.id > cursor.last.id);
@@ -919,7 +1031,7 @@ async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
     FROM ancestors a JOIN ${table(kind)} p ON p.household_id=$1 AND p.id=a.parent_id
     WHERE NOT p.id=ANY(a.visited))`);
   if (isItem)
-    ctes.push(`current_items AS (SELECT * FROM matching WHERE ${current}),
+    ctes.push(`current_items AS (SELECT * FROM matching WHERE record_state='VALID' AND ${current}),
     units AS (SELECT __sets #>> '{contents,remaining,unit}' AS unit,
       trim_scale(sum((__sets #>> '{contents,remaining,value}')::numeric))::text AS value,
       count(*) FILTER (WHERE __sets #>> '{contents,accuracy}'='MEASURED') AS measured_count,
@@ -949,7 +1061,7 @@ async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
         (to_jsonb(p)-'__sets'-'__timezone') || jsonb_build_object('__key',p.__key::text)
         ${
           isItem
-            ? `|| jsonb_build_object('__dates',(SELECT ${itemDatesJsonSql('p', 'h')} FROM households h WHERE h.id=$1))`
+            ? `|| jsonb_build_object('__dates',(SELECT ${itemDatesJsonSql('p', 'h')} FROM households h WHERE h.id=$1), 'split', ${splitInfoSql('p')})`
             : ''
         }
         ${
@@ -983,7 +1095,17 @@ async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
       template_version,
       values,
     }));
+    row.effective_capabilities = resolveCapabilities(
+      isItem ? row.__profile : row.profile,
+      isItem ? row.__capabilities : row.capabilities,
+    );
+    delete row.__profile;
+    delete row.__capabilities;
     if (isItem) {
+      row.split ??= null;
+      row.derived_availability = derivedAvailability(
+        Object.fromEntries(row.attributes.map((a: any) => [a.template_id, a.values])),
+      );
       Object.assign(row, dateView(row.__dates, row.attributes));
       delete row.__dates;
       delete row.__timezone;
@@ -1025,6 +1147,11 @@ async function read(c: Client, ctx: Context, name: Operation, input: any): Promi
         'deadline',
         'notes_v2',
         'attachments',
+        'stock',
+        'void',
+        'split',
+        'references',
+        'units_v2',
       ],
     };
   }
@@ -1063,6 +1190,15 @@ async function read(c: Client, ctx: Context, name: Operation, input: any): Promi
   }
   if (name === 'get_attribute_template')
     return templateDefinition(input.template_id, input.template_version);
+  if (name === 'query_references') {
+    requireFact(
+      input.target.kind !== 'EXTERNAL',
+      'REFERENCE_INVALID',
+      'External names have no identity index.',
+    );
+    return { data: await reverseReferences(c, ctx.household_id, input.target) };
+  }
+  if (name === 'query_stock') return readStock(c, ctx, input);
   if (name === 'get_history') return readHistory(c, ctx, input);
   if (name === 'get_attribute_sets') {
     const obj = await load(c, ctx, input.target);
@@ -1125,7 +1261,7 @@ async function applyDomainCommand(
         'ATTRIBUTE_VALIDATION_FAILED',
         'New product v2 bindings are disabled for the compatibility rollout.',
       );
-    await validate(c, ctx, obj, before, name === 'correct_item');
+    await validate(c, ctx, obj, before, name === 'correct_item', name);
     const delta = changes(
       { ...(before ? flatten(before) : {}), ...extraBefore },
       { ...flatten(obj), ...extraAfter },
@@ -1204,7 +1340,7 @@ async function applyDomainCommand(
     } else if (obj.kind === 'ITEM')
       await query(
         c,
-        'UPDATE items SET catalog_node_id=$1,parent_id=$2,display_name=$3,attributes=$6::jsonb,revision=revision+1,updated_at=now() WHERE household_id=$4 AND id=$5',
+        'UPDATE items SET catalog_node_id=$1,parent_id=$2,display_name=$3,attributes=$6::jsonb,record_state=$7,voided_at=$8,revision=revision+1,updated_at=now() WHERE household_id=$4 AND id=$5',
         [
           obj.row.catalog_node_id,
           obj.row.parent_id,
@@ -1212,12 +1348,14 @@ async function applyDomainCommand(
           ctx.household_id,
           obj.row.id,
           embedded,
+          obj.row.record_state ?? 'VALID',
+          obj.row.voided_at ?? null,
         ],
       );
     else
       await query(
         c,
-        'UPDATE catalog_nodes SET name=$1,parent_id=$2,attributes=$5::jsonb,profile=$6,capabilities=$7,one_off=$8,revision=revision+1,updated_at=now() WHERE household_id=$3 AND id=$4',
+        'UPDATE catalog_nodes SET name=$1,parent_id=$2,attributes=$5::jsonb,profile=$6,capabilities=$7,one_off=$8,record_state=$9,voided_at=$10,revision=revision+1,updated_at=now() WHERE household_id=$3 AND id=$4',
         [
           obj.row.name,
           obj.row.parent_id,
@@ -1227,6 +1365,8 @@ async function applyDomainCommand(
           obj.row.profile ?? null,
           obj.row.capabilities ?? null,
           obj.row.one_off ?? false,
+          obj.row.record_state ?? 'VALID',
+          obj.row.voided_at ?? null,
         ],
       );
     if (
@@ -1265,6 +1405,11 @@ async function applyDomainCommand(
           );
       }
     }
+    await maintainReferences(c, ctx.household_id, obj);
+    if (obj.kind === 'CATALOG_NODE') {
+      const rebuilt = await rebuildIdentityIndex(c, ctx.household_id);
+      if (rebuilt.conflicts.length) result.identity_conflicts = rebuilt.conflicts;
+    }
     const event_id = 'event_' + randomUUID();
     const enriched = delta.map((d) =>
       d.path.startsWith('attributes.')
@@ -1275,6 +1420,19 @@ async function applyDomainCommand(
           }
         : d,
     );
+    if (
+      canonical(before?.sets ?? {}) !== canonical(obj.sets) &&
+      ((obj.sets.device && versionOf(obj, 'device') === 2) ||
+        (obj.sets.clothing && versionOf(obj, 'clothing') === 2) ||
+        (obj.sets.contents && versionOf(obj, 'contents') === 2) ||
+        obj.sets.stock)
+    )
+      enriched.push({
+        path: 'quantity_input',
+        before_present: false,
+        after_present: true,
+        after: originalQuantityInputs(input),
+      });
     await query(
       c,
       'INSERT INTO events(id,household_id,target_kind,target_id,operation_id,event_type,before_revision,after_revision,changes,actor_id,source,occurred_at,reason) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13)',
@@ -1294,7 +1452,9 @@ async function applyDomainCommand(
         input.reason ?? null,
       ],
     );
-    await recordSyncChange(c, ctx.household_id, obj.kind, obj.row.id, rev + 1, operation_id);
+    if (obj.row.record_state === 'VOID' || obj.sets.lifecycle?.state === 'ARCHIVED')
+      await publishSyncTombstone(c, ctx.household_id, obj.kind, obj.row.id, rev + 1, operation_id);
+    else await recordSyncChange(c, ctx.household_id, obj.kind, obj.row.id, rev + 1, operation_id);
     if (obj.kind === 'ITEM') await recomputeItemDates(c, ctx.household_id, obj.row.id);
     await projectLabels(c, ctx.household_id, obj.kind, obj.row.id, event_id, operation_id);
     result.affected_objects.push({
@@ -1323,6 +1483,46 @@ async function applyDomainCommand(
       ),
     };
     await save(obj);
+  } else if (name === 'split_item') {
+    const before = await load(c, ctx, { kind: 'ITEM', id: input.source_item_id });
+    checkRevision(before);
+    const plan = await prepareSplit(c, ctx.household_id, before, input);
+    const obj = structuredClone(before);
+    obj.sets.lifecycle = { ...obj.sets.lifecycle, state: 'CONSUMED' };
+    obj.sets.contents.remaining.value = '0';
+    await save(obj, before);
+    result.children = [];
+    for (let i = 0; i < input.count; i++) {
+      const childId = 'item_' + randomUUID();
+      await save({
+        kind: 'ITEM',
+        row: {
+          id: childId,
+          catalog_node_id: input.target_catalog_node_id,
+          parent_id: before.row.parent_id,
+        },
+        sets: initialSets(input.child_attributes),
+        versions: Object.fromEntries(
+          (input.child_attributes ?? []).map((a: any) => [a.template_id, a.template_version]),
+        ),
+      });
+      await query(
+        c,
+        `INSERT INTO item_splits(household_id,split_id,source_item_id,child_item_id,operation_id,quantity,unit,basis) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [
+          ctx.household_id,
+          plan.split_id,
+          before.row.id,
+          childId,
+          operation_id,
+          plan.quantity,
+          plan.unit,
+          plan.basis,
+        ],
+      );
+      result.children.push({ item_id: childId, revision: 1 });
+    }
+    result.split = await splitInfo(c, ctx.household_id, before.row.id);
   } else if (name === 'create_items_batch' || name === 'update_items_lifecycle') {
     const identity = name === 'create_items_batch' ? 'client_ref' : 'item_id';
     const seen = new Set<string>();
@@ -1410,6 +1610,21 @@ async function applyDomainCommand(
       checkRevision(before);
       const obj = structuredClone(before);
       switch (name) {
+        case 'void_item':
+        case 'void_catalog_node':
+          await assertVoidable(c, ctx.household_id, obj);
+          obj.row.record_state = 'VOID';
+          obj.row.voided_at = new Date().toISOString();
+          break;
+        case 'dispose_item':
+          requireFact(
+            !terminal.has(obj.sets.lifecycle?.state),
+            'STATE_CONFLICT',
+            'Only a non-terminal item can be disposed.',
+          );
+          obj.sets.disposition = input.disposition;
+          obj.sets.lifecycle = { ...obj.sets.lifecycle, state: 'DISPOSED' };
+          break;
         case 'add_deadline':
         case 'update_deadline':
         case 'remove_deadline':
@@ -1518,6 +1733,10 @@ async function applyDomainCommand(
           break;
         }
         case 'correct_item': {
+          if (input.record_state === 'VALID') {
+            obj.row.record_state = 'VALID';
+            obj.row.voided_at = null;
+          }
           if (input.core) obj.row.catalog_node_id = input.core.catalog_node_id;
           const ids = (input.attributes ?? []).map((a: any) => a.template_id);
           requireFact(
@@ -1564,4 +1783,97 @@ async function applyDomainCommand(
     ? `${result.affected_objects.length} object(s) changed; inspect affected_objects and get_history.`
     : 'No changes.';
   return result;
+}
+
+async function readStock(c: Client, ctx: Context, input: any) {
+  const { expected, cursor } = queryCursorContext(ctx, 'query_stock', {
+    ...input,
+    sort: { field: 'name', direction: 'asc' },
+  });
+  if (cursor)
+    requireFact(
+      cursor.last.id.startsWith('catalog_node_'),
+      'INVALID_CURSOR',
+      'Invalid stock cursor.',
+    );
+  const params: any[] = [ctx.household_id];
+  const where = [
+    'n.household_id=$1',
+    "n.kind='SKU'",
+    "n.record_state='VALID'",
+    "EXISTS(SELECT 1 FROM jsonb_array_elements(n.attributes) a WHERE a->>'template_id'='stock')",
+  ];
+  const bind = (v: any) => {
+    params.push(v);
+    return `$${params.length}`;
+  };
+  if (input.catalog_node_ids) where.push(`n.id=ANY(${bind(input.catalog_node_ids)}::text[])`);
+  if (input.catalog_subtree_id) {
+    await load(c, ctx, { kind: 'CATALOG_NODE', id: input.catalog_subtree_id });
+    where.push(
+      `n.id IN (WITH RECURSIVE scope AS (SELECT id FROM catalog_nodes WHERE household_id=$1 AND id=${bind(input.catalog_subtree_id)} UNION SELECT n.id FROM catalog_nodes n JOIN scope s ON n.parent_id=s.id WHERE n.household_id=$1) SELECT id FROM scope)`,
+    );
+  }
+  const catalog = (
+    await query(
+      c,
+      `SELECT n.* FROM catalog_nodes n WHERE ${where.join(' AND ')} ORDER BY n.id`,
+      params,
+    )
+  ).rows;
+  let location = '';
+  if (input.within_item_id) {
+    await load(c, ctx, { kind: 'ITEM', id: input.within_item_id });
+    location = `AND i.id IN (WITH RECURSIVE scope AS (SELECT id FROM items WHERE household_id=$1 AND id=$3 UNION SELECT i.id FROM items i JOIN scope s ON i.parent_id=s.id WHERE i.household_id=$1) SELECT id FROM scope)`;
+  }
+  const items = (
+    await query(
+      c,
+      `SELECT i.* FROM items i WHERE i.household_id=$1 AND i.catalog_node_id=ANY($2::text[]) ${location}`,
+      [ctx.household_id, catalog.map((n) => n.id), ...(location ? [input.within_item_id] : [])],
+    )
+  ).rows;
+  const data = catalog
+    .map((n) =>
+      stockStatus(
+        n,
+        items.filter((i) => i.catalog_node_id === n.id),
+      ),
+    )
+    .filter((s) => !input.low_only || s.low === true);
+  const watermark = String(await currentChangeId(c, ctx.household_id));
+  const remaining = data.filter((s) => !cursor || s.catalog_node_id > cursor.last.id);
+  const selected = remaining.slice(0, input.limit);
+  return {
+    data: selected,
+    matching_count: data.length,
+    as_of_change_id: cursor?.as_of_change_id ?? watermark,
+    stale: !!cursor && cursor.as_of_change_id !== watermark,
+    next_cursor:
+      remaining.length > input.limit
+        ? encodeQueryCursor({
+            version: 1,
+            ...expected,
+            last: { key: selected.at(-1)!.catalog_node_id, id: selected.at(-1)!.catalog_node_id },
+            as_of_change_id: cursor?.as_of_change_id ?? watermark,
+          })
+        : null,
+  };
+}
+
+function originalQuantityInputs(input: any, path = ''): any[] {
+  if (!input || typeof input !== 'object') return [];
+  if (typeof input.value === 'string' && typeof input.unit === 'string')
+    return [{ path, value: input.value, unit: input.unit }];
+  const stock = input.content_unit
+    ? ['reorder_threshold', 'target']
+        .filter((key) => input[key] !== undefined)
+        .map((key) => ({ path: `${path}.${key}`, value: input[key], unit: input.content_unit }))
+    : [];
+  return [
+    ...stock,
+    ...Object.entries(input).flatMap(([key, value]) =>
+      originalQuantityInputs(value, path ? `${path}.${key}` : key),
+    ),
+  ];
 }

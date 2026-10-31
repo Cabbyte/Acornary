@@ -2,6 +2,9 @@ import { z } from 'zod';
 import { Decimal } from 'decimal.js';
 import { DomainError } from '../../domain/src/index.js';
 import { deadlineTemplate, deadlineServiceTemplate } from './deadline.js';
+import { semanticsTemplates } from './semantics.js';
+import { clothingV2, deviceV2, contentsV2 } from './catalog-v2.js';
+import { normalizeQuantity, QuantityDecimal } from './units.js';
 const text = z.string().min(1).max(500);
 
 export const profileSchema = z.enum(['CONSUMABLE', 'DURABLE', 'WEARABLE', 'SPACE', 'MISC']);
@@ -87,6 +90,12 @@ const templateCapabilities: Partial<Record<TemplateId, CapabilityKey>> = {
   clothing: 'clothing',
   deadline: 'deadline',
   service: 'service',
+  usage: 'usage',
+  custody: 'custody',
+  transport: 'transport',
+  wardrobe: 'wardrobe',
+  asset: 'asset',
+  stock: 'stock',
 };
 // Fine-grained capabilities select field groups; base lifecycle facts always remain available.
 export function pathCapability(id: string, path: string): CapabilityKey | undefined {
@@ -164,6 +173,13 @@ function fieldMetadata(id: string, path: string, order: number, schema: any): Te
     ...(node.enum ? { options: node.enum.map((value: string) => ({ value, label: value })) } : {}),
     ...(path === 'rated_power_w' ? { unit: 'W' } : path.endsWith('_days') ? { unit: 'day' } : {}),
     ...(path === 'availability' ? { help: '旧资料；不推断持有人或综合可用性。' } : {}),
+    ...(['custody', 'wardrobe', 'disposition'].includes(id) &&
+    ['owner', 'holder', 'recipient'].includes(path)
+      ? { type: 'reference' as const, widget: 'reference' as const }
+      : {}),
+    ...(id === 'asset' && ['serial_no', 'imei', 'mac'].includes(path)
+      ? { sensitivity: 'SENSITIVE' as const }
+      : {}),
     ...(path === 'barcodes' ? { help: '多个条码按数组提交。' } : {}),
   };
 }
@@ -182,6 +198,7 @@ const positive = z
   .regex(/^(0|[1-9]\d*)(\.\d+)?$/);
 const lifeState = z.enum(['ACTIVE', 'CONSUMED', 'DISPOSED', 'LOST', 'ARCHIVED']);
 export const templates = {
+  ...semanticsTemplates,
   product: {
     target_kind: 'CATALOG_NODE',
     paths: ['brand', 'model', 'specification', 'barcodes', 'net_content', 'storage.requirement'],
@@ -306,6 +323,9 @@ export const registry = [
     upgrade_from: [] as number[],
   })),
   { id: 'product' as const, version: 2, ...productV2, retired: false, upgrade_from: [1] },
+  { id: 'clothing' as const, version: 2, ...clothingV2, retired: false, upgrade_from: [1] },
+  { id: 'device' as const, version: 2, ...deviceV2, retired: false, upgrade_from: [1] },
+  { id: 'contents' as const, version: 2, ...contentsV2, retired: false, upgrade_from: [1] },
 ];
 export const templateId = z.enum([
   ...new Set(registry.filter((t) => !t.retired).map((t) => t.id)),
@@ -369,5 +389,53 @@ export function validateValues(name: string, values: unknown, version = 1): any 
   }
   if (v.rated_power_w && !new Decimal(v.rated_power_w).gt(0)) fail('Power must be positive.');
   if (v.barcodes && new Set(v.barcodes).size !== v.barcodes.length) fail('Duplicate barcodes.');
+  if (
+    name === 'asset' &&
+    v.price &&
+    !(Intl.supportedValuesOf('currency') as string[]).includes(v.price.currency)
+  )
+    fail('Use an ISO 4217 currency code.');
+  if (name === 'stock') {
+    if (v.basis === 'CONTENT' && (!v.content_unit || v.content_unit === 'percent'))
+      fail('CONTENT requires an additive content unit.');
+    if (v.basis === 'COUNT' && v.content_unit) fail('COUNT has no content_unit.');
+    if (
+      v.target !== undefined &&
+      v.reorder_threshold !== undefined &&
+      new QuantityDecimal(v.target).lt(v.reorder_threshold)
+    )
+      fail('target must be at least reorder_threshold.');
+    for (const key of ['target', 'reorder_threshold'])
+      if (v[key] !== undefined) {
+        if (v.basis === 'COUNT' && !new QuantityDecimal(v[key]).isInteger())
+          fail('COUNT must be an integer.');
+        if (v.basis === 'CONTENT')
+          v[key] = normalizeQuantity({ value: v[key], unit: v.content_unit }, [
+            'mass',
+            'volume',
+            'length',
+            'count',
+          ]).value;
+      }
+    if (v.basis === 'CONTENT')
+      v.content_unit = normalizeQuantity({ value: '0', unit: v.content_unit }, [
+        'mass',
+        'volume',
+        'length',
+        'count',
+      ]).unit;
+  }
+  if (name === 'contents' && version === 2 && v.remaining)
+    v.remaining = normalizeQuantity(v.remaining, ['mass', 'volume', 'length', 'count', 'percent']);
+  if (name === 'clothing' && version === 2 && v.size?.measurements)
+    for (const key of Object.keys(v.size.measurements))
+      v.size.measurements[key] = normalizeQuantity(v.size.measurements[key], ['length']);
+  if (name === 'device' && version === 2 && v.electrical)
+    for (const [key, dimension] of [
+      ['rated_power', 'power'],
+      ['voltage', 'voltage'],
+      ['energy', 'energy'],
+    ] as const)
+      if (v.electrical[key]) v.electrical[key] = normalizeQuantity(v.electrical[key], [dimension]);
   return v;
 }

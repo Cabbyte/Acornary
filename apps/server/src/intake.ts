@@ -219,7 +219,7 @@ export async function readIntake(c: Client, ctx: Context, name: Operation, input
   const catalog = (
     await query(
       c,
-      `SELECT n.*, count(*) OVER()::int AS matching_count FROM catalog_nodes n WHERE household_id=$1 AND (id=ANY($2::text[]) OR acornary_normalize_name(name) LIKE ANY($3::text[]) OR id IN (SELECT catalog_node_id FROM barcode_index WHERE household_id=$1 AND barcode=ANY($6::text[]))) ORDER BY id LIMIT $4 OFFSET $5`,
+      `SELECT n.*, count(*) OVER()::int AS matching_count FROM catalog_nodes n WHERE household_id=$1 AND record_state='VALID' AND (NOT one_off OR id=ANY($7::text[])) AND (id=ANY($2::text[]) OR acornary_normalize_name(name) LIKE ANY($3::text[]) OR id IN (SELECT catalog_node_id FROM barcode_index WHERE household_id=$1 AND barcode=ANY($6::text[]))) ORDER BY id LIMIT $4 OFFSET $5`,
       [
         ctx.household_id,
         [...input.catalog_node_ids, ...aliases.map((a: any) => a.catalog_node_id)],
@@ -227,13 +227,14 @@ export async function readIntake(c: Client, ctx: Context, name: Operation, input
         input.limit + 1,
         input.cursor,
         input.barcodes,
+        input.catalog_node_ids,
       ],
     )
   ).rows;
   const locations = (
     await query(
       c,
-      `SELECT i.*,coalesce(i.display_name,n.name) AS name,count(*) OVER()::int AS matching_count FROM items i JOIN catalog_nodes n ON n.household_id=i.household_id AND n.id=i.catalog_node_id WHERE i.household_id=$1 AND EXISTS(SELECT 1 FROM jsonb_array_elements(i.attributes) a WHERE a->>'template_id'='container') AND (i.id=ANY($2::text[]) OR acornary_normalize_name(coalesce(i.display_name,n.name)) LIKE ANY($3::text[])) ORDER BY i.id LIMIT $4 OFFSET $5`,
+      `SELECT i.*,coalesce(i.display_name,n.name) AS name,count(*) OVER()::int AS matching_count FROM items i JOIN catalog_nodes n ON n.household_id=i.household_id AND n.id=i.catalog_node_id WHERE i.household_id=$1 AND i.record_state='VALID' AND EXISTS(SELECT 1 FROM jsonb_array_elements(i.attributes) a WHERE a->>'template_id'='container') AND (i.id=ANY($2::text[]) OR acornary_normalize_name(coalesce(i.display_name,n.name)) LIKE ANY($3::text[])) ORDER BY i.id LIMIT $4 OFFSET $5`,
       [ctx.household_id, input.location_ids, locationPattern, input.limit + 1, input.cursor],
     )
   ).rows;
@@ -268,12 +269,13 @@ export async function readIntake(c: Client, ctx: Context, name: Operation, input
       (
         await query(
           c,
-          `SELECT count(*) AS count FROM catalog_nodes WHERE household_id=$1 AND (id=ANY($2::text[]) OR acornary_normalize_name(name) LIKE ANY($3::text[]) OR id IN (SELECT catalog_node_id FROM barcode_index WHERE household_id=$1 AND barcode=ANY($4::text[])))`,
+          `SELECT count(*) AS count FROM catalog_nodes WHERE household_id=$1 AND record_state='VALID' AND (NOT one_off OR id=ANY($5::text[])) AND (id=ANY($2::text[]) OR acornary_normalize_name(name) LIKE ANY($3::text[]) OR id IN (SELECT catalog_node_id FROM barcode_index WHERE household_id=$1 AND barcode=ANY($4::text[])))`,
           [
             ctx.household_id,
             [...input.catalog_node_ids, ...aliases.map((a: any) => a.catalog_node_id)],
             pattern,
             input.barcodes,
+            input.catalog_node_ids,
           ],
         )
       ).rows[0].count,
@@ -283,7 +285,7 @@ export async function readIntake(c: Client, ctx: Context, name: Operation, input
       (
         await query(
           c,
-          `SELECT count(*) AS count FROM items i JOIN catalog_nodes n ON n.household_id=i.household_id AND n.id=i.catalog_node_id WHERE i.household_id=$1 AND EXISTS(SELECT 1 FROM jsonb_array_elements(i.attributes) a WHERE a->>'template_id'='container') AND (i.id=ANY($2::text[]) OR acornary_normalize_name(coalesce(i.display_name,n.name)) LIKE ANY($3::text[]))`,
+          `SELECT count(*) AS count FROM items i JOIN catalog_nodes n ON n.household_id=i.household_id AND n.id=i.catalog_node_id WHERE i.household_id=$1 AND i.record_state='VALID' AND EXISTS(SELECT 1 FROM jsonb_array_elements(i.attributes) a WHERE a->>'template_id'='container') AND (i.id=ANY($2::text[]) OR acornary_normalize_name(coalesce(i.display_name,n.name)) LIKE ANY($3::text[]))`,
           [ctx.household_id, input.location_ids, locationPattern],
         )
       ).rows[0].count,
@@ -331,7 +333,12 @@ function commandInput(name: Operation, input: any) {
 }
 function governed(name: Operation, input: any) {
   return (
-    ['create_catalog_node', 'update_catalog_node', 'move_catalog_node'].includes(name) ||
+    [
+      'create_catalog_node',
+      'update_catalog_node',
+      'move_catalog_node',
+      'void_catalog_node',
+    ].includes(name) ||
     (['bind_attributes', 'update_attributes', 'remove_attributes', 'upgrade_attributes'].includes(
       name,
     ) &&
@@ -556,6 +563,7 @@ export async function confirmCatalogProposal(ctx: Context, scope: string, raw: u
     if (row.status === 'APPROVED') return row.result;
     await currentProposal(c, ctx, row);
     let revision = (await policy(c, ctx)).revision;
+    let identityConflicts: { identity_key: string; catalog_node_ids: string[] }[] = [];
     if (row.proposal.kind === 'policy') {
       const prior = await policy(c, ctx);
       revision++;
@@ -568,11 +576,12 @@ export async function confirmCatalogProposal(ctx: Context, scope: string, raw: u
         'INSERT INTO catalog_policy_versions(household_id,revision,rules,actor_id,reason) VALUES($1,$2,$3::jsonb,$4,$5)',
         [ctx.household_id, revision, JSON.stringify(rules), ctx.actor_id, row.proposal.reason],
       );
-      await query(c, 'DELETE FROM catalog_identity_keys WHERE household_id=$1', [ctx.household_id]);
+      identityConflicts = (await rebuildIdentityIndex(c, ctx.household_id)).conflicts;
     }
     const result = {
       approval_id: row.id,
       policy_revision: revision,
+      ...(identityConflicts.length ? { identity_conflicts: identityConflicts } : {}),
       scope: row.proposal.kind === 'policy' ? 'LONG_TERM_RULE' : 'THIS_OPERATION_ONLY',
     };
     await query(
@@ -636,7 +645,7 @@ async function checkExistingPlacement(c: Client, ctx: Context, sku: string, chec
   const node = ancestry.find((a: any) => a.object.id === sku)?.object;
   requireFact(node, 'NOT_FOUND', 'Product not found in this household.');
   requireFact(
-    node.kind === 'SKU',
+    node.kind === 'SKU' && node.record_state !== 'VOID',
     'ATTRIBUTE_VALIDATION_FAILED',
     'Physical items require an existing SKU.',
   );
@@ -746,6 +755,7 @@ export async function commitIntake(
     const r = await apply(c, ctx, name, parsed, operation_id);
     result.affected_objects.push(...r.affected_objects);
     result.event_ids.push(...r.event_ids);
+    if (r.identity_conflicts) receipt.identity_conflicts = r.identity_conflicts;
     return r.affected_objects.map((a: any) => a.id) as string[];
   };
   const aliases = p.rules.flatMap((r: CatalogRule) => r.aliases);
@@ -846,7 +856,12 @@ export async function commitIntake(
         'product.specification',
         'product.net_content',
       ];
-      const supplied = sets(product.initial_attributes);
+      const supplied = Object.fromEntries(
+        (product.initial_attributes ?? []).map((a) => [
+          a.template_id,
+          validateValues(a.template_id, a.values, a.template_version),
+        ]),
+      );
       const signature = (attrs: any) =>
         Object.fromEntries(fields.map((f) => [f, normalizedFact(getPath(attrs, f) ?? null)]));
       const identity = signature(supplied);
@@ -873,7 +888,7 @@ export async function commitIntake(
       const candidates = (
         await query(
           c,
-          `SELECT DISTINCT n.* FROM catalog_nodes n LEFT JOIN barcode_index b ON b.household_id=n.household_id AND b.catalog_node_id=n.id WHERE n.household_id=$1 AND n.kind='SKU' AND (acornary_normalize_name(n.name)=$2 OR n.id=ANY($3::text[]) OR b.barcode=ANY($4::text[]) OR n.id IN (SELECT catalog_node_id FROM catalog_identity_keys WHERE household_id=$1 AND identity_key=$5 AND policy_revision=$6))`,
+          `SELECT DISTINCT n.* FROM catalog_nodes n LEFT JOIN barcode_index b ON b.household_id=n.household_id AND b.catalog_node_id=n.id WHERE n.household_id=$1 AND n.kind='SKU' AND n.record_state='VALID' AND NOT n.one_off AND NOT $7::boolean AND (acornary_normalize_name(n.name)=$2 OR n.id=ANY($3::text[]) OR b.barcode=ANY($4::text[]) OR n.id IN (SELECT catalog_node_id FROM catalog_identity_keys WHERE household_id=$1 AND identity_key=$5 AND policy_revision=$6))`,
           [
             ctx.household_id,
             normalize(product.name),
@@ -881,6 +896,7 @@ export async function commitIntake(
             barcodes,
             identityKey,
             p.revision,
+            product.one_off ?? false,
           ],
         )
       ).rows;
@@ -915,7 +931,10 @@ export async function commitIntake(
         const candidate = matches[0];
         requireFact(
           authoritative.length ||
-            (Object.values(identity).some((v) => v !== null) &&
+            (Object.values(identity).length > 0 &&
+              Object.values(identity).every(
+                (v) => v !== null && v !== '' && canonical(v) !== '{}' && canonical(v) !== '[]',
+              ) &&
               canonical(signature(sets(candidate.attributes))) === canonical(identity)),
           'AMBIGUOUS_PRODUCT',
           'Same name with incomplete identifying information. Choose an existing product or clarify the difference.',
@@ -998,15 +1017,11 @@ export async function commitIntake(
         [sku] = await add('create_catalog_node', {
           kind: 'SKU',
           name: product.name,
+          one_off: product.one_off ?? false,
           parent_id,
           initial_attributes: product.initial_attributes,
         });
         receipt.created_catalog.push(sku);
-        await query(
-          c,
-          'INSERT INTO catalog_identity_keys(household_id,identity_key,catalog_node_id,policy_revision) VALUES($1,$2,$3,$4) ON CONFLICT(household_id,identity_key) DO UPDATE SET catalog_node_id=excluded.catalog_node_id,policy_revision=excluded.policy_revision',
-          [ctx.household_id, identityKey, sku, p.revision],
-        );
       }
       receipt.classification.push({
         catalog_node_id: sku,
@@ -1104,4 +1119,72 @@ export function compactIntakeResult(result: any) {
     items: [...groups.values()],
     full_receipt: 'get_intake_receipt',
   };
+}
+
+/** Rebuild under the household write lock. Conflicting signatures are reported and omitted,
+ * never assigned to an arbitrary SKU. Historical values are not upgraded or guessed. */
+export async function rebuildIdentityIndex(c: Client, household: string) {
+  const p = (
+    await query(
+      c,
+      'SELECT revision,rules FROM catalog_policy_versions WHERE household_id=$1 ORDER BY revision DESC LIMIT 1',
+      [household],
+    )
+  ).rows[0] ?? { revision: 0, rules: [] };
+  const nodes = (
+    await query(
+      c,
+      'SELECT id,parent_id,kind,name,attributes,one_off,record_state FROM catalog_nodes WHERE household_id=$1',
+      [household],
+    )
+  ).rows;
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const signatures = new Map<string, string[]>();
+  for (const node of nodes) {
+    if (node.kind !== 'SKU' || node.one_off || node.record_state !== 'VALID') continue;
+    let current: any = node,
+      rule: any;
+    const visited = new Set<string>();
+    while (current && !visited.has(current.id)) {
+      visited.add(current.id);
+      rule = p.rules.find((r: any) => r.branch_id === current.id);
+      if (rule) break;
+      current = byId.get(current.parent_id);
+    }
+    const fields: string[] = rule?.identity_fields ?? [
+      'product.brand',
+      'product.model',
+      'product.specification',
+      'product.net_content',
+    ];
+    const attrs = sets(node.attributes);
+    const identity = Object.fromEntries(
+      fields.map((f) => [f, normalizedFact(getPath(attrs, f) ?? null)]),
+    );
+    if (
+      !fields.length ||
+      Object.values(identity).some(
+        (v) => v === null || v === '' || canonical(v) === '{}' || canonical(v) === '[]',
+      )
+    )
+      continue;
+    const key = hash({ name: normalize(node.name), identity });
+    signatures.set(key, [...(signatures.get(key) ?? []), node.id]);
+  }
+  await query(c, 'DELETE FROM catalog_identity_keys WHERE household_id=$1', [household]);
+  const conflicts: { identity_key: string; catalog_node_ids: string[] }[] = [];
+  let indexed = 0;
+  for (const [key, ids] of signatures) {
+    if (ids.length > 1) {
+      conflicts.push({ identity_key: key, catalog_node_ids: ids.sort() });
+      continue;
+    }
+    await query(
+      c,
+      'INSERT INTO catalog_identity_keys(household_id,identity_key,catalog_node_id,policy_revision) VALUES($1,$2,$3,$4)',
+      [household, key, ids[0], p.revision],
+    );
+    indexed++;
+  }
+  return { indexed, conflicts };
 }

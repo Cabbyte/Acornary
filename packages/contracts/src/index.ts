@@ -1,3 +1,6 @@
+export * from './semantics.js';
+export * from './units.js';
+import { dispositionSchema, referenceSchema } from './semantics.js';
 export * from './registry.js';
 import { templates, templateId, measurement, profileSchema, capabilitySchema } from './registry.js';
 import {
@@ -94,10 +97,34 @@ const itemQuerySchema = z.strictObject({
     catalog_subtree_id: id.optional(),
     within_item_id: uuid.optional(),
     date_filters: z.array(dateFilter).max(20).optional(),
+    include_void: z.boolean().default(false),
+    include_terminal: z.boolean().default(false),
+    profile: profileSchema.optional(),
+    capabilities: z.array(capabilitySchema).optional(),
     attribute_filters: filters,
   });
 export const schemas = {
   ...intakeSchemas,
+  query_references: z.strictObject({ target: referenceSchema }),
+  query_stock: z.strictObject({
+    ...page,
+    cursor: z.string().optional(),
+    catalog_node_ids: z.array(id).max(100).optional(),
+    catalog_subtree_id: id.optional(),
+    within_item_id: uuid.optional(),
+    low_only: z.boolean().default(false),
+  }),
+  void_item: z.strictObject({ ...write, item_id: uuid, reason: text }),
+  void_catalog_node: z.strictObject({ ...write, catalog_node_id: id, reason: text }),
+  dispose_item: z.strictObject({ ...write, item_id: uuid, disposition: dispositionSchema }),
+  split_item: z.strictObject({
+    ...write,
+    source_item_id: uuid,
+    target_catalog_node_id: id,
+    count: z.int().min(1).max(100),
+    child_attributes: initial,
+    reason: text.optional(),
+  }),
   add_deadline: z.strictObject({ ...write, item_id: uuid, entry: deadlineInput }),
   update_deadline: z.strictObject({
     ...write,
@@ -178,6 +205,10 @@ export const schemas = {
     barcode: z.string().max(128).optional(),
     catalog_subtree_id: id.optional(),
     include_hidden: z.boolean().default(false),
+    include_void: z.boolean().default(false),
+    include_one_off: z.boolean().default(false),
+    profile: profileSchema.optional(),
+    capabilities: z.array(capabilitySchema).optional(),
     attribute_filters: filters,
   }),
   get_catalog_node: z.strictObject({
@@ -245,6 +276,7 @@ export const schemas = {
   }),
   correct_item: z.strictObject({
     ...write,
+    record_state: z.literal('VALID').optional(),
     item_id: uuid,
     reason: text,
     core: z.strictObject({ catalog_node_id: id }).optional(),
@@ -277,6 +309,8 @@ export const schemas = {
 };
 export type Operation = keyof typeof schemas;
 export const reads = new Set<Operation>([
+  'query_stock',
+  'query_references',
   ...(fileReads as Set<Operation>),
   'get_intake_context',
   'get_intake_receipt',
@@ -293,6 +327,12 @@ export const reads = new Set<Operation>([
   'get_history',
 ]);
 export const descriptions: Record<Operation, string> = {
+  query_references: '查询同家庭对象的反向引用。',
+  query_stock: '按 SKU 的 COUNT 或 CONTENT 策略查询完整范围的补货状态，未知量单列。',
+  void_item: '作废误建实物，保留身份和历史。',
+  void_catalog_node: '通过目录治理审批作废无引用 SKU。',
+  dispose_item: '原子记录处置事实并置为 DISPOSED。',
+  split_item: '整包拆成同一明确 SKU；显式子件内容必须守恒。',
   add_deadline: '按物品添加期限，服务端生成稳定条目 ID。',
   update_deadline: '按稳定条目 ID 修改期限，不接受数组下标或完成日。',
   remove_deadline: '按稳定条目 ID 移除期限，历史事件保留。',
@@ -406,7 +446,7 @@ export function parseCommand(name: Operation, raw: unknown): any {
   ) {
     const ids: string[] = input.item_ids ??
       input.items?.map((i: any) => i.item_id) ?? [
-        input.target?.id ?? input.item_id ?? input.catalog_node_id,
+        input.target?.id ?? input.item_id ?? input.source_item_id ?? input.catalog_node_id,
       ];
     const missing = ids.filter((id) => !Object.hasOwn(input.expected_revisions, id));
     if (missing.length)
