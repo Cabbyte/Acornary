@@ -7,6 +7,7 @@ import android.view.WindowManager
 import android.net.Uri
 import android.os.SystemClock
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -29,9 +30,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Logout
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -123,10 +121,10 @@ internal fun TerminalWorkspace(state:TerminalState,model:TerminalViewModel,activ
                 }
             }
             VerticalDivider()
-            Column(Modifier.weight(1f).fillMaxHeight().padding(horizontal=8.dp)) {
+            Column(Modifier.weight(1f).fillMaxHeight().background(MaterialTheme.colorScheme.surface).padding(horizontal=8.dp)) {
                 val review = batch
                 if (review?.visible == true) {
-                    BatchPrintPane(review, model, { printerSettings = true })
+                    BatchPrintPane(review, model) { printerSettings = true }
                 } else {
                     if (page != 2) BrowseToolbar(page, state, browse, model, { filters = true }, {
                         model.printJournal.open(visible, LabelSize.from(prefs.labelSize), prefs.printDensity)

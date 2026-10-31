@@ -15,10 +15,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable internal fun ColumnScope.BatchPrintPane(review:BatchReview,model:TerminalViewModel,printerSettings:()->Unit) {
-    val journal=model.printJournal
+@Composable internal fun ColumnScope.BatchPrintPane(review:BatchReview,model:TerminalViewModel,
+    journal:PrintJournal=model.printJournal,inventoryOverride:TerminalState?=null,printerSettings:()->Unit) {
     val printer by model.printer.state.collectAsStateWithLifecycle()
-    val inventory by model.state.collectAsStateWithLifecycle()
+    val inventory=inventoryOverride?:model.state.collectAsStateWithLifecycle().value
     var previewId by remember(review.id) {mutableStateOf<String?>(null)}
     val active=if(review.busy) review.pages.find {it.status=="SENDING"}?:review.pages.firstOrNull {it.status=="PENDING"}
         else review.pages.find {it.item.id==previewId}?:review.pages.firstOrNull {it.item.id in review.selected}?:review.pages.firstOrNull()

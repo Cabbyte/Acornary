@@ -27,6 +27,8 @@ class WorkspaceDesignTest {
  private fun model()=TerminalViewModel(InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as Application)
  private fun screenshot(name:String) {
   compose.waitForIdle()
+  InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+  android.os.SystemClock.sleep(350) // Let the window manager finish rotation and display the drawn frame.
   val ctx=InstrumentationRegistry.getInstrumentation().targetContext
   val file=File(ctx.getExternalFilesDir("design-qa"),name+".png");file.parentFile!!.mkdirs()
   val bitmap=InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
@@ -44,7 +46,11 @@ class WorkspaceDesignTest {
   compose.setContent {
    val density=LocalDensity.current
    CompositionLocalProvider(LocalDensity provides Density(density.density,scale)) {
-    AcornaryTheme(if(dark)"dark" else "light") {Surface(Modifier.requiredSize(width.dp,height.dp)) {TerminalWorkspace(fixture,model,compose.activity)}}
+    AcornaryTheme(if(dark)"dark" else "light") {
+     Box(Modifier.fillMaxSize(),contentAlignment=androidx.compose.ui.Alignment.Center) {
+      Surface(Modifier.widthIn(max=width.dp).fillMaxWidth().heightIn(max=height.dp).fillMaxHeight()) {TerminalWorkspace(fixture,model,compose.activity)}
+     }
+    }
    }
   }
  }
@@ -62,6 +68,15 @@ class WorkspaceDesignTest {
   compose.onNodeWithText("扫码",useUnmergedTree=true).assertIsDisplayed()
   compose.onNodeWithText("设置",useUnmergedTree=true).assertIsDisplayed()
   screenshot("workspace-pixel3-dark")
+ }
+ @Test fun mediumFontAndConsumptionKeyboardKeepBothExplicitSubmitsVisible() {
+  workspace(scale=1.3f)
+  screenshot("workspace-pixel3-light-130")
+  compose.onNodeWithText("消耗",useUnmergedTree=true).performClick()
+  compose.onNodeWithText("消耗量（mL）").performClick().performTextInput("50")
+  compose.onNodeWithText("整件用完",useUnmergedTree=true).assertIsDisplayed()
+  compose.onNodeWithText("扣减该数量",useUnmergedTree=true).assertIsDisplayed()
+  screenshot("consumption-keyboard-130")
  }
  @Test fun searchReplacesToolbarRatherThanAddingAnotherRow() {
   workspace()

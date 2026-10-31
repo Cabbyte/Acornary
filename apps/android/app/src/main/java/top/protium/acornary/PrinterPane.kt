@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -41,7 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
     }
 }
 @Composable internal fun LabelPreview(bitmap:Bitmap) {
-    Image(bitmap.asImageBitmap(),"标签预览，与实际打印使用同一张位图",Modifier.fillMaxWidth().aspectRatio(bitmap.width.toFloat()/bitmap.height).background(Color.White),filterQuality=FilterQuality.None)
+    Image(bitmap.asImageBitmap(),"标签预览，与实际打印使用同一张位图",Modifier.fillMaxWidth().height(112.dp).background(Color.White),contentScale=ContentScale.Fit,filterQuality=FilterQuality.None)
 }
 @Composable internal fun PrinterFeedback(state:PrinterState,printer:PrinterController) {
     Text(state.message,style=MaterialTheme.typography.bodySmall,color=if(state.uncertain) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
