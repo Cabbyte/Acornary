@@ -321,10 +321,10 @@
     "id": "QUERY08",
     "batch": 2,
     "title": "索引执行计划SQL计数及性能样本",
-    "status": "PARTIAL",
+    "status": "PASS",
     "acceptance": "索引执行计划SQL计数及性能样本；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "small fixture SQL=5 + EXPLAIN; 10k benchmark NOT_RUN"
+      "10k items/100k events: items p95 53.9ms, history 3.2ms, search 97.1ms; docs/repair/batch2/performance.md"
     ]
   },
   {

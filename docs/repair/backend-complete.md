@@ -16,7 +16,7 @@ Batch 3–8 的后端能力已经实现并合并到集成分支：
 - 冻结导出（QUERY04/05），一小时快照、分页、TTL、敏感披露审计；
 - 数据库事件/引用/拆分约束、协议开关、错误映射、检查器、健康检查和恢复清单。
 
-**没有完成、也不应伪装完成的**：附件缩略图/EXIF 真实媒体处理、附件字节与 GC/备份租约、独立异机恢复、10k 性能基准、7 条历史 migration checksum、客户端缓存/三端切换、`get_item` v2 包装。这些是明确的剩余门禁。
+**没有完成、也不应伪装完成的**：附件缩略图/EXIF 真实媒体处理、附件字节与 GC/备份租约、独立异机恢复、7 条历史 migration checksum、客户端缓存/三端切换、`get_item` v2 包装。这些是明确的剩余门禁。
 
 ## 2. 测试证据
 
@@ -24,8 +24,9 @@ Batch 3–8 的后端能力已经实现并合并到集成分支：
 
 | 范围 | 结果 |
 | --- | --- |
-| 全仓库既有回归 | **157 passed / 52 todo / 0 failed**，20 个文件 |
+| 全仓库既有回归 | **157 passed / 2 todo / 0 failed**，20 个文件 |
 | Batch 1 + 2（新验收） | **84 passed / 1 todo** |
+| 10k 读路径基准 | items p95 **53.9 ms**、history **3.2 ms**、search **97.1 ms** |
 | Batch 3 sync/label | **17 passed / 4 skipped** |
 | Batch 4 registry/profile | **19 passed** |
 | Batch 5 deadline/dates | **11 passed** |
@@ -35,11 +36,11 @@ Batch 3–8 的后端能力已经实现并合并到集成分支：
 | 类型检查 | 根与 Web `tsc --noEmit` 通过 |
 | 构建 | server、Web、插件 bundle 通过 |
 
-验收用例：**59 PASS / 15 PARTIAL / 2 NOT_RUN**（76 条）。PARTIAL/NOT_RUN 与下方门禁一一对应。
+验收用例：**60 PASS / 14 PARTIAL / 2 NOT_RUN**（76 条）。PARTIAL/NOT_RUN 与下方门禁一一对应。
 
 ## 3. 迁移
 
-已按顺序应用：`001`–`005`、`007`、`008`、`009_01`–`009_06`、`010`、`011`、`012`、`013`、`014`、`015`、`016`、`016a`、`017`、`018`。`009_02/009_03` 为非事务迁移；`016a` 是旧笔记插入兼容桥。
+已按顺序应用：`001`–`005`、`007`、`008`、`009_01`–`009_06`、`010`、`011`、`012`、`013`、`014`、`015`、`016`、`016a`、`017`、`018`、`019`、`020`。`009_02/009_03` 为非事务迁移；`016a` 是旧笔记插入兼容桥。
 
 - 新数据库从空库完整迁移通过。
 - `--grants` 通过；运行角色测试覆盖事件/ACTOR 引用插入、核心表 UPDATE/DELETE 收紧、同步表列级授权。
@@ -69,11 +70,10 @@ Batch 3–8 的后端能力已经实现并合并到集成分支：
 
 1. **附件媒体**：`sharp`/缩略图/EXIF 真实处理未引入；当前是 `MediaProcessor` 接口 + 安全默认。缩略图和 EXIF 剥离不能声明完成。
 2. **附件字节/备份**：数据库元数据摘要已验证；附件字节 manifest、GC 租约、NAS/SFTP 上传、独立密钥解密和真实异机恢复未执行。`OPS07` 为 NOT_RUN。
-3. **性能**：10k 物品/100k 事件/10k 笔记的 p95、SQL 数和写入回归尚未跑；QUERY08 只有小 fixture 证据。
-4. **历史校验和**：7 条 `UNVERIFIED` 需要发布前人工签署/核对。
-5. **客户端**：Web/Android/插件尚未切到 v2；`get_item` 仍是扁平形状，v2 包装未实现。
-6. **全路径脱敏**：笔记/附件/检查器/详情已覆盖；其他读取路径的完整矩阵仍为 PARTIAL。
-7. **生产切换**：`ACORNARY_REQUIRE_PROTOCOL_V2` 默认关闭；三端切换、真实插件附件传输、真实 Android 同步/打印、生产副本审计和恢复演练仍需执行。
+3. **历史校验和**：7 条 `UNVERIFIED` 需要发布前人工签署/核对。
+4. **客户端**：Web/Android/插件尚未切到 v2；`get_item` 仍是扁平形状，v2 包装未实现。
+5. **全路径脱敏**：笔记/附件/检查器/详情已覆盖；其他读取路径的完整矩阵仍为 PARTIAL。
+6. **生产切换**：`ACORNARY_REQUIRE_PROTOCOL_V2` 默认关闭；三端切换、真实插件附件传输、真实 Android 同步/打印、生产副本审计和恢复演练仍需执行。
 
 ## 6. 合并状态
 
@@ -84,13 +84,14 @@ Batch 3–8 的后端能力已经实现并合并到集成分支：
 1. 前端完成并提交；
 2. 在干净工作树把 `codex/wave2-integration` 合入 `codex/data-model-v2`；
 3. 跑一次全仓回归 + 三端黄金样本；
-4. 解决 7 条 checksum、性能、附件字节/异机恢复门禁；
+4. 解决 7 条 checksum、附件字节/异机恢复门禁；
 5. 再开启协议 v2 强制和生产切换。
 
 ## 7. 证据入口
 
 - [前端接口冻结 v2](./frozen-interfaces.md)
 - [Batch 1+2 集成](./batch1/integration.md)
+- [10k 读路径基准](./batch2/performance.md)
 - [Batch 3 sync/label](./batch3/sync-label.md)
 - [Batch 4 registry/profile](./batch4/registry.md)
 - [Batch 5 dates](./batch5/dates.md)
