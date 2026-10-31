@@ -7,6 +7,9 @@ import com.google.zxing.common.HybridBinarizer
 import com.google.zxing.qrcode.QRCodeReader
 import org.junit.Assert.*
 import org.junit.Test
+import com.google.zxing.qrcode.encoder.Encoder
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
+import kotlin.math.roundToInt
 
 class LabelPrinterTest {
     private val item = StockItem("item_11111111-1111-4111-8111-000000000001", "中文长名称测试家庭库存物品", 1,
@@ -28,6 +31,22 @@ class LabelPrinterTest {
             val bitmap = LabelRenderer.render(content, size)
             val pixels = IntArray(bitmap.width * bitmap.height); bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
             assertEquals(content.url, QRCodeReader().decode(BinaryBitmap(HybridBinarizer(RGBLuminanceSource(bitmap.width, bitmap.height, pixels)))).text)
+        }
+    }
+    @Test fun fullHeightQrRetainsFourModuleQuietZoneAndHasNoNumberUnderIt() {
+        LabelSize.entries.forEach { size ->
+            val content = LabelContent.item(item)
+            val code = Encoder.encode(content.url, ErrorCorrectionLevel.M, mapOf(EncodeHintType.CHARACTER_SET to "UTF-8")).matrix
+            val bitmap = LabelRenderer.render(content, size)
+            val origin = size.width - size.height
+            val quiet = (4f * size.height / (code.width + 8)).roundToInt()
+            for (y in 0 until size.height) for (x in 0 until size.height) {
+                if (x < quiet || y < quiet || x >= size.height - quiet || y >= size.height - quiet)
+                    assertEquals("QR quiet zone at $x,$y", -1, bitmap.getPixel(origin + x, y))
+            }
+            // Finder marks reach both edges of the enlarged symbol, rather than an 82/123-dot box.
+            assertEquals(0xff000000.toInt(), bitmap.getPixel(origin + quiet, quiet))
+            assertEquals(0xff000000.toInt(), bitmap.getPixel(origin + size.height - quiet - 1, quiet))
         }
     }
     @Test fun longNameTruncatesAtGraphemesAndKeepsFontSize() {

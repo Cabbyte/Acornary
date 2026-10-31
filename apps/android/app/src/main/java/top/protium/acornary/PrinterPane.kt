@@ -91,7 +91,11 @@ fun PrinterPane(model: TerminalViewModel, dismiss: () -> Unit) {
                 }
                 if (denied) TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))) }) { Text("打开权限设置") }
                 TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) }, enabled = !state.busy) { Text("系统蓝牙设置") }
-                Text("离开应用或进入待机后断开连接；再次打印时手动连接。", style = MaterialTheme.typography.bodySmall)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Text("待机保持连接", Modifier.weight(1f))
+                    Switch(checked = state.keepConnected, onCheckedChange = printer::setKeepConnected, enabled = !state.busy)
+                }
+                Text("记住已连接的 D101，待机时保持蓝牙连接，断线后自动重连。打印机需保持开机；不会自动重打标签。", style = MaterialTheme.typography.bodySmall)
             }
             VerticalDivider()
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {

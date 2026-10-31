@@ -10,9 +10,10 @@ import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import com.google.zxing.qrcode.encoder.Encoder
 import java.time.LocalDate
 import java.util.Locale
+import kotlin.math.roundToInt
 
-enum class LabelSize(val key: String, val title: String, val width: Int, val height: Int, val scale: Int) {
-    SMALL("30x12", "30 × 12 mm", 240, 96, 2), LARGE("40x20", "40 × 20 mm", 320, 160, 3);
+enum class LabelSize(val key: String, val title: String, val width: Int, val height: Int) {
+    SMALL("30x12", "30 × 12 mm", 240, 96), LARGE("40x20", "40 × 20 mm", 320, 160);
     companion object { fun from(key: String) = entries.find { it.key == key } ?: SMALL }
 }
 
@@ -33,7 +34,8 @@ object LabelRenderer {
         val canvas = Canvas(bitmap); canvas.drawColor(-1)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xff000000.toInt() }
         val margin = if (small) 5f else 8f
-        val textWidth = if (small) 140f else 170f
+        // Reserve the entire short edge for the QR, including its four-module quiet zone.
+        val textWidth = size.width - size.height - margin * 2
         fun text(value: String, x: Float, top: Float) { canvas.drawText(value, x, top - paint.fontMetrics.ascent, paint) }
         paint.typeface = Typeface.create("sans-serif", Typeface.BOLD); paint.textSize = if (small) 16f else 20f
         lines(content.name, paint, textWidth, 2).forEachIndexed { index, line -> text(line, margin, (if (small) 4f else 8f) + index * (if (small) 18f else 25f)) }
@@ -44,16 +46,19 @@ object LabelRenderer {
             paint.textSize = if (small) 14f else 18f; text(content.date, margin, if (small) 77f else 135f)
         }
         val qr = Encoder.encode(content.url, ErrorCorrectionLevel.M, mapOf(EncodeHintType.CHARACTER_SET to "UTF-8")).matrix
-        val qrSize = (qr.width + 8) * size.scale
-        require(qrSize <= if (small) 84 else 126) { "链接过长，无法在该尺寸上清晰打印。" }
-        val qrX = size.width - qrSize - margin; val qrY = if (small) 0f else 8f
+        val modules = qr.width + 8
+        val qrSize = size.height
+        require(qrSize / modules >= 2) { "链接过长，无法在该尺寸上清晰打印。" }
+        val qrX = size.width - qrSize
+        // Round every shared module boundary once: fill the available dots without interpolation,
+        // gaps, grey edges, or reducing the mandatory white margin.
+        fun edge(module: Int) = (module.toFloat() * qrSize / modules).roundToInt().toFloat()
         paint.isAntiAlias = false
         for (y in 0 until qr.height) for (x in 0 until qr.width) if (qr.get(x, y).toInt() == 1) {
-            val left = qrX + (x + 4) * size.scale; val top = qrY + (y + 4) * size.scale
-            canvas.drawRect(left, top, left + size.scale, top + size.scale, paint)
+            canvas.drawRect(qrX + edge(x + 4), edge(y + 4), qrX + edge(x + 5), edge(y + 5), paint)
         }
-        paint.isAntiAlias = true; paint.typeface = Typeface.MONOSPACE; paint.textSize = if (small) 9f else 12f; paint.textAlign = Paint.Align.CENTER
-        text(content.suffix, qrX + qrSize / 2f, if (small) 86f else 139f)
+        paint.isAntiAlias = true; paint.typeface = Typeface.MONOSPACE; paint.textSize = if (small) 9f else 12f; paint.textAlign = Paint.Align.RIGHT
+        text(content.suffix, qrX - margin, if (small) 64f else 99f)
         val pixels = IntArray(size.width * size.height); bitmap.getPixels(pixels, 0, size.width, 0, 0, size.width, size.height)
         for (i in pixels.indices) pixels[i] = if ((pixels[i] shr 16 and 255) < 180) 0xff000000.toInt() else -1
         bitmap.setPixels(pixels, 0, size.width, 0, 0, size.width, size.height)

@@ -9,10 +9,12 @@ import kotlinx.coroutines.*
 import java.io.IOException
 import java.util.UUID
 
+interface D101Link : NiimbotConnection { suspend fun connect(address: String) }
+
 /** One GATT operation at a time; a failed/late exchange invalidates the entire connection. */
 @SuppressLint("MissingPermission")
 @Suppress("DEPRECATION")
-class D101BleConnection(private val context: Context, private val disconnected: (String) -> Unit) : NiimbotConnection {
+class D101BleConnection(private val context: Context, private val disconnected: (String) -> Unit) : D101Link {
     private val handler = Handler(Looper.getMainLooper())
     private var gatt: BluetoothGatt? = null
     private var channel: BluetoothGattCharacteristic? = null
@@ -23,9 +25,10 @@ class D101BleConnection(private val context: Context, private val disconnected: 
     private var closed = false
     private var exchanging = false
 
-    suspend fun connect(device: BluetoothDevice) = withContext(Dispatchers.Main.immediate) {
+    override suspend fun connect(address: String) = withContext(Dispatchers.Main.immediate) {
         try {
             withTimeout(15_000) {
+                val device = context.getSystemService(BluetoothManager::class.java).adapter.getRemoteDevice(address)
                 gatt = device.connectGatt(context.applicationContext, false, callback, BluetoothDevice.TRANSPORT_LE)
                     ?: throw IOException("无法建立蓝牙连接。")
                 connected.await()

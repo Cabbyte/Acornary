@@ -10,6 +10,7 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="top.protium.acornary.permission.TERMINAL_SETTINGS" />
     <uses-feature android:name="android.hardware.camera.front" android:required="true" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -27,6 +28,14 @@
         </activity>
         <provider android:name=".AmbientProvider" android:authorities="top.protium.acornary.ambient" android:exported="true" android:readPermission="top.protium.acornary.permission.READ_AMBIENT" />
         <service android:name=".SyncService" android:exported="false" android:foregroundServiceType="dataSync" />
+        <service android:name=".PrinterService" android:exported="false" android:foregroundServiceType="connectedDevice" />
+        <receiver android:name=".PrinterReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.USER_UNLOCKED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
         <receiver android:name=".SyncReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" /><action android:name="android.intent.action.USER_UNLOCKED" />

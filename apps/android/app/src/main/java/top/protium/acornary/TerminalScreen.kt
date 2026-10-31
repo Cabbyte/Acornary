@@ -71,7 +71,7 @@ fun TerminalScreen(model: TerminalViewModel, activity: MainActivity) {
         submissionAwake = state.busy
         if (state.busy) { delay(30_000); submissionAwake = false }
     }
-    val keep = lifecycle.isAtLeast(Lifecycle.State.RESUMED) && (submissionAwake || scanning || inputAwake || printerState.busy || printerState.scanning)
+    val keep = lifecycle.isAtLeast(Lifecycle.State.RESUMED) && (submissionAwake || scanning || inputAwake || (printerState.busy && !printerState.automaticConnection) || printerState.scanning)
     DisposableEffect(keep) { activity.keepAwake(keep); onDispose { activity.keepAwake(false) } }
     LaunchedEffect(state.message) { state.message?.let { snackbar.showSnackbar(it); model.repo.message(null) } }
     fun login(switch: Boolean = false) { scope.launch {

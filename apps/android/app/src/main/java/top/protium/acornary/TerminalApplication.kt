@@ -17,6 +17,7 @@ class TerminalApplication : Application() {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     lateinit var repository: TerminalRepository
     lateinit var preferences: TerminalPreferences
+    val printer by lazy { PrinterController(this, scope) }
     lateinit var ready: Deferred<Unit>
     override fun onCreate() {
         super.onCreate()
@@ -24,6 +25,7 @@ class TerminalApplication : Application() {
         preferences = TerminalPreferences(this, scope)
         repository = TerminalRepository(this, database.dao(), TerminalAuth(this))
         ready = scope.async { repository.initialize() }
+        scope.launch { ready.await(); repository.state.map { it.session?.scope }.distinctUntilChanged().drop(1).collect { printer.scopeChanged() } }
         scope.launch {
             ready.await()
             combine(repository.state, preferences.state) { state, prefs -> state to prefs }.collect {
@@ -48,11 +50,7 @@ class TerminalViewModel(application: Application) : AndroidViewModel(application
     val repo get() = app.repository
     val state = repo.state
     val prefs = app.preferences.state
-    val printer = PrinterController(application, viewModelScope)
-    init {
-        viewModelScope.launch { state.map { it.session?.scope }.distinctUntilChanged().drop(1).collect { printer.disconnect() } }
-    }
-    override fun onCleared() { printer.disconnect(); super.onCleared() }
+    val printer get() = app.printer
     val page = MutableStateFlow(0)
     val lastInteraction = MutableStateFlow(android.os.SystemClock.elapsedRealtime())
     fun interact() { lastInteraction.value = android.os.SystemClock.elapsedRealtime() }
