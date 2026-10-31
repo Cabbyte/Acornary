@@ -554,7 +554,7 @@
     "status": "PARTIAL",
     "acceptance": "图片EXIF剥离像素限制与容器sharp；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch7/notes-attachments.test.ts (15 passed)"
+      "tests/batch7/media.test.ts (3 passed): EXIF/eXIf strip + dimensions; thumbnail still absent"
     ]
   },
   {

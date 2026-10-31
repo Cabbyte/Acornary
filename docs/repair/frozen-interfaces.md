@@ -1021,7 +1021,7 @@ type SyncBootstrap = {
 | `profile` / `capabilities` | I | 表列、默认/覆盖、`effective_capabilities`、表单过滤 |
 | `deadline` / `DateFact` | I | 模板、四个命令、`date_facts`、`date_filters` |
 | 笔记 target / summaries | I | Item/CatalogNode、摘要/归档/敏感度；正文走 `get_note` |
-| 附件 | PARTIAL | 元数据/票据/上传/下载/脱敏已实现；缩略图/EXIF/备份字节门禁未完成 |
+| 附件 | PARTIAL | 元数据/票据/上传/下载/脱敏、EXIF/eXIf/XMP 剥离与尺寸已实现；缩略图/备份字节门禁未完成 |
 | `void` / `split` / `dispose` / `references` / 单位 / `stock` | I | 服务端命令、反向索引、`query_stock` |
 | 同步 v2 | I | state/changes/fetch/bootstrap、generation/prune |
 | 协议 v2 强制 | I | `ACORNARY_REQUIRE_PROTOCOL_V2=1` 开启；默认兼容 |

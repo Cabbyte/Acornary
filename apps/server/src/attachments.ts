@@ -49,6 +49,113 @@ export class PassthroughMediaProcessor implements MediaProcessor {
     return { bytes, width: null, height: null, exifStripped: false };
   }
 }
+// Dependency-free metadata safety for the common image containers. It removes EXIF
+// segments/chunks and reads dimensions without re-encoding pixels; thumbnails remain
+// an explicit processor responsibility (the reservation currently has no thumb bytes).
+const SOF = new Set([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf]);
+function jpegSafe(bytes: Buffer) {
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
+  let p = 2, width: number | null = null, height: number | null = null, stripped = false;
+  const out = [bytes.subarray(0, 2)];
+  while (p + 1 < bytes.length) {
+    if (bytes[p] !== 0xff) return null;
+    const marker = bytes[p + 1];
+    if (marker === 0xff) {
+      p++;
+      continue;
+    }
+    const q = p + 2;
+    if (marker === 0xd8 || marker === 0xd9 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+      out.push(bytes.subarray(p, q));
+      p = q;
+      if (marker === 0xd9) break;
+      continue;
+    }
+    if (q + 2 > bytes.length) return null;
+    const len = bytes.readUInt16BE(q);
+    const end = q + len;
+    if (len < 2 || end > bytes.length) return null;
+    const segment = bytes.subarray(p, end);
+    if (marker === 0xe1 && segment.length >= 10 && segment.toString('ascii', 4, 10) === 'Exif\0\0')
+      stripped = true;
+    else {
+      if (SOF.has(marker) && segment.length >= 9) {
+        height = segment.readUInt16BE(5);
+        width = segment.readUInt16BE(7);
+      }
+      out.push(segment);
+    }
+    p = end;
+    if (marker === 0xda) {
+      out.push(bytes.subarray(p));
+      break;
+    }
+  }
+  return { bytes: Buffer.concat(out), width, height, exifStripped: stripped };
+}
+function pngSafe(bytes: Buffer) {
+  const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  if (bytes.length < 8 || !bytes.subarray(0, 8).equals(signature)) return null;
+  let p = 8, width: number | null = null, height: number | null = null, stripped = false;
+  const out = [bytes.subarray(0, 8)];
+  while (p + 12 <= bytes.length) {
+    const len = bytes.readUInt32BE(p);
+    const end = p + 12 + len;
+    if (end > bytes.length) return null;
+    const type = bytes.toString('ascii', p + 4, p + 8);
+    if (type === 'eXIf') stripped = true;
+    else {
+      out.push(bytes.subarray(p, end));
+      if (type === 'IHDR' && len >= 8) {
+        width = bytes.readUInt32BE(p + 8);
+        height = bytes.readUInt32BE(p + 12);
+      }
+    }
+    p = end;
+  }
+  if (p !== bytes.length || !width || !height) return null;
+  return { bytes: Buffer.concat(out), width, height, exifStripped: stripped };
+}
+function webpSafe(bytes: Buffer) {
+  if (bytes.length < 12 || bytes.toString('ascii', 0, 4) !== 'RIFF' || bytes.toString('ascii', 8, 12) !== 'WEBP')
+    return null;
+  let p = 12, width: number | null = null, height: number | null = null, stripped = false;
+  const out = [bytes.subarray(0, 12)];
+  while (p + 8 <= bytes.length) {
+    const len = bytes.readUInt32LE(p + 4);
+    const end = p + 8 + len + (len % 2);
+    if (end > bytes.length) return null;
+    const type = bytes.toString('ascii', p, p + 4);
+    if (type === 'EXIF' || type === 'XMP ') stripped = true;
+    else {
+      out.push(bytes.subarray(p, end));
+      const data = bytes.subarray(p + 8, p + 8 + len);
+      if (type === 'VP8X' && data.length >= 10) {
+        width = 1 + (data[4] | (data[5] << 8) | (data[6] << 16));
+        height = 1 + (data[7] | (data[8] << 8) | (data[9] << 16));
+      } else if (type === 'VP8 ' && data.length >= 10 && data[3] === 0x9d && data[4] === 0x01 && data[5] === 0x2a) {
+        width = data.readUInt16LE(6) & 0x3fff;
+        height = data.readUInt16LE(8) & 0x3fff;
+      } else if (type === 'VP8L' && data.length >= 5 && data[0] === 0x2f) {
+        const bits = data.readUInt32LE(1);
+        width = (bits & 0x3fff) + 1;
+        height = ((bits >> 14) & 0x3fff) + 1;
+      }
+    }
+    p = end;
+  }
+  const joined = Buffer.concat(out);
+  if (joined.length >= 8) joined.writeUInt32LE(joined.length - 8, 4);
+  return { bytes: joined, width, height, exifStripped: stripped };
+}
+export class SafeMediaProcessor implements MediaProcessor {
+  async process(bytes: Buffer, mime: Mime) {
+    const parsed =
+      mime === 'image/jpeg' ? jpegSafe(bytes) : mime === 'image/png' ? pngSafe(bytes) : mime === 'image/webp' ? webpSafe(bytes) : null;
+    if (!parsed) return { bytes, width: null, height: null, exifStripped: false };
+    return parsed;
+  }
+}
 export interface BlobStore {
   stage(key: string, bytes: Buffer): Promise<void>;
   inspect(key: string): Promise<Buffer>;
@@ -363,7 +470,7 @@ export async function putAttachment(
   ticket: string,
   bytes: Buffer,
   blobs: BlobStore = store(),
-  processor: MediaProcessor = new PassthroughMediaProcessor(),
+  processor: MediaProcessor = new SafeMediaProcessor(),
 ) {
   requireFact(
     bytes.length <= MAX_FILE_SIZE,

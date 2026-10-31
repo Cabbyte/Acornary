@@ -31,7 +31,7 @@ Batch 3–8 的后端能力已经实现并合并到集成分支：
 | Batch 4 registry/profile | **19 passed** |
 | Batch 5 deadline/dates | **11 passed** |
 | Batch 6 semantics | **23 passed** |
-| Batch 7 notes/attachments | **15 passed**；冻结导出 **12 passed** |
+| Batch 7 notes/attachments | **15 passed**；媒体安全 **3 passed**；冻结导出 **12 passed** |
 | Batch 8 hardening | **12 passed / 1 todo** |
 | 类型检查 | 根与 Web `tsc --noEmit` 通过 |
 | 构建 | server、Web、插件 bundle 通过 |
@@ -68,7 +68,7 @@ Batch 3–8 的后端能力已经实现并合并到集成分支：
 
 ## 5. 剩余门禁
 
-1. **附件媒体**：`sharp`/缩略图/EXIF 真实处理未引入；当前是 `MediaProcessor` 接口 + 安全默认。缩略图和 EXIF 剥离不能声明完成。
+1. **附件媒体**：已实现无依赖的 EXIF/eXIf/XMP 剥离与 JPEG/PNG/WebP 尺寸读取（`SafeMediaProcessor`）。**缩略图、像素重编码/旋转**仍未实现；FILE02 仍为 PARTIAL。
 2. **附件字节/备份**：数据库元数据摘要已验证；附件字节 manifest、GC 租约、NAS/SFTP 上传、独立密钥解密和真实异机恢复未执行。`OPS07` 为 NOT_RUN。
 3. **历史校验和**：7 条 `UNVERIFIED` 需要发布前人工签署/核对。
 4. **客户端**：Web/Android/插件尚未切到 v2；`get_item` 仍是扁平形状，v2 包装未实现。
@@ -97,6 +97,7 @@ Batch 3–8 的后端能力已经实现并合并到集成分支：
 - [Batch 5 dates](./batch5/dates.md)
 - [Batch 6 semantics](./batch6/semantics.md)
 - [Batch 7 notes/attachments](./batch7/notes-attachments.md)
+- [Batch 7 media safety](./batch7/media.md)
 - [Batch 7 frozen export](./batch7/export.md)
 - [Batch 8 hardening](./batch8/hardening.md)
 - [验收用例](../tests/batch0/cases.json)
