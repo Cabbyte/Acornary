@@ -2,6 +2,19 @@ import { fileOperations, type fileSchemas } from '../../../packages/contracts/sr
 import { executeFiles, listNotes, mutateNote, noteSummary, noteRow } from './notes.js';
 import { attachmentRead } from './attachments.js';
 import {
+  findTemplate,
+  canUpgrade,
+  resolveCapabilities,
+  pathCapability,
+} from '../../../packages/contracts/src/registry.js';
+import {
+  bindingStatuses,
+  bindingStatus,
+  assertWritableTemplate,
+  availableTemplate,
+  templateForCapabilities,
+} from './registry.js';
+import {
   intakeReads,
   readIntake,
   proposeCatalogChange,
@@ -17,6 +30,7 @@ import {
   templateFor,
   latestTemplateVersion,
   reads,
+  templateId,
   templates,
   templateDefinition,
   validateValues,
@@ -64,6 +78,8 @@ type ObjectState = {
   row: any;
   sets: Record<string, any>;
   versions?: Record<string, number>;
+  binding_statuses?: Record<string, string>;
+  raw_bindings?: Record<string, string>;
 };
 const versionOf = (obj: ObjectState, name: string) => obj.versions?.[name] ?? 1;
 const table = (kind: string) => (kind === 'ITEM' ? 'items' : 'catalog_nodes');
@@ -92,22 +108,43 @@ const eventTypes: Record<string, string> = {
 };
 export async function load(c: Client, ctx: Context, t: Target): Promise<ObjectState> {
   const row = (
-    await query(c, `SELECT * FROM ${table(t.kind)} WHERE household_id=$1 AND id=$2`, [
-      ctx.household_id,
-      t.id,
-    ])
+    await query(
+      c,
+      `SELECT *,ARRAY(SELECT a::text FROM jsonb_array_elements(attributes) a) AS __raw_bindings
+      FROM ${table(t.kind)} WHERE household_id=$1 AND id=$2`,
+      [ctx.household_id, t.id],
+    )
   ).rows[0];
   requireFact(row, 'NOT_FOUND', 'Object not found in this household.');
   const obj: ObjectState = {
     kind: t.kind,
     row,
     sets: {},
+    raw_bindings: Object.fromEntries(
+      row.attributes.map((a: any, i: number) => [a.template_id, row.__raw_bindings[i]]),
+    ),
     versions: Object.fromEntries(
       row.attributes.map((a: any) => [a.template_id, a.template_version]),
     ),
   };
+  delete row.__raw_bindings;
+  obj.binding_statuses = Object.fromEntries(await bindingStatuses(c, ctx.household_id));
   await validateBindings(c, ctx, obj, row.attributes);
   obj.sets = Object.fromEntries(row.attributes.map((a: any) => [a.template_id, a.values]));
+  const catalog =
+    t.kind === 'CATALOG_NODE'
+      ? row
+      : (
+          await query(
+            c,
+            'SELECT profile,capabilities FROM catalog_nodes WHERE household_id=$1 AND id=$2',
+            [ctx.household_id, row.catalog_node_id],
+          )
+        ).rows[0];
+  row.effective_capabilities = resolveCapabilities(
+    catalog?.profile ?? null,
+    catalog?.capabilities ?? null,
+  );
   return obj;
 }
 async function validateBindings(c: Client, ctx: Context, obj: ObjectState, bindings: any[]) {
@@ -117,6 +154,7 @@ async function validateBindings(c: Client, ctx: Context, obj: ObjectState, bindi
     'Attributes must be an array.',
   );
   const seen = new Set<string>();
+  const statuses = await bindingStatuses(c, ctx.household_id);
   for (const a of bindings) {
     requireFact(
       a &&
@@ -128,31 +166,27 @@ async function validateBindings(c: Client, ctx: Context, obj: ObjectState, bindi
         Number.isFinite(Date.parse(a.created_at)) &&
         typeof a.updated_at === 'string' &&
         Number.isFinite(Date.parse(a.updated_at)) &&
+        typeof a.template_id === 'string' &&
+        a.template_id.length > 0 &&
         !seen.has(a.template_id) &&
-        Number.isInteger(a.template_version),
+        Number.isInteger(a.template_version) &&
+        a.template_version > 0 &&
+        a.values &&
+        typeof a.values === 'object' &&
+        !Array.isArray(a.values),
       'ATTRIBUTE_VALIDATION_FAILED',
       'Invalid or duplicate embedded binding.',
     );
     seen.add(a.template_id);
-    const t = templates[a.template_id as TemplateId];
+    // Unknown and retired payloads are opaque, including empty/nested objects.
+    if (bindingStatus(a, statuses) !== 'KNOWN') continue;
+    const t = templateFor(a.template_id, a.template_version);
     requireFact(
-      t && t.target_kind === obj.kind && (obj.kind === 'ITEM' || obj.row.kind === 'SKU'),
+      t.target_kind === obj.kind && (obj.kind === 'ITEM' || obj.row.kind === 'SKU'),
       'ATTRIBUTE_VALIDATION_FAILED',
       'Template not applicable to this object.',
     );
-    const registered = (
-      await query(
-        c,
-        'SELECT target_kind FROM attribute_templates WHERE household_id=$1 AND id=$2 AND version=$3',
-        [ctx.household_id, a.template_id, a.template_version],
-      )
-    ).rows[0];
-    requireFact(
-      registered?.target_kind === obj.kind,
-      'ATTRIBUTE_VALIDATION_FAILED',
-      'Template version is not registered for this household and target.',
-    );
-    validateValues(a.template_id as TemplateId, a.values, a.template_version);
+    validateValues(a.template_id, a.values, a.template_version);
   }
 }
 
@@ -160,14 +194,19 @@ function flatten(obj: ObjectState): Record<string, any> {
   const r: Record<string, any> = {};
   for (const field of obj.kind === 'ITEM'
     ? ['catalog_node_id', 'parent_id', 'display_name']
-    : ['kind', 'name', 'parent_id'])
+    : ['kind', 'name', 'parent_id', 'profile', 'capabilities', 'one_off'])
     if (Object.hasOwn(obj.row, field)) r[field] = obj.row[field];
   for (const [name, value] of Object.entries(obj.sets)) {
     r[`attributes.${name}.$binding`] = {
       template_id: name,
       template_version: versionOf(obj, name),
     };
-    for (const path of templateFor(name as TemplateId, versionOf(obj, name)).paths) {
+    const definition = findTemplate(name, versionOf(obj, name));
+    if (!definition) {
+      r[`attributes.${name}.$values`] = value;
+      continue;
+    }
+    for (const path of definition.paths) {
       const v = getPath(value, path);
       if (v !== undefined) r[`attributes.${name}.${path}`] = v;
     }
@@ -181,14 +220,48 @@ async function validate(
   before?: ObjectState,
   correction = false,
 ) {
+  requireFact(
+    Object.keys(obj.sets).length <= 16,
+    'ATTRIBUTE_VALIDATION_FAILED',
+    'At most 16 template bindings are allowed.',
+  );
+  const statuses = await bindingStatuses(c, ctx.household_id);
+  const catalog =
+    obj.kind === 'CATALOG_NODE'
+      ? obj.row
+      : (
+          await query(
+            c,
+            'SELECT profile,capabilities FROM catalog_nodes WHERE household_id=$1 AND id=$2',
+            [ctx.household_id, obj.row.catalog_node_id],
+          )
+        ).rows[0];
+  const capabilities = resolveCapabilities(catalog?.profile ?? null, catalog?.capabilities ?? null);
   for (const [name, value] of Object.entries(obj.sets)) {
-    const t = templates[name as TemplateId];
+    const unchanged =
+      before &&
+      Object.hasOwn(before.sets, name) &&
+      versionOf(before, name) === versionOf(obj, name) &&
+      canonical(before.sets[name]) === canonical(value);
+    if (unchanged) continue;
+    const t = await assertWritableTemplate(c, ctx.household_id, name, versionOf(obj, name));
     requireFact(
-      t && t.target_kind === obj.kind && (obj.kind === 'ITEM' || obj.row.kind === 'SKU'),
+      t.target_kind === obj.kind && (obj.kind === 'ITEM' || obj.row.kind === 'SKU'),
       'ATTRIBUTE_VALIDATION_FAILED',
       'Template not applicable to this object.',
     );
-    obj.sets[name] = prune(validateValues(name as TemplateId, value, versionOf(obj, name)));
+    // Capabilities govern new bindings; disabling a capability never erases existing facts.
+    if (!before?.sets[name]) {
+      for (const path of t.paths) {
+        const capability = pathCapability(name, path);
+        requireFact(
+          !capability || getPath(value, path) === undefined || capabilities.includes(capability),
+          'ATTRIBUTE_VALIDATION_FAILED',
+          'Enable the capability before adding this binding.',
+        );
+      }
+    }
+    obj.sets[name] = prune(validateValues(name, value, versionOf(obj, name)));
     if (!Object.keys(obj.sets[name]).length) delete obj.sets[name];
   }
   if (obj.kind === 'ITEM') {
@@ -210,8 +283,18 @@ async function validate(
         'INVALID_TRANSITION',
         'Restoring a terminal item requires correct_item with a reason.',
       );
-    if (obj.sets.contents?.remaining && new Decimal(obj.sets.contents.remaining.value).isZero())
+    if (
+      bindingStatus(
+        { template_id: 'contents', template_version: versionOf(obj, 'contents') },
+        statuses,
+      ) === 'KNOWN' &&
+      obj.sets.contents?.remaining &&
+      new Decimal(obj.sets.contents.remaining.value).isZero() &&
+      obj.sets.lifecycle?.state !== 'CONSUMED'
+    ) {
+      await assertWritableTemplate(c, ctx.household_id, 'lifecycle', versionOf(obj, 'lifecycle'));
       obj.sets.lifecycle = { ...obj.sets.lifecycle, state: 'CONSUMED' };
+    }
   }
   if (obj.row.parent_id) {
     const parent = await load(c, ctx, { kind: obj.kind, id: obj.row.parent_id } as Target);
@@ -235,7 +318,14 @@ async function validate(
       'Cannot attach beneath itself.',
     );
   }
-  if (obj.kind === 'CATALOG_NODE' && obj.sets.product?.barcodes) {
+  if (
+    obj.kind === 'CATALOG_NODE' &&
+    bindingStatus(
+      { template_id: 'product', template_version: versionOf(obj, 'product') },
+      statuses,
+    ) === 'KNOWN' &&
+    obj.sets.product?.barcodes
+  ) {
     for (const barcode of obj.sets.product.barcodes) {
       const existing = (
         await query(
@@ -250,6 +340,24 @@ async function validate(
         'Barcode already belongs to another SKU.',
       );
     }
+  }
+  requireFact(
+    Object.keys(obj.sets).length <= 16,
+    'ATTRIBUTE_VALIDATION_FAILED',
+    'At most 16 template bindings are allowed.',
+  );
+  for (const [name, value] of Object.entries(before?.sets ?? {})) {
+    if (
+      bindingStatus({ template_id: name, template_version: versionOf(before!, name) }, statuses) !==
+      'KNOWN'
+    )
+      requireFact(
+        Object.hasOwn(obj.sets, name) &&
+          versionOf(before!, name) === versionOf(obj, name) &&
+          canonical(value) === canonical(obj.sets[name]),
+        'ATTRIBUTE_VALIDATION_FAILED',
+        'Unknown or retired template is read-only.',
+      );
   }
 }
 function initialSets(input: any[] | undefined) {
@@ -267,25 +375,30 @@ function initialSets(input: any[] | undefined) {
 }
 function mutateAttributes(obj: ObjectState, input: any, mode: string) {
   const name = input.template_id as TemplateId;
-  const definition = templateFor(name, input.template_version);
+  requireFact(
+    obj.binding_statuses?.[`${name}@${versionOf(obj, name)}`] !== 'RETIRED' &&
+      obj.binding_statuses?.[`${name}@${input.to_version ?? input.template_version}`] !== 'RETIRED',
+    'ATTRIBUTE_VALIDATION_FAILED',
+    'Unknown or retired template is read-only.',
+  );
   if (mode === 'upgrade_attributes') {
+    const from = input.from_version ?? versionOf(obj, name);
+    const to = input.to_version ?? input.template_version;
     requireFact(
-      name === 'product' &&
-        obj.sets[name] &&
-        versionOf(obj, name) === 1 &&
-        input.template_version === 2,
+      obj.sets[name] && versionOf(obj, name) === from && canUpgrade(name, from, to),
       'ATTRIBUTE_VALIDATION_FAILED',
-      'Only an existing product v1 binding can explicitly upgrade to v2.',
+      'No registered upgrade from the bound version to the requested version.',
     );
-    obj.sets[name] = validateValues(name, input.values, 2);
+    obj.sets[name] = validateValues(name, input.values, to);
     requireFact(
       Object.keys(prune(structuredClone(obj.sets[name]))).length,
       'ATTRIBUTE_VALIDATION_FAILED',
       'Upgrade requires nonempty complete values.',
     );
-    (obj.versions ??= {})[name] = 2;
+    (obj.versions ??= {})[name] = to;
     return;
   }
+  const definition = templateFor(name, input.template_version);
   requireFact(
     !obj.sets[name] || versionOf(obj, name) === input.template_version,
     'ATTRIBUTE_VALIDATION_FAILED',
@@ -411,11 +524,8 @@ async function executeCommand(ctx: Context, name: Operation, raw: unknown): Prom
   }
 }
 async function bindingRecords(c: Client, ctx: Context, obj: ObjectState) {
-  return obj.row.attributes.map(({ template_id, template_version, values }: any) => ({
-    template_id,
-    template_version,
-    values,
-  }));
+  const statuses = await bindingStatuses(c, ctx.household_id);
+  return obj.row.attributes.map((a: any) => ({ ...a, status: bindingStatus(a, statuses) }));
 }
 
 async function view(c: Client, ctx: Context, obj: ObjectState, includePath = false) {
@@ -895,15 +1005,52 @@ async function read(c: Client, ctx: Context, name: Operation, input: any): Promi
       household,
       actor,
       protocol: { current: 2, min: 2 },
-      features: ['query_v2', 'history_v2', 'snapshot_v2', 'groups_v2', 'sync_v2'],
+      features: [
+        'query_v2',
+        'history_v2',
+        'snapshot_v2',
+        'groups_v2',
+        'sync_v2',
+        'profile_capabilities',
+        'deadline',
+        'notes_v2',
+        'attachments',
+      ],
     };
   }
-  if (name === 'list_attribute_templates')
-    return {
-      data: Object.keys(templates)
-        .map((n) => templateDefinition(n as TemplateId, latestTemplateVersion(n as TemplateId)))
-        .filter((t) => !input.target_kind || t.target_kind === input.target_kind),
-    };
+  if (name === 'list_attribute_templates') {
+    const catalog = input.catalog_node_id
+      ? await load(c, ctx, { kind: 'CATALOG_NODE', id: input.catalog_node_id })
+      : undefined;
+    const filtered = catalog !== undefined || input.profile !== undefined;
+    const capabilities = resolveCapabilities(
+      input.profile !== undefined ? input.profile : (catalog?.row.profile ?? null),
+      catalog?.row.capabilities ?? null,
+    );
+    const statuses = await bindingStatuses(c, ctx.household_id);
+    let data = templateId.options
+      .map((n) => templateDefinition(n, latestTemplateVersion(n)))
+      .filter(
+        (t) =>
+          bindingStatus({ template_id: t.id, template_version: t.version }, statuses) === 'KNOWN',
+      )
+      .filter((t) => !input.target_kind || t.target_kind === input.target_kind)
+      .filter(
+        (t) =>
+          !catalog ||
+          t.target_kind === 'ITEM' ||
+          t.allowed_catalog_node_kinds.includes(catalog.row.kind),
+      )
+      .filter((t) => !filtered || availableTemplate(t, capabilities));
+    if (filtered) data = data.map((t) => templateForCapabilities(t, capabilities));
+    if (input.capability)
+      data = data.filter(
+        (t) =>
+          t.capability === input.capability ||
+          t.fields.some((field) => pathCapability(t.id, field.path) === input.capability),
+      );
+    return { data };
+  }
   if (name === 'get_attribute_template')
     return templateDefinition(input.template_id, input.template_version);
   if (name === 'get_history') return readHistory(c, ctx, input);
@@ -976,25 +1123,40 @@ async function applyDomainCommand(
     if (!delta.length && before) return;
     const rev = before?.row.revision ?? 0;
     const now = (await query(c, 'SELECT to_jsonb(now()) AS time')).rows[0].time;
-    const attributes = Object.keys(obj.sets)
-      .sort()
-      .map((template_id) => {
-        const prior = before?.row.attributes.find((a: any) => a.template_id === template_id);
-        return {
-          template_id,
-          template_version: versionOf(obj, template_id),
-          values: obj.sets[template_id],
-          created_at: prior?.created_at ?? now,
-          updated_at:
-            prior &&
-            prior.template_version === versionOf(obj, template_id) &&
-            canonical(prior.values) === canonical(obj.sets[template_id])
-              ? prior.updated_at
-              : now,
-        };
-      });
+    const priorOrder: string[] = (before?.row.attributes ?? []).map((a: any) => a.template_id);
+    const order = [
+      ...priorOrder.filter((id) => Object.hasOwn(obj.sets, id)),
+      ...Object.keys(obj.sets).filter((id) => !priorOrder.includes(id)),
+    ];
+    const attributes = order.map((template_id) => {
+      const prior = before?.row.attributes.find((a: any) => a.template_id === template_id);
+      if (
+        prior &&
+        prior.template_version === versionOf(obj, template_id) &&
+        canonical(prior.values) === canonical(obj.sets[template_id])
+      )
+        return prior;
+      return {
+        template_id,
+        template_version: versionOf(obj, template_id),
+        values: obj.sets[template_id],
+        created_at: prior?.created_at ?? now,
+        updated_at: now,
+      };
+    });
     await validateBindings(c, ctx, obj, attributes);
-    const embedded = JSON.stringify(attributes);
+    // Reuse PostgreSQL's JSONB text for unchanged bindings. JSON.parse/stringify alone would
+    // round large numeric literals in opaque future payloads even on an unrelated rename.
+    const embedded =
+      '[' +
+      attributes
+        .map((a) =>
+          before?.row.attributes.includes(a) && before.raw_bindings?.[a.template_id]
+            ? before.raw_bindings[a.template_id]
+            : JSON.stringify(a),
+        )
+        .join(',') +
+      ']';
     if (!before) {
       if (obj.kind === 'ITEM')
         await query(
@@ -1012,8 +1174,18 @@ async function applyDomainCommand(
       else
         await query(
           c,
-          'INSERT INTO catalog_nodes(id,household_id,parent_id,kind,name,attributes) VALUES($1,$2,$3,$4,$5,$6::jsonb)',
-          [obj.row.id, ctx.household_id, obj.row.parent_id, obj.row.kind, obj.row.name, embedded],
+          'INSERT INTO catalog_nodes(id,household_id,parent_id,kind,name,attributes,profile,capabilities,one_off) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9)',
+          [
+            obj.row.id,
+            ctx.household_id,
+            obj.row.parent_id,
+            obj.row.kind,
+            obj.row.name,
+            embedded,
+            obj.row.profile ?? null,
+            obj.row.capabilities ?? null,
+            obj.row.one_off ?? false,
+          ],
         );
     } else if (obj.kind === 'ITEM')
       await query(
@@ -1031,12 +1203,38 @@ async function applyDomainCommand(
     else
       await query(
         c,
-        'UPDATE catalog_nodes SET name=$1,parent_id=$2,attributes=$5::jsonb,revision=revision+1,updated_at=now() WHERE household_id=$3 AND id=$4',
-        [obj.row.name, obj.row.parent_id, ctx.household_id, obj.row.id, embedded],
+        'UPDATE catalog_nodes SET name=$1,parent_id=$2,attributes=$5::jsonb,profile=$6,capabilities=$7,one_off=$8,revision=revision+1,updated_at=now() WHERE household_id=$3 AND id=$4',
+        [
+          obj.row.name,
+          obj.row.parent_id,
+          ctx.household_id,
+          obj.row.id,
+          embedded,
+          obj.row.profile ?? null,
+          obj.row.capabilities ?? null,
+          obj.row.one_off ?? false,
+        ],
       );
-    if (obj.kind === 'CATALOG_NODE') {
-      const beforeBarcodes = new Set(before?.sets.product?.barcodes ?? []);
-      const afterBarcodes = new Set(obj.sets.product?.barcodes ?? []);
+    if (
+      obj.kind === 'CATALOG_NODE' &&
+      bindingStatus(
+        { template_id: 'product', template_version: versionOf(obj, 'product') },
+        new Map(Object.entries(obj.binding_statuses ?? {})) as Map<
+          string,
+          'KNOWN' | 'UNKNOWN' | 'RETIRED'
+        >,
+      ) === 'KNOWN'
+    ) {
+      const beforeBarcodes = new Set(
+        findTemplate('product', versionOf(before ?? obj, 'product'))
+          ? (before?.sets.product?.barcodes ?? [])
+          : [],
+      );
+      const afterBarcodes = new Set(
+        findTemplate('product', versionOf(obj, 'product'))
+          ? (obj.sets.product?.barcodes ?? [])
+          : [],
+      );
       const barcodesChanged =
         beforeBarcodes.size !== afterBarcodes.size ||
         [...afterBarcodes].some((barcode) => !beforeBarcodes.has(barcode));
@@ -1100,6 +1298,9 @@ async function applyDomainCommand(
         id: 'catalog_node_' + randomUUID(),
         kind: input.kind,
         name: input.name,
+        profile: input.profile ?? null,
+        capabilities: input.capabilities ?? null,
+        one_off: input.one_off ?? false,
         parent_id: input.parent_id,
       },
       sets: initialSets(input.initial_attributes),
@@ -1242,7 +1443,8 @@ async function applyDomainCommand(
           break;
         }
         case 'update_catalog_node':
-          obj.row.name = input.name;
+          for (const field of ['name', 'profile', 'capabilities', 'one_off'])
+            if (Object.hasOwn(input, field)) obj.row[field] = input[field];
           break;
         case 'update_item':
           obj.row.display_name = input.display_name;

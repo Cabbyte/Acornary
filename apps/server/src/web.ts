@@ -7,6 +7,7 @@ import type {
   SnapshotV2,
 } from '../../../packages/contracts/src/sync.js';
 import { currentChangeId } from './change-watermark.js';
+import { decorateRecords } from './registry.js';
 import { query, transaction, type Client } from './db.js';
 import type { Context } from './service.js';
 import { DomainError } from '../../../packages/domain/src/index.js';
@@ -43,14 +44,14 @@ export async function webSnapshot(ctx: Context, rawFilter: unknown) {
       catalog: (
         await query(
           c,
-          'SELECT id,parent_id,kind,name,revision,attributes FROM catalog_nodes WHERE household_id=$1 ORDER BY created_at,id',
+          'SELECT id,parent_id,kind,name,revision,attributes,profile,capabilities,one_off,record_state,created_at,updated_at FROM catalog_nodes WHERE household_id=$1 ORDER BY created_at,id',
           [ctx.household_id],
         )
       ).rows,
       items: (
         await query(
           c,
-          'SELECT id,parent_id,catalog_node_id,display_name,revision,attributes,created_at FROM items WHERE household_id=$1 ORDER BY created_at,id',
+          'SELECT id,parent_id,catalog_node_id,display_name,revision,attributes,record_state,created_at,updated_at FROM items WHERE household_id=$1 ORDER BY created_at,id',
           [ctx.household_id],
         )
       ).rows,
@@ -62,6 +63,7 @@ export async function webSnapshot(ctx: Context, rawFilter: unknown) {
         )
       ).rows,
     };
+    await decorateRecords(c, ctx.household_id, data.catalog, data.items);
     return { ...data, groups: productGroups(data, parsed.data) };
   });
 }
@@ -173,7 +175,7 @@ export function itemRecordV2(row: any): ItemRecordV2 {
 /** Whitelisted DTOs deliberately exclude household internals, note bodies and label hashes. */
 type RecordSelection = { ids?: string[]; after?: string; limit?: number; skuIds?: string[] };
 export async function readCatalogV2(c: Client, household: string, selection: RecordSelection = {}) {
-  return (
+  const rows = (
     await query(
       c,
       `SELECT o.*,v.last_change_id::text FROM catalog_nodes o
@@ -182,10 +184,12 @@ export async function readCatalogV2(c: Client, household: string, selection: Rec
     AND ($2::text[] IS NULL OR o.id=ANY($2::text[])) AND o.id > $3 ORDER BY o.id LIMIT $4`,
       [household, selection.ids ?? null, selection.after ?? '', selection.limit ?? null],
     )
-  ).rows.map(catalogRecordV2);
+  ).rows;
+  await decorateRecords(c, household, rows, []);
+  return rows.map(catalogRecordV2);
 }
 export async function readItemsV2(c: Client, household: string, selection: RecordSelection = {}) {
-  return (
+  const rows = (
     await query(
       c,
       `SELECT o.*,v.last_change_id::text,
@@ -202,7 +206,19 @@ export async function readItemsV2(c: Client, household: string, selection: Recor
         selection.skuIds ?? null,
       ],
     )
-  ).rows.map(itemRecordV2);
+  ).rows;
+  const skuIds = [...new Set(rows.map((row) => row.catalog_node_id))];
+  const catalog = skuIds.length
+    ? (
+        await query(
+          c,
+          `SELECT * FROM catalog_nodes WHERE household_id=$1 AND id=ANY($2::text[])`,
+          [household, skuIds],
+        )
+      ).rows
+    : [];
+  await decorateRecords(c, household, catalog, rows);
+  return rows.map(itemRecordV2);
 }
 export async function readInventoryV2(c: Client, household: string) {
   const catalog = await readCatalogV2(c, household);
