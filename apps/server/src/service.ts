@@ -31,9 +31,16 @@ import {
   changes,
   subtract,
   getPath,
-  reminderDate,
 } from '../../../packages/domain/src/index.js';
 import { query, transaction, type Client } from './db.js';
+import {
+  recomputeItemDates,
+  itemDateRowsSql,
+  dateStateSql,
+  itemDatesJsonSql,
+  dateView,
+  advanceDeadline,
+} from './dates.js';
 import { recordSyncChange } from './sync.js';
 import { timed, traces } from './telemetry.js';
 export type Context = {
@@ -431,10 +438,16 @@ async function view(c: Client, ctx: Context, obj: ObjectState, includePath = fal
         [ctx.household_id, obj.row.id],
       )
     ).rows;
-    const household = (
-      await query(c, 'SELECT timezone FROM households WHERE id=$1', [ctx.household_id])
-    ).rows[0];
-    row.reminder = reminderDate(obj.sets.lifecycle, household.timezone);
+    const dates = (
+      await query(
+        c,
+        `SELECT ${itemDatesJsonSql()} AS dates
+      FROM items o JOIN households h ON h.id=o.household_id
+      WHERE o.household_id=$1 AND o.id=$2`,
+        [ctx.household_id, obj.row.id],
+      )
+    ).rows[0].dates;
+    Object.assign(row, dateView(dates, row.attributes));
   }
   return row;
 }
@@ -714,9 +727,21 @@ async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
       );
     where.push(`(${fields.join(' OR ')})`);
   }
-  const dateKey = `LEAST((__sets #>> '{lifecycle,expiry,date}')::date,
-    ((__sets #>> '{lifecycle,opening,opened_at}')::timestamptz AT TIME ZONE h.timezone)::date
-      + (__sets #>> '{lifecycle,expiry,after_opening_days}')::integer)`;
+  for (const filter of input.date_filters ?? []) {
+    const predicates: string[] = [];
+    if (filter.kind) predicates.push(`d.kind=${bind(filter.kind)}`);
+    if (filter.source)
+      predicates.push(
+        `d.source_template=${bind(filter.source === 'DEADLINE' ? 'deadline' : 'lifecycle')}`,
+      );
+    if (filter.from) predicates.push(`d.due_on >= ${bind(filter.from)}::date`);
+    if (filter.to) predicates.push(`d.due_on <= ${bind(filter.to)}::date`);
+    if (filter.state) predicates.push(`${dateStateSql()}=${bind(filter.state)}`);
+    where.push(
+      `EXISTS(SELECT 1 FROM ${itemDateRowsSql()} d WHERE ${predicates.join(' AND ') || 'TRUE'})`,
+    );
+  }
+  const dateKey = `(SELECT min(d.due_on) FROM ${itemDateRowsSql()} d WHERE d.completed_on IS NULL)`;
   const keys: Record<string, string> = {
     created_at: 'o.created_at',
     updated_at: 'o.updated_at',
@@ -781,7 +806,7 @@ async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
         (to_jsonb(p)-'__sets'-'__timezone') || jsonb_build_object('__key',p.__key::text)
         ${
           isItem
-            ? `|| jsonb_build_object('__lifecycle',p.__sets->'lifecycle','__timezone',p.__timezone)`
+            ? `|| jsonb_build_object('__dates',(SELECT ${itemDatesJsonSql('p', 'h')} FROM households h WHERE h.id=$1))`
             : ''
         }
         ${
@@ -816,8 +841,8 @@ async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
       values,
     }));
     if (isItem) {
-      row.reminder = reminderDate(row.__lifecycle, row.__timezone);
-      delete row.__lifecycle;
+      Object.assign(row, dateView(row.__dates, row.attributes));
+      delete row.__dates;
       delete row.__timezone;
     }
   }
@@ -1022,7 +1047,7 @@ async function applyDomainCommand(
         obj.kind,
         obj.row.id,
         operation_id,
-        eventTypes[name],
+        name.endsWith('_deadline') ? name.toUpperCase() : eventTypes[name],
         rev,
         rev + 1,
         JSON.stringify(enriched),
@@ -1033,6 +1058,7 @@ async function applyDomainCommand(
       ],
     );
     await recordSyncChange(c, ctx.household_id, obj.kind, obj.row.id, rev + 1, operation_id);
+    if (obj.kind === 'ITEM') await recomputeItemDates(c, ctx.household_id, obj.row.id);
     result.affected_objects.push({
       kind: obj.kind,
       id: obj.row.id,
@@ -1143,6 +1169,52 @@ async function applyDomainCommand(
       checkRevision(before);
       const obj = structuredClone(before);
       switch (name) {
+        case 'add_deadline':
+        case 'update_deadline':
+        case 'remove_deadline':
+        case 'complete_deadline': {
+          const entries = obj.sets.deadline?.entries ?? [];
+          if (name === 'add_deadline') {
+            entries.push({ ...input.entry, id: 'deadline_' + randomUUID() });
+            obj.sets.deadline = { entries };
+          } else {
+            const entry = entries.find((entry: any) => entry.id === input.entry_id);
+            requireFact(entry, 'NOT_FOUND', 'Deadline not found on this item.');
+            if (name === 'remove_deadline') {
+              obj.sets.deadline = {
+                entries: entries.filter((entry: any) => entry.id !== input.entry_id),
+              };
+            } else if (name === 'update_deadline') {
+              Object.assign(entry, input.patch);
+            } else {
+              requireFact(
+                entry.recurrence_days ||
+                  !entry.last_completed_on ||
+                  entry.last_completed_on === input.completed_on,
+                'INVALID_TRANSITION',
+                'One-off deadline is already completed.',
+              );
+              if (entry.last_completed_on === input.completed_on) break;
+              entry.last_completed_on = input.completed_on;
+              if (entry.recurrence_days)
+                entry.due_on = advanceDeadline(input.completed_on, entry.recurrence_days);
+              if (entry.kind === 'SERVICE_DUE')
+                obj.sets.service = { ...obj.sets.service, last_service_on: input.completed_on };
+            }
+          }
+          // Existing households predate these templates; seed missing definitions without rewriting registrations.
+          for (const template of [
+            'deadline',
+            ...(obj.sets.service ? ['service'] : []),
+          ] as TemplateId[])
+            await query(
+              c,
+              `INSERT INTO attribute_templates(household_id,id,version,target_kind,definition)
+              VALUES($1,$2,1,'ITEM',$3::jsonb) ON CONFLICT DO NOTHING`,
+              [ctx.household_id, template, JSON.stringify(templateDefinition(template))],
+            );
+          break;
+        }
         case 'update_catalog_node':
           obj.row.name = input.name;
           break;
