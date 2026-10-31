@@ -735,9 +735,6 @@ async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
   );
   ctes.push(`page AS (SELECT * FROM matching WHERE ${after}
     ORDER BY __key ${direction} NULLS LAST,id ${direction} LIMIT ${bind(input.limit + 1)})`);
-  if (isItem)
-    ctes.push(`page_notes AS (SELECT n.item_id,jsonb_agg(n ORDER BY n.created_at,n.id) AS notes
-    FROM notes n JOIN page p ON p.id=n.item_id WHERE n.household_id=$1 GROUP BY n.item_id)`);
   if (input.include_path)
     ctes.push(`ancestors AS (
     SELECT id AS origin,id,parent_id,0 AS depth,ARRAY[id] AS visited FROM page
@@ -775,8 +772,7 @@ async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
         (to_jsonb(p)-'__sets'-'__timezone') || jsonb_build_object('__key',p.__key::text)
         ${
           isItem
-            ? `|| jsonb_build_object('__lifecycle',p.__sets->'lifecycle','__timezone',p.__timezone,
-          'notes',coalesce(pn.notes,'[]'::jsonb))`
+            ? `|| jsonb_build_object('__lifecycle',p.__sets->'lifecycle','__timezone',p.__timezone)`
             : ''
         }
         ${
@@ -785,7 +781,7 @@ async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
           FROM ancestors a WHERE a.origin=p.id))`
             : ''
         }
-        ORDER BY p.__key ${direction} NULLS LAST,p.id ${direction}), '[]'::jsonb) FROM page p ${isItem ? 'LEFT JOIN page_notes pn ON pn.item_id=p.id' : ''}) AS data`,
+        ORDER BY p.__key ${direction} NULLS LAST,p.id ${direction}), '[]'::jsonb) FROM page p) AS data`,
       params,
     )
   ).rows[0];
@@ -980,16 +976,23 @@ async function applyDomainCommand(
         [obj.row.name, obj.row.parent_id, ctx.household_id, obj.row.id, embedded],
       );
     if (obj.kind === 'CATALOG_NODE') {
-      await query(c, 'DELETE FROM barcode_index WHERE household_id=$1 AND catalog_node_id=$2', [
-        ctx.household_id,
-        obj.row.id,
-      ]);
-      for (const barcode of obj.sets.product?.barcodes ?? [])
-        await query(
-          c,
-          'INSERT INTO barcode_index(household_id,barcode,catalog_node_id) VALUES($1,$2,$3)',
-          [ctx.household_id, barcode, obj.row.id],
-        );
+      const beforeBarcodes = new Set(before?.sets.product?.barcodes ?? []);
+      const afterBarcodes = new Set(obj.sets.product?.barcodes ?? []);
+      const barcodesChanged =
+        beforeBarcodes.size !== afterBarcodes.size ||
+        [...afterBarcodes].some((barcode) => !beforeBarcodes.has(barcode));
+      if (barcodesChanged) {
+        await query(c, 'DELETE FROM barcode_index WHERE household_id=$1 AND catalog_node_id=$2', [
+          ctx.household_id,
+          obj.row.id,
+        ]);
+        for (const barcode of afterBarcodes)
+          await query(
+            c,
+            'INSERT INTO barcode_index(household_id,barcode,catalog_node_id) VALUES($1,$2,$3)',
+            [ctx.household_id, barcode, obj.row.id],
+          );
+      }
     }
     const event_id = 'event_' + randomUUID();
     const enriched = delta.map((d) =>

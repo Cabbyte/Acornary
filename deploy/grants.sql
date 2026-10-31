@@ -9,6 +9,12 @@ GRANT INSERT ON operations TO acornary_app;
 GRANT INSERT,UPDATE ON catalog_nodes,items,notes TO acornary_app;
 GRANT INSERT,UPDATE,DELETE ON barcode_index TO acornary_app;
 GRANT INSERT ON events TO acornary_app;
+GRANT SELECT ON sync_changes,household_sync_state TO acornary_app;
+GRANT INSERT (household_id,object_kind,object_id,revision,change_kind,operation_id,after_image)
+  ON sync_changes TO acornary_app;
+GRANT USAGE ON SEQUENCE sync_changes_change_id_seq TO acornary_app;
+GRANT INSERT (household_id,last_committed_change_id),
+  UPDATE (last_committed_change_id) ON household_sync_state TO acornary_app;
 GRANT INSERT,UPDATE,DELETE ON "user",session,account,verification,jwks,"oauthClient","oauthResource","oauthClientResource","oauthRefreshToken","oauthAccessToken","oauthConsent","oauthClientAssertion","rateLimit" TO acornary_app;
 
 -- Account and household management; histories and template definitions remain immutable.

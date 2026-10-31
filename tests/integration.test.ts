@@ -762,23 +762,32 @@ it('replays legacy fingerprints with new IDs without mutating revisions, quantit
     count: 6,
     idempotency_key: key(),
   });
-  const received = await run('create_items', batch);
+  // Operations are immutable now. Create the effect with a different key, then
+  // insert a legacy-format receipt for the original key and verify replay.
+  const setup = await run('create_items', { ...batch, idempotency_key: key() });
   const legacyBatch = legacyInput('create_items', batch);
   expect(legacyBatch.catalog_node_id).toBe(
     'cat_' + batch.catalog_node_id.slice('catalog_node_'.length),
   );
-  await query(
-    pool,
-    "UPDATE operations SET fingerprint_format='legacy_v1',fingerprint=$1 WHERE household_id=$2 AND idempotency_key=$3",
-    [
-      createHash('sha256')
-        .update(canonical({ name: 'create_items', input: legacyBatch }))
-        .digest('hex'),
-      ctx.household_id,
-      batch.idempotency_key,
-    ],
-  );
-  expect(await run('create_items', batch)).toEqual(received);
+  const legacy = async (idempotency_key: string, name: string, input: any, result: any) => {
+    const old = legacyInput(name, input);
+    const stored = { ...result, operation_id: 'operation_' + randomUUID() };
+    await query(
+      pool,
+      `INSERT INTO operations(household_id,actor_id,idempotency_key,fingerprint,fingerprint_format,result)
+       VALUES($1,$2,$3,$4,'legacy_v1',$5::jsonb)`,
+      [
+        ctx.household_id,
+        ctx.actor_id,
+        idempotency_key,
+        createHash('sha256').update(canonical({ name, input: old })).digest('hex'),
+        JSON.stringify(stored),
+      ],
+    );
+    return stored;
+  };
+  const replayed = await legacy(batch.idempotency_key, 'create_items', batch, setup);
+  expect(await run('create_items', batch)).toEqual(replayed);
   expect(
     (await run('query_items', { catalog_node_ids: [batch.catalog_node_id] })).matching_count,
   ).toBe(6);
@@ -791,22 +800,17 @@ it('replays legacy fingerprints with new IDs without mutating revisions, quantit
     expected_revisions: rev(id, 1),
     idempotency_key: key(),
   });
-  const result = await run('consume_item_content', input);
+  const consumed = await run('consume_item_content', { ...input, idempotency_key: key() });
   const old = legacyInput('consume_item_content', input);
   expect(old.item_id).toBe(id.slice(5));
   expect(old.expected_revisions).toEqual({ [id.slice(5)]: 1 });
-  await query(
-    pool,
-    "UPDATE operations SET fingerprint_format='legacy_v1',fingerprint=$1 WHERE household_id=$2 AND idempotency_key=$3",
-    [
-      createHash('sha256')
-        .update(canonical({ name: 'consume_item_content', input: old }))
-        .digest('hex'),
-      ctx.household_id,
-      input.idempotency_key,
-    ],
+  const replayedConsume = await legacy(
+    input.idempotency_key,
+    'consume_item_content',
+    input,
+    consumed,
   );
-  expect(await run('consume_item_content', input)).toEqual(result);
+  expect(await run('consume_item_content', input)).toEqual(replayedConsume);
   const item = await run('get_item', { item_id: id });
   expect(item.revision).toBe(2);
   expect(item.attributes[0].values.remaining.value).toBe('800');

@@ -279,7 +279,7 @@ describe.skipIf(!enabled)('Batch 2 migrated PostgreSQL queries', () => {
     expect(r.data.map((r: any) => r.id)).toEqual([items[0]]);
     expect(r.data.some((r: any) => r.id === bad)).toBe(false);
   });
-  it('pages date nulls last in both directions and batches paths, notes and timezone', async () => {
+  it('pages date nulls last in both directions and batches paths/timezone without inlining note bodies', async () => {
     const parent = await item(otherSku, [binding('container', { can_contain: true })], 'parent');
     const child = await item(
       otherSku,
@@ -302,8 +302,8 @@ describe.skipIf(!enabled)('Batch 2 migrated PostgreSQL queries', () => {
       id: child,
       path_ids: [parent, child],
       reminder: { date: '2026-01-03' },
-      notes: [],
     });
+    expect(scoped.data[0]).not.toHaveProperty('notes');
     const second = await run({
       within_item_id: parent,
       include_path: true,
@@ -332,8 +332,14 @@ describe.skipIf(!enabled)('Batch 2 migrated PostgreSQL queries', () => {
     });
     expect(namedNext.data[0].id).toBe(parent);
     const note = await run({ search: items[0], include_path: true });
-    expect(note.data[0].notes).toHaveLength(1);
+    expect(note.data[0]).not.toHaveProperty('notes');
     expect(note.data[0].attributes[0]).not.toHaveProperty('created_at');
+    const noteCount = await db.query(
+      db.pool,
+      'SELECT count(*)::int AS n FROM notes WHERE household_id=$1 AND item_id=$2',
+      [ctx.household_id, note.data[0].id],
+    );
+    expect(noteCount.rows[0].n).toBe(1);
     await expect(run({ within_item_id: id('item') })).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
   it('history filters and keysets preserve timestamp microseconds', async () => {
