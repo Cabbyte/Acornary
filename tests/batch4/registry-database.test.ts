@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { execute, type Context } from '../../apps/server/src/service.js';
 import { pool, query, transaction } from '../../apps/server/src/db.js';
 import { publishTemplate, definitionHashes } from '../../apps/server/src/registry.js';
-import { templateDefinition, type Profile } from '../../packages/contracts/src/registry.js';
+import { registry, templateDefinition, type Profile } from '../../packages/contracts/src/registry.js';
 import { webSnapshot } from '../../apps/server/src/web.js';
 import { approvedExecute } from '../catalog-helpers.js';
 import type { Operation } from '../../packages/contracts/src/index.js';
@@ -403,37 +403,26 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
     const { ctx, sku } = await fixture();
     const list = async (input: any = {}) =>
       (await execute(ctx, 'list_attribute_templates', input)).data;
-    expect((await list()).map((t: any) => t.id).sort()).toEqual([
-      'catalog',
-      'clothing',
-      'container',
-      'contents',
-      'deadline',
-      'device',
-      'lifecycle',
-      'product',
-      'service',
-    ]);
+    expect((await list()).map((t: any) => t.id).sort()).toEqual(
+      [...new Set(registry.filter((t) => !t.retired).map((t) => t.id))].sort(),
+    );
     expect((await list()).find((t: any) => t.id === 'product').version).toBe(2);
-    expect((await list({ target_kind: 'ITEM' })).map((t: any) => t.id).sort()).toEqual([
-      'container',
-      'contents',
-      'deadline',
-      'lifecycle',
-      'service',
-    ]);
+    expect((await list({ target_kind: 'ITEM' })).map((t: any) => t.id).sort()).toEqual(
+      [...new Set(registry.filter((t) => !t.retired && t.target_kind === 'ITEM').map((t) => t.id))].sort(),
+    );
     expect(
       (await list({ target_kind: 'ITEM', profile: 'CONSUMABLE' })).map((t: any) => t.id).sort(),
-    ).toEqual(['contents', 'lifecycle']);
+    ).toEqual(['contents', 'disposition', 'lifecycle']);
     expect((await list({ capability: 'lifecycle.expiry' })).map((t: any) => t.id)).toEqual([
       'lifecycle',
     ]);
     expect(await list({ profile: 'DURABLE', capability: 'lifecycle.expiry' })).toEqual([]);
     expect((await list({ capability: 'deadline' })).map((t: any) => t.id)).toEqual(['deadline']);
     const unknown = await list({ profile: null, target_kind: 'ITEM' });
-    expect(unknown.map((t: any) => t.id)).toEqual(['lifecycle']);
-    expect(unknown[0].fields.map((f: any) => f.path)).not.toContain('expiry.date');
-    expect(unknown[0].paths).toContain('expiry.date');
+    expect(unknown.map((t: any) => t.id).sort()).toEqual(['disposition', 'lifecycle']);
+    const unknownLifecycle = unknown.find((t: any) => t.id === 'lifecycle')!;
+    expect(unknownLifecycle.fields.map((f: any) => f.path)).not.toContain('expiry.date');
+    expect(unknownLifecycle.paths).toContain('expiry.date');
     await write(ctx, 'update_catalog_node', {
       catalog_node_id: sku,
       profile: 'CONSUMABLE',
@@ -442,7 +431,7 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
     });
     expect(
       (await list({ catalog_node_id: sku, target_kind: 'ITEM' })).map((t: any) => t.id),
-    ).toEqual(['lifecycle']);
+    ).toEqual(['disposition', 'lifecycle']);
     await write(ctx, 'update_catalog_node', {
       catalog_node_id: sku,
       capabilities: ['container'],
@@ -450,7 +439,7 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
     });
     expect(
       (await list({ catalog_node_id: sku, target_kind: 'ITEM' })).map((t: any) => t.id).sort(),
-    ).toEqual(['container', 'lifecycle']);
+    ).toEqual(['container', 'disposition', 'lifecycle']);
     const other = await fixture();
     await expect(list({ catalog_node_id: other.sku })).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
@@ -640,7 +629,7 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
     const { ctx, sku, item } = await fixture();
     expect(await execute(ctx, 'get_connection_context', {})).toMatchObject({
       protocol: { current: 2, min: 2 },
-      features: ['query_v2', 'history_v2', 'snapshot_v2', 'groups_v2', 'sync_v2', 'profile_capabilities', 'deadline', 'notes_v2', 'attachments'],
+      features: ['query_v2', 'history_v2', 'snapshot_v2', 'groups_v2', 'sync_v2', 'profile_capabilities', 'deadline', 'notes_v2', 'attachments', 'stock', 'void', 'split', 'references', 'units_v2'],
     });
     for (const assignment of ["profile='OTHER'", "record_state='INVALID'", 'one_off=NULL'])
       await expect(

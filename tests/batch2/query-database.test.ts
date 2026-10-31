@@ -16,7 +16,8 @@ const binding = (template_id: string, values: any) => ({
 });
 let ctx: Context, sku: string, otherSku: string;
 let items: string[];
-const run = (input: any = {}) => execute(ctx, 'query_items', input);
+const run = (input: any = {}) =>
+  execute(ctx, 'query_items', { include_terminal: true, ...input });
 async function item(
   catalog: string,
   attributes: any[],
