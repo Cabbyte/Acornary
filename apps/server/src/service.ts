@@ -33,6 +33,7 @@ import {
   reminderDate,
 } from '../../../packages/domain/src/index.js';
 import { query, transaction, type Client } from './db.js';
+import { recordSyncChange } from './sync.js';
 import { timed, traces } from './telemetry.js';
 export type Context = {
   household_id: string;
@@ -810,6 +811,7 @@ async function applyDomainCommand(
         input.reason ?? null,
       ],
     );
+    await recordSyncChange(c, ctx.household_id, obj.kind, obj.row.id, rev + 1, operation_id);
     result.affected_objects.push({
       kind: obj.kind,
       id: obj.row.id,
