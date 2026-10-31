@@ -28,9 +28,9 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
-@Composable private fun PrintWindow(title:String,busy:Boolean,dismiss:()->Unit,content:@Composable ColumnScope.()->Unit) {
+@Composable private fun PrintWindow(title:String,busy:Boolean,expanded:Boolean,dismiss:()->Unit,content:@Composable ColumnScope.()->Unit) {
     Dialog(onDismissRequest={if(!busy)dismiss()},properties=DialogProperties(usePlatformDefaultWidth=false,dismissOnBackPress=!busy,dismissOnClickOutside=!busy)) {
-        Surface(Modifier.fillMaxWidth(.96f).fillMaxHeight(.94f),shape=MaterialTheme.shapes.medium) {
+        Surface(Modifier.fillMaxWidth(.96f).fillMaxHeight(if(expanded) .94f else .64f),shape=MaterialTheme.shapes.medium) {
             Column(Modifier.padding(12.dp)) {
                 Row(verticalAlignment=Alignment.CenterVertically) {
                     Text(title,Modifier.weight(1f),style=MaterialTheme.typography.titleLarge)
@@ -67,13 +67,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
     var changing by remember {mutableStateOf(false)}
     var advanced by remember {mutableStateOf(false)}
     var configure by remember {mutableStateOf(false)}
+    var testing by remember {mutableStateOf(false)}
     var options by remember {mutableStateOf(false)}
     val permissions=arrayOf(Manifest.permission.BLUETOOTH_SCAN,Manifest.permission.BLUETOOTH_CONNECT)
     fun permitted()=permissions.all {ContextCompat.checkSelfPermission(context,it)==PackageManager.PERMISSION_GRANTED}
     val request=rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {denied=!permitted();if(!denied)printer.scan() else printer.message("连接打印机需要附近设备权限。")}
     fun search() {changing=true;if(permitted())printer.scan()else request.launch(permissions)}
     DisposableEffect(Unit) {onDispose {printer.stopScan()}}
-    PrintWindow("打印机",state.busy,dismiss) {
+    PrintWindow("打印机",state.busy,testing||configure||advanced||changing||!state.connected,dismiss) {
         Row(Modifier.weight(1f).fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(16.dp)) {
             Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 Row(verticalAlignment=Alignment.CenterVertically) {
@@ -86,11 +87,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
                         DropdownMenu(expanded=options,onDismissRequest={options=false}) {
                             DropdownMenuItem(text={Text("更换打印机")},onClick={options=false;search()})
                             DropdownMenuItem(text={Text(if(state.keepConnected) "断开并暂停重连" else "恢复自动连接")},onClick={options=false;if(state.keepConnected)printer.disconnect()else printer.setKeepConnected(true)})
+                            DropdownMenuItem(text={Text("测试标签")},enabled=!locked,onClick={options=false;testing=true})
                             DropdownMenuItem(text={Text("连接与系统设置")},onClick={options=false;advanced=!advanced})
                         }
                     }
                 }
-                PrinterFeedback(state,printer)
+                if(!state.connected||state.busy||state.uncertain||state.message!="D101 已连接，可以打印。") PrinterFeedback(state,printer)
                 if(!state.connected||changing) {
                     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                         Button(onClick=::search,enabled=!state.busy&&!state.scanning,shape=MaterialTheme.shapes.small) {Text("搜索 D101")}
@@ -112,8 +114,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
             Column(Modifier.weight(1f).fillMaxHeight(),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                     Text("${size.title} · 浓度 $density",style=MaterialTheme.typography.titleSmall)
-                    LabelPreview(bitmap)
-                    Text("样张标记为打印测试，不对应库存。",style=MaterialTheme.typography.bodySmall)
+                    if(testing) {
+                        LabelPreview(bitmap)
+                        Text("样张标记为打印测试，不对应库存。",style=MaterialTheme.typography.bodySmall)
+                    }
                     if(locked) Text("当前批次已固定纸张，返回物品页后可调整。",style=MaterialTheme.typography.bodySmall)
                     TextButton(onClick={configure=!configure},enabled=!state.busy&&!locked) {Text("纸张与浓度")}
                     if(configure) {
@@ -121,7 +125,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
                         FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {(1..3).forEach {density->FilterChip(prefs.printDensity==density,{model.preferences {it.copy(printDensity=density)}},label={Text("浓度 $density")},enabled=!state.busy&&!locked)}}
                     }
                 }
-                Button(onClick={printer.print(bitmap,density)},enabled=state.connected&&!state.busy&&!state.uncertain&&!locked,shape=MaterialTheme.shapes.small,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp)) {Text("打印测试标签（1 张）")}
+                if(testing) Button(onClick={printer.print(bitmap,density)},enabled=state.connected&&!state.busy&&!state.uncertain&&!locked,shape=MaterialTheme.shapes.small,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp)) {Text("打印测试标签（1 张）")}
             }
         }
     }

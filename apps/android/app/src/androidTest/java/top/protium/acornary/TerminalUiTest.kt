@@ -60,6 +60,9 @@ class TerminalUiTest {
                 AcornaryTheme { PrinterPane(model) {} }
             }
         }
+        compose.onNodeWithText("打印测试标签（1 张）").assertDoesNotExist()
+        compose.onNodeWithContentDescription("打印机选项").performClick()
+        compose.onNodeWithText("测试标签").performClick()
         compose.onNodeWithText("打印测试标签（1 张）").assertIsDisplayed().assertIsNotEnabled()
         compose.onNodeWithContentDescription("关闭打印窗口").assertIsDisplayed()
     }
