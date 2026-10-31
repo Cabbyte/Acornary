@@ -10,6 +10,16 @@ export const pool = new pg.Pool({
   statement_timeout: 15000,
   idle_in_transaction_session_timeout: 15000,
 });
+// Migration DDL/backfills must not inherit the business query/transaction deadlines.
+export function createMigrationPool() {
+  return new pg.Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: 1,
+    connectionTimeoutMillis: 5000,
+    statement_timeout: 0,
+    idle_in_transaction_session_timeout: 0,
+  });
+}
 export type Client = pg.PoolClient;
 // SQL remains explicit; every $n value becomes a bound Drizzle parameter.
 export async function query<T = any>(
