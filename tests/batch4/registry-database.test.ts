@@ -77,8 +77,9 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
     ]);
     const baseline = await raw('items', item);
     const catalogBaseline = await raw('catalog_nodes', sku);
+    const publicBinding = ({ created_at, updated_at, ...rest }: any) => rest;
     expect((await itemRead(ctx, item)).attributes).toEqual(
-      originals.map((a) => ({ ...a, status: 'UNKNOWN' })),
+      originals.map((a) => ({ ...publicBinding(a), status: 'UNKNOWN' })),
     );
     expect((await catalogRead(ctx, sku)).attributes[0].status).toBe('UNKNOWN');
     expect(
@@ -150,7 +151,7 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
     expect((await raw('catalog_nodes', sku)).attributes).toBe(catalogBaseline.attributes);
     const snapshot = await webSnapshot(ctx, {});
     expect(snapshot.items.find((i) => i.id === item)?.attributes.slice(0, 2)).toEqual(
-      originals.map((a) => ({ ...a, status: 'UNKNOWN' })),
+      originals.map((a) => ({ ...publicBinding(a), status: 'UNKNOWN' })),
     );
     // Existing SQL browse reads also keep opaque values (their v2 projection is a separate lane).
     expect(
@@ -209,7 +210,10 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
       ],
     );
     const before = await raw('items', item);
-    expect((await itemRead(ctx, item)).attributes).toEqual([{ ...retired, status: 'RETIRED' }]);
+    const { created_at, updated_at, ...retiredPublic } = retired;
+    expect((await itemRead(ctx, item)).attributes).toEqual([
+      { ...retiredPublic, status: 'RETIRED' },
+    ]);
     await write(ctx, 'update_item', {
       item_id: item,
       display_name: 'retired remains readable',
@@ -615,11 +619,8 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
     expect(row.attributes[0]).toMatchObject({
       template_version: 2,
       values: base.values,
-      created_at: original.created_at,
-      status: 'KNOWN',
     });
     expect(row.attributes[0].values.specification).toBeUndefined();
-    expect(row.attributes[0].updated_at).not.toBe(original.updated_at);
     expect(row.revision).toBe(2);
     await expect(write(ctx, 'upgrade_attributes', base)).rejects.toMatchObject({
       code: 'REVISION_CONFLICT',

@@ -135,5 +135,13 @@ export async function decorateRecords(
     row.effective_capabilities = sku ? resolveCapabilities(sku.profile, sku.capabilities) : [];
   }
   for (const row of [...catalog, ...items])
-    row.attributes = row.attributes.map((a: any) => ({ ...a, status: bindingStatus(a, statuses) }));
+    row.attributes = row.attributes.map((a: any) => {
+      const status = bindingStatus(a, statuses);
+      return {
+        template_id: a.template_id,
+        template_version: a.template_version,
+        values: a.values,
+        ...(status === 'KNOWN' ? {} : { status }),
+      };
+    });
 }

@@ -527,7 +527,15 @@ async function executeCommand(ctx: Context, name: Operation, raw: unknown): Prom
 }
 async function bindingRecords(c: Client, ctx: Context, obj: ObjectState) {
   const statuses = await bindingStatuses(c, ctx.household_id);
-  return obj.row.attributes.map((a: any) => ({ ...a, status: bindingStatus(a, statuses) }));
+  return obj.row.attributes.map((a: any) => {
+    const status = bindingStatus(a, statuses);
+    return {
+      template_id: a.template_id,
+      template_version: a.template_version,
+      values: a.values,
+      ...(status === 'KNOWN' ? {} : { status }),
+    };
+  });
 }
 
 async function view(c: Client, ctx: Context, obj: ObjectState, includePath = false) {
@@ -1126,10 +1134,14 @@ async function applyDomainCommand(
     const rev = before?.row.revision ?? 0;
     const now = (await query(c, 'SELECT to_jsonb(now()) AS time')).rows[0].time;
     const priorOrder: string[] = (before?.row.attributes ?? []).map((a: any) => a.template_id);
-    const order = [
-      ...priorOrder.filter((id) => Object.hasOwn(obj.sets, id)),
-      ...Object.keys(obj.sets).filter((id) => !priorOrder.includes(id)),
-    ];
+    const order = before
+      ? [
+          ...priorOrder.filter((id) => Object.hasOwn(obj.sets, id)),
+          ...Object.keys(obj.sets)
+            .filter((id) => !priorOrder.includes(id))
+            .sort(),
+        ]
+      : Object.keys(obj.sets).sort();
     const attributes = order.map((template_id) => {
       const prior = before?.row.attributes.find((a: any) => a.template_id === template_id);
       if (

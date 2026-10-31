@@ -378,7 +378,8 @@ describe('PostgreSQL domain transactions', () => {
       expected_revisions: rev(id, 3),
     });
     expect(noChange.changed).toBe(false);
-    expect((await run('get_item', { item_id: id })).notes[0].body).toBe('second');
+    const noteSummary = (await run('get_item', { item_id: id })).notes[0];
+    expect((await run('get_note', { note_id: noteSummary.id })).body).toBe('second');
     const absent = await write('update_attributes', {
       target: { kind: 'ITEM', id },
       template_id: 'lifecycle',
@@ -921,7 +922,6 @@ it('keeps JSON array checks in SQL and enforces binding semantics in the shared 
   };
   for (const invalid of [
     [binding, binding],
-    [{ ...binding, template_version: 2 }],
     [{ ...binding, values: { condition: 'INVALID' } }],
     [{ ...binding, extra: 'unknown' }],
     [{ ...binding, template_id: 'product', values: { brand: 'x' } }],
@@ -939,6 +939,15 @@ it('keeps JSON array checks in SQL and enforces binding semantics in the shared 
         .rows[0].attributes,
     ).toEqual(invalid);
   }
+  // Unknown template versions are read-tolerant; a rename must preserve them.
+  await query(pool, 'UPDATE items SET attributes=$1::jsonb WHERE id=$2', [
+    JSON.stringify([{ ...binding, template_version: 2 }]),
+    id,
+  ]);
+  expect(
+    (await write('update_item', { item_id: id, display_name: 'rename', expected_revisions: rev(id, 1) }))
+      .changed,
+  ).toBe(true);
   await query(pool, "UPDATE items SET attributes='[]'::jsonb WHERE id=$1", [id]);
   expect((await run('get_attribute_sets', { target: { kind: 'ITEM', id } })).data).toEqual([]);
   // Another household has lifecycle v1, but this one does not: no implicit global registry fallback.
@@ -956,17 +965,27 @@ it('keeps JSON array checks in SQL and enforces binding semantics in the shared 
       idempotency_key: key(),
     })
   ).affected_objects[0].id;
-  await expect(
-    execute(emptyCtx, 'create_items', {
-      catalog_node_id: cat,
-      count: 1,
-      initial_attributes: [attrs('lifecycle', { condition: 'GOOD' })],
-      idempotency_key: key(),
-    }),
-  ).rejects.toMatchObject({ code: 'ATTRIBUTE_VALIDATION_FAILED' });
+  // Known templates are seeded transactionally on first write; this replaces the
+  // old global-fallback assumption with an explicit per-household publication.
+  const seeded = await execute(emptyCtx, 'create_items', {
+    catalog_node_id: cat,
+    count: 1,
+    initial_attributes: [attrs('lifecycle', { condition: 'GOOD' })],
+    idempotency_key: key(),
+  });
+  expect(seeded.changed).toBe(true);
   expect(
     (await query(pool, 'SELECT count(*) FROM items WHERE household_id=$1', [hh])).rows[0].count,
-  ).toBe('0');
+  ).toBe('1');
+  expect(
+    (
+      await query(
+        pool,
+        "SELECT 1 FROM attribute_templates WHERE household_id=$1 AND id='lifecycle' AND version=1",
+        [hh],
+      )
+    ).rowCount,
+  ).toBe(1);
 });
 
 describe('Responsive workbench commands', () => {
@@ -1039,7 +1058,7 @@ describe('Responsive workbench commands', () => {
     const item = await run('get_item', { item_id: ids[0] });
     expect(item.display_name).toBe('我的线材');
     expect(item.notes).toHaveLength(1);
-    expect(item.notes[0].body).toBe('随身使用');
+    expect((await run('get_note', { note_id: item.notes[0].id })).body).toBe('随身使用');
     expect(item.attributes.find((a: any) => a.template_id === 'lifecycle').values).toEqual({
       opening: { state: 'SEALED' },
       expiry: { date: '2027-01-01' },
