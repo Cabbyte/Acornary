@@ -2,7 +2,7 @@
 
 状态：`WAVE1_INTEGRATED`（Batch 1 + Batch 2）。Batch 0 契约已评审通过；Batch 1 的四条 lane 与 Batch 2 查询已合并并在隔离 PostgreSQL 18.6 上完成验收。Batch 3–8 尚未开始。
 
-Batch 1/2 的集成结果、测试证据和已知缺口见 [Batch 1 + Batch 2 集成验收](./batch1/integration.md)。本目录其余文件是实施规格，不是未完成能力的声明。
+Batch 1/2 的集成结果、测试证据和已知缺口见 [Batch 1 + Batch 2 集成验收](./batch1/integration.md)。前端设计与重构的冻结基线见 [前端接口冻结 v2](./frozen-interfaces.md)；标 `F` 的接口尚未实现，必须按 `features` 灰化。本目录其余文件是实施规格，不是未完成能力的声明。
 
 ## 五份技术契约
 
