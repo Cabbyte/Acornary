@@ -235,9 +235,7 @@
     "title": "20轮追赶上限与退避",
     "status": "NOT_RUN",
     "acceptance": "20轮追赶上限与退避；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": [
-      "client retry/backoff not implemented"
-    ]
+    "evidence": []
   },
   {
     "id": "SYNC12",
@@ -283,20 +281,20 @@
     "id": "QUERY04",
     "batch": 7,
     "title": "冻结导出不随实时写变化",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "冻结导出不随实时写变化；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "frozen export not implemented"
+      "tests/batch7/export.test.ts (12 passed): frozen rows, pagination, stale/tamper, disclosure audit"
     ]
   },
   {
     "id": "QUERY05",
     "batch": 7,
     "title": "过期或错条件导出拒绝",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "过期或错条件导出拒绝；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "frozen export not implemented"
+      "tests/batch7/export.test.ts (12 passed): frozen rows, pagination, stale/tamper, disclosure audit"
     ]
   },
   {
@@ -685,9 +683,7 @@
     "title": "独立密钥NAS备份解密",
     "status": "NOT_RUN",
     "acceptance": "独立密钥NAS备份解密；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": [
-      "offsite NAS/SFTP restore NOT_RUN"
-    ]
+    "evidence": []
   },
   {
     "id": "OPS08",

@@ -82,11 +82,12 @@ type FeatureKey =
   | 'references'
   | 'units_v2'
   | 'sync_v2'
+  | 'frozen_export'
   | 'redaction_v2'
   | 'protocol_v2';
 ```
 
-`I`（服务端）：`query_v2`、`history_v2`、`snapshot_v2`、`groups_v2`、`sync_v2`、`profile_capabilities`、`deadline`、`notes_v2`、`attachments`（媒体/字节门禁除外）、`stock`、`void`、`split`、`references`、`units_v2`。`protocol_v2` 由 `ACORNARY_REQUIRE_PROTOCOL_V2=1` 启用；`redaction_v2` 为 PARTIAL；冻结导出仍为 `F`。  
+`I`（服务端）：`query_v2`、`history_v2`、`snapshot_v2`、`groups_v2`、`sync_v2`、`profile_capabilities`、`deadline`、`notes_v2`、`attachments`（媒体/字节门禁除外）、`stock`、`void`、`split`、`references`、`units_v2`。`protocol_v2` 由 `ACORNARY_REQUIRE_PROTOCOL_V2=1` 启用；`redaction_v2` 为 PARTIAL；冻结导出已实现。  
 前端规则：**任何 `F` 功能在 `features` 未返回前不得显示入口**；不要用“后端已合并”推断功能可用。
 
 ### 1.3 传输、鉴权与 CSRF
@@ -1024,7 +1025,7 @@ type SyncBootstrap = {
 | `void` / `split` / `dispose` / `references` / 单位 / `stock` | I | 服务端命令、反向索引、`query_stock` |
 | 同步 v2 | I | state/changes/fetch/bootstrap、generation/prune |
 | 协议 v2 强制 | I | `ACORNARY_REQUIRE_PROTOCOL_V2=1` 开启；默认兼容 |
-| 冻结导出（QUERY04/05） | F | 未实现；当前只有浏览分页 |
+| 冻结导出（QUERY04/05） | I | begin/read/cancel_export；一小时冻结、TTL、敏感披露审计 |
 | 全路径脱敏 | PARTIAL | 笔记/附件/检查器/详情已覆盖；非全部读取路径 |
 
 ## 14. 变更流程

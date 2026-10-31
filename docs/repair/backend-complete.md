@@ -13,9 +13,10 @@ Batch 3–8 的后端能力已经实现并合并到集成分支：
 - 同步 API、快照 v2、商品分组、标签投影；
 - REFERENCE、usage/custody/service/transport/wardrobe/asset/stock/disposition、void/dispose/split、单位换算、`query_stock`、one_off/SKU 规则；
 - 笔记目标扩展、附件 BlobStore/上传/下载、脱敏；
+- 冻结导出（QUERY04/05），一小时快照、分页、TTL、敏感披露审计；
 - 数据库事件/引用/拆分约束、协议开关、错误映射、检查器、健康检查和恢复清单。
 
-**没有完成、也不应伪装完成的**：附件缩略图/EXIF 真实媒体处理、附件字节与 GC/备份租约、独立异机恢复、10k 性能基准、7 条历史 migration checksum、客户端缓存/三端切换、`get_item` v2 包装、冻结导出。这些是明确的剩余门禁。
+**没有完成、也不应伪装完成的**：附件缩略图/EXIF 真实媒体处理、附件字节与 GC/备份租约、独立异机恢复、10k 性能基准、7 条历史 migration checksum、客户端缓存/三端切换、`get_item` v2 包装。这些是明确的剩余门禁。
 
 ## 2. 测试证据
 
@@ -29,12 +30,12 @@ Batch 3–8 的后端能力已经实现并合并到集成分支：
 | Batch 4 registry/profile | **19 passed** |
 | Batch 5 deadline/dates | **11 passed** |
 | Batch 6 semantics | **23 passed** |
-| Batch 7 notes/attachments | **15 passed** |
+| Batch 7 notes/attachments | **15 passed**；冻结导出 **12 passed** |
 | Batch 8 hardening | **12 passed / 1 todo** |
 | 类型检查 | 根与 Web `tsc --noEmit` 通过 |
 | 构建 | server、Web、插件 bundle 通过 |
 
-验收用例：**57 PASS / 15 PARTIAL / 4 NOT_RUN**（76 条）。PARTIAL/NOT_RUN 与下方门禁一一对应。
+验收用例：**59 PASS / 15 PARTIAL / 2 NOT_RUN**（76 条）。PARTIAL/NOT_RUN 与下方门禁一一对应。
 
 ## 3. 迁移
 
@@ -58,6 +59,7 @@ Batch 3–8 的后端能力已经实现并合并到集成分支：
 | 处置 / 作废 / 拆分 | 完成 | `dispose_item`、`void_item`、`void_catalog_node`、`split_item` |
 | 单位 / 补货 / 资产 / SKU | 完成 | units、`stock`、`query_stock`、asset、clothing/device v2、one_off |
 | 笔记 / 附件 / 脱敏 | 完成（媒体门禁除外） | notes/attachment commands、blob routes、`redactFor` |
+| 冻结导出 | 完成 | `begin_export`/`read_export`/`cancel_export` |
 | 约束 / 错误 / 协议 / 检查器 | 完成 | migration 018、`mapDatabaseError`、`ACORNARY_REQUIRE_PROTOCOL_V2=1` |
 | 健康 / 恢复清单 | 完成（异机字节门禁除外） | `/health`、`verify-restore.ts` |
 
@@ -69,7 +71,7 @@ Batch 3–8 的后端能力已经实现并合并到集成分支：
 2. **附件字节/备份**：数据库元数据摘要已验证；附件字节 manifest、GC 租约、NAS/SFTP 上传、独立密钥解密和真实异机恢复未执行。`OPS07` 为 NOT_RUN。
 3. **性能**：10k 物品/100k 事件/10k 笔记的 p95、SQL 数和写入回归尚未跑；QUERY08 只有小 fixture 证据。
 4. **历史校验和**：7 条 `UNVERIFIED` 需要发布前人工签署/核对。
-5. **客户端**：Web/Android/插件尚未切到 v2；`get_item` 仍是扁平形状，v2 包装未实现；冻结导出（QUERY04/05）未实现。
+5. **客户端**：Web/Android/插件尚未切到 v2；`get_item` 仍是扁平形状，v2 包装未实现。
 6. **全路径脱敏**：笔记/附件/检查器/详情已覆盖；其他读取路径的完整矩阵仍为 PARTIAL。
 7. **生产切换**：`ACORNARY_REQUIRE_PROTOCOL_V2` 默认关闭；三端切换、真实插件附件传输、真实 Android 同步/打印、生产副本审计和恢复演练仍需执行。
 
@@ -94,6 +96,7 @@ Batch 3–8 的后端能力已经实现并合并到集成分支：
 - [Batch 5 dates](./batch5/dates.md)
 - [Batch 6 semantics](./batch6/semantics.md)
 - [Batch 7 notes/attachments](./batch7/notes-attachments.md)
+- [Batch 7 frozen export](./batch7/export.md)
 - [Batch 8 hardening](./batch8/hardening.md)
 - [验收用例](../tests/batch0/cases.json)
 - [44 条缺陷清单](../data-model-findings.csv)
