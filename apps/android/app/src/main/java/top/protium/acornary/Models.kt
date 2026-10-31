@@ -26,6 +26,7 @@ const val CALLBACK = "$ORIGIN/android/oauth/callback"
     val opening_state: String? = null, val opened_at: String? = null,
     val expiry_date: String? = null, val expiry_kind: String? = null, val after_opening_days: Int? = null,
     val remaining: Amount? = null, val accuracy: String? = null, val reminder: Reminder = Reminder(),
+    val created_at: String? = null, val label_updated_at: String? = null,
     val location_ids: List<String> = emptyList(), val location: String = "未记录位置",
 ) {
     val canOpen get() = !terminal && !is_container && opening_state != "OPENED" && opened_at == null

@@ -21,8 +21,8 @@ android {
         applicationId = "top.protium.acornary"
         minSdk = 31
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.3.1-terminal"
+        versionCode = 5
+        versionName = "0.4.0-terminal"
         manifestPlaceholders["appAuthRedirectScheme"] = "top.protium.acornary"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

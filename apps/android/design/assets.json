@@ -1,0 +1,248 @@
+{
+  "exported_at": "2026-10-31",
+  "assets": [
+    {
+      "file": "source/brand.svg",
+      "sha256": "cc3d9ed770b6a3a483e0cce3a65e58b2d6d85d1c2bc8cf885ee008b161a1fcf0",
+      "width": "656.988",
+      "height": "704.233",
+      "viewBox": "0 0 656.988 704.233",
+      "source": {
+        "provider": "Figma",
+        "fileKey": "Xt5Dcp0NHtYPC0UbSF3iHO",
+        "nodeId": "133:384"
+      }
+    },
+    {
+      "file": "source/items.svg",
+      "sha256": "2a7cd68890f4680fad0d36de7b4b6fc3f1f7bb0ecd7468643c97e96d15ceb269",
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "source": {
+        "provider": "Figma",
+        "fileKey": "Xt5Dcp0NHtYPC0UbSF3iHO",
+        "nodeId": "137:397"
+      }
+    },
+    {
+      "file": "source/launcher.svg",
+      "sha256": "d1166088eabadad08c0c1ca854043e845fa3df083aa3c5df191c4501d65ce3af",
+      "width": "1024",
+      "height": "1024",
+      "viewBox": "0 0 1024 1024",
+      "source": {
+        "provider": "Figma",
+        "fileKey": "Xt5Dcp0NHtYPC0UbSF3iHO",
+        "nodeId": "133:358"
+      }
+    },
+    {
+      "file": "source/lucide-check.svg",
+      "sha256": "538432eec072ceeccf5a7aacf347a2ad2bff9937d203dbd0b4f4245d7accd93c",
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "source": {
+        "provider": "Lucide",
+        "package": "lucide-static",
+        "version": "0.468.0",
+        "icon": "check"
+      }
+    },
+    {
+      "file": "source/lucide-chevron-down.svg",
+      "sha256": "04458777b8a99214cd167dc9a8c8a1e35dcc9373b7577f74d5b5da6418ffcf67",
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "source": {
+        "provider": "Lucide",
+        "package": "lucide-static",
+        "version": "0.468.0",
+        "icon": "chevron-down"
+      }
+    },
+    {
+      "file": "source/lucide-chevron-left.svg",
+      "sha256": "a185985349089649d06747570c72f47fe1f5eb293a9a0f11278f6442b0b9d25c",
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "source": {
+        "provider": "Lucide",
+        "package": "lucide-static",
+        "version": "0.468.0",
+        "icon": "chevron-left"
+      }
+    },
+    {
+      "file": "source/lucide-clock.svg",
+      "sha256": "4bd6906a9b756dea41ff62ed88b594ce9a231c19f1a06522571457b6e4d774e6",
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "source": {
+        "provider": "Lucide",
+        "package": "lucide-static",
+        "version": "0.468.0",
+        "icon": "clock"
+      }
+    },
+    {
+      "file": "source/lucide-ellipsis.svg",
+      "sha256": "c223eec545dc86e0de4c672e621550b391198ca97b8eabbe043613c3332d48b1",
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "source": {
+        "provider": "Lucide",
+        "package": "lucide-static",
+        "version": "0.468.0",
+        "icon": "ellipsis"
+      }
+    },
+    {
+      "file": "source/lucide-info.svg",
+      "sha256": "8b0a0b5641a875a2e0d8c04080c55cf6c1808c1f76477acb89958e8da00ba5a1",
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "source": {
+        "provider": "Lucide",
+        "package": "lucide-static",
+        "version": "0.468.0",
+        "icon": "info"
+      }
+    },
+    {
+      "file": "source/lucide-list-checks.svg",
+      "sha256": "32366985f590f2562bded81d3e726c7d531e6bdfbaa8fa448eb2f88fb7729b0a",
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "source": {
+        "provider": "Lucide",
+        "package": "lucide-static",
+        "version": "0.468.0",
+        "icon": "list-checks"
+      }
+    },
+    {
+      "file": "source/lucide-log-out.svg",
+      "sha256": "3f28d1eedd9a71ec6933578fc1b7cd21c56618e8b9b8339e55bfc133b4eb6bee",
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "source": {
+        "provider": "Lucide",
+        "package": "lucide-static",
+        "version": "0.468.0",
+        "icon": "log-out"
+      }
+    },
+    {
+      "file": "source/lucide-printer.svg",
+      "sha256": "b3aa8dacd9a4a704e0917b4198538d844bcb2a6bfb7c4af3225f2e9acd1c5a77",
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "source": {
+        "provider": "Lucide",
+        "package": "lucide-static",
+        "version": "0.468.0",
+        "icon": "printer"
+      }
+    },
+    {
+      "file": "source/lucide-qr-code.svg",
+      "sha256": "8bdc29119b31bc6ead9d1c05315cc548ef52e9ce2a7a67e2b8ad4990bdb616d1",
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "source": {
+        "provider": "Lucide",
+        "package": "lucide-static",
+        "version": "0.468.0",
+        "icon": "qr-code"
+      }
+    },
+    {
+      "file": "source/lucide-refresh-cw.svg",
+      "sha256": "d63b359b0fe05e03cff8aaa7acf82f9569733e83f7fb4742d583a086972c4bb0",
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "source": {
+        "provider": "Lucide",
+        "package": "lucide-static",
+        "version": "0.468.0",
+        "icon": "refresh-cw"
+      }
+    },
+    {
+      "file": "source/lucide-search.svg",
+      "sha256": "e11a04d51c122a8a759211424920efc65fa36b7ab06237c34ef90317d920ddf9",
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "source": {
+        "provider": "Lucide",
+        "package": "lucide-static",
+        "version": "0.468.0",
+        "icon": "search"
+      }
+    },
+    {
+      "file": "source/lucide-sliders-horizontal.svg",
+      "sha256": "995507595c7c24deffef382bacc452a24b40a2efc4aa54908563a0f09b6a75aa",
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "source": {
+        "provider": "Lucide",
+        "package": "lucide-static",
+        "version": "0.468.0",
+        "icon": "sliders-horizontal"
+      }
+    },
+    {
+      "file": "source/lucide-triangle-alert.svg",
+      "sha256": "cba6c904f2cc8cc0ca16940e89762a4885dff08be9105ccff1dbd13d12663f70",
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "source": {
+        "provider": "Lucide",
+        "package": "lucide-static",
+        "version": "0.468.0",
+        "icon": "triangle-alert"
+      }
+    },
+    {
+      "file": "source/lucide-x.svg",
+      "sha256": "0f38855d9d5775c10960ae53e46b745f77914b43f78c43bf8abc39f4d5e06de1",
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "source": {
+        "provider": "Lucide",
+        "package": "lucide-static",
+        "version": "0.468.0",
+        "icon": "x"
+      }
+    },
+    {
+      "file": "source/settings.svg",
+      "sha256": "b622de8d083d0b8f02cdfbd423dac074d21fe502297c53905abc0a3092ef59b0",
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "source": {
+        "provider": "Figma",
+        "fileKey": "Xt5Dcp0NHtYPC0UbSF3iHO",
+        "nodeId": "137:403"
+      }
+    }
+  ]
+}

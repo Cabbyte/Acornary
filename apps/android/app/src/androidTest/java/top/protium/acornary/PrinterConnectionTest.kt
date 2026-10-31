@@ -90,4 +90,29 @@ class PrinterConnectionTest {
         assertEquals(1, links.maxOf { it.maxActive })
         assertFalse(PrintRecovery(context).pending())
     }
+    @Test fun failedDurableStartHookPreventsPhysicalOutput() = fixture { owner, _, links ->
+        owner.startMaintenance(); until {owner.state.value.connected}
+        var failed=false
+        owner.printSeries(listOf(PrinterPage(
+            image={Bitmap.createBitmap(240,96,Bitmap.Config.ARGB_8888).apply {eraseColor(-1)}},
+            starting={throw java.io.IOException("fixture storage failure")}
+        )),2,failed={_,_->failed=true})
+        until {failed&&!owner.state.value.busy}
+        assertTrue(links.all {0x01 !in it.commands})
+        assertFalse(PrintRecovery(context).pending())
+    }
+    @Test fun failedDurableCompletionHookStopsRemainingPagesAndNeverReplays() = fixture { owner, _, links ->
+        owner.startMaintenance(); until {owner.state.value.connected}
+        var failed=false
+        val page=PrinterPage(
+            image={Bitmap.createBitmap(240,96,Bitmap.Config.ARGB_8888).apply {eraseColor(-1)}},
+            completed={throw java.io.IOException("fixture receipt failure")}
+        )
+        owner.printSeries(listOf(page,page),2,failed={_,_->failed=true})
+        until {failed&&!owner.state.value.busy}
+        assertEquals(1,links.sumOf {link->link.commands.count {it==0x01}})
+        assertTrue(PrintRecovery(context).pending());assertTrue(owner.state.value.uncertain)
+        until {owner.state.value.connected};delay(50)
+        assertEquals(1,links.sumOf {link->link.commands.count {it==0x01}})
+    }
 }

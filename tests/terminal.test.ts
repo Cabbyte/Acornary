@@ -207,6 +207,46 @@ it('publishes only public config and verifies Android certificate associations',
   expect((await request(prefix + '/snapshot')).statusCode).toBe(401);
   expect((await request(prefix + '/snapshot', { headers: { cookie } })).statusCode).toBe(401);
 });
+it('projects recent label dates from recorded events across shared SKU edits and unrelated item operations', async () => {
+  const sku = (await write('create_catalog_node', { kind: 'SKU', name: '最近投影测试' })).affected_objects[0].id;
+  const make = async (display_name?: string) => (await write('create_items', {
+    catalog_node_id: sku, count: 1, ...(display_name ? { display_name } : {}),
+    initial_attributes: [
+      { template_id: 'contents', template_version: 1, values: { remaining: { value: '100', unit: 'mL' } } },
+      { template_id: 'lifecycle', template_version: 1, values: { expiry: { date: '2027-01-01', date_kind: 'USE_BY' } } },
+    ],
+  })).affected_objects[0].id;
+  const shared = await make(), custom = await make('独立标签名');
+  const read = async (id: string) => (await request(prefix + '/items/' + id, { headers: bearer() })).json().item;
+  const eventTime = async (result: any) => new Date((await query(pool,
+    'SELECT max(recorded_at) AS time FROM events WHERE id=ANY($1::text[])', [result.event_ids])).rows[0].time).toISOString();
+  const first = await read(shared), own = await read(custom);
+  expect(first.created_at).toBe(first.label_updated_at);
+  const renamed = await write('update_catalog_node', { catalog_node_id: sku, name: '最新商品名称', expected_revisions: { [sku]: 1 } });
+  expect((await read(shared)).label_updated_at).toBe(await eventTime(renamed));
+  expect((await read(custom)).label_updated_at).toBe(own.created_at);
+  const specification = await write('bind_attributes', { target: { kind: 'CATALOG_NODE', id: sku },
+    template_id: 'product', template_version: 1, values: { specification: '100 mL' }, expected_revisions: { [sku]: 2 } });
+  const specTime = await eventTime(specification);
+  expect((await read(custom)).label_updated_at).toBe(specTime);
+  expect((await read(shared)).label_updated_at).toBe(specTime);
+  await write('add_note', { item_id: shared, body: '不影响标签', expected_revisions: { [shared]: 1 } });
+  await write('move_items', { item_ids: [shared], parent_id: container, expected_revisions: { [shared]: 2 } });
+  await write('open_item', { item_id: shared, opened_at: '2020-01-01T00:00:00Z', expected_revisions: { [shared]: 3 } });
+  await write('consume_item_content', { item_id: shared, amount: { value: '1', unit: 'mL' }, expected_revisions: { [shared]: 4 } });
+  expect((await read(shared)).label_updated_at).toBe(specTime);
+  const cleared = await write('update_attributes', { target: { kind: 'ITEM', id: shared },
+    template_id: 'lifecycle', template_version: 1, unset: ['expiry.date'], expected_revisions: { [shared]: 5 },
+    occurred_at: '2020-01-01T00:00:00Z' });
+  const latest = await read(shared);
+  expect(latest.expiry_date).toBeNull();
+  expect(latest.label_updated_at).toBe(await eventTime(cleared));
+  expect(latest.label_updated_at).not.toBe('2020-01-01T00:00:00.000Z');
+  const snapshot = (await request(prefix + '/snapshot', { headers: bearer() })).json();
+  expect(snapshot.items.find((i: any) => i.id === shared)).toMatchObject({
+    created_at: first.created_at, label_updated_at: latest.label_updated_at,
+  });
+});
 it('rejects wrong audience, other clients, missing scope and cross-family reads', async () => {
   const wrongAudience = await grant(undefined, config.resource);
   expect(

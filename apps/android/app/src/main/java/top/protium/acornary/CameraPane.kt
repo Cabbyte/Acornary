@@ -37,6 +37,7 @@ fun CameraPane(onItem: (String) -> Unit, onActive: (Boolean) -> Unit) {
     var automaticZoom by remember { mutableStateOf(true) }
     var zoom by remember { mutableFloatStateOf(1f) }
     var maxZoom by remember { mutableFloatStateOf(1f) }
+    var zoomMenu by remember { mutableStateOf(false) }
     var session by remember { mutableStateOf<FrontScanner?>(null) }
     val currentAuto by rememberUpdatedState(automaticZoom)
     val currentItem by rememberUpdatedState(onItem)
@@ -79,14 +80,16 @@ fun CameraPane(onItem: (String) -> Unit, onActive: (Boolean) -> Unit) {
                         detectTapGestures { point -> session?.focus(point.x, point.y) }
                     })
                 }
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = automaticZoom, onClick = { automaticZoom = true; session?.zoom(1f) }, label = { Text("自动放大") })
-                    listOf(1f, 2f, 3f).filter { it <= maxZoom }.forEach { ratio ->
-                        FilterChip(selected = !automaticZoom && kotlin.math.abs(zoom - ratio) < 0.1f,
-                            onClick = { automaticZoom = false; session?.zoom(ratio) }, label = { Text("${ratio.toInt()}×") })
+                Row(Modifier.fillMaxWidth(),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
+                    Text("点按对焦 · 距离约 10–20 cm",Modifier.weight(1f),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    Box {
+                        TextButton(onClick={zoomMenu=true}) {Text(if(automaticZoom) "自动 · ${String.format(Locale.ROOT,"%.1f",zoom)}×" else "${String.format(Locale.ROOT,"%.1f",zoom)}×");AcIcon(AcGlyph.DOWN)}
+                        DropdownMenu(expanded=zoomMenu,onDismissRequest={zoomMenu=false}) {
+                            DropdownMenuItem(text={Text("自动放大")},onClick={automaticZoom=true;session?.zoom(1f);zoomMenu=false})
+                            listOf(1f,2f,3f).filter {it<=maxZoom}.forEach {ratio->DropdownMenuItem(text={Text("${ratio.toInt()}×")},onClick={automaticZoom=false;session?.zoom(ratio);zoomMenu=false})}
+                        }
                     }
                 }
-                Text("${String.format(Locale.ROOT, "%.1f", zoom)}× · 点按画面对焦；标签保持约 10–20 cm，模糊时稍微远离。", style = MaterialTheme.typography.bodySmall)
             } else {
                 Text(error ?: result ?: "相机已暂停", style = MaterialTheme.typography.bodyLarge)
                 Button(onClick = { error = null; result = null; attempt++ }) { Text("继续扫描") }

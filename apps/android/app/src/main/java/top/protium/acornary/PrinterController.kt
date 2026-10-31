@@ -12,6 +12,13 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+data class PrinterPage(
+    val image: suspend () -> Bitmap,
+    val validate: suspend () -> Boolean = { true },
+    val starting: suspend () -> Unit = {},
+    val completed: suspend () -> Unit = {},
+)
+
 data class PrinterDevice(val address: String, val name: String)
 data class PrinterState(
     val scanning: Boolean = false, val busy: Boolean = false, val printing: Boolean = false,
@@ -19,6 +26,7 @@ data class PrinterState(
     val message: String = "请开机并断开其他应用对 D101 的连接。", val progress: Int = 0,
     val uncertain: Boolean = false, val battery: Int? = null,
     val keepConnected: Boolean = true, val automaticConnection: Boolean = false,
+    val stopping: Boolean = false, val completedPages: Int = 0, val totalPages: Int = 0,
 )
 
 /** An interruption marker, never a queue: contains no item, account, bitmap or Bluetooth identity. */
@@ -172,42 +180,65 @@ class PrinterController(
         connection?.close(); connection = null; protocol = null
         mutable.update { it.copy(connected = false, battery = null, message = reason ?: it.message) }
     }
+    private var stopAfterPage = false
+    fun requestStop() { stopAfterPage = true; mutable.update { it.copy(stopping = true, message = "当前标签完成后停止后续打印…") } }
     fun print(bitmap: Bitmap, density: Int, completed: () -> Unit = {}, validate: suspend () -> Boolean = { true }) {
+        printSeries(listOf(PrinterPage({ bitmap }, validate)), density, finished = { if (it == 1) completed() })
+    }
+    fun printSeries(
+        pages: List<PrinterPage>, density: Int,
+        finished: suspend (Int) -> Unit = {}, failed: suspend (Exception, Boolean) -> Unit = { _, _ -> },
+    ): Boolean {
         val current = protocol
-        if (state.value.busy || state.value.uncertain || recovery.pending()) return
-        if (!state.value.connected || current == null) { message("请先在设置中连接 D101。"); return }
-        stopScan()
-        mutable.update { it.copy(busy = true, progress = 0, message = "正在核对标签…") }
+        if (state.value.busy || state.value.uncertain || recovery.pending()) return false
+        if (!state.value.connected || current == null) { message("请先在设置中连接 D101。"); return false }
+        require(pages.size in 1..100)
+        stopScan(); stopAfterPage = false
+        mutable.update { it.copy(busy = true, progress = 0, stopping = false, completedPages = 0, totalPages = pages.size, message = "正在核对标签…") }
         job = scope.launch {
             var mayHavePrinted = false
+            var count = 0
             try {
-                withTimeout(45_000) {
-                    if (!validate()) { message("物品资料已变化，预览已刷新。请核对后再次点击打印。"); return@withTimeout }
-                    val raster = withContext(Dispatchers.Default) { LabelRenderer.raster(bitmap) }
-                    protocolMutex.withLock {
-                    check(protocol === current && state.value.connected) { "打印机已断开，请等待重连。" }
-                    current.print(raster, density, starting = {
-                        withContext(NonCancellable + Dispatchers.IO) { recovery.mark() }
-                        mayHavePrinted = true
+                withTimeout(15 * 60_000L) {
+                    for (page in pages) {
                         currentCoroutineContext().ensureActive()
-                        mutable.update { it.copy(printing = true, message = "正在打印 1 张，请保持应用在前台…") }
-                        Log.i("AcornaryPrint", "Single label started")
-                    }, progress = { progress -> mutable.update { it.copy(progress = progress) } })
+                        if (stopAfterPage) break
+                        withTimeout(45_000) {
+                            check(page.validate()) { "物品资料已变化，请刷新预览后再打印。" }
+                            if (stopAfterPage) return@withTimeout
+                            val image = page.image()
+                            val raster = withContext(Dispatchers.Default) { LabelRenderer.raster(image) }
+                            protocolMutex.withLock {
+                                check(protocol === current && state.value.connected) { "打印机已断开，请等待重连。" }
+                                current.print(raster, density, starting = {
+                                    withContext(NonCancellable + Dispatchers.IO) { page.starting(); recovery.mark() }
+                                    mayHavePrinted = true
+                                    currentCoroutineContext().ensureActive()
+                                    mutable.update { it.copy(printing = true, message = "正在打印第 ${count + 1}/${pages.size} 张…") }
+                                    Log.i("AcornaryPrint", "Single label started")
+                                }, progress = { value -> mutable.update { it.copy(progress = value) } })
+                            }
+                            withContext(NonCancellable + Dispatchers.IO) { page.completed(); recovery.clear() }
+                            mayHavePrinted = false; count++
+                            mutable.update { it.copy(completedPages = count, printing = false, uncertain = false) }
+                            Log.i("AcornaryPrint", "Single label completion confirmed")
+                        }
                     }
-                    withContext(NonCancellable + Dispatchers.IO) { recovery.clear() }
-                    mutable.update { it.copy(message = "打印机已确认完成 1 张。", uncertain = false) }
-                    completed()
-                    Log.i("AcornaryPrint", "Single label completion confirmed")
+                    withContext(NonCancellable) { finished(count) }
+                    message(if (count == pages.size) "打印机已确认完成 $count 张。" else "已停止后续打印，已完成 $count 张。")
                 }
             } catch (error: Exception) {
-                connection?.close(); protocol = null
-                // A failed receipt clear must never turn a physically sent label into "not sent".
+                closeLink()
                 val uncertain = mayHavePrinted || recovery.pending()
-                if (uncertain) withContext(NonCancellable + Dispatchers.IO) { runCatching { recovery.mark() } }
-                mutable.update { it.copy(connected = false, uncertain = uncertain, message = if (uncertain) "${readable(error)} 出纸结果待核对；不会自动重打。" else "${readable(error)} 标签未发送。") }
+                withContext(NonCancellable + Dispatchers.IO) {
+                    if (uncertain) runCatching { recovery.mark() }
+                    runCatching { failed(error, uncertain) }
+                }
+                mutable.update { it.copy(uncertain = uncertain, message = if (uncertain) "${readable(error)} 出纸结果待核对；不会自动重打。" else "${readable(error)} 未发送的标签已停止。") }
                 Log.i("AcornaryPrint", if (uncertain) "Print result uncertain; retry disabled" else "Print stopped before output")
-            } finally { mutable.update { it.copy(busy = false, printing = false) } }
+            } finally { mutable.update { it.copy(busy = false, printing = false, stopping = false) } }
         }
+        return true
     }
     fun acknowledge() {
         if (state.value.busy) return
