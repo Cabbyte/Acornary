@@ -1,9 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
 import { fixtureCommand } from './governance.js';
+import { login } from './login.js';
 import { choose } from './controls.js';
 
 async function fixture(page: Page) {
   await page.goto('/items?ui=next');
+  if (process.env.ACORNARY_E2E_CLOUD) {
+    await login(page);
+    await page.goto('/items?ui=next');
+  }
   await expect(page.getByRole('button', { name: '添加物品', exact: true })).toBeVisible();
   const snapshot = await (await page.request.get('/api/ui/snapshot')).json();
   const product = snapshot.catalog.find(

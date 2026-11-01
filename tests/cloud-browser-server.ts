@@ -8,7 +8,7 @@ import { testMailbox } from '../apps/server/src/mail.js';
 import { buildApp } from '../apps/server/src/app.js';
 if (!process.env.DATABASE_URL?.match(/\/acornary_e2e_\d+$/))
   throw new Error('Isolated E2E database required.');
-const ctx = { ...(await initialize()), source: 'E2E' };
+const ctx = { ...(await initialize()), source: 'TEST' };
 if (!(await query(pool, 'SELECT 1 FROM auth_owners')).rowCount)
   await manageOwner('create', 'browser@example.test', 'Browser-test-password-123!');
 // Pre-registered public fixture client in the isolated database only. The server

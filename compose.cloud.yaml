@@ -38,6 +38,7 @@ services:
       NODE_OPTIONS: --max-old-space-size=256
       ACORNARY_MODE: cloud
       BIND_HOST: 0.0.0.0
+      ACORNARY_ATTACHMENT_ROOT: /var/lib/acornary/attachments
     networks:
       database: {}
       edge:
@@ -46,6 +47,7 @@ services:
       postgres: { condition: service_healthy }
     read_only: true
     tmpfs: ['/tmp:size=32m,mode=1777']
+    volumes: ['attachments:/var/lib/acornary/attachments']
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     mem_limit: 384m
@@ -78,6 +80,7 @@ services:
     logging:
       driver: none
 volumes:
+  attachments:
   pgdata:
 networks:
   database:

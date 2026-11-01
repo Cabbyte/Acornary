@@ -112,7 +112,7 @@ class DockerBackend:
         migrations = value.get('migrations')
         require(isinstance(migrations, dict) and len(migrations) > 0, 'Missing migration manifest')
         for name, digest in migrations.items():
-            require(re.fullmatch(r'[0-9]{3,}_[a-z0-9_]+\.sql', name) is not None and
+            require(re.fullmatch(r'[0-9]{3,}[a-z]?_[a-z0-9_]+\.sql', name) is not None and
                     re.fullmatch(r'[0-9a-f]{64}', digest) is not None, 'Invalid migration manifest')
         return value
 
@@ -156,8 +156,11 @@ class DockerBackend:
         return str(final)
 
     def migrate(self):
-        command(self.compose + ['run', '--rm', '-T', '--no-deps', 'admin',
-                               'node', 'dist/apps/server/src/migrate.js', '--grants'])
+        manifest = self.legacy_manifest
+        command(self.compose + ['run', '--rm', '-T', '--no-deps',
+                               '--volume', str(manifest) + ':/run/acornary/legacy-migrations.json:ro',
+                               'admin', 'node', 'dist/apps/server/src/migrate.js', '--grants',
+                               '--legacy-manifest', '/run/acornary/legacy-migrations.json'])
 
     def start(self):
         # The database and shared ingress are never recreated by an app release.
@@ -251,6 +254,12 @@ class Controller:
                     self.update(job, 'backed_up', backup=backup)
                 self.backend.set_image(job['image'])
                 if pending:
+                    # Pin only previously applied, controller-verified hashes.
+                    trusted = self.root / ('trusted-migrations-' + job['id'] + '.json')
+                    save_json(trusted, {row['name']: known[row['name']] for row in before})
+                    # Hashes are public metadata; the admin container runs as uid 1000.
+                    trusted.chmod(0o644)
+                    self.backend.legacy_manifest = trusted
                     save_json(self.root / 'schema.json', dict(known, **target))
                     self.update(job, 'migrating')
                     migration_started = True

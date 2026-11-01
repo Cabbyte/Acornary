@@ -37,11 +37,11 @@ SSH 专用账号没有 Docker 组权限。root 管理其 home／authorized_keys�
 2. systemd 独立运行 `acornary-release-<job_id>.service`，取得发布锁。SSH 中断不终止服务；重连先查询相同任务，绝不另起迁移。
 3. 停服前核对磁盘空间、镜像平台／身份和已执行 migration 的摘要。已执行文件不得删除或更改。
 4. 应用接收 SIGTERM，通过 Fastify 关闭等待请求完成，45 秒后强制终止；未提交事务由 PostgreSQL 回滚。只有应用停止后才备份或迁移。
-5. 无新 migration 不生成备份。有新 migration 时先用 `pg_dump -Fc` 保存完整数据库、验证 archive 目录并记录 SHA256；然后一个事务执行全部新增 SQL、迁移登记和运行角色授权。
+5. 无新 migration 不生成备份。有新 migration 时先用 `pg_dump -Fc` 保存完整数据库、验证 archive 目录并记录 SHA256；然后按迁移文件的事务声明执行新增 SQL；并发索引单独执行，STARTED／FAILED 登记持久保存，最后更新运行角色授权。历史无校验和登记只有在匹配控制器既有发布清单时才显式补记 APPLIED，不重跑旧 SQL。
 6. 仅启动 app。除容器健康外，检查公网 HTTPS `/health` 的 `status/version/commit`、登录资源、OAuth discovery，以及匿名 `/api/context`、`/mcp` 均返回 401。`/health` 还检查版本所需 migrations 已登记。
 7. 成功记录当前版本、任务中的上一版本及 digest。默认保留当前及最近两个成功应用镜像、最近三份成功迁移备份；失败任务关联备份不自动清理。初始恢复镜像及历史任务 JSON 留档，不使用全局 Docker prune。
 
-migration 必须遵守现有事务约定，不得在 SQL 文件内显式 COMMIT、写外部系统或引入不能事务回滚的操作。新增表所需写权限应同步更新镜像中的 `deploy/grants.sql`。修改已执行 SQL 会在停服前被拒绝。
+migration 必须遵守运行器的事务约定，不得在 SQL 文件内显式 COMMIT 或写外部系统。`-- acornary:no-transaction` 仅用于经过运行器验证的独立非事务迁移，例如并发索引；失败可能保留已提交的前序文件或 FAILED 登记，必须按 needs_attention 处理。新增表所需写权限应同步更新镜像中的 `deploy/grants.sql`。修改已执行 SQL 会在停服前被拒绝。
 
 ## 日常操作与故障恢复
 
@@ -74,3 +74,19 @@ journalctl -u acornary-release-<job_id>.service
 备份在 `/var/lib/acornary/backups/releases/<job_id>/`，仅保存在本机。日常定时备份仍关闭。恢复命令使用现有 [云端运行](./cloud-runtime.md) 的独立数据库流程，并核对 archive 校验和；不得对正在运行的正式库直接 restore。
 
 每次正式标签发布后仍需核对 Actions、线上版本及既有 OAuth／MCP 读取。`v0.1.0` 已完成首次闭环；CI／手动构建成功本身不等于生产部署。
+
+## 首次部署数据模型 v2
+
+旧生产版本仅登记了 001–005、007、008；003 已删除 attribute_sets，016 才引入并回填 notes.target_kind/target_id。因此升级前应在独立恢复库按实际旧结构检查，并演练 009–025，而不是假定 021 已执行。不得修改任何已有 SQL 文件。
+
+控制器需要兼容 `016a` 文件名，并将发布前已核验的 migration 摘要作为独立只读文件传给 `--legacy-manifest`。未提供该证据时运行器继续保留 UNVERIFIED，禁止以当前文件自行证明历史。每个 job 使用独立清单，防止容器挂载读到被替换文件的旧内容。
+
+新版启动要求可写的持久附件目录。在 CI 全绿后、推送正式标签前，将审核过的 `deploy/release.py` 和 `deploy/prepare-v2-runtime.py` 放到服务器同一可信目录。记录当前 `/usr/local/sbin/acornary-release` 与已配置 Compose 文件的 SHA256，再以 root 执行：
+
+```sh
+python3 /trusted/staging/prepare-v2-runtime.py <旧控制器SHA256> <旧ComposeSHA256>
+```
+
+准备程序同时取得 submit/deploy 锁，拒绝活动或 needs_attention 任务，校验旧文件摘要，备份控制器和 Compose，再安装候选文件并增加命名附件卷；不会执行 SQL、迁移、重启或重新 bootstrap。之后仍必须走正式 tag → Actions → SSH 发布流程。保留准备程序输出的备份路径和摘要。
+
+数据库恢复验证不等于附件字节备份验证；首次发布后新增附件的备份方案须单独保全附件卷，不能用 database.sql 宣称覆盖文件内容。

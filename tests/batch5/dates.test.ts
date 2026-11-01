@@ -53,7 +53,7 @@ async function facts(item_id: string) {
   return (
     await query(
       pool,
-      'SELECT to_jsonb(d) AS row FROM date_facts d WHERE household_id=$1 AND item_id=$2 ORDER BY source_key,entry_id',
+      "SELECT to_jsonb(d) || jsonb_build_object('projected_through_change_id',d.projected_through_change_id::text) AS row FROM date_facts d WHERE household_id=$1 AND item_id=$2 ORDER BY source_key,entry_id",
       [ctx.household_id, item_id],
     )
   ).rows.map((r) => r.row);

@@ -46,7 +46,12 @@ async function cleanInvalidIndex(c: Client, task: IndexTask) {
 }
 
 // Exported for isolated runner tests; the CLI still reads ./migrations and --grants.
-export async function runMigrations(c: Client, directory = 'migrations', grants = false) {
+export async function runMigrations(
+  c: Client,
+  directory = 'migrations',
+  grants = false,
+  trustedLegacy?: Record<string, string>,
+) {
   // pg omits numeric zero startup parameters; also override any role/URL defaults.
   await c.query('SET statement_timeout = 0');
   await c.query('SET idle_in_transaction_session_timeout = 0');
@@ -86,6 +91,19 @@ export async function runMigrations(c: Client, directory = 'migrations', grants 
       const old = history.get(file.name);
       if (old?.checksum && old.checksum !== file.checksum)
         throw new Error(`Migration checksum drift: ${file.name}`);
+    }
+    // Only an explicitly supplied, previously recorded release manifest can
+    // attest legacy receipts. Never derive evidence from today's files alone.
+    const legacy = files.filter((file) => history.get(file.name)?.status === 'UNVERIFIED');
+    if (trustedLegacy) {
+      for (const file of legacy) {
+        if (trustedLegacy[file.name] !== file.checksum)
+          throw new Error(`Untrusted legacy migration: ${file.name}`);
+      }
+      for (const [name, row] of history) {
+        if (row.status === 'UNVERIFIED' && !files.some((file) => file.name === name))
+          throw new Error(`Missing legacy migration: ${name}`);
+      }
     }
     for (const file of files) {
       const old = history.get(file.name);
@@ -146,6 +164,28 @@ export async function runMigrations(c: Client, directory = 'migrations', grants 
         throw error;
       }
     }
+    if (trustedLegacy && legacy.length) {
+      await c.query('BEGIN');
+      try {
+        for (const file of legacy) {
+          await c.query(
+            `UPDATE migrations SET checksum=$2,transactional=$3,status='APPLIED',
+             finished_at=clock_timestamp(),checkpoint=$4
+             WHERE name=$1 AND status='UNVERIFIED'`,
+            [
+              file.name,
+              file.checksum,
+              file.transactional,
+              { legacy_verified_from: 'previous_release_manifest' },
+            ],
+          );
+        }
+        await c.query('COMMIT');
+      } catch (error) {
+        await c.query('ROLLBACK');
+        throw error;
+      }
+    }
     if (grants) {
       await c.query('BEGIN');
       try {
@@ -161,12 +201,12 @@ export async function runMigrations(c: Client, directory = 'migrations', grants 
   }
 }
 
-export async function migrate(grants = false) {
+export async function migrate(grants = false, trustedLegacy?: Record<string, string>) {
   const pool = createMigrationPool();
   try {
     const c = await pool.connect();
     try {
-      await runMigrations(c, 'migrations', grants);
+      await runMigrations(c, 'migrations', grants, trustedLegacy);
     } finally {
       c.release(true);
     }
@@ -175,6 +215,26 @@ export async function migrate(grants = false) {
   }
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  await migrate(process.argv.includes('--grants'));
+  const manifestIndex = process.argv.indexOf('--legacy-manifest');
+  let trustedLegacy: Record<string, string> | undefined;
+  if (manifestIndex !== -1) {
+    const path = process.argv[manifestIndex + 1];
+    if (!path || path.startsWith('--')) throw new Error('Missing trusted legacy manifest path');
+    const value = JSON.parse(await readFile(path, 'utf8'));
+    if (
+      !value ||
+      typeof value !== 'object' ||
+      Array.isArray(value) ||
+      Object.entries(value).some(
+        ([name, digest]) =>
+          !/^[0-9]{3,}[a-z]?_[a-z0-9_]+\.sql$/.test(name) ||
+          typeof digest !== 'string' ||
+          !/^[a-f0-9]{64}$/.test(digest),
+      )
+    )
+      throw new Error('Invalid trusted legacy manifest');
+    trustedLegacy = value;
+  }
+  await migrate(process.argv.includes('--grants'), trustedLegacy);
   console.log('Migrations applied.');
 }

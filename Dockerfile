@@ -17,6 +17,7 @@ RUN node scripts/release-metadata.mjs "$VERSION" "$COMMIT"
 FROM node:24-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production BIND_HOST=0.0.0.0 TOKEN_FILE=/run/acornary/token
+RUN mkdir -p /var/lib/acornary/attachments && chown 1000:1000 /var/lib/acornary/attachments && chmod 700 /var/lib/acornary/attachments
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/apps/web/dist ./apps/web/dist

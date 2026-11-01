@@ -4,6 +4,7 @@ export async function fixtureCommand(page: Page, operation: string, input: any) 
   const headers = {
     Origin: new URL(page.url()).origin,
     'X-Acornary-Request': 'web',
+    'X-Acornary-Protocol': '2',
     'X-Acornary-Household': await page.evaluate(
       () => sessionStorage.getItem('acornary-household') ?? '',
     ),

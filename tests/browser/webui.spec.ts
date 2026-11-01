@@ -464,7 +464,7 @@ test('session expiry preserves the exact pending edit and logout clears private 
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.locator('.quantity').first()).toHaveText('剩余 825 mL');
   await page.goto('/settings');
-  await page.getByRole('button', { name: '退出登录并清除本机缓存' }).click();
+  await page.getByRole('button', { name: '退出登录', exact: true }).click();
   await expect(page.getByRole('heading', { name: '欢迎回到松仓' })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('acornary-account'))).toBeNull();
   expect(

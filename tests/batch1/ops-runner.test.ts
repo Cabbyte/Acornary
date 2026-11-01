@@ -46,6 +46,34 @@ describe('Batch 1 migration runner (no database)', () => {
     expect(db.statements().some((s) => s.startsWith('INSERT INTO migrations'))).toBe(false);
   });
 
+  it('attests old receipts only with matching trusted release evidence, without replaying SQL', async () => {
+    const sql = 'SELECT 42;';
+    const dir = await files({ '001_old.sql': sql });
+    const db = client([{ name: '001_old.sql', status: 'UNVERIFIED', checksum: null }]);
+    await runMigrations(db.c, dir, false, { '001_old.sql': hash(sql) });
+    expect(db.statements()).not.toContain(sql);
+    const update = db.query.mock.calls.find(([s]) => s.includes('SET checksum=$2'));
+    expect(update?.[1]).toEqual([
+      '001_old.sql',
+      hash(sql),
+      true,
+      { legacy_verified_from: 'previous_release_manifest' },
+    ]);
+  });
+
+  it.each<Record<string, string>>([{}, { '001_old.sql': '0'.repeat(64) }])(
+    'rejects missing or changed legacy evidence before new SQL',
+    async (manifest) => {
+      const dir = await files({ '001_old.sql': 'SELECT 42;', '002_new.sql': 'SELECT 43;' });
+      const db = client([{ name: '001_old.sql', status: 'UNVERIFIED', checksum: null }]);
+      await expect(runMigrations(db.c, dir, false, manifest)).rejects.toThrow(
+        'Untrusted legacy migration',
+      );
+      expect(db.statements()).not.toContain('SELECT 43;');
+      expect(db.statements().some((s) => s.includes('SET checksum=$2'))).toBe(false);
+    },
+  );
+
   it.each(['APPLIED', 'FAILED', 'STARTED'])(
     'OPS01 rejects checksum drift in %s before running any file',
     async (status) => {
