@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { fixtureCommand } from './governance.js';
+import { fixtureCommand, fixtureRead } from './governance.js';
 import { login } from './login.js';
 import { choose } from './controls.js';
 
@@ -10,10 +10,18 @@ async function fixture(page: Page) {
     await page.goto('/items?ui=next');
   }
   await expect(page.getByRole('button', { name: '添加物品', exact: true })).toBeVisible();
-  const snapshot = await (await page.request.get('/api/ui/snapshot')).json();
-  const product = snapshot.catalog.find(
-    (c: any) => c.kind === 'SKU' && c.id !== snapshot.container_catalog_id,
-  );
+  const snapshot = await fixtureRead(page);
+  const productName = `写入商品 ${crypto.randomUUID()}`;
+  const product = {
+    id: (
+      await fixtureCommand(page, 'create_catalog_node', {
+        kind: 'SKU',
+        name: productName,
+        profile: 'CONSUMABLE',
+      })
+    ).affected_objects[0].id,
+    name: productName,
+  };
   const name = `写入验收 ${crypto.randomUUID().slice(0, 6)}`;
   const receipt = await fixtureCommand(page, 'create_items', {
     catalog_node_id: product.id,
@@ -55,9 +63,12 @@ test('intake review, consume, edit, move and notes preserve real command behavio
 
   await page.getByRole('button', { name: '编辑', exact: true }).click();
   await page.getByLabel('名称', { exact: true }).fill(f.name + ' 已编辑');
-  await expect(page.getByLabel('状态', { exact: true })).toHaveAttribute('readonly', '');
+  await expect(page.getByLabel('状态', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: '保存修改', exact: true }).click();
-  await expect(page.getByRole('heading', { name: f.name + ' 已编辑', exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(
+    page.getByRole('heading', { name: f.name + ' 已编辑', exact: true, level: 1 }),
+  ).toBeVisible();
 
   await page.getByRole('button', { name: '移动', exact: true }).click();
   await page.getByRole('combobox', { name: '目标位置' }).click();
@@ -91,25 +102,16 @@ test('intake review, consume, edit, move and notes preserve real command behavio
   await page.getByRole('button', { name: '确认入库', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page).toHaveURL(/\/items\/item_/);
-  const snapshot = await (await page.request.get('/api/ui/snapshot')).json();
+  const snapshot = await fixtureRead(page);
   const updated = snapshot.items.find((i: any) => i.id === f.id);
   expect(updated.display_name).toBe(f.name + ' 已编辑');
   expect(updated.parent_id).toBe(destination.id);
   expect(
     updated.attributes.find((a: any) => a.template_id === 'contents').values.remaining.value,
   ).toBe('800.1');
-  const detailResponse = await page.request.post('/api/read/get_item', {
-    headers: { 'X-Acornary-Protocol': '2' },
-    data: { item_id: f.id },
-  });
-  expect(detailResponse.ok()).toBe(true);
-  const detail = await detailResponse.json();
-  const noteResponse = await page.request.post('/api/read/get_note', {
-    headers: { 'X-Acornary-Protocol': '2' },
-    data: { note_id: detail.notes[0].id },
-  });
-  expect(noteResponse.ok()).toBe(true);
-  expect((await noteResponse.json()).body).toBe('更新后的使用记录。');
+  const detail = await fixtureRead(page, 'get_item', { item_id: f.id });
+  const note = await fixtureRead(page, 'get_note', { note_id: detail.notes[0].id });
+  expect(note.body).toBe('更新后的使用记录。');
   expect(errors).toEqual([]);
 });
 

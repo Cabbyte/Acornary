@@ -40,3 +40,18 @@ export async function fixtureCommand(page: Page, operation: string, input: any) 
   }
   return post(`/api/write/${operation}`, data);
 }
+
+/** Read through the current protocol with the browser's selected household. */
+export async function fixtureRead(page: Page, operation?: string, input: any = {}) {
+  const headers = {
+    'X-Acornary-Protocol': '2',
+    'X-Acornary-Household': await page.evaluate(
+      () => sessionStorage.getItem('acornary-household') ?? '',
+    ),
+  };
+  const response = operation
+    ? await page.request.post(`/api/read/${operation}`, { headers, data: input })
+    : await page.request.get('/api/ui/snapshot', { headers });
+  expect(response.ok(), await response.text()).toBe(true);
+  return response.json();
+}

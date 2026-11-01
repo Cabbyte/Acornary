@@ -14,7 +14,7 @@ import {
 import { createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router';
 import Markdown from 'react-markdown';
 import { SessionGate, useSession } from './lib/session';
-import { request as sharedRequest } from './lib/api';
+import { read as readOperation, request as sharedRequest } from './lib/api';
 type Target = {
   kind: 'ITEM' | 'CATALOG_NODE';
   id: string;
@@ -50,7 +50,7 @@ async function request(path: string, input: unknown, signal?: AbortSignal) {
   });
 }
 const api = (op: string, input: unknown = {}, signal?: AbortSignal) =>
-  request(`/api/read/${op}`, input, signal);
+  readOperation<any>(op as Parameters<typeof readOperation>[0], input, signal);
 async function all(op: string, input: object = {}, signal?: AbortSignal) {
   const data: any[] = [];
   let cursor: string | undefined;
@@ -193,7 +193,9 @@ function Records({
         </h2>
         <span>PostgreSQL 行记录</span>
       </div>
-      <p className="muted">to_jsonb(t) · 保留全部列、null 与 JSONB；不含关联拼装或计算字段。</p>
+      <p className="muted">
+        to_jsonb(t) · 保留可见列与 null；敏感文档整体隐藏，隐藏路径见 redacted_paths。
+      </p>
       {q.error && <p role="alert">{q.error.message}</p>}
       {q.isPending && <p>读取中…</p>}
       {q.data && (
@@ -266,8 +268,10 @@ function Records({
                 <section data-testid="embedded-attributes">
                   <h3>内嵌属性 · {table}.attributes</h3>
                   <p>以下展开核心行中的实际 JSONB，包含绑定时间；模板定义独立保存。</p>
-                  {row.attributes.length === 0 && <p>未记录属性绑定</p>}
-                  {row.attributes.map((binding: any, index: number) => (
+                  {(!Array.isArray(row.attributes) || row.attributes.length === 0) && (
+                    <p>属性未展示（未记录或已隐藏）</p>
+                  )}
+                  {(row.attributes ?? []).map((binding: any, index: number) => (
                     <div className="binding" key={index}>
                       <References row={binding} go={go} />
                       <Json
@@ -643,13 +647,13 @@ function Inspector() {
                         ...(target.kind === 'ITEM'
                           ? {
                               catalog_name: derived.data.catalog_name,
-                              reminder: derived.data.reminder,
+                              dates: derived.data.dates,
                               calculation_facts: attr(derived.data, 'lifecycle') ?? null,
                             }
                           : {}),
                       }}
                     />
-                    {derived.data.path_ids.map((id: string) => (
+                    {(derived.data.path_ids ?? []).map((id: string) => (
                       <Button
                         className="identity"
                         key={id}

@@ -18,6 +18,7 @@ try {
     await call('create_catalog_node', {
       kind: 'SKU',
       name: '验收牛奶 1L',
+      profile: 'CONSUMABLE',
       parent_id: group,
       initial_attributes: [a('product', { brand: '示例', barcodes: ['TEST-MILK-1L'] })],
     })

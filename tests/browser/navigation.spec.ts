@@ -7,80 +7,34 @@ test('Ant Design catalog tree filters and preserves browse state on Web', async 
   await page.goto('/items');
   await login(page);
   await expect(page.getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
-  const headers = {
-    Origin: new URL(page.url()).origin,
-    'X-Acornary-Request': 'web',
-    'X-Acornary-Household': await page.evaluate(
-      () => sessionStorage.getItem('acornary-household') ?? '',
-    ),
-  };
   const f = await catalogFixture((name, input) => fixtureCommand(page, name, input));
   await page.goto('/catalog');
   await checkCatalog(page, page, f, 'web');
-  await page.getByRole('menuitem', { name: '我的物品', exact: true }).click();
-  await expect(page.getByRole('separator', { name: '调整位置栏宽度' })).toHaveAttribute(
-    'aria-valuenow',
-    '224',
-  );
-  await expect(page.getByRole('columnheader', { name: '收纳位置', exact: true })).toHaveCount(0);
-  await page.getByRole('combobox', { name: '分组方式' }).click();
-  await page.getByRole('option', { name: '不分组', exact: true }).click();
-  await page.getByRole('button', { name: '显示列', exact: true }).click();
-  await expect(page.getByRole('checkbox', { name: '收纳位置', exact: true })).toHaveCount(0);
-  await page.goto('/search');
-  await expect(page.getByRole('table', { name: '实物列表' })).toBeVisible();
-  await expect(page.getByRole('columnheader', { name: '收纳位置', exact: true })).toHaveCount(0);
 });
 
-test('Ant Design split actions align and desktop icon navigation remembers its state', async ({
+test('Ant Design responsive navigation keeps the active route and reachable actions', async ({
   page,
 }) => {
   await page.goto('/items');
   await login(page);
-  await expect(page.getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
-  const sidebar = page.locator('.wb-sidebar');
-  const mainNavigation = page.getByRole('menu', { name: '主导航', exact: true });
-  const settings = page.getByRole('menu', { name: '设置导航' });
-  await page.getByRole('button', { name: '收起侧栏', exact: true }).focus();
-  await page.keyboard.press('Enter');
-  await expect(page.getByRole('button', { name: '展开侧栏' })).toHaveAttribute(
-    'aria-expanded',
-    'false',
-  );
-  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeCloseTo(64, 0);
-  await mainNavigation.getByRole('menuitem', { name: '商品目录', exact: true }).hover();
-  await expect(page.getByRole('tooltip', { name: '商品目录', exact: true })).toBeVisible();
-  await mainNavigation.getByRole('menuitem', { name: '商品目录', exact: true }).click();
-  await expect(page).toHaveURL(/\/catalog$/);
-  await settings.getByRole('menuitem', { name: '设置', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '设置', exact: true })).toBeVisible();
-  await page.reload();
-  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeCloseTo(64, 0);
-  expect((await settings.boundingBox())!.y).toBeGreaterThan(850);
-  await page.screenshot({ path: 'output/playwright/sidebar-icons-settings.png' });
-  for (const width of [1024, 390, 1920]) {
+  for (const width of [1440, 1024, 390, 360, 1920]) {
     await page.setViewportSize({ width, height: 1000 });
-    if (width < 768) await expect(page.getByRole('navigation', { name: '底部导航' })).toBeVisible();
-    else await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeCloseTo(64, 0);
-  }
-  await page.getByRole('button', { name: '展开侧栏', exact: true }).click();
-  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeCloseTo(224, 0);
-  await mainNavigation.getByRole('menuitem', { name: '我的物品', exact: true }).click();
-  for (const width of [1440, 1024, 390, 360]) {
-    await page.setViewportSize({ width, height: 1000 });
-    const add = page.getByRole('button', { name: '添加物品', exact: true });
-    const more = page.getByRole('button', { name: '更多添加选项', exact: true });
-    await expect
-      .poll(async () => {
-        const a = (await add.boundingBox())!,
-          b = (await more.boundingBox())!;
-        return Math.max(Math.abs(a.y - b.y), Math.abs(a.height - b.height));
-      })
-      .toBeLessThan(1);
-    await more.click();
-    await expect(page.getByRole('menuitem', { name: '添加位置', exact: true })).toBeVisible();
-    await page.screenshot({ path: `output/playwright/add-actions-aligned-${width}.png` });
+    const nav =
+      width < 768
+        ? page.getByRole('navigation', { name: '底部导航' })
+        : page.getByRole('complementary', { name: '主导航' });
+    for (const name of ['商品目录', '动态', '设置', '我的物品']) {
+      await nav.getByRole('link', { name, exact: true }).click();
+      await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+      await expect(nav.getByRole('link', { name, exact: true })).toHaveAttribute(
+        'aria-current',
+        'page',
+      );
+    }
+    await page.getByRole('button', { name: '添加物品', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: '入库', exact: true })).toBeVisible();
     await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', { name: '添加物品', exact: true })).toBeFocused();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
@@ -127,9 +81,8 @@ async function fixture(page: Page) {
   return { room, roomName, fridge, fridgeName, item: items[0].id };
 }
 
-test('Ant Design in-page location tree resizing, scope, creation and responsive state', async ({
+test('Ant Design location scopes include descendants and preserve search on detail return', async ({
   page,
-  browserName,
 }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -138,159 +91,28 @@ test('Ant Design in-page location tree resizing, scope, creation and responsive 
   await expect(page.getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
   const f = await fixture(page);
   await page.goto(`/places/${f.room}`);
-  await expect(page.getByRole('checkbox', { name: '包含下级位置' })).toBeChecked();
-  await page.getByRole('combobox', { name: '分组方式' }).click();
-  await page.getByRole('option', { name: '不分组', exact: true }).click();
-  const rows = page.getByRole('table', { name: '物品列表' }).getByRole('row');
-  await expect(rows).toHaveCount(9);
-  await page.getByRole('checkbox', { name: '包含下级位置' }).uncheck();
-  await expect(page.getByRole('table', { name: '物品列表' })).not.toContainText('布局牛奶');
-  await page.getByRole('checkbox', { name: '包含下级位置' }).check();
-  await expect(rows).toHaveCount(9);
-  const navigation = page.getByRole('menu', { name: '主导航', exact: true });
-  await expect(navigation.getByRole('menuitem')).toHaveCount(3);
-  await expect(navigation).not.toContainText('位置');
-  await expect(navigation).not.toContainText('设置');
-  const settings = page.getByRole('menu', { name: '设置导航' });
-  expect((await settings.boundingBox())!.y).toBeGreaterThan(850);
-  const separator = page.getByRole('separator', { name: '调整位置栏宽度' });
-  await expect(separator).toHaveAttribute('aria-valuenow', '224');
-  await expect
-    .poll(async () => (await page.locator('.wb-location-panel').boundingBox())!.width)
-    .toBeCloseTo(224, 0);
-  await separator.focus();
-  await page.keyboard.press('ArrowRight');
-  await expect(separator).toHaveAttribute('aria-valuenow', '232');
-  await page.keyboard.press('End');
-  await expect(separator).toHaveAttribute('aria-valuenow', '320');
-  await page.reload();
-  await expect(separator).toHaveAttribute('aria-valuenow', '320');
-  await separator.focus();
-  await page.keyboard.press('Home');
-  await expect(separator).toHaveAttribute('aria-valuenow', '180');
-  const grip = (await separator.boundingBox())!;
-  await page.mouse.move(grip.x + grip.width / 2, grip.y + 80);
-  await page.mouse.down();
-  await page.mouse.move(grip.x + 800, grip.y + 80, { steps: 6 });
-  await page.mouse.up();
-  await expect(separator).toHaveAttribute('aria-valuenow', '320');
-  if (browserName === 'chromium') {
-    const touch = await page.context().newCDPSession(page);
-    const box = (await separator.boundingBox())!;
-    const point = { x: box.x + box.width / 2, y: box.y + 80 };
-    await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
-    await touch.send('Input.dispatchTouchEvent', {
-      type: 'touchMove',
-      touchPoints: [{ x: point.x - 64, y: point.y }],
-    });
-    await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await expect(separator).toHaveAttribute('aria-valuenow', '256');
-    await touch.detach();
+  const rows = page.locator('main a[href*="/items/item_"]');
+  await expect(rows).toHaveCount(8);
+  await page.getByRole('searchbox', { name: '搜索物品', exact: true }).fill('布局牛奶');
+  for (const width of [1440, 1024, 390, 360]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(rows).toHaveCount(8);
+    await rows.first().click();
+    await expect(page.locator('main header')).toContainText(f.fridgeName);
+    await page.locator('main').getByRole('link', { name: '我的物品', exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/places/${f.room}`));
+    await expect(page.getByRole('searchbox', { name: '搜索物品', exact: true })).toHaveValue(
+      '布局牛奶',
+    );
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
   }
-  await separator.dblclick({ position: { x: 1, y: 80 } });
-  await expect(separator).toHaveAttribute('aria-valuenow', '224');
-  expect((await page.locator('.wb-list-panel').boundingBox())!.width - 16).toBeGreaterThanOrEqual(
-    640,
-  );
-
-  await page.getByRole('searchbox', { name: '搜索位置', exact: true }).fill(f.roomName);
-  await page.setViewportSize({ width: 1024, height: 900 });
-  await expect(separator).toBeHidden();
-  await page.getByRole('button', { name: '收起侧栏', exact: true }).click();
-  await expect
-    .poll(async () => (await page.locator('.wb-sidebar').boundingBox())!.width)
-    .toBeCloseTo(64, 0);
-  await page.getByRole('button', { name: '展开侧栏', exact: true }).click();
-  await expect
-    .poll(async () => (await page.locator('.wb-sidebar').boundingBox())!.width)
-    .toBeCloseTo(200, 0);
-
   await page.getByRole('button', { name: '位置', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: '选择位置' }).getByRole('searchbox')).toHaveValue(
-    f.roomName,
-  );
-  await page.getByRole('searchbox', { name: '搜索位置', exact: true }).fill('');
-  await expect(
-    page.getByRole('tree', { name: '位置树' }).getByText(f.fridgeName, { exact: true }),
-  ).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('button', { name: '位置', exact: true })).toBeFocused();
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await expect(separator).toHaveAttribute('aria-valuenow', '224');
-  await expect(page.getByRole('searchbox', { name: '搜索位置', exact: true })).toHaveValue('');
-
-  await page.getByRole('button', { name: '添加物品', exact: true }).click();
-  expect(new URL(page.url()).searchParams.get('parent')).toBe(f.room);
-  await expect(
-    page.getByRole('dialog', { name: '入库', exact: true }).getByTitle(f.roomName, { exact: true }),
-  ).toBeVisible();
-  await page.getByRole('button', { name: '取消', exact: true }).click();
-  await page.getByRole('button', { name: '更多添加选项' }).click();
-  await page.getByRole('menuitem', { name: '添加位置', exact: true }).click();
-  const editor = page.getByRole('dialog', { name: '新建位置', exact: true });
-  await expect(editor.getByTitle(f.roomName, { exact: true })).toBeVisible();
-  await editor.getByLabel('名称', { exact: true }).fill('调整尺寸保留的新位置');
-  for (const width of [360, 390, 768, 1024, 1200, 1440, 1920]) {
-    await page.setViewportSize({ width, height: 1000 });
-    await expect(editor.getByLabel('名称', { exact: true })).toHaveValue('调整尺寸保留的新位置');
-    await expect
-      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
-      .toBe(true);
-  }
-  const saved = page.waitForRequest((r) => r.url().includes('/api/write/create_items'));
-  await editor.getByRole('button', { name: '保存', exact: true }).click();
-  expect((await saved).postDataJSON().parent_id).toBe(f.room);
-  await expect(editor).toHaveCount(0);
-  await page.getByRole('button', { name: '位置操作', exact: true }).click();
-  await page.getByRole('menuitem', { name: '修改位置名称', exact: true }).click();
   await page
-    .getByRole('dialog', { name: '修改名称', exact: true })
-    .getByLabel('名称', { exact: true })
-    .fill('新位置已核对');
-  await page.getByRole('button', { name: '保存', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: '修改名称', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('navigation', { name: '完整位置路径' })).toContainText(
-    '新位置已核对',
-  );
-
-  await page
-    .getByRole('navigation', { name: '完整位置路径' })
-    .getByRole('link', { name: f.roomName, exact: true })
+    .getByRole('menuitem', { name: `${f.roomName} / ${f.fridgeName}`, exact: true })
     .click();
-
-  await page.getByRole('combobox', { name: '分组方式' }).click();
-  await page.getByRole('option', { name: '不分组', exact: true }).click();
-  await page
-    .getByRole('button', { name: new RegExp(`^布局牛奶`) })
-    .first()
-    .click();
-  await expect(page.locator('.wb-inspector')).toBeVisible();
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await expect(page.getByRole('dialog', { name: '物品详情', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '返回列表', exact: true }).click();
-  for (const width of [360, 390, 768, 1024, 1200, 1440, 1920]) {
-    await page.setViewportSize({ width, height: 1000 });
-    await expect
-      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
-      .toBe(true);
-    if (width >= 1200) {
-      await expect(separator).toBeVisible();
-      await expect
-        .poll(async () => (await page.locator('.wb-location-panel').boundingBox())!.width)
-        .toBeCloseTo(224, 0);
-      await expect
-        .poll(async () => (await page.locator('.wb-sidebar').boundingBox())!.width)
-        .toBeCloseTo(224, 0);
-    } else await expect(page.getByRole('button', { name: '位置', exact: true })).toBeVisible();
-    await page.screenshot({
-      animations: 'disabled',
-      path: `output/playwright/navigation-${width}-${process.env.ACORNARY_E2E_BROWSER ?? 'chromium'}.png`,
-    });
-  }
-  await page.getByRole('button', { name: '全部物品', exact: true }).click();
-  await expect(page).toHaveURL(/\/items$/);
-  await page.getByRole('button', { name: '更多添加选项' }).click();
-  await page.getByRole('menuitem', { name: '添加位置', exact: true }).click();
-  await expect(page.getByRole('dialog').getByTitle('暂不指定位置')).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/places/${f.fridge}`));
+  await expect(rows).toHaveCount(8);
   expect(errors).toEqual([]);
 });

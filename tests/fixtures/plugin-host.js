@@ -74,21 +74,6 @@ const host = (window.host = {
   async mount() {
     this.frame?.remove();
     this.initial = await this.call('open_inventory');
-    // Existing sandbox suites opt into rollback through the parent test fixture.
-    // The opaque iframe cannot access sessionStorage; supply the preference in its saved route.
-    if (sessionStorage.getItem('acornary-ui') === 'legacy') {
-      const saved = this.saved?.privateContent?.acornary ?? {
-        version: 2,
-        scope: this.initial._meta['acornary/view'].session.cache_key,
-        records: {},
-        route: '/items',
-      };
-      const route = new URL(saved.route ?? '/items', location.origin);
-      route.searchParams.set('ui', 'legacy');
-      this.saved = {
-        privateContent: { acornary: { ...saved, route: route.pathname + route.search } },
-      };
-    }
     if (this.readonly) this.initial._meta['acornary/view'].session.can_write = false;
     const tools = await this.rpc('tools/list', {});
     const opener = tools.tools.find((t) => t.name === 'open_inventory');

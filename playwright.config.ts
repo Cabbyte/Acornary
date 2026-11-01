@@ -16,6 +16,7 @@ export default defineConfig({
   workers: 1,
   timeout: 30000,
   use: {
+    actionTimeout: 15000,
     extraHTTPHeaders: { 'X-Acornary-Protocol': '2' },
     launchOptions: {
       ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH

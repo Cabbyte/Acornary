@@ -23,7 +23,7 @@ test('one session, inspector return path, read boundary and cross-tab inspector 
   await page.getByRole('link', { name: '返回松仓' }).click();
   await expect(page.getByRole('heading', { name: '我的物品' })).toBeVisible();
   await page.goto('/settings');
-  await page.getByRole('link', { name: '数据库检查器', exact: true }).click();
+  await page.getByRole('link', { name: /^数据库检查器/ }).click();
   await expect(page.getByRole('heading', { name: 'CatalogNode 目录树' })).toBeVisible();
   for (const table of ['user', 'session', 'account', 'jwks', 'oauthRefreshToken', 'rateLimit']) {
     const r = await page.request.get(
@@ -36,7 +36,8 @@ test('one session, inspector return path, read boundary and cross-tab inspector 
   await expect(other.getByRole('heading', { name: '我的物品' })).toBeVisible();
   const writes: string[] = [];
   page.on('request', (r) => {
-    if (r.method() !== 'GET' && !r.url().endsWith('/sign-out')) writes.push(r.url());
+    if (r.method() !== 'GET' && !r.url().endsWith('/sign-out') && !r.url().includes('/api/read/'))
+      writes.push(r.url());
   });
   await page.getByLabel('搜索名称').fill('牛奶');
   await page.reload();

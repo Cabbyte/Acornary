@@ -167,6 +167,13 @@ export function ActionSheet({
   const [conflict, setConflict] = useState(false);
   const [done, setDone] = useState(false);
   useEffect(() => {
+    if (action.target && !target)
+      void refresh().catch(() => setError('目标记录读取失败，请恢复连接后重试。'));
+  }, [action.target, target?.id]);
+  useEffect(() => {
+    // A cached snapshot can precede a newly created/deep-linked target. Never
+    // persist an empty revision baseline while that authoritative read is pending.
+    if (action.target && !target) return;
     let cancelled = false;
     const original = target ? fieldValues(sourceValues(), fields) : {};
     const values: Values = {
@@ -240,7 +247,7 @@ export function ActionSheet({
     return () => {
       cancelled = true;
     };
-  }, [draftKey]);
+  }, [draftKey, target?.id]);
   useEffect(() => {
     if (draft && !done)
       void persist(draftKey, draft).catch(() =>

@@ -1,7 +1,29 @@
 import { choose } from './controls.js';
+import { catalogFixture, checkCatalog } from './catalog-checks.js';
 import { test, expect, type Page } from '@playwright/test';
 const origin = 'http://127.0.0.1:3212';
 const view = (page: Page) => page.frameLocator('#inventory');
+test('Ant Design catalog tree preserves browse state in the MCP sandbox', async ({ page }) => {
+  await page.goto(origin);
+  await expect(view(page).getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
+  const data = await catalogFixture((name, input) =>
+    page.evaluate(
+      async ({ name, input }) => {
+        const host = (window as any).host;
+        const args = { idempotency_key: crypto.randomUUID(), ...input };
+        const result =
+          name === 'create_catalog_node'
+            ? await host.fixtureCatalog(args)
+            : await host.call(name, args);
+        if (result.isError) throw new Error(JSON.stringify(result.structuredContent));
+        return result.structuredContent;
+      },
+      { name, input },
+    ),
+  );
+  await restoreRoute(page, '/catalog');
+  await checkCatalog(page, view(page), data, 'plugin');
+});
 test('v2 catalog navigation and household changes isolate the selected item', async ({ page }) => {
   const f = await fixture(page);
   await restoreRoute(page, `/catalog/${f.sku}`);
@@ -29,8 +51,8 @@ async function fixture(page: Page, dialog = '') {
         ? h.fixtureCatalog({ idempotency_key: crypto.randomUUID(), ...args })
         : h.call(name, { idempotency_key: crypto.randomUUID(), ...args });
     const name = '插件验收 ' + crypto.randomUUID().slice(0, 6);
-    const sku = (await call('create_catalog_node', { kind: 'SKU', name })).structuredContent
-      .affected_objects[0].id;
+    const sku = (await call('create_catalog_node', { kind: 'SKU', name, profile: 'CONSUMABLE' }))
+      .structuredContent.affected_objects[0].id;
     const container = h.initial._meta['acornary/view'].snapshot.container_catalog_id;
     const place = (
       await call('create_items', {

@@ -1,17 +1,3 @@
-import { test as base, expect } from '@playwright/test';
-
-/** Existing suites deliberately verify the supported legacy selector contract. */
-export const test = base.extend({
-  context: async ({ context }, use) => {
-    await context.addInitScript(() => {
-      try {
-        sessionStorage.setItem('acornary-ui', 'legacy');
-      } catch {
-        /* Sandboxed plugin. */
-      }
-    });
-    await use(context);
-  },
-});
-export { expect };
+// Shared public browser-test exports; the removed v1 UI is not selectable.
+export { test, expect } from '@playwright/test';
 export type { Page, BrowserContext, FrameLocator } from '@playwright/test';

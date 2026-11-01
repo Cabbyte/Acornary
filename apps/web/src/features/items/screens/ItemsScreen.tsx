@@ -88,8 +88,18 @@ export function ItemsScreen({
     document.addEventListener('keydown', shortcut);
     return () => document.removeEventListener('keydown', shortcut);
   }, []);
-  const [selecting, setSelecting] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const selectionKey = [
+    'browse-selection',
+    session.cache_key,
+    inventory.household.id,
+    location.pathname,
+  ];
+  const remembered = client.getQueryData<{ selecting: boolean; ids: string[] }>(selectionKey);
+  const [selecting, setSelecting] = useState(remembered?.selecting ?? false);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(remembered?.ids ?? []));
+  useEffect(() => {
+    client.setQueryData(selectionKey, { selecting, ids: [...selected] });
+  }, [client, session.cache_key, inventory.household.id, location.pathname, selecting, selected]);
   const deferredSearch = useDeferredValue(search);
   const attentionOnly = params.view === 'attention';
 
@@ -274,7 +284,7 @@ export function ItemsScreen({
           需留意
           {attentionItems.length > 0 && <b>{attentionItems.length}</b>}
         </button>
-        {locations.length > 0 && !locationId && <LocationMenu locations={locations} />}
+        {locations.length > 0 && <LocationMenu locations={locations} />}
         <button
           className={styles.filter}
           type="button"
@@ -323,11 +333,28 @@ export function ItemsScreen({
         />
       ) : (
         <div className={styles.ledger} data-selecting={selecting ? 'true' : undefined}>
+          {selecting && (
+            <label>
+              <input
+                type="checkbox"
+                aria-label="选择当前已加载物品"
+                checked={sorted.length > 0 && sorted.every(({ item }) => selected.has(item.id))}
+                onChange={(event) =>
+                  setSelected((current) => {
+                    const next = new Set(current);
+                    for (const { item } of sorted)
+                      event.target.checked ? next.add(item.id) : next.delete(item.id);
+                    return next;
+                  })
+                }
+              />
+              选择当前已加载物品
+            </label>
+          )}
           <div className={styles.columns} aria-hidden="true">
             {selecting && <span />}
             <span />
             <span>物品</span>
-            <span>位置</span>
             <span>关键信息</span>
             <span>状态</span>
             <span />
@@ -342,6 +369,7 @@ export function ItemsScreen({
                 <Row
                   key={entry.item.id}
                   entry={entry}
+                  returnTo={location.pathname + location.searchStr}
                   open={open}
                   selecting={selecting}
                   selected={selected.has(entry.item.id)}
@@ -448,12 +476,14 @@ function Row({
   selecting,
   selected,
   onSelect,
+  returnTo,
 }: {
   entry: EnrichedItem;
   open: (action: Action) => void;
   selecting: boolean;
   selected: boolean;
   onSelect: () => void;
+  returnTo: string;
 }) {
   const { item, product, attention, remaining, expiry } = entry;
   const label = [item.name, item.location.label, attention?.label ?? '在库'].join('，');
@@ -471,7 +501,7 @@ function Row({
       {
         <Link
           to={`/items/${item.id}`}
-          search={{ ui: 'next' }}
+          search={{ ui: 'next', returnTo }}
           className={styles.rowOpen}
           aria-label={label}
         />
@@ -482,6 +512,7 @@ function Row({
       <span className={styles.itemName}>
         <strong>{item.name}</strong>
         {product && product !== item.name && <small>{product}</small>}
+        <small className={styles.mobileLocation}>{item.location.label}</small>
       </span>
       <span className={styles.location}>{item.location.label}</span>
       <span className={styles.facts}>

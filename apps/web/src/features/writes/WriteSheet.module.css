@@ -46,7 +46,11 @@
   flex-wrap: wrap;
 }
 .footer {
-  padding-top: 16px;
+  position: sticky;
+  bottom: -16px;
+  z-index: 2;
+  background: var(--ac-surface);
+  padding-block: 16px;
   border-top: 1px solid var(--ac-line);
 }
 .tabs button {

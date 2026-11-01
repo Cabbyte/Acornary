@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import styles from './PageHeader.module.css';
 
@@ -46,9 +47,9 @@ export function PageHeader({ back, title, subtitle, actions, className }: PageHe
       <div className={styles.bar}>
         {back &&
           ('href' in back ? (
-            <a className={styles.back} href={back.href}>
+            <Link className={styles.back} to={back.href}>
               {backContent}
-            </a>
+            </Link>
           ) : (
             <button className={styles.back} type="button" onClick={back.onClick}>
               {backContent}

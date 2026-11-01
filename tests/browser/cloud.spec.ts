@@ -29,7 +29,7 @@ test('cloud login, private records and logout', async ({ page, context }) => {
         },
       })
     ).status(),
-  ).toBe(404);
+  ).toBe(403);
   const inspector = await context.newPage();
   await inspector.goto('/inspect');
   await expect(inspector.getByRole('link', { name: '返回松仓' })).toBeVisible();

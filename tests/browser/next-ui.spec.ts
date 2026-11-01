@@ -1,5 +1,12 @@
+import { fixtureRead, fixtureCommand } from './governance.js';
 import { expect, test } from '@playwright/test';
 import { login } from './login.js';
+
+test.beforeEach(async ({ page }) => {
+  await page.goto('/items');
+  await login(page);
+  await expect(page.getByRole('button', { name: '添加物品', exact: true })).toBeVisible();
+});
 
 test.describe('next inventory UI', () => {
   test.beforeEach(async ({ page }) => {
@@ -26,7 +33,9 @@ test.describe('next inventory UI', () => {
       .click();
     await expect(page).toHaveURL(/view=attention/);
     await page.goto('/items?ui=next');
-    const location = page.getByRole('link', { name: /厨房|餐厅|卧室|阳台/, exact: false }).first();
+    const location = page
+      .getByRole('link', { name: /储藏室|行李箱|厨房|餐厅|卧室|阳台/, exact: false })
+      .first();
     await expect(location).toBeVisible();
     await location.click();
     await expect(page).toHaveURL(/\/places\//);
@@ -55,11 +64,11 @@ test.describe('next inventory UI', () => {
   });
 });
 
-test('legacy rollback keeps old selectors across plain navigation', async ({ page }) => {
+test('plain navigation uses the current UI even with an obsolete preference', async ({ page }) => {
   await page.goto('/items');
-  await expect(page.getByRole('searchbox', { name: '搜索物品、规格、位置…' })).toBeVisible();
+  await expect(page.getByRole('searchbox', { name: '搜索物品', exact: true })).toBeVisible();
   await page.goto('/items');
-  await expect(page.getByRole('searchbox', { name: '搜索物品、规格、位置…' })).toBeVisible();
+  await expect(page.getByRole('searchbox', { name: '搜索物品', exact: true })).toBeVisible();
   await page.goto('/items?ui=next');
   await expect(page.getByRole('button', { name: '添加物品', exact: true })).toBeVisible();
 });
@@ -69,7 +78,7 @@ test('search, category, location and sort survive reload and history navigation'
 }) => {
   await page.goto('/items?ui=next');
   await expect(page.getByRole('button', { name: '添加物品', exact: true })).toBeVisible();
-  const snapshot = await (await page.request.get('/api/ui/snapshot')).json();
+  const snapshot = await fixtureRead(page);
   const located = snapshot.items.find(
     (i: any) => i.parent_id && !i.attributes.some((a: any) => a.template_id === 'container'),
   );
@@ -128,18 +137,31 @@ for (const viewport of [
       path: `output/next/list-${viewport.width}.png`,
     });
     // Other suites create items without content; select a real consumable through list search.
-    const snapshot = await (await page.request.get('/api/ui/snapshot')).json();
-    const consumable = snapshot.items.find(
-      (item: any) =>
-        item.display_name &&
-        item.attributes.some(
-          (a: any) => a.template_id === 'contents' && Number(a.values.remaining?.value) > 0,
-        ) &&
-        !item.attributes.some(
-          (a: any) =>
-            a.template_id === 'lifecycle' && ['CONSUMED', 'DISPOSED'].includes(a.values.state),
-        ),
-    );
+    const snapshot = await fixtureRead(page);
+    const product = {
+      id: (
+        await fixtureCommand(page, 'create_catalog_node', {
+          kind: 'SKU',
+          name: `响应式商品 ${crypto.randomUUID()}`,
+          profile: 'CONSUMABLE',
+        })
+      ).affected_objects[0].id,
+    };
+    const displayName = `响应式消耗 ${crypto.randomUUID()}`;
+    const receipt = await fixtureCommand(page, 'create_items', {
+      catalog_node_id: product.id,
+      count: 1,
+      display_name: displayName,
+      initial_attributes: [
+        {
+          template_id: 'contents',
+          template_version: 1,
+          values: { remaining: { value: '1000', unit: 'mL' }, accuracy: 'MEASURED' },
+        },
+      ],
+    });
+    const consumable = { id: receipt.affected_objects[0].id, display_name: displayName };
+    await page.reload();
     await page
       .getByRole('searchbox', { name: '搜索物品', exact: true })
       .fill(consumable.display_name);
@@ -184,8 +206,8 @@ test('opaque cursors are cleared when filters change and INVALID_CURSOR returns 
   let firstPage: any;
   const inputs: any[] = [];
   let invalid = false;
-  await page.route('**/api/read/query_items?*', async (route) => {
-    const input = JSON.parse(new URL(route.request().url()).searchParams.get('input')!);
+  await page.route('**/api/read/query_items', async (route) => {
+    const input = route.request().postDataJSON();
     inputs.push(input);
     if (!firstPage) firstPage = await (await route.fetch()).json();
     if (input.cursor && !invalid) {

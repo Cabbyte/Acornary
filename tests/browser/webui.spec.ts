@@ -1,4 +1,4 @@
-import { fixtureCommand } from './governance.js';
+import { fixtureCommand, fixtureRead } from './governance.js';
 import { choose } from './controls.js';
 import { login } from './login.js';
 import { test, expect, type Page } from './legacy.js';
@@ -26,6 +26,7 @@ async function fixture(page: Page) {
   const name = `Web 演示饮品 ${crypto.randomUUID().slice(0, 6)}`;
   const created = await command(page, 'create_catalog_node', {
     kind: 'SKU',
+    profile: 'CONSUMABLE',
     name,
     initial_attributes: [
       { template_id: 'product', template_version: 1, values: { specification: '1 L / 瓶' } },
@@ -43,7 +44,7 @@ async function fixture(page: Page) {
       },
       {
         template_id: 'lifecycle',
-        template_version: 1,
+        template_version: 2,
         values: { opening: { state: 'SEALED' }, expiry: { date: '2027-06-01' } },
       },
     ],
@@ -55,8 +56,9 @@ test('six distinct items: intake, open, consume, history and notes persist throu
 }) => {
   const f = await fixture(page);
   await page.goto(`/items/group/${f.sku}`);
-  await expect(page.getByText('家里还有 6 瓶')).toBeVisible();
-  await page.goto(`/items/${f.ids[0]}/details`);
+  await expect(page.locator('main a[href*="/items/item_"]')).toHaveCount(6);
+  await page.goto(`/items/${f.ids[0]}`);
+  await page.getByText('更多', { exact: true }).click();
   await page.getByRole('button', { name: '记录开封', exact: true }).click();
   await page.getByRole('button', { name: '保存', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -65,28 +67,27 @@ test('six distinct items: intake, open, consume, history and notes persist throu
   await choose(page, '数量依据', '实测值');
   await page.getByRole('button', { name: '确认记录消耗', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.locator('.quantity').first()).toHaveText('剩余 800 mL');
-  await page.getByRole('link', { name: /变化历史/ }).click();
-  await expect(page.locator('.event').filter({ hasText: '部分消耗' })).toContainText(
-    '1 L → 800 mL',
-  );
-  await page.goto(`/items/${f.ids[0]}/notes`);
+  await expect(page.getByText('800 mL', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('部分消耗', { exact: true })).toBeVisible();
+  await page.goto(`/items/${f.ids[0]}`);
   await page.getByRole('button', { name: '添加笔记' }).click();
   await page.getByLabel('笔记内容').fill('先用这一瓶。<script>alert(1)</script>');
   await page.getByRole('button', { name: '保存', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.locator('.markdown')).toContainText('先用这一瓶');
-  expect(await page.locator('.markdown script').count()).toBe(0);
+  await expect(page.getByText(/先用这一瓶/)).toBeVisible();
+  expect(await page.locator('main script').count()).toBe(0);
   await page.goto(`/items/group/${f.sku}`);
-  await expect(page.getByText('家里还有 6 瓶')).toBeVisible();
-  await expect(page.locator('.quantity')).toContainText('5.8 L');
-  await page.getByRole('button', { name: '再入库几件' }).click();
+  await expect(page.locator('main a[href*="/items/item_"]')).toHaveCount(6);
+  const totals = await fixtureRead(page, 'query_items', { catalog_node_ids: [f.sku] });
+  expect(totals.content_totals.by_unit.mL.value).toBe('5800');
+  await page.goto(`/catalog/${f.sku}`);
+  await page.getByRole('button', { name: '新增实物', exact: true }).click();
   await page.getByLabel('入库件数').fill('2');
   await page.getByRole('button', { name: '核对入库信息' }).click();
   await page.getByRole('button', { name: '确认入库', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.goto(`/items/group/${f.sku}`);
-  await expect(page.getByText('家里还有 8 瓶')).toBeVisible();
+  await expect(page.locator('main a[href*="/items/item_"]')).toHaveCount(8);
 });
 test.describe('injected response loss', () => {
   test.use({ serviceWorkers: 'block' });
@@ -94,7 +95,7 @@ test.describe('injected response loss', () => {
     page,
   }) => {
     const f = await fixture(page);
-    await page.goto(`/items/${f.ids[0]}/details`);
+    await page.goto(`/items/${f.ids[0]}`);
     const payloads: any[] = [];
     let first = true;
     await page.route('**/api/write/consume_item_content', async (route) => {
@@ -113,14 +114,14 @@ test.describe('injected response loss', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
     expect(payloads).toHaveLength(2);
     expect(payloads[0]).toEqual(payloads[1]);
-    await expect(page.locator('.quantity').first()).toHaveText('剩余 800 mL');
+    await expect(page.getByText('800 mL', { exact: true }).first()).toBeVisible();
   });
 });
 test('concurrent modification requires reviewing fresh data before another submission', async ({
   page,
 }) => {
   const f = await fixture(page);
-  await page.goto(`/items/${f.ids[0]}/details`);
+  await page.goto(`/items/${f.ids[0]}`);
   await page.getByRole('button', { name: '记录消耗', exact: true }).click();
   await page.getByLabel('本次消耗量').fill('200');
   await command(page, 'consume_item_content', {
@@ -135,7 +136,7 @@ test('concurrent modification requires reviewing fresh data before another submi
   await page.getByRole('button', { name: '已核对，保留我的输入' }).click();
   await page.getByRole('button', { name: '确认记录消耗', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.locator('.quantity').first()).toHaveText('剩余 700 mL');
+  await expect(page.getByText('700 mL', { exact: true }).first()).toBeVisible();
 });
 test('offline reload retains inventory and draft, reconnect never automatically writes', async ({
   page,
@@ -147,7 +148,7 @@ test('offline reload retains inventory and draft, reconnect never automatically 
     'Playwright 1.63 offline navigation bug: https://github.com/microsoft/playwright/issues/42775; physical Safari acceptance still required.',
   );
   const f = await fixture(page);
-  await page.goto(`/items/${f.ids[0]}/details`);
+  await page.goto(`/items/${f.ids[0]}`);
   await page.evaluate(() => navigator.serviceWorker.ready.then(() => true));
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
   await page.getByRole('button', { name: '记录消耗', exact: true }).click();
@@ -181,14 +182,14 @@ test('offline reload retains inventory and draft, reconnect never automatically 
   expect(writes).toBe(0);
   await page.getByRole('button', { name: '确认记录消耗', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.locator('.quantity').first()).toHaveText('剩余 877 mL');
+  await expect(page.getByText('877 mL', { exact: true }).first()).toBeVisible();
 });
 test('disconnect during editing preserves input and requires manual submission after reconnect', async ({
   page,
   context,
 }) => {
   const f = await fixture(page);
-  await page.goto(`/items/${f.ids[0]}/details`);
+  await page.goto(`/items/${f.ids[0]}`);
   await page.getByRole('button', { name: '记录消耗', exact: true }).click();
   await page.getByLabel('本次消耗量').fill('75');
   await context.setOffline(true);
@@ -203,7 +204,7 @@ test('disconnect during editing preserves input and requires manual submission a
   expect(writes).toBe(0);
   await page.getByRole('button', { name: '确认记录消耗', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.locator('.quantity').first()).toHaveText('剩余 925 mL');
+  await expect(page.getByText('925 mL', { exact: true }).first()).toBeVisible();
 });
 test('mobile and desktop layouts, long names and accessible touch targets', async ({ page }) => {
   for (const width of [360, 390, 430, 1440]) {
@@ -225,7 +226,8 @@ test('mobile and desktop layouts, long names and accessible touch targets', asyn
   await page.setViewportSize({ width: 360, height: 640 });
   await expect(page.getByRole('dialog')).toBeVisible();
   await expect(page.getByLabel('品牌', { exact: true })).toHaveValue('桌面输入保留');
-  await page.getByRole('button', { name: '关闭', exact: true }).click();
+  await page.getByRole('button', { name: '取消', exact: true }).click();
+  await page.getByRole('button', { name: '保留草稿并关闭', exact: true }).click();
   await page.goto('/items');
   await page.getByRole('button', { name: '添加物品', exact: true }).click();
   await page.getByRole('button', { name: '创建新商品' }).click();
@@ -272,19 +274,14 @@ test('moving a container keeps child identities and updates their displayed path
     parent_id: box,
     expected_revisions: { [f.ids[0]]: 1 },
   });
-  await page.goto(`/places/${box}`);
-  await page.getByRole('button', { name: '位置操作', exact: true }).click();
-  await page.getByRole('menuitem', { name: '移动位置', exact: true }).click();
-  await expect(page.getByRole('dialog')).toContainText('内部所有物品和子容器会一起移动');
-  await page.getByRole('searchbox', { name: '搜索目标位置' }).fill(`书房 ${suffix}`);
-  await page
-    .getByRole('tree', { name: '目标位置' })
-    .getByText(new RegExp(`书房 ${suffix}`))
-    .click();
+  await page.goto(`/items/${box}`);
+  await page.getByRole('button', { name: '移动', exact: true }).click();
+  await page.getByRole('combobox', { name: '目标位置' }).click();
+  await page.getByText(`全部位置 / 书房 ${suffix}`, { exact: true }).click();
   await page.getByRole('button', { name: '确认移动 1 件', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await page.goto(`/items/${f.ids[0]}/details`);
-  await expect(page.locator('.page-header')).toContainText(`书房 ${suffix} / 收纳箱 ${suffix}`);
+  await page.goto(`/items/${f.ids[0]}`);
+  await expect(page.locator('main header')).toContainText(`书房 ${suffix} / 收纳箱 ${suffix}`);
   const after = await (
     await page.request.get('/api/ui/snapshot', {
       headers: {
@@ -303,9 +300,15 @@ test('catalog templates, single-item finish and reasoned correction are editable
   page,
 }) => {
   const f = await fixture(page);
-  await page.goto(`/catalog/${f.sku}`);
-  await page.getByRole('button', { name: '编辑共有资料' }).click();
-  await page.getByRole('button', { name: '衣物资料', exact: true }).click();
+  // Clothing fields belong to a wearable SKU; preserve editing of its existing v1 binding.
+  const garment = await command(page, 'create_catalog_node', {
+    kind: 'SKU',
+    name: `衣物模板验收 ${crypto.randomUUID()}`,
+    profile: 'WEARABLE',
+    initial_attributes: [{ template_id: 'clothing', template_version: 1, values: {} }],
+  });
+  const garmentId = garment.affected_objects[0].id;
+  await page.goto(`/catalog/${garmentId}?dialog=attributes&target=${garmentId}&template=clothing`);
   await page.getByLabel('材质', { exact: true }).fill('棉');
   await page.getByLabel('尺码', { exact: true }).fill('M');
   await page.getByRole('button', { name: '保存', exact: true }).click();
@@ -313,47 +316,46 @@ test('catalog templates, single-item finish and reasoned correction are editable
   await expect(page.getByText('已批准本次变更，请提交保存。')).toBeVisible();
   await page.getByRole('button', { name: '保存', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.locator('.card').filter({ hasText: '衣物资料' })).toContainText('棉');
-  await page.goto(`/items/${f.ids[0]}/details`);
+  const product = await fixtureRead(page, 'get_catalog_node', { catalog_node_id: garmentId });
+  expect(product.attributes.find((a: any) => a.template_id === 'clothing').values).toMatchObject({
+    material: '棉',
+    size: 'M',
+  });
+  await page.goto(`/items/${f.ids[0]}`);
+  await page.getByText('更多', { exact: true }).click();
   await page.getByRole('button', { name: '整件用完', exact: true }).click();
   await page.getByRole('button', { name: '确认整件用完', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.locator('.quantity').first()).toHaveText('剩余 0 mL');
-  await page.getByRole('button', { name: '纠正记录', exact: true }).click();
-  await page.getByRole('button', { name: '状态与日期', exact: true }).click();
+  await expect(page.getByText('0 mL', { exact: true }).first()).toBeVisible();
+  await page.goto(`/items/${f.ids[0]}?dialog=correct&target=${f.ids[0]}&template=lifecycle`);
   await choose(page, '生命周期', '在库');
   await page.getByLabel('剩余内容', { exact: true }).fill('500');
   await page.getByLabel('纠错原因', { exact: true }).fill('误点用完，重新核对仍有 500 mL');
   await page.getByRole('button', { name: '保存', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.locator('.quantity').first()).toHaveText('剩余 500 mL');
-  await page.getByRole('link', { name: /变化历史/ }).click();
-  await expect(page.locator('.event').filter({ hasText: '纠正记录' })).toContainText('误点用完');
+  await expect(page.getByText('500 mL', { exact: true }).first()).toBeVisible();
+  await expect(page.locator('main')).toContainText('误点用完');
 });
 test('Ant Design pagination retains catalog, SKU and search return state', async ({ page }) => {
   const f = await fixture(page);
-  await command(page, 'create_items', { catalog_node_id: f.sku, count: 24 });
+  await command(page, 'create_items', { catalog_node_id: f.sku, count: 54 });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/catalog');
-  await page.getByRole('searchbox', { name: '搜索商品名称或规格' }).fill(f.name);
-  await page.getByRole('link', { name: f.name, exact: true }).click();
-  const rows = page
-    .getByRole('table', { name: '实物列表', exact: true })
-    .getByRole('row')
-    .filter({ has: page.getByRole('cell') });
-  await expect(rows).toHaveCount(20);
-  await page.getByTitle('2', { exact: true }).click();
-  await expect(rows).toHaveCount(10);
-  await rows.last().getByRole('link').click();
-  await page.getByRole('link', { name: '返回', exact: true }).click();
-  await expect(rows).toHaveCount(10);
-  await page.getByRole('link', { name: '返回', exact: true }).click();
-  await expect(page.getByRole('searchbox', { name: '搜索商品名称或规格' })).toHaveValue(f.name);
+  await page.getByRole('searchbox', { name: '搜索商品', exact: true }).fill(f.name);
+  await page.locator(`main a[href^="/catalog/${f.sku}?"]`).click();
+  await page.getByRole('link', { name: '查看实物', exact: true }).click();
+  const rows = page.locator('main a[href*="/items/item_"]');
+  await expect(rows).toHaveCount(50);
+  await page.getByRole('button', { name: '加载更多', exact: true }).click();
+  await expect(rows).toHaveCount(60);
+  await rows.last().click();
+  await page.locator('main').getByRole('link', { name: '我的物品', exact: true }).click();
+  await expect(rows).toHaveCount(60);
   await page.goto('/search');
-  await page.getByRole('searchbox', { name: '搜索物品、规格或位置' }).fill(f.name);
-  await expect(rows).toHaveCount(20);
-  await page.getByTitle('2', { exact: true }).click();
-  await expect(rows).toHaveCount(10);
+  await page.getByRole('searchbox', { name: '搜索物品', exact: true }).fill(f.name);
+  await expect(rows).toHaveCount(50);
+  await page.getByRole('button', { name: '加载更多', exact: true }).click();
+  await expect(rows).toHaveCount(60);
   for (const width of [360, 390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
@@ -361,19 +363,20 @@ test('Ant Design pagination retains catalog, SKU and search return state', async
     );
     await page.screenshot({ path: `output/playwright/antd-search-${width}.png` });
   }
-  await page.getByRole('searchbox', { name: '搜索物品、规格或位置' }).fill('验收牛奶');
-  await choose(page, '搜索范围', '全部位置 / 验收储藏室及下级位置');
+  const snapshot = await fixtureRead(page);
+  const room = snapshot.items.find((i: any) => i.display_name === '验收储藏室');
+  const kitchen = snapshot.items.find((i: any) => i.display_name === '验收厨房');
+  await page.goto(`/search?q=验收牛奶&location=${room.id}`);
   await expect(rows).toHaveCount(6);
-  await expect(page.getByRole('columnheader', { name: '收纳位置', exact: true })).toHaveCount(0);
-  await choose(page, '搜索范围', '全部位置 / 验收厨房及下级位置');
-  await expect(page.getByRole('heading', { name: '没有找到匹配结果' })).toBeVisible();
+  await page.goto(`/search?q=验收牛奶&location=${kitchen.id}`);
+  await expect(page.getByRole('heading', { name: '没有匹配的物品', exact: true })).toBeVisible();
 });
 
 test('Ant Design consumption validates inline and moving requires a separate path confirmation', async ({
   page,
 }) => {
   const f = await fixture(page);
-  await page.goto(`/items/${f.ids[0]}/details`);
+  await page.goto(`/items/${f.ids[0]}`);
   await page.getByRole('button', { name: '记录消耗', exact: true }).click();
   for (const value of ['0', '-1', '1001', 'Infinity', 'NaN']) {
     await page.getByLabel('本次消耗量', { exact: true }).fill(value);
@@ -397,7 +400,7 @@ test('Ant Design consumption validates inline and moving requires a separate pat
   await page.getByRole('button', { name: '取消', exact: true }).click();
   await page.getByRole('button', { name: '保留草稿并关闭', exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole('button', { name: '移动位置', exact: true }).click();
+  await page.getByRole('button', { name: '移动', exact: true }).click();
   await expect(page.getByRole('button', { name: '确认移动 1 件' })).toBeDisabled();
   await page.getByRole('combobox', { name: '目标位置', exact: true }).click();
   await page.getByText('全部位置 / 验收厨房', { exact: true }).click();
@@ -413,8 +416,8 @@ test('Ant Design consumption validates inline and moving requires a separate pat
   await page.getByRole('button', { name: '确认移动 1 件', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(writes).toBe(1);
-  await expect(page.locator('.page-header')).toContainText('验收厨房');
-  await page.getByRole('button', { name: '移动位置', exact: true }).click();
+  await expect(page.locator('main header')).toContainText('验收厨房');
+  await page.getByRole('button', { name: '移动', exact: true }).click();
   await expect(page.getByRole('button', { name: '确认移动 1 件' })).toBeDisabled();
 });
 
@@ -424,7 +427,7 @@ test.describe('Ant Design committed write recovery', () => {
     page,
   }) => {
     const f = await fixture(page);
-    await page.goto(`/items/${f.ids[0]}/details`);
+    await page.goto(`/items/${f.ids[0]}`);
     await page.getByRole('button', { name: '记录消耗', exact: true }).click();
     await page.getByLabel('本次消耗量', { exact: true }).fill('150');
     let writes = 0;
@@ -438,7 +441,7 @@ test.describe('Ant Design committed write recovery', () => {
     await page.getByRole('button', { name: '刷新查看结果' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     expect(writes).toBe(1);
-    await expect(page.locator('.quantity').first()).toHaveText('剩余 850 mL');
+    await expect(page.getByText('850 mL', { exact: true }).first()).toBeVisible();
   });
 });
 
@@ -447,7 +450,7 @@ test('session expiry preserves the exact pending edit and logout clears private 
 }) => {
   test.skip(!process.env.ACORNARY_E2E_CLOUD, 'Secure session boundary');
   const f = await fixture(page);
-  await page.goto(`/items/${f.ids[0]}/details`);
+  await page.goto(`/items/${f.ids[0]}`);
   await page.getByRole('button', { name: '记录消耗', exact: true }).click();
   await page.getByLabel('本次消耗量').fill('175');
   await page.request.post('/api/auth/sign-out', {
@@ -462,7 +465,7 @@ test('session expiry preserves the exact pending edit and logout clears private 
   await expect(page.getByLabel('本次消耗量')).toHaveValue('175');
   await page.getByRole('button', { name: '重试同一次操作' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.locator('.quantity').first()).toHaveText('剩余 825 mL');
+  await expect(page.getByText('825 mL', { exact: true }).first()).toBeVisible();
   await page.goto('/settings');
   await page.getByRole('button', { name: '退出登录', exact: true }).click();
   await expect(page.getByRole('heading', { name: '欢迎回到松仓' })).toBeVisible();

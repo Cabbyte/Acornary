@@ -1,23 +1,19 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQueryClient, type InfiniteData, type QueryKey } from '@tanstack/react-query';
 
-/** Returning to a prior filter starts with its first page, never a retained opaque cursor. */
+/** Changing filters starts at page one; detail navigation retains the loaded pages. */
 export function useResetCursorOnLeave(queryKey: QueryKey) {
   const client = useQueryClient();
   const signature = JSON.stringify(queryKey);
-  useEffect(
-    () => () => {
-      client.setQueryData<InfiniteData<unknown>>(queryKey, (previous) =>
-        previous
-          ? {
-              ...previous,
-              pages: previous.pages.slice(0, 1),
-              pageParams: previous.pageParams.slice(0, 1),
-            }
-          : previous,
+  const previous = useRef({ signature, queryKey });
+  useEffect(() => {
+    if (previous.current.signature !== signature) {
+      client.setQueryData<InfiniteData<unknown>>(previous.current.queryKey, (data) =>
+        data
+          ? { ...data, pages: data.pages.slice(0, 1), pageParams: data.pageParams.slice(0, 1) }
+          : data,
       );
-      // Query keys are serializable values; reconstructed objects are intentionally equivalent.
-    },
-    [client, signature],
-  );
+      previous.current = { signature, queryKey };
+    }
+  }, [client, signature]);
 }
