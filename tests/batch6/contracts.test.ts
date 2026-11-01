@@ -64,7 +64,7 @@ describe('Batch 6 semantic contracts', () => {
     expect(
       validateValues('asset', { price: { amount: '3999', currency: 'CNY' }, serial_no: 'SN1' }),
     ).toMatchObject({ price: { amount: '3999', currency: 'CNY' } });
-    expect(findTemplate('lifecycle', 2)).toBeUndefined();
+    expect(findTemplate('lifecycle', 2)).toMatchObject({ version: 2, retired: false });
   });
   it('MODEL11 explicit upgrades reject old unstructured values and wrong dimensions', () => {
     expect(canUpgrade('clothing', 1, 2)).toBe(true);

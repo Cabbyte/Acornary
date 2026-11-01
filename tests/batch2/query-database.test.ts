@@ -96,8 +96,8 @@ describe.skipIf(!enabled)('Batch 2 migrated PostgreSQL queries', () => {
     ];
     await db.query(
       db.pool,
-      `INSERT INTO notes(id,household_id,item_id,body,created_by)
-      VALUES($1,$2,$3,'ＮＯＴＥ　\t牛奶  100%_literal',$4)`,
+      `INSERT INTO notes(id,household_id,target_kind,target_id,body,created_by,updated_by)
+      VALUES($1,$2,'ITEM',$3,'ＮＯＴＥ　\t牛奶  100%_literal',$4,$4)`,
       [id('note'), ctx.household_id, items[0], ctx.actor_id],
     );
   });
@@ -336,7 +336,7 @@ describe.skipIf(!enabled)('Batch 2 migrated PostgreSQL queries', () => {
     expect(note.data[0].attributes[0]).not.toHaveProperty('created_at');
     const noteCount = await db.query(
       db.pool,
-      'SELECT count(*)::int AS n FROM notes WHERE household_id=$1 AND item_id=$2',
+      `SELECT count(*)::int AS n FROM notes WHERE household_id=$1 AND target_kind='ITEM' AND target_id=$2`,
       [ctx.household_id, note.data[0].id],
     );
     expect(noteCount.rows[0].n).toBe(1);

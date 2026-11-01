@@ -240,9 +240,9 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
     expect(await raw('items', item)).toEqual({ ...before, revision: 3 });
     expect(
       (await execute(ctx, 'list_attribute_templates', {})).data.some(
-        (t: any) => t.id === 'lifecycle',
+        (t: any) => t.id === 'lifecycle' && t.version === 2,
       ),
-    ).toBe(false);
+    ).toBe(true);
     const parent = id('item');
     await query(
       pool,

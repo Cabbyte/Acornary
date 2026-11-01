@@ -210,7 +210,7 @@ describe('Batch 8 PostgreSQL hardening', () => {
     const note = id('note'),
       blob = id('blob');
     await pool.query(
-      `INSERT INTO notes(id,household_id,item_id,body,created_by) VALUES($1,$2,$3,'private body',$4)`,
+      `INSERT INTO notes(id,household_id,target_kind,target_id,body,created_by,updated_by) VALUES($1,$2,'ITEM',$3,'private body',$4,$4)`,
       [note, ctx.household_id, item, ctx.actor_id],
     );
     await pool.query(
@@ -451,7 +451,7 @@ describe('Batch 8 PostgreSQL hardening', () => {
       const before = await snapshot(pool, exported);
       for (const table of backupRequiredTables) expect(before.tables[table]).toBeDefined();
       await pool.query(
-        `INSERT INTO notes(id,household_id,item_id,body,created_by) VALUES($1,$2,$3,'manifest delta',$4)`,
+        `INSERT INTO notes(id,household_id,target_kind,target_id,body,created_by,updated_by) VALUES($1,$2,'ITEM',$3,'manifest delta',$4,$4)`,
         [id('note'), ctx.household_id, item, ctx.actor_id],
       );
       expect(compareRestore(before, await snapshot(pool, exported))).toMatchObject({
