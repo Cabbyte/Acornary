@@ -23,10 +23,27 @@ import { useSession } from './lib/session';
 import { useInventory } from './lib/inventory';
 import { time } from './lib/presentation';
 import { Home, Product, ItemDetail, Catalog, Settings, History, Notes } from './pages';
+const KitchenSink = lazy(() => import('./features/ui-kitchen/KitchenSink'));
 import { ActionSheet, type Action } from './ui/forms';
 import { Empty, Notice } from './ui/components';
 import { clearBrowseSelections, InventorySearch, ProductCatalog } from './ui/browser';
 import { clearWorkbenchSelections, Workbench, WorkbenchShell } from './ui/workbench';
+import { NextShell } from './next/NextShell';
+import { ItemsScreen } from './features/items/screens/ItemsScreen';
+const ItemScreen = lazy(() =>
+  import('./next/screens/ItemScreen').then((module) => ({ default: module.ItemScreen })),
+);
+const CatalogScreen = lazy(() =>
+  import('./next/screens/CatalogScreen').then((module) => ({ default: module.CatalogScreen })),
+);
+const ActivityScreen = lazy(() =>
+  import('./next/screens/ActivityScreen').then((module) => ({ default: module.ActivityScreen })),
+);
+const SettingsScreen = lazy(() =>
+  import('./next/screens/SettingsScreen').then((module) => ({ default: module.SettingsScreen })),
+);
+import { validateWorkspaceSearch } from './app/search';
+let volatileUI: 'next' | 'legacy' | undefined;
 export function Workspace() {
   const { session, expired } = useSession();
   return (
@@ -78,6 +95,29 @@ function WorkspaceContent() {
   useEffect(() => {
     if (compactId) void navigate({ to: `/items/${compactId}/details`, replace: true });
   }, [compactId, navigate]);
+  // Explicit rollback is sticky for this tab, including old plain-anchor links.
+  let preferredUI: string | null = volatileUI ?? null;
+  try {
+    preferredUI = sessionStorage.getItem('acornary-ui') ?? preferredUI;
+  } catch {
+    /* Storage is optional. */
+  }
+  const requestedUI = params.get('ui');
+  const nextMode =
+    requestedUI === 'next' ||
+    (requestedUI !== 'legacy' &&
+      preferredUI !== 'legacy' &&
+      ['items', 'places', 'search', 'catalog', 'activity', 'settings', 'ui'].includes(section) &&
+      !(['items', 'catalog'].includes(section) && ['history', 'notes'].includes(parts[2] ?? '')));
+  useEffect(() => {
+    if (requestedUI !== 'next' && requestedUI !== 'legacy') return;
+    volatileUI = requestedUI;
+    try {
+      sessionStorage.setItem('acornary-ui', requestedUI);
+    } catch {
+      /* URL still works. */
+    }
+  }, [requestedUI]);
   const actionKeys = ['dialog', 'target', 'template', 'note', 'parent', 'ids', 'from'];
   const browseParams = Object.fromEntries([...params].filter(([key]) => !actionKeys.includes(key)));
   useEffect(() => {
@@ -140,7 +180,32 @@ function WorkspaceContent() {
     message.destroy();
   }, [location.pathname]);
   let page;
-  if (section === 'i')
+  if (nextMode) {
+    if (section === 'items') {
+      if (id === 'group') page = <ItemsScreen catalogId={parts[2]} open={open} />;
+      else if (id) page = <ItemScreen id={id} open={open} />;
+      else page = <ItemsScreen open={open} />;
+    } else if (section === 'places') page = <ItemsScreen locationId={id} open={open} />;
+    else if (section === 'search') page = <ItemsScreen open={open} searchMode />;
+    else if (section === 'catalog') page = <CatalogScreen id={id} open={open} />;
+    else if (section === 'activity') page = <ActivityScreen />;
+    else if (section === 'settings') page = id ? <Settings section={id} /> : <SettingsScreen />;
+    else if (section === 'ui')
+      page = (
+        <Suspense fallback={<p role="status">正在加载界面基线…</p>}>
+          <KitchenSink />
+        </Suspense>
+      );
+    else if (section === 'login') page = <Home open={open} />;
+    else
+      page = (
+        <Empty title="页面不存在">
+          <Link to="/items" search={{ ui: 'next' }}>
+            返回我的物品
+          </Link>
+        </Empty>
+      );
+  } else if (section === 'i')
     page = (
       <Empty title={compactId ? '正在打开物品…' : '标签链接无效'}>
         <Link to="/items">返回我的物品</Link>
@@ -194,6 +259,12 @@ function WorkspaceContent() {
       );
   else if (section === 'activity') page = <Activity />;
   else if (section === 'settings') page = <Settings section={id} />;
+  else if (section === 'ui')
+    page = (
+      <Suspense fallback={<p role="status">正在加载界面基线…</p>}>
+        <KitchenSink />
+      </Suspense>
+    );
   else if (section === 'login') page = <Home open={open} />;
   else
     page = (
@@ -201,8 +272,9 @@ function WorkspaceContent() {
         <Link to="/items">返回我的物品</Link>
       </Empty>
     );
+  const Shell = nextMode ? NextShell : WorkbenchShell;
   return (
-    <WorkbenchShell section={section}>
+    <Shell section={section}>
       {expired && (
         <div className="status-banner">
           <Notice>登录已失效。缓存与输入已保留，重新登录后可继续操作。</Notice>
@@ -248,7 +320,7 @@ function WorkspaceContent() {
           </Button>
         </div>
       )}
-      {page}
+      <Suspense fallback={<p role="status">正在读取页面…</p>}>{page}</Suspense>
       {action?.kind === 'print' && (
         <Suspense fallback={<p role="status">正在准备标签预览…</p>}>
           <LabelPrint
@@ -262,6 +334,7 @@ function WorkspaceContent() {
         <ActionSheet
           key={JSON.stringify(action)}
           action={action}
+          production={nextMode}
           onClose={close}
           onCreateProduct={() => open({ kind: 'catalog', from: 'intake' })}
           onSaved={(result) => {
@@ -295,19 +368,34 @@ function WorkspaceContent() {
           }}
         />
       )}
-    </WorkbenchShell>
+    </Shell>
   );
 }
 export function workspaceRouter(component: FunctionComponent, history?: RouterHistory) {
-  const rootRoute = createRootRoute({ component });
+  const rootRoute = createRootRoute({ component, validateSearch: validateWorkspaceSearch });
   const index = createRoute({ getParentRoute: () => rootRoute, path: '/', component: () => null });
+  const coreRoutes = [
+    '/items',
+    '/items/$id',
+    '/items/$id/details',
+    '/items/group/$catalogId',
+    '/places/$id',
+    '/search',
+    '/catalog',
+    '/catalog/$id',
+    '/activity',
+    '/settings',
+    '/settings/account',
+    '/settings/households',
+    '/settings/printer',
+  ].map((path) => createRoute({ getParentRoute: () => rootRoute, path, component: () => null }));
   const catchAll = createRoute({
     getParentRoute: () => rootRoute,
     path: '$',
     component: () => null,
   });
   return createRouter({
-    routeTree: rootRoute.addChildren([index, catchAll]),
+    routeTree: rootRoute.addChildren([index, ...coreRoutes, catchAll]),
     history,
     scrollRestoration: true,
   });

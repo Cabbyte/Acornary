@@ -6,6 +6,7 @@ import type {
   InventorySnapshot,
   WriteResult,
 } from '../../../../packages/contracts/src/web.js';
+import { PROTOCOL_HEADER, PROTOCOL_VERSION } from '../features/api/protocol.js';
 
 export class ApiError extends Error {
   constructor(
@@ -42,7 +43,22 @@ export const messages: Record<string, string> = {
   INVALID_TRANSITION: '当前状态不能执行此操作，请刷新核对。',
   BARCODE_CONFLICT: '该条码已被其他商品使用。',
   TEMPLATE_IN_USE: '这项资料正在使用，不能移除。',
+  PROTOCOL_VERSION_UNSUPPORTED: '当前客户端版本过旧，请刷新或升级后再操作。',
+  INVALID_CURSOR: '列表已更新，请从第一页重新查看。',
+  CURSOR_STALE: '导出的列表已过期，请重新开始。',
+  ATTACHMENT_TOO_LARGE: '文件超过 25 MiB，请压缩后重试。',
+  ATTACHMENT_QUOTA_EXCEEDED: '家庭附件空间已满（5 GiB），请先删除旧附件。',
+  ATTACHMENT_TYPE_UNSUPPORTED: '只支持 JPEG、PNG、WebP 或 PDF。',
+  REFERENCE_INVALID: '关联的对象不存在或不可用。',
+  STATE_CONFLICT: '当前状态不允许此操作，请刷新后重试。',
+  SYNC_RESET_REQUIRED: '本地数据需要重新同步，请重新加载。',
+  REVEAL_AUDIT_REQUIRED: '查看敏感原文需要明确确认。',
+  SPLIT_NOT_CONSERVED: '拆分数量必须与来源内容一致。',
   NETWORK: '连接中断或响应未返回。输入已保留，请重试同一次操作。',
+};
+let readTransport: 'get' | 'post' = 'get';
+export const configureReadTransport = (mode: 'get' | 'post') => {
+  readTransport = mode;
 };
 export async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const embedded = embeddedRuntime();
@@ -73,6 +89,7 @@ async function requestImpl<T>(
   let response: Response;
   try {
     const headers = new Headers(init?.headers);
+    headers.set(PROTOCOL_HEADER, PROTOCOL_VERSION);
     const household =
       sessionStorage.getItem('acornary-household') ??
       localStorage.getItem('acornary-last-household');
@@ -111,9 +128,20 @@ async function requestImpl<T>(
   }
   return data;
 }
-export const read = <T>(name: Operation, input: unknown, signal?: AbortSignal) =>
-  embeddedRuntime()?.transport.read<T>(name, input, signal) ??
-  request<T>(`/api/read/${name}?input=${encodeURIComponent(JSON.stringify(input))}`, { signal });
+export const read = <T>(name: Operation | 'get_note', input: unknown, signal?: AbortSignal) => {
+  const embedded = embeddedRuntime();
+  if (embedded) return embedded.transport.read<T>(name, input, signal);
+  if (readTransport === 'post')
+    return request<T>(`/api/read/${name}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+      signal,
+    });
+  return request<T>(`/api/read/${name}?input=${encodeURIComponent(JSON.stringify(input))}`, {
+    signal,
+  });
+};
 export const snapshot = (household?: string, signal?: AbortSignal) =>
   embeddedRuntime()?.transport.snapshot(signal) ??
   request<InventorySnapshot>('/api/ui/snapshot', {

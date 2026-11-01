@@ -1,6 +1,6 @@
 import { choose } from './controls.js';
 import { login } from './login.js';
-import { test, expect } from '@playwright/test';
+import { test, expect } from './legacy.js';
 test.beforeEach(async ({ page }) => {
   if (!process.env.ACORNARY_E2E_CLOUD) return;
   await page.goto('/inspect');

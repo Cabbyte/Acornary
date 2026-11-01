@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from '@tanstack/react-router';
 import { SessionGate } from './lib/session';
+import { ConnectionProvider } from './features/api/connection';
 import { InventoryProvider } from './lib/inventory';
 import { Workspace, workspaceRouter } from './workspace';
 const client = new QueryClient({
@@ -13,9 +14,11 @@ const client = new QueryClient({
 });
 const router = workspaceRouter(() => (
   <SessionGate>
-    <InventoryProvider>
-      <Workspace />
-    </InventoryProvider>
+    <ConnectionProvider>
+      <InventoryProvider>
+        <Workspace />
+      </InventoryProvider>
+    </ConnectionProvider>
   </SessionGate>
 ));
 createRoot(document.getElementById('root')!).render(

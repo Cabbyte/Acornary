@@ -2,6 +2,12 @@ import { expect, type Page, test } from '@playwright/test';
 // Keep the production rate limit in E2E. Wait for a new window only when the
 // shared isolated proxy reaches five logins; never bypass or relax the limiter.
 export async function login(page: Page) {
+  if (!process.env.ACORNARY_E2E_CLOUD) {
+    const response = await page.request.get('/api/session');
+    expect(response.status()).toBe(200);
+    expect(await response.json()).toMatchObject({ mode: 'local', authenticated: true });
+    return;
+  }
   test.setTimeout(120000);
   if (!(await page.getByLabel('邮箱', { exact: true }).isVisible()))
     await page.getByRole('button', { name: '使用邮箱和密码', exact: true }).click();

@@ -1,13 +1,17 @@
 import { z } from 'zod';
 import { entityId } from './ids.js';
 import { templates, schemas, reads, type Operation } from './index.js';
-import { productGroups, inventoryFilterSchema } from './web.js';
+import {
+  productGroups,
+  inventoryFilterSchema,
+  type InventoryData,
+  type InventorySnapshot,
+} from './web.js';
 
 const attribute = z.object({
-  template_id: z.enum(
-    Object.keys(templates) as [keyof typeof templates, ...(keyof typeof templates)[]],
-  ),
-  template_version: z.union([z.literal(1), z.literal(2)]),
+  // v2 templates are open-ended; unknown bindings are preserved by the UI adapter.
+  template_id: z.string().min(1),
+  template_version: z.number().int().positive(),
   values: z.record(z.string(), z.unknown()),
 });
 const record = {
@@ -23,7 +27,7 @@ const snapshot = z
       name: z.string(),
       timezone: z.string().optional(),
     }),
-    container_catalog_id: z.string(),
+    container_catalog_id: z.string().optional(),
     catalog: z.array(z.object({ ...record, kind: z.enum(['GROUP', 'SKU']), name: z.string() })),
     items: z.array(
       z.object({
@@ -33,18 +37,35 @@ const snapshot = z
         created_at: z.string(),
       }),
     ),
-    notes: z.array(
-      z.object({
-        id: entityId('note'),
-        item_id: entityId('item'),
-        title: z.string().nullable(),
-        body: z.string(),
-        updated_at: z.string(),
-      }),
-    ),
+    // v2 snapshots omit note bodies; keep the field optional for the v1 transition.
+    notes: z
+      .array(
+        z.object({
+          id: entityId('note'),
+          item_id: entityId('item'),
+          title: z.string().nullable(),
+          body: z.string(),
+          updated_at: z.string(),
+        }),
+      )
+      .optional(),
+    // v2 snapshots carry server-computed groups; v1 derives them for the old UI.
+    groups: z.array(z.any()).optional(),
     cached_at: z.string(),
   })
-  .transform((data) => ({ ...data, groups: productGroups(data, inventoryFilterSchema.parse({})) }));
+  .transform((data): InventorySnapshot => {
+    const notes = data.notes ?? [];
+    const container_catalog_id = data.container_catalog_id ?? '';
+    const inventory = { ...data, notes, container_catalog_id } as unknown as InventoryData;
+    const normalized = {
+      ...data,
+      container_catalog_id,
+      notes,
+      groups: data.groups ?? productGroups(inventory, inventoryFilterSchema.parse({})),
+    };
+    // New templates are forward-compatible at runtime; legacy UI only reads known keys.
+    return normalized as unknown as InventorySnapshot;
+  });
 
 export const pluginEnvelopeSchema = z
   .object({

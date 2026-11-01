@@ -1,5 +1,5 @@
 import { fixtureCommand } from './governance.js';
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './legacy.js';
 import { createHash } from 'node:crypto';
 import { login } from './login.js';
 import { choose } from './controls.js';

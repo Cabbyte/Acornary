@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './legacy.js';
 import { createHash } from 'node:crypto';
 import { login } from './login.js';
 test.beforeEach(() => test.skip(!process.env.ACORNARY_E2E_CLOUD, 'Cloud authentication'));

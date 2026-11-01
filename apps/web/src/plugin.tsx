@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import type { PluginEnvelope } from '../../../packages/contracts/src/plugin';
 import { Workspace, workspaceRouter } from './workspace';
+import { ConnectionProvider } from './features/api/connection';
 import { InventoryProvider } from './lib/inventory';
 import { SessionContext } from './lib/session';
 import { installEmbeddedRuntime } from './lib/runtime';
@@ -34,9 +35,11 @@ function InventoryApp({ envelope }: { envelope: PluginEnvelope }) {
   const [router] = useState(() =>
     workspaceRouter(
       () => (
-        <InventoryProvider>
-          <Workspace />
-        </InventoryProvider>
+        <ConnectionProvider>
+          <InventoryProvider>
+            <Workspace />
+          </InventoryProvider>
+        </ConnectionProvider>
       ),
       createMemoryHistory({ initialEntries: [store.route] }),
     ),

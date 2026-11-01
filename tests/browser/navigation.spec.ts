@@ -1,5 +1,5 @@
 import { fixtureCommand } from './governance.js';
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './legacy.js';
 import { login } from './login.js';
 import { catalogFixture, checkCatalog } from './catalog-checks.js';
 

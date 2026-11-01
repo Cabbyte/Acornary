@@ -1,0 +1,111 @@
+/*
+ * Generated from tokens.ts (`cssVariables`) plus the small global base layer.
+ * Do not edit values here without updating tokens.ts; the two must stay in sync.
+ */
+/* prettier-ignore */
+:root {
+  --ac-paper: #F6F0E6;
+  --ac-surface: #FFFCF6;
+  --ac-surface-raised: #FFFFFF;
+  --ac-ink: #2B2420;
+  --ac-ink-2: #51463D;
+  --ac-muted: #68615C;
+  --ac-line: #E8DFD2;
+  --ac-line-strong: #D8C9B8;
+  --ac-accent: #AB5F40;
+  --ac-accent-hover: #965136;
+  --ac-accent-soft: #F5E5D8;
+  --ac-success: #5F7358;
+  --ac-success-soft: #E8EFE4;
+  --ac-warning: #A9742A;
+  --ac-warning-soft: #F6EAD6;
+  --ac-danger: #A33828;
+  --ac-danger-soft: #F7E2DC;
+  --ac-info: #4F6B7A;
+  --ac-info-soft: #E4EDF0;
+  --ac-cat-food: #F3E6D5;
+  --ac-cat-food-ink: #7A541F;
+  --ac-cat-clothing: #F3E1E1;
+  --ac-cat-clothing-ink: #8B4A4A;
+  --ac-cat-device: #E2ECF0;
+  --ac-cat-device-ink: #3F5F6E;
+  --ac-cat-cleaning: #E8EFE4;
+  --ac-cat-cleaning-ink: #526A4A;
+  --ac-cat-neutral: #EEE7DC;
+  --ac-cat-neutral-ink: #6E5A3C;
+
+  --ac-font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --ac-font-display: "Songti SC", "STSong", "SimSun", serif;
+
+  --ac-space-1: 4px;
+  --ac-space-2: 8px;
+  --ac-space-3: 12px;
+  --ac-space-4: 16px;
+  --ac-space-5: 24px;
+  --ac-space-6: 32px;
+  --ac-space-7: 48px;
+
+  --ac-control-sm: 28px;
+  --ac-control-md: 36px;
+  --ac-control-touch: 44px;
+
+  --ac-row-desktop: 64px;
+  --ac-row-mobile: 72px;
+
+  --ac-radius-control: 8px;
+  --ac-radius-panel: 12px;
+  --ac-radius-pill: 999px;
+
+  --ac-text-display-size: 28px;
+  --ac-text-display-line-height: 1.25;
+  --ac-text-display-weight: 600;
+  --ac-text-title-size: 20px;
+  --ac-text-title-line-height: 1.3;
+  --ac-text-title-weight: 600;
+  --ac-text-row-size: 16px;
+  --ac-text-row-line-height: 1.35;
+  --ac-text-row-weight: 600;
+  --ac-text-body-size: 14px;
+  --ac-text-body-line-height: 1.5;
+  --ac-text-body-weight: 400;
+  --ac-text-micro-size: 12px;
+  --ac-text-micro-line-height: 1.4;
+  --ac-text-micro-weight: 500;
+  --ac-text-eyebrow-size: 10px;
+  --ac-text-eyebrow-line-height: 1.2;
+  --ac-text-eyebrow-weight: 600;
+
+  --ac-motion-fast: 120ms;
+  --ac-motion-base: 180ms;
+  --ac-motion-easing: cubic-bezier(.2,.8,.2,1);
+
+  --ac-width-list: 1120px;
+  --ac-width-detail: 840px;
+  --ac-width-settings: 720px;
+
+  --ac-sheet-narrow: 480px;
+  --ac-sheet-wide: 560px;
+}
+
+/* Base document layer only: primitives own the rest. */
+body {
+  background: var(--ac-paper);
+  color: var(--ac-ink);
+  font-family: var(--ac-font-sans);
+  font-size: var(--ac-text-body-size);
+  font-weight: var(--ac-text-body-weight);
+  line-height: var(--ac-text-body-line-height);
+}
+
+/* Utility for numbers that should not jitter as values change. */
+.ac-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Motion tokens collapse for people who ask for reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ac-motion-fast: 0.01ms;
+    --ac-motion-base: 0.01ms;
+  }
+}

@@ -1,9 +1,11 @@
 import type { Operation } from '../../../../packages/contracts/src/index.js';
 import type { InventorySnapshot, WriteResult } from '../../../../packages/contracts/src/web.js';
+import type { ConnectionContext } from '../../../../packages/contracts/src/read-v2.js';
 
 export interface InventoryTransport {
+  context?(): Promise<ConnectionContext>;
   snapshot(signal?: AbortSignal): Promise<InventorySnapshot>;
-  read<T>(name: Operation, input: unknown, signal?: AbortSignal): Promise<T>;
+  read<T>(name: Operation | 'get_note', input: unknown, signal?: AbortSignal): Promise<T>;
   write(
     name: Operation,
     payload: unknown,

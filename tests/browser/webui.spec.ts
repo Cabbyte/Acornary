@@ -1,7 +1,7 @@
 import { fixtureCommand } from './governance.js';
 import { choose } from './controls.js';
 import { login } from './login.js';
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './legacy.js';
 test.use({ viewport: { width: 390, height: 844 } });
 let cookies: Awaited<ReturnType<import('@playwright/test').BrowserContext['cookies']>> = [];
 test.beforeAll(async ({ browser }) => {

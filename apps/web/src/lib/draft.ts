@@ -1,3 +1,4 @@
+import { validPersistedCommand } from '../features/writes/note-command.js';
 import { z } from 'zod';
 import { entityId } from '../../../../packages/contracts/src/ids.js';
 import { schemas, reads, type Operation } from '../../../../packages/contracts/src/index.js';
@@ -6,6 +7,7 @@ const values = z.record(z.string(), z.string());
 export const draftSchema = z
   .object({
     values,
+    idempotencyKey: z.uuid().optional(),
     original: values,
     proposalId: z.uuid().optional(),
     revisions: z.record(z.string(), z.number().int().positive()),
@@ -37,7 +39,7 @@ export const draftSchema = z
       if (
         !Object.hasOwn(schemas, operation) ||
         reads.has(operation) ||
-        !schemas[operation].safeParse(draft.attempt.payload).success
+        !validPersistedCommand(operation, draft.attempt.payload)
       )
         ctx.addIssue({ code: 'custom', message: 'Invalid original command' });
     }

@@ -1,0 +1,70 @@
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ac-control-md);
+  height: var(--ac-control-md);
+  min-width: var(--ac-control-md);
+  min-height: var(--ac-control-md);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--ac-radius-control);
+  background: transparent;
+  color: var(--ac-ink-2);
+  cursor: pointer;
+  transition:
+    background-color var(--ac-motion-fast) var(--ac-motion-easing),
+    border-color var(--ac-motion-fast) var(--ac-motion-easing),
+    color var(--ac-motion-fast) var(--ac-motion-easing);
+}
+
+.iconButton[data-variant='secondary'] {
+  background: var(--ac-surface-raised);
+  border-color: var(--ac-line);
+}
+
+.iconButton:hover:not(:disabled) {
+  background: var(--ac-paper);
+  color: var(--ac-ink);
+}
+
+.iconButton[data-variant='secondary']:hover:not(:disabled) {
+  border-color: var(--ac-line-strong);
+}
+
+.iconButton:active:not(:disabled) {
+  background: var(--ac-accent-soft);
+}
+
+.iconButton:disabled {
+  color: var(--ac-muted);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.iconButton:focus-visible {
+  outline: 2px solid var(--ac-accent);
+  outline-offset: 2px;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.icon > svg {
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 767px), (pointer: coarse) {
+  .iconButton {
+    width: var(--ac-control-touch);
+    height: var(--ac-control-touch);
+    min-width: var(--ac-control-touch);
+    min-height: var(--ac-control-touch);
+  }
+}

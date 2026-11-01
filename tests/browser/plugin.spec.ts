@@ -1,5 +1,5 @@
 import { choose } from './controls.js';
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './legacy.js';
 import { catalogFixture, checkCatalog } from './catalog-checks.js';
 const origin = 'http://127.0.0.1:3212';
 const view = (page: Page) => page.frameLocator('#inventory');

@@ -1,0 +1,71 @@
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  max-width: 100%;
+  padding: 2px var(--ac-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--ac-radius-pill);
+  background: var(--ac-paper);
+  color: var(--ac-ink);
+  font-size: var(--ac-text-micro-size);
+  font-weight: var(--ac-text-micro-weight);
+  line-height: var(--ac-text-micro-line-height);
+  white-space: nowrap;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: currentColor;
+  color: var(--ac-muted);
+}
+
+.tag[data-tone='success'] {
+  background: var(--ac-success-soft);
+}
+
+.tag[data-tone='success'] .dot {
+  color: var(--ac-success);
+}
+
+.tag[data-tone='warning'] {
+  background: var(--ac-warning-soft);
+}
+
+.tag[data-tone='warning'] .dot {
+  color: var(--ac-warning);
+}
+
+.tag[data-tone='danger'] {
+  background: var(--ac-danger-soft);
+}
+
+.tag[data-tone='danger'] .dot {
+  color: var(--ac-danger);
+}
+
+.tag[data-tone='info'] {
+  background: var(--ac-info-soft);
+}
+
+.tag[data-tone='info'] .dot {
+  color: var(--ac-info);
+}
+
+.tag[data-tone='neutral'] {
+  background: var(--ac-surface);
+  border-color: var(--ac-line);
+}
+
+.tag[data-tone='neutral'] .dot {
+  color: var(--ac-muted);
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

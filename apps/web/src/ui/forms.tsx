@@ -1,13 +1,27 @@
 import { CatalogReview } from './catalog-review';
 import { Card, Descriptions } from 'antd';
 import { CalendarInput, DecimalInput } from './inputs';
-import { Button, Form, Input, Select, TreeSelect } from 'antd';
+import { Button as AntButton, Form, Input, Select, TreeSelect, App } from 'antd';
+import { useQueryClient } from '@tanstack/react-query';
+import { Sheet, Field } from './primitives';
+import { AttributeEditor } from '../features/writes/AttributeEditor';
+import { ConsumeSheet } from '../features/writes/ConsumeSheet';
+import { MoveSheet } from '../features/writes/MoveSheet';
+import { EditSheet } from '../features/writes/EditSheet';
+import { NoteSheet } from '../features/writes/NoteSheet';
+import { IntakeSheet } from '../features/writes/IntakeSheet';
+import { supportsCapability } from '../features/writes/selectors';
+import { useFeature } from '../features/api/connection';
+import { parseWriteCommand } from '../features/writes/note-command';
+import { toNoteView } from '../features/inventory/adapters/notes';
+import type { NoteV2 } from '../../../../packages/contracts/src/read-v2';
+import { WriteButton } from '../features/writes/WriteButton';
+import writeStyles from '../features/writes/WriteSheet.module.css';
 import { draftSchema } from '../lib/draft';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Decimal } from 'decimal.js';
 import {
   templateFor,
-  schemas,
   type Operation,
   type TemplateId,
 } from '../../../../packages/contracts/src/index';
@@ -35,7 +49,7 @@ import {
   templateLabels,
   type Values,
 } from './fields';
-import { FormField, Notice, ActionDrawer } from './components';
+import { FormField as LegacyField, Notice, ActionDrawer } from './components';
 import { consumptionError, fullPath, specification } from '../lib/browse';
 import { WorkbenchMovePicker } from './workbench';
 import { availabilityOptions, moveValidation } from '../lib/workbench';
@@ -59,6 +73,7 @@ interface Draft {
   attempt?: Attempt;
   result?: WriteResult;
   proposalId?: string;
+  idempotencyKey?: string;
 }
 const titles: Record<string, string> = {
   edit: '编辑物品',
@@ -78,13 +93,22 @@ export function ActionSheet({
   action,
   onClose,
   onSaved,
+  production = false,
 }: {
   action: Action;
+  production?: boolean;
   onClose: () => void;
   onSaved: (result: WriteResult) => void;
   onCreateProduct: () => void;
 }) {
   const { data, refresh, stale } = useInventory();
+  const client = useQueryClient();
+  const notesV2 = useFeature('notes_v2');
+  const profileEnabled = useFeature('profile_capabilities');
+  const { modal } = App.useApp();
+  const Button = production ? WriteButton : AntButton;
+  const FormField = production ? Field : LegacyField;
+  const Drawer = production ? ProductionDrawer : ActionDrawer;
   const { session, online } = useSession();
   const productOptions = useMemo(
     () =>
@@ -134,6 +158,7 @@ export function ActionSheet({
   const draftKey = `${session.cache_key}:draft:${action.kind}:${action.target ?? ''}:${template}:${action.note ?? ''}:${action.ids ?? ''}:${action.parent ?? ''}`;
   const [draft, setDraft] = useState<Draft>();
   const [error, setError] = useState('');
+  const [requestId, setRequestId] = useState<string>();
   const [errorDetails, setErrorDetails] = useState<any>();
   const [storageError, setStorageError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -188,18 +213,42 @@ export function ActionSheet({
     );
     if (target) revisions[target.id] = target.revision;
     void stored<Draft>(draftKey)
-      .then((saved) => {
+      .then(async (saved) => {
+        if (!saved && action.kind === 'note' && action.note && notesV2) {
+          try {
+            const note = toNoteView(await read<NoteV2>('get_note', { note_id: action.note }));
+            if (note.itemId !== action.target || note.body === undefined)
+              throw new Error('无法读取完整笔记，未开始编辑。');
+            values.title = note.title ?? '';
+            values.body = note.body;
+          } catch (err) {
+            if (!cancelled) setError(err instanceof Error ? err.message : '笔记读取失败');
+            return;
+          }
+        }
         if (!cancelled) {
           if (saved && !draftSchema.safeParse(saved).success) {
             setError('保存的草稿无法安全恢复。请保留此记录并在松仓网站核对操作结果。');
             return;
           }
-          setDraft(saved ?? { values, original: { ...values }, revisions });
+          setDraft(
+            saved ?? {
+              values,
+              original: { ...values },
+              revisions,
+              idempotencyKey: crypto.randomUUID(),
+            },
+          );
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setDraft({ values, original: { ...values }, revisions });
+          setDraft({
+            values,
+            original: { ...values },
+            revisions,
+            idempotencyKey: crypto.randomUUID(),
+          });
           setStorageError('无法保存本地草稿，请保持此页面打开。');
         }
       });
@@ -220,6 +269,42 @@ export function ActionSheet({
     setErrorDetails(undefined);
   };
   const values = draft?.values ?? {};
+  const dirty = !!draft && JSON.stringify(draft.values) !== JSON.stringify(draft.original);
+  const closeGuardOpen = useRef(false);
+  const requestClose = () => {
+    if (lock.current) return;
+    if (!production || (!dirty && !draft?.attempt && !draft?.result)) {
+      onClose();
+      return;
+    }
+    if (closeGuardOpen.current) return;
+    closeGuardOpen.current = true;
+    modal.confirm({
+      title: '关闭并保留草稿？',
+      content: '输入和待确认的操作会保留。再次打开同一操作可继续。',
+      okText: '保留草稿并关闭',
+      cancelText: '继续编辑',
+      onOk: onClose,
+      afterClose: () => {
+        closeGuardOpen.current = false;
+      },
+    });
+  };
+  useEffect(() => {
+    if (!production || (!dirty && !draft?.attempt)) return;
+    const guard = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', guard);
+    return () => window.removeEventListener('beforeunload', guard);
+  }, [production, dirty, draft?.attempt]);
+  const selectedProduct = data.catalog.find((c) => c.id === values.sku);
+  const intakeCapabilities = {
+    opening: supportsCapability(selectedProduct, 'lifecycle.opening', profileEnabled),
+    expiry: supportsCapability(selectedProduct, 'lifecycle.expiry', profileEnabled),
+    contents: supportsCapability(selectedProduct, 'contents', profileEnabled),
+  };
   const physicalMove = moving;
   const core = action.kind === 'consume' || moving;
   const currentAmount = item && attr(item, 'contents')?.remaining;
@@ -268,6 +353,13 @@ export function ActionSheet({
     const attribute = { template_id: template, template_version: templateVersion };
     switch (action.kind) {
       case 'intake': {
+        if (
+          production &&
+          ((values.opening && !intakeCapabilities.opening) ||
+            (values.expiry && !intakeCapabilities.expiry) ||
+            (values.quantity && !intakeCapabilities.contents))
+        )
+          throw new Error('所选商品不支持草稿中的可选资料，请重新核对商品能力。');
         operation = 'commit_intake';
         const initial: unknown[] = [];
         const lifecycle = {
@@ -398,7 +490,11 @@ export function ActionSheet({
       case 'note':
         operation = action.note ? 'update_note' : 'add_note';
         input = {
-          item_id: item?.id,
+          ...(notesV2
+            ? action.note
+              ? {}
+              : { target: { kind: 'ITEM', id: item?.id } }
+            : { item_id: item?.id }),
           ...(action.note
             ? { note_id: action.note, title: values.title || null }
             : values.title
@@ -460,13 +556,23 @@ export function ActionSheet({
         };
       }
     }
-    const payload = { ...input, ...base, idempotency_key: crypto.randomUUID() };
-    const parsed = schemas[operation].safeParse(payload);
+    const payload = {
+      ...input,
+      ...base,
+      idempotency_key: draft.idempotencyKey ?? crypto.randomUUID(),
+    };
+    const parsed = parseWriteCommand(operation, payload, notesV2);
     if (!parsed.success) throw new Error('请检查必填项、日期、件数和数量格式。');
     return { operation, payload: parsed.data };
   }
   async function complete(result: WriteResult) {
     await refresh();
+    await client.invalidateQueries({
+      predicate: (query) =>
+        ['items', 'catalog', 'history-v2', 'item-detail', 'notes'].includes(
+          String(query.queryKey[0]),
+        ),
+    });
     setDone(true);
     await persist(draftKey, undefined).catch(() => {});
     onSaved(result);
@@ -560,15 +666,34 @@ export function ActionSheet({
       await complete(result);
     } catch (err) {
       if (err instanceof ApiError) {
+        setRequestId(err.request_id);
         setErrorDetails(err.details);
         if (err.code === 'REVISION_CONFLICT' || err.code === 'POLICY_CONFLICT') {
           setConflict(true);
-          setDraft((d) => (d ? { ...d, attempt: undefined, proposalId: undefined } : d));
+          setDraft((d) =>
+            d
+              ? {
+                  ...d,
+                  attempt: undefined,
+                  proposalId: undefined,
+                  idempotencyKey: crypto.randomUUID(),
+                }
+              : d,
+          );
           await refresh().catch(() => {});
           if (err.code === 'POLICY_CONFLICT')
             setErrorDetails(await read('get_catalog_policy', {}).catch(() => err.details));
         } else if (err.status >= 400 && err.status < 500 && err.status !== 401)
-          setDraft((d) => (d ? { ...d, attempt: undefined, proposalId: undefined } : d));
+          setDraft((d) =>
+            d
+              ? {
+                  ...d,
+                  attempt: undefined,
+                  proposalId: undefined,
+                  idempotencyKey: crypto.randomUUID(),
+                }
+              : d,
+          );
         if (err.status >= 400 && err.status < 500 && err.status !== 401) setReview(false);
         setError(err.message);
       } else setError(err instanceof Error ? err.message : '无法保存，请重试。');
@@ -612,7 +737,6 @@ export function ActionSheet({
           {core && item && (
             <>
               <p>{specification(data.catalog.find((c) => c.id === item.catalog_node_id))}</p>
-              <small className="identity">实物编号 {item.id}</small>
             </>
           )}
           {item && <p className="quantity">{remaining(item)}</p>}
@@ -622,9 +746,9 @@ export function ActionSheet({
   );
   if (!draft)
     return (
-      <ActionDrawer context={context} title={titles[action.kind] ?? '编辑'} onClose={onClose}>
+      <Drawer context={context} title={titles[action.kind] ?? '编辑'} onClose={requestClose}>
         <p role="status">{error || '正在恢复草稿…'}</p>
-      </ActionDrawer>
+      </Drawer>
     );
   let preview = '';
   try {
@@ -637,8 +761,26 @@ export function ActionSheet({
     /* Invalid input is handled on submit. */
   }
   return (
-    <ActionDrawer
-      context={context}
+    <Drawer
+      context={
+        production ? (
+          <section className={writeStyles.context}>
+            <h3>
+              {item
+                ? itemTitle(item, data)
+                : (catalog?.name ?? (moving ? `${movingItems.length} 件物品` : '添加到家庭库存'))}
+            </h3>
+            {item && (
+              <>
+                <p>{fullPath(item.parent_id, data)}</p>
+                <p>{remaining(item)}</p>
+              </>
+            )}
+          </section>
+        ) : (
+          context
+        )
+      }
       title={
         moving
           ? `移动 ${movingItems.length} 件物品`
@@ -646,7 +788,7 @@ export function ActionSheet({
             ? (templateLabels[template] ?? '编辑资料')
             : (titles[action.kind] ?? '编辑')
       }
-      onClose={onClose}
+      onClose={requestClose}
       busy={busy}
     >
       <form
@@ -671,13 +813,6 @@ export function ActionSheet({
           reviewOrSubmit();
         }}
       >
-        {item && !workbench && (
-          <Notice>
-            {itemTitle(item, data)} · {remaining(item)}
-            <br />
-            {core ? fullPath(item.parent_id, data) : '此次只修改明确选中的实物。'}
-          </Notice>
-        )}
         {catalog && action.kind !== 'intake' && (
           <Notice>{catalog.name} · 商品共有资料的修改会应用于同款实物的展示。</Notice>
         )}
@@ -722,11 +857,79 @@ export function ActionSheet({
           disabled={busy || !!draft.attempt || !!draft.result || session.can_write === false}
         >
           <fieldset
-            disabled={busy || !!draft.attempt || !!draft.result}
+            disabled={busy || !!draft.attempt || !!draft.result || session.can_write === false}
             hidden={review && action.kind === 'intake'}
             className="stack"
           >
-            {action.kind === 'intake' && (
+            {production && action.kind === 'consume' && (
+              <ConsumeSheet
+                values={values}
+                onChange={set}
+                unit={currentAmount?.unit}
+                error={amountError}
+                preview={preview}
+              />
+            )}
+            {production && action.kind === 'move' && (
+              <MoveSheet
+                values={values}
+                onChange={set}
+                currentPaths={
+                  moving
+                    ? movingItems.map(
+                        (i) => `${itemName(i, data)} · ${fullPath(i.parent_id, data)}`,
+                      )
+                    : [catalog?.name ?? '商品目录']
+                }
+                locations={
+                  moving
+                    ? data.items.filter(isContainer).map((i) => ({
+                        id: i.id,
+                        pId: i.parent_id,
+                        value: i.id,
+                        title: fullPath(i.id, data),
+                        disabled: !!moveValidation(data, movingItems, i.id),
+                      }))
+                    : categories.map((c) => ({
+                        id: c.id,
+                        pId: c.parent_id,
+                        value: c.id,
+                        title: c.name,
+                      }))
+                }
+                error={moveError}
+              />
+            )}
+            {production && action.kind === 'edit' && item && (
+              <EditSheet
+                values={values}
+                onChange={set}
+                productName={
+                  data.catalog.find((c) => c.id === item.catalog_node_id)?.name ??
+                  itemName(item, data)
+                }
+                specification={specification(
+                  data.catalog.find((c) => c.id === item.catalog_node_id),
+                )}
+              />
+            )}
+            {production && action.kind === 'note' && <NoteSheet values={values} onChange={set} />}
+            {production && action.kind === 'intake' && (
+              <IntakeSheet
+                values={values}
+                onChange={set}
+                productOptions={productOptions}
+                categories={categories}
+                capabilities={intakeCapabilities}
+                locations={positions.map((i) => ({
+                  id: i.id,
+                  pId: i.parent_id,
+                  value: i.id,
+                  title: fullPath(i.id, data),
+                }))}
+              />
+            )}
+            {!production && action.kind === 'intake' && (
               <>
                 <FormField label="选择商品">
                   <Select
@@ -891,7 +1094,7 @@ export function ActionSheet({
               </>
             )}
             {action.kind === 'place' && selectParent()}
-            {action.kind === 'edit' && item && (
+            {!production && action.kind === 'edit' && item && (
               <>
                 <FormField label="名称" hint="留空时使用商品名称。">
                   <Input
@@ -936,7 +1139,8 @@ export function ActionSheet({
                 </FormField>
               </>
             )}
-            {action.kind === 'move' &&
+            {!production &&
+              action.kind === 'move' &&
               (moving ? (
                 <WorkbenchMovePicker
                   items={movingItems}
@@ -958,7 +1162,7 @@ export function ActionSheet({
                 />
               </FormField>
             )}
-            {action.kind === 'consume' && (
+            {!production && action.kind === 'consume' && (
               <>
                 <FormField
                   label="本次消耗量"
@@ -976,19 +1180,20 @@ export function ActionSheet({
                 </FormField>
               </>
             )}
-            {(action.kind === 'consume' || (action.kind === 'intake' && !!values.quantity)) && (
-              <FormField label="数量依据">
-                <Select
-                  value={values.accuracy}
-                  onChange={(e) => set('accuracy', e)}
-                  options={[
-                    { value: '', label: '\u672A\u8BB0\u5F55' },
-                    { value: 'ESTIMATED', label: '\u4F30\u8BA1\u503C' },
-                    { value: 'MEASURED', label: '\u5B9E\u6D4B\u503C' },
-                  ]}
-                />
-              </FormField>
-            )}
+            {!production &&
+              (action.kind === 'consume' || (action.kind === 'intake' && !!values.quantity)) && (
+                <FormField label="数量依据">
+                  <Select
+                    value={values.accuracy}
+                    onChange={(e) => set('accuracy', e)}
+                    options={[
+                      { value: '', label: '\u672A\u8BB0\u5F55' },
+                      { value: 'ESTIMATED', label: '\u4F30\u8BA1\u503C' },
+                      { value: 'MEASURED', label: '\u5B9E\u6D4B\u503C' },
+                    ]}
+                  />
+                </FormField>
+              )}
             {action.kind === 'finish' && (
               <Notice>
                 将所选 {action.ids?.split(',').filter(Boolean).length ?? 1}{' '}
@@ -1005,9 +1210,12 @@ export function ActionSheet({
                 </ul>
               </Notice>
             )}
-            {['attributes', 'correct'].includes(action.kind) && (
-              <AttributeFields fields={fields} values={values} onChange={set} />
-            )}
+            {['attributes', 'correct'].includes(action.kind) &&
+              (production ? (
+                <AttributeEditor fields={fields} values={values} onChange={set} />
+              ) : (
+                <AttributeFields fields={fields} values={values} onChange={set} />
+              ))}
             {action.kind === 'correct' && (
               <FormField label="纠错原因">
                 <Input.TextArea
@@ -1019,7 +1227,7 @@ export function ActionSheet({
                 />
               </FormField>
             )}
-            {action.kind === 'note' && (
+            {!production && action.kind === 'note' && (
               <>
                 <FormField label="笔记标题">
                   <Input
@@ -1041,7 +1249,7 @@ export function ActionSheet({
             )}
           </fieldset>
         </Form>
-        {preview && (
+        {!production && preview && (
           <section className="consume-preview">
             <p>使用后剩余</p>
             <p className="quantity">剩余 {preview}</p>
@@ -1050,7 +1258,7 @@ export function ActionSheet({
             )}
           </section>
         )}
-        {moving && (
+        {!production && moving && (
           <section className="wb-move-confirmation">
             <p>
               目标位置 ·{' '}
@@ -1147,6 +1355,12 @@ export function ActionSheet({
           </section>
         )}
         {error && <Notice danger>{error}</Notice>}
+        {error && requestId && (
+          <details>
+            <summary>技术信息</summary>
+            <p>请求 ID：{requestId}</p>
+          </details>
+        )}
         {error && errorDetails && (
           <Card title="核对冲突" size="small">
             {Array.isArray(errorDetails.candidates) &&
@@ -1209,7 +1423,7 @@ export function ActionSheet({
                     <dd>{fullPath(i.parent_id, data)}</dd>
                   </div>
                 ))}
-              {action.kind === 'edit' && item && (
+              {!production && action.kind === 'edit' && item && (
                 <div>
                   <dt>最新资料</dt>
                   <dd>
@@ -1236,7 +1450,9 @@ export function ActionSheet({
                   <dt>名称与位置</dt>
                   <dd>
                     {item ? itemTitle(item, data) : catalog?.name} ·{' '}
-                    {item ? locationName(item, data) : (catalog?.parent_id ?? '顶层目录')}
+                    {item
+                      ? locationName(item, data)
+                      : (data.catalog.find((c) => c.id === catalog?.parent_id)?.name ?? '顶层目录')}
                   </dd>
                 </div>
               )}
@@ -1278,7 +1494,7 @@ export function ActionSheet({
             </Button>
           </section>
         )}
-        <div className="ac-form-footer">
+        <div className={production ? writeStyles.footer : 'ac-form-footer'}>
           <Button
             htmlType={session.host === 'mcp' ? 'button' : 'submit'}
             onClick={
@@ -1324,11 +1540,34 @@ export function ActionSheet({
                             ? '保存修改'
                             : '保存'}
           </Button>
-          <Button htmlType="button" disabled={busy} onClick={onClose} type="default">
+          <Button htmlType="button" disabled={busy} onClick={requestClose} type="default">
             取消
           </Button>
         </div>
       </form>
-    </ActionDrawer>
+    </Drawer>
+  );
+}
+
+function ProductionDrawer({
+  title,
+  context,
+  children,
+  onClose,
+  busy,
+}: import('react').ComponentProps<typeof ActionDrawer>) {
+  return (
+    <Sheet
+      title={title}
+      onClose={onClose}
+      busy={busy}
+      size="wide"
+      className="production-write-sheet"
+    >
+      <div className={writeStyles.fields}>
+        {context}
+        {children}
+      </div>
+    </Sheet>
   );
 }

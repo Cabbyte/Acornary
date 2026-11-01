@@ -1,5 +1,5 @@
 import { login } from './login.js';
-import { test, expect } from '@playwright/test';
+import { test, expect } from './legacy.js';
 test('cloud login, private records and logout', async ({ page, context }) => {
   test.skip(!process.env.ACORNARY_E2E_CLOUD, 'Cloud-only access boundary');
   await page.goto('/');

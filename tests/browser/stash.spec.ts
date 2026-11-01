@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './legacy.js';
 import { login } from './login.js';
 import { choose } from './controls.js';
 import { fixtureCommand } from './governance.js';

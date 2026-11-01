@@ -1,5 +1,5 @@
 import { choose } from './controls.js';
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './legacy.js';
 import { randomUUID } from 'node:crypto';
 test.beforeEach(() => test.skip(!process.env.ACORNARY_E2E_CLOUD, 'Cloud accounts'));
 async function verifyEmail(page: Page, email: string) {

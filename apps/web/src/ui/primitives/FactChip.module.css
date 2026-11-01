@@ -1,0 +1,20 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 1px var(--ac-space-2);
+  border: 1px solid var(--ac-line);
+  border-radius: var(--ac-radius-pill);
+  background: var(--ac-surface);
+  color: var(--ac-ink-2);
+  font-size: var(--ac-text-micro-size);
+  font-weight: var(--ac-text-micro-weight);
+  line-height: var(--ac-text-micro-line-height);
+}
+
+.text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

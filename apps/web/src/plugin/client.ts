@@ -19,6 +19,7 @@ import {
 import { ApiError, messages } from '../lib/api.js';
 import type { InventoryTransport, Selection } from '../lib/runtime.js';
 import type { Operation } from '../../../../packages/contracts/src/index.js';
+import type { ConnectionContext } from '../../../../packages/contracts/src/read-v2.js';
 import { domainErrorStatus } from '../../../../packages/contracts/src/errors.js';
 import { applyHostLayout } from '../ui/viewport.js';
 
@@ -187,7 +188,11 @@ export class PluginClient implements InventoryTransport {
       throw new ApiError('UNAUTHORIZED', '连接账号或家庭已改变，正在重新加载。', 401);
     return envelope.snapshot;
   }
-  async read<T>(name: Operation, input: unknown, signal?: AbortSignal): Promise<T> {
+  async context(): Promise<ConnectionContext> {
+    const result = await this.call('get_connection_context', {});
+    return result.structuredContent as ConnectionContext;
+  }
+  async read<T>(name: Operation | 'get_note', input: unknown, signal?: AbortSignal): Promise<T> {
     return (await this.call(name, input, signal)).structuredContent as T;
   }
   async write(
