@@ -4,7 +4,6 @@ import type {
   ItemDetailV2,
   SnapshotV2,
 } from '../../packages/contracts/src/read-v2.js';
-import type { InventorySnapshot } from '../../packages/contracts/src/web.js';
 import {
   adaptCatalog,
   adaptItem,
@@ -19,82 +18,6 @@ import {
 } from '../../apps/web/src/features/inventory/adapters/index.js';
 
 const household = { id: 'household_1', name: '家', timezone: 'Asia/Shanghai' };
-
-const v1Snapshot: InventorySnapshot = {
-  household,
-  container_catalog_id: 'sku_container',
-  cached_at: '2026-10-31T12:00:00+08:00',
-  catalog: [
-    {
-      id: 'sku_rice',
-      parent_id: null,
-      kind: 'SKU',
-      name: '大米',
-      revision: 3,
-      attributes: [
-        {
-          template_id: 'product',
-          template_version: 2,
-          values: { brand: '稻香', specification: '5 kg' },
-        },
-      ],
-    },
-  ],
-  items: [
-    {
-      id: 'item_rice_1',
-      parent_id: null,
-      catalog_node_id: 'sku_rice',
-      display_name: null,
-      revision: 2,
-      attributes: [
-        {
-          template_id: 'lifecycle',
-          template_version: 1,
-          values: { state: 'ACTIVE', expiry: { date: '2026-12-01' } },
-        },
-        {
-          template_id: 'contents',
-          template_version: 1,
-          values: { remaining: { value: '500', unit: 'g' }, accuracy: 'MEASURED' },
-        },
-      ],
-      created_at: '2026-10-01T09:00:00+08:00',
-    },
-  ],
-  notes: [
-    {
-      id: 'note_1',
-      item_id: 'item_rice_1',
-      title: '开封',
-      body: '今天开封，米香很足。',
-      updated_at: '2026-10-30T18:00:00+08:00',
-    },
-    {
-      id: 'note_2',
-      item_id: 'item_rice_1',
-      title: '长笔记',
-      body: '正'.repeat(200),
-      updated_at: '2026-10-29T18:00:00+08:00',
-    },
-  ],
-  groups: [
-    {
-      id: 'sku_rice',
-      name: '大米',
-      item_ids: ['item_rice_1'],
-      count: 1,
-      current_count: 1,
-      opened: 0,
-      sealed: 1,
-      unknown_opening: 0,
-      unknown_lifecycle: 0,
-      locations: 1,
-      totals: [{ unit: 'g', value: '500', estimated: false, unknown_accuracy: false }],
-      unknown_quantity: 0,
-    },
-  ],
-};
 
 const v2Date = {
   key: 'lifecycle.expiry',
@@ -195,28 +118,6 @@ const v2Snapshot: SnapshotV2 = {
 };
 
 describe('snapshot adapters', () => {
-  it('adapts a v1 snapshot with note counts and keeps note bodies out of list facts', () => {
-    const view = adaptSnapshot(v1Snapshot, new Date('2026-10-31T12:00:00+08:00'));
-    const item = view.items[0];
-
-    expect(item.noteCount).toBe(2);
-    expect(item.attachmentCount).toBe(0);
-    expect(item.name).toBe('大米');
-    expect(item.status).toEqual({ label: '在库', tone: 'success' });
-    expect(item.voidedAt).toBeNull();
-    expect(item.redactedPaths).toEqual([]);
-    expect(JSON.stringify(item.facts)).not.toContain('米香');
-    expect(view.notesByItem['item_rice_1']).toHaveLength(2);
-    expect(view.notesByItem['item_rice_1'][0].body).toContain('米香');
-    expect(view.notesByItem['item_rice_1'][1].excerpt).toHaveLength(160);
-    expect(view.asOfChangeId).toBe('0');
-    expect(view.household.timezone).toBe('Asia/Shanghai');
-    expect(item.facts.map((fact) => fact.kind)).toEqual(['expiry', 'remaining']);
-    expect(view.catalog[0].profile).toBeNull();
-    expect(view.catalog[0].effectiveCapabilities).toEqual([]);
-    expect(view.catalog[0].attributes[0].status).toBe('KNOWN');
-  });
-
   it('adapts a v2 snapshot with note_count, next_date and server groups', () => {
     const view = adaptSnapshot(v2Snapshot);
     const item = view.items[0];
@@ -237,7 +138,7 @@ describe('snapshot adapters', () => {
 
 describe('detail adapters', () => {
   it('wraps a v1 flat detail and preserves unknown template bindings', () => {
-    const view = adaptSnapshot(v1Snapshot);
+    const view = adaptSnapshot(v2Snapshot);
     const detail = adaptItemDetail(
       {
         id: 'item_rice_1',
@@ -347,18 +248,6 @@ describe('detail adapters', () => {
 });
 
 describe('group adapters', () => {
-  it('does not expose v1 item_ids and reports hasItemIds', () => {
-    const group = adaptGroup(v1Snapshot.groups[0]);
-
-    expect('item_ids' in group).toBe(false);
-    expect(group.hasItemIds).toBe(true);
-    expect(group.profile).toBeNull();
-    expect(group.nextDate).toBeNull();
-    expect(group.overdueCount).toBeNull();
-    expect(group.lowStock).toBeNull();
-    expect(group.totals[0].unknownAccuracy).toBe(false);
-  });
-
   it('marks v2 groups as without item ids', () => {
     const group = adaptGroup(v2Snapshot.groups[0]);
 
@@ -473,14 +362,24 @@ describe('capability adapters', () => {
 });
 
 it('derives inventory status from structured facts and ignores historical availability', () => {
-  const record = structuredClone(v1Snapshot.items[0]);
+  const record = structuredClone(v2Snapshot.items[0]);
   record.attributes = [
-    { template_id: 'lifecycle', template_version: 1, values: { availability: 'AVAILABLE' } },
+    {
+      template_id: 'lifecycle',
+      template_version: 1,
+      status: 'KNOWN',
+      values: { availability: 'AVAILABLE' },
+    },
   ];
   expect(adaptItem(record, []).status).toEqual({ label: '未记录', tone: 'neutral' });
   record.attributes = [
-    { template_id: 'lifecycle', template_version: 2, values: { state: 'ACTIVE' } },
-    { template_id: 'custody', template_version: 1, values: { status: 'LOANED_OUT' } },
+    { template_id: 'lifecycle', template_version: 2, status: 'KNOWN', values: { state: 'ACTIVE' } },
+    {
+      template_id: 'custody',
+      template_version: 1,
+      status: 'KNOWN',
+      values: { status: 'LOANED_OUT' },
+    },
   ];
   expect(adaptItem(record, []).status).toEqual({ label: '暂不可用', tone: 'warning' });
   expect(adaptItem(record, []).attention).toContain('away');

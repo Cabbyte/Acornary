@@ -1,7 +1,7 @@
 import { CatalogReview } from './catalog-review';
 import { Card, Descriptions } from 'antd';
-import { CalendarInput, DecimalInput } from './inputs';
-import { Button as AntButton, Form, Input, Select, TreeSelect, App } from 'antd';
+import { CalendarInput } from './inputs';
+import { Form, Input, Select, TreeSelect, App } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { Sheet, Field } from './primitives';
 import { AttributeEditor } from '../features/writes/AttributeEditor';
@@ -29,7 +29,6 @@ import {
   ancestors,
   attr,
   isContainer,
-  isTerminal,
   itemName,
   locationName,
   type WriteResult,
@@ -40,7 +39,6 @@ import { ApiError, write, read } from '../lib/api';
 import { persist, stored } from '../lib/storage';
 import { amount, itemTitle, label, remaining } from '../lib/presentation';
 import {
-  AttributeFields,
   changes,
   correctionFields,
   definitions,
@@ -49,10 +47,9 @@ import {
   templateLabels,
   type Values,
 } from './fields';
-import { FormField as LegacyField, Notice, ActionDrawer } from './components';
+import { Notice } from './components';
 import { consumptionError, fullPath, specification } from '../lib/browse';
-const WorkbenchMovePicker = (_: any) => null;
-import { itemStatus, moveValidation } from '../lib/workbench';
+import { moveValidation } from '../lib/workbench';
 export interface Action {
   kind: string;
   target?: string;
@@ -93,10 +90,8 @@ export function ActionSheet({
   action,
   onClose,
   onSaved,
-  production = false,
 }: {
   action: Action;
-  production?: boolean;
   onClose: () => void;
   onSaved: (result: WriteResult) => void;
   onCreateProduct: () => void;
@@ -106,9 +101,6 @@ export function ActionSheet({
   const notesV2 = useFeature('notes_v2');
   const profileEnabled = useFeature('profile_capabilities');
   const { modal } = App.useApp();
-  const Button = production ? WriteButton : AntButton;
-  const FormField = production ? Field : LegacyField;
-  const Drawer = production ? ProductionDrawer : ActionDrawer;
   const { session, online } = useSession();
   const productOptions = useMemo(
     () =>
@@ -133,7 +125,6 @@ export function ActionSheet({
   const target = item ?? catalog;
   const moveIds = action.ids?.split(',').filter(Boolean) ?? (item ? [item.id] : []);
   const movingItems = data.items.filter((i) => moveIds.includes(i.id));
-  const workbench = action.kind === 'edit' || (action.kind === 'move' && movingItems.length > 0);
   const moving = action.kind === 'move' && movingItems.length > 0;
   const template = action.template ?? 'lifecycle';
   const templateVersion =
@@ -179,7 +170,6 @@ export function ActionSheet({
   useEffect(() => {
     let cancelled = false;
     const original = target ? fieldValues(sourceValues(), fields) : {};
-    const note = data.notes.find((n) => n.id === action.note && n.item_id === action.target);
     const values: Values = {
       name: item?.display_name ?? catalog?.name ?? '',
       acquired_on: item ? (attr(item, 'lifecycle')?.acquisition?.acquired_on ?? '') : '',
@@ -199,8 +189,8 @@ export function ActionSheet({
       unit: 'mL',
       accuracy: '',
       kind: 'SKU',
-      title: note?.title ?? '',
-      body: note?.body ?? '',
+      title: '',
+      body: '',
       reason: '',
       destinationChosen: 'false',
       amount: '',
@@ -213,8 +203,12 @@ export function ActionSheet({
     );
     if (target) revisions[target.id] = target.revision;
     void stored<Draft>(draftKey)
+      .catch(() => {
+        if (!cancelled) setStorageError('无法保存本地草稿，请保持此页面打开。');
+        return undefined;
+      })
       .then(async (saved) => {
-        if (!saved && action.kind === 'note' && action.note && notesV2) {
+        if (!saved && action.kind === 'note' && action.note) {
           try {
             const note = toNoteView(await read<NoteV2>('get_note', { note_id: action.note }));
             if (note.itemId !== action.target || note.body === undefined)
@@ -241,16 +235,8 @@ export function ActionSheet({
           );
         }
       })
-      .catch(() => {
-        if (!cancelled) {
-          setDraft({
-            values,
-            original: { ...values },
-            revisions,
-            idempotencyKey: crypto.randomUUID(),
-          });
-          setStorageError('无法保存本地草稿，请保持此页面打开。');
-        }
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : '草稿恢复失败');
       });
     return () => {
       cancelled = true;
@@ -273,7 +259,7 @@ export function ActionSheet({
   const closeGuardOpen = useRef(false);
   const requestClose = () => {
     if (lock.current) return;
-    if (!production || (!dirty && !draft?.attempt && !draft?.result)) {
+    if (!dirty && !draft?.attempt && !draft?.result) {
       onClose();
       return;
     }
@@ -291,21 +277,20 @@ export function ActionSheet({
     });
   };
   useEffect(() => {
-    if (!production || (!dirty && !draft?.attempt)) return;
+    if (!dirty && !draft?.attempt) return;
     const guard = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = '';
     };
     window.addEventListener('beforeunload', guard);
     return () => window.removeEventListener('beforeunload', guard);
-  }, [production, dirty, draft?.attempt]);
+  }, [dirty, draft?.attempt]);
   const selectedProduct = data.catalog.find((c) => c.id === values.sku);
   const intakeCapabilities = {
     opening: supportsCapability(selectedProduct, 'lifecycle.opening', profileEnabled),
     expiry: supportsCapability(selectedProduct, 'lifecycle.expiry', profileEnabled),
     contents: supportsCapability(selectedProduct, 'contents', profileEnabled),
   };
-  const physicalMove = moving;
   const core = action.kind === 'consume' || moving;
   const currentAmount = item && attr(item, 'contents')?.remaining;
   const amountError =
@@ -327,7 +312,7 @@ export function ActionSheet({
       (!catalog || !ancestors(c.id, data.catalog).some((p) => p.id === catalog.id)),
   );
   const selectParent = (isCatalog = false) => (
-    <FormField label={isCatalog ? '所属分类' : '存放位置'}>
+    <Field label={isCatalog ? '所属分类' : '存放位置'}>
       <TreeSelect
         value={values.parent ?? ''}
         onChange={(value) => set('parent', value ?? '')}
@@ -343,7 +328,7 @@ export function ActionSheet({
           })),
         ]}
       />
-    </FormField>
+    </Field>
   );
   function command(): Attempt {
     if (!draft) throw new Error('正在恢复草稿');
@@ -354,10 +339,9 @@ export function ActionSheet({
     switch (action.kind) {
       case 'intake': {
         if (
-          production &&
-          ((values.opening && !intakeCapabilities.opening) ||
-            (values.expiry && !intakeCapabilities.expiry) ||
-            (values.quantity && !intakeCapabilities.contents))
+          (values.opening && !intakeCapabilities.opening) ||
+          (values.expiry && !intakeCapabilities.expiry) ||
+          (values.quantity && !intakeCapabilities.contents)
         )
           throw new Error('所选商品不支持草稿中的可选资料，请重新核对商品能力。');
         operation = 'commit_intake';
@@ -710,10 +694,6 @@ export function ActionSheet({
       }
       return;
     }
-    if (physicalMove && !workbench && !review && !draft.attempt && !draft.result) {
-      if (!moveError) setReview(true);
-      return;
-    }
     void submit();
   }
   const context = (
@@ -743,9 +723,13 @@ export function ActionSheet({
   );
   if (!draft)
     return (
-      <Drawer context={context} title={titles[action.kind] ?? '编辑'} onClose={requestClose}>
+      <ProductionDrawer
+        context={context}
+        title={titles[action.kind] ?? '编辑'}
+        onClose={requestClose}
+      >
         <p role="status">{error || '正在恢复草稿…'}</p>
-      </Drawer>
+      </ProductionDrawer>
     );
   let preview = '';
   try {
@@ -758,25 +742,21 @@ export function ActionSheet({
     /* Invalid input is handled on submit. */
   }
   return (
-    <Drawer
+    <ProductionDrawer
       context={
-        production ? (
-          <section className={writeStyles.context}>
-            <h3>
-              {item
-                ? itemTitle(item, data)
-                : (catalog?.name ?? (moving ? `${movingItems.length} 件物品` : '添加到家庭库存'))}
-            </h3>
-            {item && (
-              <>
-                <p>{fullPath(item.parent_id, data)}</p>
-                <p>{remaining(item)}</p>
-              </>
-            )}
-          </section>
-        ) : (
-          context
-        )
+        <section className={writeStyles.context}>
+          <h3>
+            {item
+              ? itemTitle(item, data)
+              : (catalog?.name ?? (moving ? `${movingItems.length} 件物品` : '添加到家庭库存'))}
+          </h3>
+          {item && (
+            <>
+              <p>{fullPath(item.parent_id, data)}</p>
+              <p>{remaining(item)}</p>
+            </>
+          )}
+        </section>
       }
       title={
         moving
@@ -817,13 +797,13 @@ export function ActionSheet({
           <>
             <Notice>当前离线或连接不可用。输入已保留，恢复联网后请手动提交。</Notice>
             {online && stale && !draft.result && (
-              <Button
+              <WriteButton
                 htmlType="button"
                 onClick={() => void refresh().catch(() => setError('连接仍不可用，输入已保留。'))}
                 type="default"
               >
                 重新读取库存
-              </Button>
+              </WriteButton>
             )}
           </>
         )}
@@ -858,7 +838,7 @@ export function ActionSheet({
             hidden={review && action.kind === 'intake'}
             className="stack"
           >
-            {production && action.kind === 'consume' && (
+            {action.kind === 'consume' && (
               <ConsumeSheet
                 values={values}
                 onChange={set}
@@ -867,7 +847,7 @@ export function ActionSheet({
                 preview={preview}
               />
             )}
-            {production && action.kind === 'move' && (
+            {action.kind === 'move' && (
               <MoveSheet
                 values={values}
                 onChange={set}
@@ -897,7 +877,7 @@ export function ActionSheet({
                 error={moveError}
               />
             )}
-            {production && action.kind === 'edit' && item && (
+            {action.kind === 'edit' && item && (
               <EditSheet
                 values={values}
                 onChange={set}
@@ -910,8 +890,8 @@ export function ActionSheet({
                 )}
               />
             )}
-            {production && action.kind === 'note' && <NoteSheet values={values} onChange={set} />}
-            {production && action.kind === 'intake' && (
+            {action.kind === 'note' && <NoteSheet values={values} onChange={set} />}
+            {action.kind === 'intake' && (
               <IntakeSheet
                 values={values}
                 onChange={set}
@@ -926,156 +906,19 @@ export function ActionSheet({
                 }))}
               />
             )}
-            {!production && action.kind === 'intake' && (
-              <>
-                <FormField label="选择商品">
-                  <Select
-                    showSearch={{
-                      filterOption: (input, option) =>
-                        (option?.searchText ?? '').includes(
-                          input.normalize('NFKC').trim().toLocaleLowerCase(),
-                        ),
-                    }}
-                    placeholder="搜索名称、品牌、规格或条码"
-                    optionRender={(option) => (
-                      <div className="ac-product-option">
-                        <span>{option.label}</span>
-                        {option.data.details && <small>{option.data.details}</small>}
-                      </div>
-                    )}
-                    notFoundContent="没有匹配商品，可创建新商品"
-                    value={values.sku}
-                    onChange={(e) => set('sku', e)}
-                    options={[
-                      { value: '', label: '请选择已有商品', details: '', searchText: '' },
-                      ...productOptions,
-                    ]}
-                  />
-                </FormField>
-                <Button
-                  htmlType="button"
-                  onClick={() => set('newProduct', values.newProduct === 'true' ? 'false' : 'true')}
-                  type="default"
-                >
-                  {values.newProduct === 'true' ? '改用已有商品' : '创建新商品'}
-                </Button>
-                {values.newProduct === 'true' && (
-                  <>
-                    <Notice>
-                      新商品先保留为草稿，提交时与实物一起保存。此分类需要已有确认规范。
-                    </Notice>
-                    <FormField label="新商品名称">
-                      <Input
-                        required
-                        value={values.productName ?? ''}
-                        onChange={(e) => set('productName', e.target.value)}
-                      />
-                    </FormField>
-                    <FormField label="商品分类">
-                      <Select
-                        value={values.productParent}
-                        onChange={(v) => set('productParent', v)}
-                        options={categories.map((c) => ({ value: c.id, label: c.name }))}
-                      />
-                    </FormField>
-                    <FormField label="归类依据">
-                      <Input
-                        required
-                        value={values.classificationReason ?? ''}
-                        onChange={(e) => set('classificationReason', e.target.value)}
-                        placeholder="说明与已确认分类含义的关系"
-                      />
-                    </FormField>
-                  </>
-                )}
-                <FormField label="入库件数" hint="每件实物都有独立身份；以下属性仅应用于这次入库。">
-                  <DecimalInput
-                    min="1"
-                    max="100"
-                    step="1"
-                    required
-                    value={values.count}
-                    onChange={(value) => set('count', value)}
-                  />
-                </FormField>
-                {selectParent()}
-                <details
-                  className="stash-optional"
-                  open={!!(values.opening || values.expiry || values.quantity) || undefined}
-                >
-                  <summary>补充日期、开封与余量（可选）</summary>
-                  <div className="stack">
-                    <FormField label="开封状态">
-                      <Select
-                        value={values.opening}
-                        onChange={(e) => set('opening', e)}
-                        options={[
-                          { value: '', label: '\u672A\u8BB0\u5F55' },
-                          { value: 'SEALED', label: '\u672A\u5F00\u5C01' },
-                          { value: 'OPENED', label: '\u5DF2\u5F00\u5C01' },
-                        ]}
-                      />
-                    </FormField>
-                    <FormField label="日期类型">
-                      <Select
-                        value={values.expiry_kind ?? ''}
-                        onChange={(v) => set('expiry_kind', v)}
-                        options={[
-                          { value: '', label: '未记录类型' },
-                          { value: 'ESTIMATED', label: '计划吃完（自行设定）' },
-                          { value: 'USE_BY', label: '保质期（原包装）' },
-                          { value: 'BEST_BEFORE', label: '最佳食用期（原包装）' },
-                        ]}
-                      />
-                    </FormField>
-                    <FormField
-                      label={values.expiry_kind === 'ESTIMATED' ? '计划吃完日期' : '到期日期'}
-                    >
-                      <CalendarInput
-                        value={values.expiry}
-                        onChange={(value) => set('expiry', value)}
-                      />
-                    </FormField>
-                    <FormField
-                      label="每件剩余量"
-                      hint="可选。请填写已知数量，不会自动按包装规格填满。"
-                    >
-                      <span className="measurement">
-                        <DecimalInput
-                          value={values.quantity}
-                          onChange={(value) => set('quantity', value)}
-                          placeholder="未记录"
-                        />
-                        <Select
-                          aria-label="每件剩余量单位"
-                          value={values.unit}
-                          onChange={(e) => set('unit', e)}
-                          options={[
-                            ...(['mL', 'g', 'count', 'percent'].map((u) => ({
-                              value: u,
-                              label: label(u),
-                            })) ?? []),
-                          ]}
-                        />
-                      </span>
-                    </FormField>
-                  </div>
-                </details>
-              </>
-            )}
             {['place', 'catalog', 'rename'].includes(action.kind) && (
-              <FormField label="名称">
+              <Field label="名称">
                 <Input
                   required={action.kind !== 'rename' || !item}
                   maxLength={500}
                   value={values.name}
                   onChange={(e) => set('name', e.target.value)}
                 />
-              </FormField>
+              </Field>
             )}
             {action.kind === 'catalog' && (
               <>
-                <FormField label="目录类型">
+                <Field label="目录类型">
                   <Select
                     value={values.kind}
                     onChange={(e) => set('kind', e)}
@@ -1086,102 +929,20 @@ export function ActionSheet({
                         : []),
                     ]}
                   />
-                </FormField>
+                </Field>
                 {selectParent(true)}
               </>
             )}
             {action.kind === 'place' && selectParent()}
-            {!production && action.kind === 'edit' && item && (
-              <>
-                <FormField label="名称" hint="留空时使用商品名称。">
-                  <Input
-                    maxLength={500}
-                    value={values.name}
-                    placeholder={itemName(item, data)}
-                    onChange={(e) => set('name', e.target.value)}
-                  />
-                </FormField>
-                <FormField label="规格" hint="同款商品共有资料。在商品目录中编辑。">
-                  <Input
-                    readOnly
-                    value={
-                      specification(data.catalog.find((c) => c.id === item.catalog_node_id)) ||
-                      '未记录'
-                    }
-                  />
-                </FormField>
-                <a href={`/catalog/${item.catalog_node_id}`}>编辑商品共有资料 ›</a>
-                <FormField label="购入日期">
-                  <CalendarInput
-                    value={values.acquired_on}
-                    onChange={(value) => set('acquired_on', value)}
-                  />
-                </FormField>
-                <FormField label="备注">
-                  <Input.TextArea
-                    rows={4}
-                    maxLength={100000}
-                    value={values.body}
-                    onChange={(e) => set('body', e.target.value)}
-                  />
-                </FormField>
-              </>
-            )}
-            {!production &&
-              action.kind === 'move' &&
-              (moving ? (
-                <WorkbenchMovePicker
-                  items={movingItems}
-                  value={values.parent ?? ''}
-                  onChange={(value: string) => {
-                    set('parent', value);
-                    set('destinationChosen', 'true');
-                  }}
-                />
-              ) : (
-                selectParent(!item)
-              ))}
             {action.kind === 'open' && (
-              <FormField label="开封时间" hint="可选，仅填写你确认的时间；留空会保留为未记录。">
+              <Field label="开封时间" hint="可选，仅填写你确认的时间；留空会保留为未记录。">
                 <CalendarInput
                   withTime
                   value={values.opened_at}
                   onChange={(value) => set('opened_at', value)}
                 />
-              </FormField>
+              </Field>
             )}
-            {!production && action.kind === 'consume' && (
-              <>
-                <FormField
-                  label="本次消耗量"
-                  error={values.amount ? amountError : undefined}
-                  hint={`${currentAmount ? label(currentAmount.unit) : ''} · 应大于 0，且不超过当前剩余量`}
-                >
-                  <Input
-                    required
-                    inputMode="decimal"
-                    maxLength={100}
-                    pattern="(0|[1-9][0-9]*)(\.[0-9]+)?"
-                    value={values.amount}
-                    onChange={(e) => set('amount', e.target.value)}
-                  />
-                </FormField>
-              </>
-            )}
-            {!production &&
-              (action.kind === 'consume' || (action.kind === 'intake' && !!values.quantity)) && (
-                <FormField label="数量依据">
-                  <Select
-                    value={values.accuracy}
-                    onChange={(e) => set('accuracy', e)}
-                    options={[
-                      { value: '', label: '\u672A\u8BB0\u5F55' },
-                      { value: 'ESTIMATED', label: '\u4F30\u8BA1\u503C' },
-                      { value: 'MEASURED', label: '\u5B9E\u6D4B\u503C' },
-                    ]}
-                  />
-                </FormField>
-              )}
             {action.kind === 'finish' && (
               <Notice>
                 将所选 {action.ids?.split(',').filter(Boolean).length ?? 1}{' '}
@@ -1198,14 +959,11 @@ export function ActionSheet({
                 </ul>
               </Notice>
             )}
-            {['attributes', 'correct'].includes(action.kind) &&
-              (production ? (
-                <AttributeEditor fields={fields} values={values} onChange={set} />
-              ) : (
-                <AttributeFields fields={fields} values={values} onChange={set} />
-              ))}
+            {['attributes', 'correct'].includes(action.kind) && (
+              <AttributeEditor fields={fields} values={values} onChange={set} />
+            )}
             {action.kind === 'correct' && (
-              <FormField label="纠错原因">
+              <Field label="纠错原因">
                 <Input.TextArea
                   required
                   maxLength={500}
@@ -1213,65 +971,10 @@ export function ActionSheet({
                   onChange={(e) => set('reason', e.target.value)}
                   placeholder="例如：上次估计有误，重新测量后更正"
                 />
-              </FormField>
-            )}
-            {!production && action.kind === 'note' && (
-              <>
-                <FormField label="笔记标题">
-                  <Input
-                    maxLength={500}
-                    value={values.title}
-                    onChange={(e) => set('title', e.target.value)}
-                  />
-                </FormField>
-                <FormField label="笔记内容">
-                  <Input.TextArea
-                    required
-                    maxLength={100000}
-                    rows={6}
-                    value={values.body}
-                    onChange={(e) => set('body', e.target.value)}
-                  />
-                </FormField>
-              </>
+              </Field>
             )}
           </fieldset>
         </Form>
-        {!production && preview && (
-          <section className="consume-preview">
-            <p>使用后剩余</p>
-            <p className="quantity">剩余 {preview}</p>
-            {currentAmount && new Decimal(currentAmount.value).eq(values.amount) && (
-              <small>确认后这件实物将标记为已用完。</small>
-            )}
-          </section>
-        )}
-        {!production && moving && (
-          <section className="wb-move-confirmation">
-            <p>
-              目标位置 ·{' '}
-              {values.destinationChosen !== 'true'
-                ? '尚未选择'
-                : values.parent
-                  ? fullPath(values.parent, data)
-                  : '未指定位置'}
-            </p>
-            {values.destinationChosen === 'true' && (
-              <p>
-                移入后共{' '}
-                {data.items.filter(
-                  (i) =>
-                    !isContainer(i) &&
-                    !isTerminal(i) &&
-                    (i.parent_id ?? '') === values.parent &&
-                    !moveIds.includes(i.id),
-                ).length + movingItems.filter((i) => !isContainer(i)).length}{' '}
-                件物品（当前层）
-              </p>
-            )}
-            {moveError && <small>{moveError}</small>}
-          </section>
-        )}
         {review && action.kind === 'intake' && (
           <section
             ref={reviewRef}
@@ -1325,20 +1028,22 @@ export function ActionSheet({
               ]}
             />
             {!draft.attempt && !draft.result && (
-              <Button
+              <WriteButton
                 htmlType="button"
                 disabled={busy}
                 onClick={() => {
                   setReview(false);
                   requestAnimationFrame(() =>
                     document
-                      .querySelector<HTMLInputElement>('.action-drawer [aria-label="选择商品"]')
+                      .querySelector<HTMLInputElement>(
+                        '.production-write-sheet [aria-label="选择商品"]',
+                      )
                       ?.focus(),
                   );
                 }}
               >
                 返回修改
-              </Button>
+              </WriteButton>
             )}
           </section>
         )}
@@ -1366,7 +1071,7 @@ export function ActionSheet({
                       .join('；')}
                   </p>
                   {action.kind === 'intake' && candidate.kind === 'SKU' && (
-                    <Button
+                    <WriteButton
                       htmlType="button"
                       onClick={() => {
                         setDraft((d) =>
@@ -1386,7 +1091,7 @@ export function ActionSheet({
                       }}
                     >
                       使用这个已有商品
-                    </Button>
+                    </WriteButton>
                   )}
                 </div>
               ))}
@@ -1411,16 +1116,6 @@ export function ActionSheet({
                     <dd>{fullPath(i.parent_id, data)}</dd>
                   </div>
                 ))}
-              {!production && action.kind === 'edit' && item && (
-                <div>
-                  <dt>最新资料</dt>
-                  <dd>
-                    {itemName(item, data)} · {itemStatus(item)} ·{' '}
-                    {attr(item, 'lifecycle')?.acquisition?.acquired_on || '日期未记录'}
-                    <p>{data.notes.find((n) => n.id === action.note)?.body || '备注未记录'}</p>
-                  </dd>
-                </div>
-              )}
               {target &&
                 fields.map((f) => {
                   const latest = fieldValues(sourceValues(), fields);
@@ -1454,7 +1149,7 @@ export function ActionSheet({
                 </div>
               )}
             </dl>
-            <Button
+            <WriteButton
               htmlType="button"
               disabled={!online || stale}
               onClick={() => {
@@ -1479,11 +1174,11 @@ export function ActionSheet({
               type="default"
             >
               已核对，保留我的输入
-            </Button>
+            </WriteButton>
           </section>
         )}
-        <div className={production ? writeStyles.footer : 'ac-form-footer'}>
-          <Button
+        <div className={writeStyles.footer}>
+          <WriteButton
             htmlType={session.host === 'mcp' ? 'button' : 'submit'}
             onClick={
               session.host === 'mcp'
@@ -1527,13 +1222,13 @@ export function ActionSheet({
                           : action.kind === 'edit'
                             ? '保存修改'
                             : '保存'}
-          </Button>
-          <Button htmlType="button" disabled={busy} onClick={requestClose} type="default">
+          </WriteButton>
+          <WriteButton htmlType="button" disabled={busy} onClick={requestClose} type="default">
             取消
-          </Button>
+          </WriteButton>
         </div>
       </form>
-    </Drawer>
+    </ProductionDrawer>
   );
 }
 
@@ -1543,7 +1238,13 @@ function ProductionDrawer({
   children,
   onClose,
   busy,
-}: import('react').ComponentProps<typeof ActionDrawer>) {
+}: {
+  title: string;
+  context?: import('react').ReactNode;
+  children: import('react').ReactNode;
+  onClose: () => void;
+  busy?: boolean;
+}) {
   return (
     <Sheet
       title={title}

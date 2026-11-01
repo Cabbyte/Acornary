@@ -242,7 +242,6 @@ function WorkspaceContent() {
         <ActionSheet
           key={JSON.stringify(action)}
           action={action}
-          production={true}
           onClose={close}
           onCreateProduct={() => open({ kind: 'catalog', from: 'intake' })}
           onSaved={(result) => {

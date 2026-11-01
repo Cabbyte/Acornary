@@ -2,13 +2,13 @@ import { Button, Skeleton } from 'antd';
 import { embeddedRuntime } from './runtime';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { InventorySnapshot } from '../../../../packages/contracts/src/web';
+import type { SnapshotV2 } from '../../../../packages/contracts/src/read-v2';
 import { ApiError, snapshot } from './api';
 import { persist, stored } from './storage';
 import { useSession } from './session';
 import { Notice } from '../ui/components';
 const Context = createContext<{
-  data: InventorySnapshot;
+  data: SnapshotV2;
   refresh: () => Promise<void>;
   stale: boolean;
   cacheWarning: string;
@@ -19,7 +19,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   const key = session.cache_key!;
   const [cached, setCached] = useState<{
     key: string;
-    data: InventorySnapshot;
+    data: SnapshotV2;
   }>();
   const [cacheWarning, setCacheWarning] = useState('');
   const q = useQuery({
@@ -31,9 +31,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   });
   useEffect(() => {
     let cancelled = false;
-    void stored<InventorySnapshot>(`${key}:snapshot`)
+    void stored<SnapshotV2>(`${key}:snapshot`)
       .then((data) => {
-        if (!cancelled) setCached(data ? { key, data } : undefined);
+        if (!cancelled) setCached(data?.protocol === 2 ? { key, data } : undefined);
       })
       .catch(() => setCacheWarning('本地缓存不可用，请保持联网。'));
     return () => {

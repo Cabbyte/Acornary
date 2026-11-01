@@ -1,71 +1,118 @@
 import { z } from 'zod';
 import { entityId } from './ids.js';
-import { templates, schemas, reads, type Operation } from './index.js';
-import {
-  productGroups,
-  inventoryFilterSchema,
-  type InventoryData,
-  type InventorySnapshot,
-} from './web.js';
+import { schemas, reads, type Operation } from './index.js';
+import type { SnapshotV2 } from './read-v2.js';
 
+const capability = z.enum([
+  'lifecycle.expiry',
+  'lifecycle.opening',
+  'contents',
+  'stock',
+  'asset',
+  'custody',
+  'service',
+  'deadline',
+  'clothing',
+  'wardrobe',
+  'container',
+  'usage',
+  'transport',
+]);
+const profile = z.enum(['CONSUMABLE', 'DURABLE', 'WEARABLE', 'SPACE', 'MISC']).nullable();
 const attribute = z.object({
-  // v2 templates are open-ended; unknown bindings are preserved by the UI adapter.
   template_id: z.string().min(1),
   template_version: z.number().int().positive(),
   values: z.record(z.string(), z.unknown()),
+  status: z.enum(['KNOWN', 'UNKNOWN', 'RETIRED']),
 });
 const record = {
   id: z.union([entityId('item'), entityId('catalog_node')]),
   parent_id: z.union([entityId('item'), entityId('catalog_node')]).nullable(),
   revision: z.number().int().positive(),
   attributes: z.array(attribute),
+  effective_capabilities: z.array(capability),
+  record_state: z.enum(['VALID', 'VOID']),
+  voided_at: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  redacted_paths: z.array(z.string()),
 };
+const dateFact = z.object({
+  key: z.string(),
+  source: z.enum(['LIFECYCLE', 'DEADLINE']),
+  kind: z.enum(['EXPIRY', 'WARRANTY_END', 'SERVICE_DUE', 'RETURN_BY', 'RENEWAL', 'REORDER_BY']),
+  date_kind: z.enum(['BEST_BEFORE', 'USE_BY', 'ESTIMATED']).optional(),
+  due_on: z.string(),
+  basis: z.string().nullable(),
+  state: z.enum(['UPCOMING', 'DUE', 'OVERDUE', 'COMPLETED', 'UNKNOWN']),
+  completed_on: z.string().nullable(),
+  label: z.string(),
+});
 const snapshot = z
   .object({
-    household: z.object({
-      id: z.string().min(1),
-      name: z.string(),
-      timezone: z.string().optional(),
-    }),
-    container_catalog_id: z.string().optional(),
-    catalog: z.array(z.object({ ...record, kind: z.enum(['GROUP', 'SKU']), name: z.string() })),
+    protocol: z.literal(2),
+    household: z.object({ id: z.string().min(1), name: z.string(), timezone: z.string() }),
+    container_catalog_id: z.string().nullable(),
+    as_of_change_id: z.string(),
+    server_time: z.string(),
+    catalog: z.array(
+      z.object({
+        ...record,
+        kind: z.enum(['GROUP', 'SKU']),
+        name: z.string(),
+        profile,
+        capabilities: z.array(capability).nullable(),
+        one_off: z.boolean(),
+      }),
+    ),
     items: z.array(
       z.object({
         ...record,
         catalog_node_id: entityId('catalog_node'),
         display_name: z.string().nullable(),
-        created_at: z.string(),
+        note_count: z.number().int().nonnegative(),
+        attachment_count: z.number().int().nonnegative(),
+        next_date: dateFact.nullable(),
+        split: z
+          .object({
+            split_id: z.string(),
+            source_item_id: z.string(),
+            child_item_ids: z.array(z.string()),
+            count: z.number().int(),
+            created_at: z.string(),
+          })
+          .nullable(),
       }),
     ),
-    // v2 snapshots omit note bodies; keep the field optional for the v1 transition.
-    notes: z
-      .array(
-        z.object({
-          id: entityId('note'),
-          item_id: entityId('item'),
-          title: z.string().nullable(),
-          body: z.string(),
-          updated_at: z.string(),
-        }),
-      )
-      .optional(),
-    // v2 snapshots carry server-computed groups; v1 derives them for the old UI.
-    groups: z.array(z.any()).optional(),
+    groups: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        profile,
+        count: z.number(),
+        current_count: z.number(),
+        opened: z.number(),
+        sealed: z.number(),
+        unknown_opening: z.number(),
+        unknown_lifecycle: z.number(),
+        locations: z.number(),
+        totals: z.array(
+          z.object({
+            unit: z.string(),
+            value: z.string(),
+            estimated: z.boolean(),
+            unknown_accuracy: z.boolean(),
+          }),
+        ),
+        unknown_quantity: z.number(),
+        next_date: dateFact.nullable(),
+        overdue_count: z.number(),
+        low_stock: z.boolean().nullable(),
+      }),
+    ),
     cached_at: z.string(),
   })
-  .transform((data): InventorySnapshot => {
-    const notes = data.notes ?? [];
-    const container_catalog_id = data.container_catalog_id ?? '';
-    const inventory = { ...data, notes, container_catalog_id } as unknown as InventoryData;
-    const normalized = {
-      ...data,
-      container_catalog_id,
-      notes,
-      groups: data.groups ?? productGroups(inventory, inventoryFilterSchema.parse({})),
-    };
-    // New templates are forward-compatible at runtime; legacy UI only reads known keys.
-    return normalized as unknown as InventorySnapshot;
-  });
+  .transform((data): SnapshotV2 => data);
 
 export const pluginEnvelopeSchema = z
   .object({

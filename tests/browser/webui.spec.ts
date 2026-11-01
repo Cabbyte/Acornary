@@ -378,32 +378,36 @@ test('Ant Design consumption validates inline and moving requires a separate pat
   for (const value of ['0', '-1', '1001', 'Infinity', 'NaN']) {
     await page.getByLabel('本次消耗量', { exact: true }).fill(value);
     await expect(page.getByRole('button', { name: '确认记录消耗', exact: true })).toBeDisabled();
-    await expect(page.locator('.consume-preview')).toHaveCount(0);
+    await expect(
+      page.locator('section[aria-live="polite"]').filter({ hasText: '使用后剩余' }),
+    ).toContainText('填写消耗量后预览');
     await expect(page.getByLabel('本次消耗量', { exact: true })).toHaveAttribute(
       'aria-invalid',
       'true',
     );
   }
   await page.getByLabel('本次消耗量', { exact: true }).fill('200');
-  await expect(page.locator('.consume-preview')).toContainText('800 mL');
+  await expect(
+    page.locator('section[aria-live="polite"]').filter({ hasText: '使用后剩余' }),
+  ).toContainText('800 mL');
   for (const width of [390, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     await page.screenshot({ path: `output/playwright/soft-consume-${width}.png`, fullPage: true });
   }
   await page.getByRole('button', { name: '取消', exact: true }).click();
+  await page.getByRole('button', { name: '保留草稿并关闭', exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: '移动位置', exact: true }).click();
   await expect(page.getByRole('button', { name: '确认移动 1 件' })).toBeDisabled();
-  await page.getByRole('searchbox', { name: '搜索目标位置' }).fill('验收厨房');
-  await page
-    .getByRole('tree', { name: '目标位置' })
-    .getByText(/^全部位置 \/ 验收厨房 /)
-    .click();
+  await page.getByRole('combobox', { name: '目标位置', exact: true }).click();
+  await page.getByText('全部位置 / 验收厨房', { exact: true }).click();
   let writes = 0;
   page.on('request', (request) => {
     if (request.url().includes('/api/write/move_item')) writes++;
   });
-  await expect(page.locator('.wb-move-confirmation')).toContainText('全部位置 / 验收厨房');
+  await expect(
+    page.locator('section[aria-live="polite"]').filter({ hasText: '确认移至' }),
+  ).toContainText('全部位置 / 验收厨房');
   expect(writes).toBe(0);
   await page.screenshot({ path: 'output/playwright/workbench-move-confirm-390.png' });
   await page.getByRole('button', { name: '确认移动 1 件', exact: true }).click();

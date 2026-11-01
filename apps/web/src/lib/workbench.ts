@@ -89,14 +89,14 @@ export function workbenchItems(
         a.id.localeCompare(b.id),
     );
 }
-export function moveTargets(data: InventoryData, selected: ItemRecord[]) {
+export function moveTargets(data: Pick<InventoryData, 'items'>, selected: ItemRecord[]) {
   const ids = new Set(selected.map((i) => i.id));
   return data.items.filter(
     (i) =>
       isContainer(i) && !isTerminal(i) && !ancestors(i.id, data.items).some((a) => ids.has(a.id)),
   );
 }
-export function moveValidation(data: InventoryData, selected: ItemRecord[], parent: string) {
+export function moveValidation(data: Pick<InventoryData, 'items'>, selected: ItemRecord[], parent: string) {
   if (!selected.length || selected.length > 100) return '请选择 1–100 件物品。';
   if (parent && !moveTargets(data, selected).some((i) => i.id === parent))
     return '请选择可用的目标位置。';
