@@ -58,7 +58,7 @@
 5. 移除 `lifecycle.availability` 合同/UI/编辑路径；更新查询摘要。
 6. `EDIT` 只做历史盘点，不删事件；如需统一，另立迁移并保留原文。
 
-### Phase 4 — 垃圾与收口（核心完成；前端 cache 类型/死分支为 follow-up）
+### Phase 4 — 垃圾与收口（已完成）
 1. 删除无引用文件、缓存、临时脚本。
 2. 更新 docs/repair/README、frontend handoff、legacy 说明。
 3. 空库迁移 001–024、全量测试、nested batches、`npm run build`、浏览器冒烟。
@@ -101,3 +101,13 @@
   - `InventorySnapshot`/plugin transform 的旧本地缓存类型；
   - `ui/forms.tsx` 中 `production=false` 的不可达历史分支；
   - `hardware/` 未跟踪资料保留。
+
+
+## 6. 最终收口（2026-11-01）
+
+- `025_drop_fingerprint_format.sql`：删除旧 `fingerprint_format`、`legacyInput` 和历史 replay fallback。
+- 前端 v1 snapshot/cache 兼容和 `InventorySnapshot` 已删除；插件统一 SnapshotV2。
+- `ui/forms.tsx` 的 `production=false` 死分支、旧 ActionDrawer/LegacyField/WorkbenchMovePicker 已删除（约 461 行）。
+- 最终合并：`87d4c9b`（`codex/data-model-v2`）。
+- 最终验收：全仓 **199 passed / 2 todo / 0 failed**（28 文件）；空库迁移 001–025 通过；tsc 根+Web、Web/插件构建通过。
+- 仅剩未跟踪的 `hardware/` 打印资料，未删除；浏览器 Playwright 未在本轮重跑。
