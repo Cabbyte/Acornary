@@ -37,28 +37,15 @@ const statuses: Record<string, number> = {
   BARCODE_CONFLICT: 400,
   TEMPLATE_IN_USE: 400,
   UNSUPPORTED_WRITE_ISOLATION: 400,
-  PROTOCOL_VERSION_UNSUPPORTED: 409,
-  INVALID_CURSOR: 400,
-  CURSOR_STALE: 409,
-  ATTACHMENT_TOO_LARGE: 413,
-  ATTACHMENT_QUOTA_EXCEEDED: 409,
-  ATTACHMENT_TYPE_UNSUPPORTED: 400,
-  REFERENCE_INVALID: 400,
-  STATE_CONFLICT: 409,
-  SYNC_RESET_REQUIRED: 409,
-  REVEAL_AUDIT_REQUIRED: 400,
-  SPLIT_NOT_CONSERVED: 400,
 };
 export const domainErrorStatus = (code: string): number | undefined =>
   Object.hasOwn(statuses, code) ? statuses[code] : undefined;
 
 export function errorRecovery(code: string) {
-  if (['REVISION_CONFLICT', 'STATE_CONFLICT', 'SYNC_RESET_REQUIRED', 'CURSOR_STALE'].includes(code))
+  if (['REVISION_CONFLICT', 'STATE_CONFLICT', 'SYNC_RESET_REQUIRED', 'INVALID_CURSOR'].includes(code))
     return 'REREAD_AND_REVIEW';
-  if (code === 'IDEMPOTENCY_CONFLICT') return 'RECOVER_ORIGINAL_REQUEST';
-  if (code === 'CURSOR_STALE') return 'RECOVER_ORIGINAL_REQUEST';
-  if (['INVALID_CURSOR', 'STATE_CONFLICT', 'SYNC_RESET_REQUIRED'].includes(code))
-    return 'REREAD_AND_REVIEW';
+  if (['IDEMPOTENCY_CONFLICT', 'CURSOR_STALE'].includes(code))
+    return 'RECOVER_ORIGINAL_REQUEST';
   if (['UNAUTHORIZED', 'FORBIDDEN', 'SESSION_CHANGED'].includes(code)) return 'REAUTHORIZE';
   return domainErrorStatus(code) ? 'FIX_REQUEST' : 'RETRY_SAME_REQUEST';
 }

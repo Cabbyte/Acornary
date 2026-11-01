@@ -13,9 +13,10 @@ export const addNoteV2 = z.object({
   target: z.object({ kind: z.literal('ITEM'), id: entityId('item') }),
 });
 export const updateNoteV2 = z.object({ ...envelope, note_id: entityId('note') });
+const addNoteV1 = z.strictObject({ ...envelope, item_id: entityId('item') });
 /** Both generations are valid persisted attempts; dispatch never rewrites a retry. */
 export function parseWriteCommand(operation: Operation, payload: unknown, notesV2 = false) {
-  if (notesV2 && operation === 'add_note') return addNoteV2.safeParse(payload);
+  if (operation === 'add_note') return (notesV2 ? addNoteV2 : addNoteV1).safeParse(payload);
   if (notesV2 && operation === 'update_note') return updateNoteV2.safeParse(payload);
   return schemas[operation].safeParse(payload);
 }

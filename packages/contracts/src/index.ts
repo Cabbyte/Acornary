@@ -518,5 +518,34 @@ export function parseCommand(name: Operation, raw: unknown): any {
   return input;
 }
 
-export * from './read-v2.js';
+export type {
+  ProtocolVersion,
+  FeatureKey,
+  ConnectionContext,
+  Tone,
+  AttributeBindingV2,
+  CatalogRecordV2,
+  SplitInfoV2,
+  ItemRecordV2,
+  ProductGroupV2,
+  SnapshotV2,
+  ItemQueryV2,
+  DateFilterV2,
+  ContentTotalsV2,
+  ItemQuerySummaryV2,
+  ItemQueryResultV2,
+  CatalogQueryV2,
+  CatalogQueryResultV2,
+  HistoryQueryV2,
+  HistoryEventV2,
+  HistoryResultV2,
+  NoteSummaryV2,
+  NoteV2,
+  AttachmentSummaryV2,
+  ItemDetailV2,
+  TemplateFieldV2,
+  TemplateDefinitionV2,
+  ReferenceV2,
+  WriteResultV2,
+} from './read-v2.js';
 export * as syncContracts from './sync.js';
