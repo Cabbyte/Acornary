@@ -7,7 +7,7 @@ import type { Operation } from '../packages/contracts/src/index.js';
 if (!process.env.DATABASE_URL?.match(/\/acornary_e2e_\d+$/))
   throw new Error('Isolated demo database required.');
 const installation = await initialize();
-const ctx = { ...installation, source: 'WEB_DEMO' };
+const ctx = { ...installation, source: 'TEST' };
 let sequence = 0;
 const call = (name: Operation, input: Record<string, unknown>) =>
   approvedExecute(ctx, name, { idempotency_key: `web-demo-${++sequence}`, ...input });
@@ -109,7 +109,7 @@ try {
     accuracy: 'ESTIMATED',
   });
   await call('add_note', {
-    item_id: first,
+    target: { kind: 'ITEM', id: first },
     expected_revisions: { [first]: 3 },
     title: '先用这一瓶',
     body: '早餐已经用了一半，放在冰箱门边。剩余量是估计值。',

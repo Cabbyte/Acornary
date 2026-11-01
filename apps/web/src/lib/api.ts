@@ -46,6 +46,7 @@ export const messages: Record<string, string> = {
   ATTACHMENT_TOO_LARGE: '文件超过 25 MiB，请压缩后重试。',
   ATTACHMENT_QUOTA_EXCEEDED: '家庭附件空间已满（5 GiB），请先删除旧附件。',
   ATTACHMENT_TYPE_UNSUPPORTED: '只支持 JPEG、PNG、WebP 或 PDF。',
+  ATTACHMENT_TRANSPORT_UNSUPPORTED: '插件无法上传或下载附件，请在松仓网站中使用。',
   REFERENCE_INVALID: '关联的对象不存在或不可用。',
   STATE_CONFLICT: '当前状态不允许此操作，请刷新后重试。',
   SYNC_RESET_REQUIRED: '本地数据需要重新同步，请重新加载。',
