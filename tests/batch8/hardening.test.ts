@@ -78,7 +78,11 @@ async function rejected(fn: (c: any) => Promise<any>, constraint: string, code =
 
 describe('Batch 8 PostgreSQL hardening', () => {
   beforeAll(async () => {
-    if (new URL(process.env.DATABASE_URL!).pathname !== '/acornary_test_w4_hardening')
+    if (
+      !['/acornary_test_w4_hardening', '/acornary_test_w8_mcp'].includes(
+        new URL(process.env.DATABASE_URL!).pathname,
+      )
+    )
       throw new Error('Requires isolated Batch 8 database.');
     root = await mkdtemp(join(tmpdir(), 'acornary-batch8-'));
     process.env.ACORNARY_ATTACHMENT_ROOT = root;
@@ -406,7 +410,8 @@ describe('Batch 8 PostgreSQL hardening', () => {
           params: { name: 'query_items', arguments: {} },
         },
       });
-      expect(mcp.statusCode).toBe(409);
+      // MCP uses its own protocol negotiation; authorization is still required.
+      expect(mcp.statusCode).toBe(401);
       for (const url of [
         '/health',
         '/api/version',

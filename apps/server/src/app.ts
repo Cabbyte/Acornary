@@ -42,7 +42,12 @@ import { execute, type Context } from './service.js';
 import { pool, query } from './db.js';
 import { webSnapshotV2 } from './web.js';
 import { syncState, syncChanges, syncFetch, syncBootstrap } from './sync-api.js';
-import { pluginResource, registerInventoryApp } from './plugin.js';
+import {
+  assertMcpAttachmentTransport,
+  mcpFailure,
+  pluginResource,
+  registerInventoryApp,
+} from './plugin.js';
 import { pluginWriteTool } from '../../../packages/contracts/src/plugin.js';
 import { domainErrorStatus } from '../../../packages/contracts/src/errors.js';
 import { registerTerminal } from './terminal.js';
@@ -229,16 +234,6 @@ export async function buildApp(
     if (
       !negotiation.includes(path) &&
       /^\/api\/(read|write|ui|sync|attachments|debug)(\/|$)/.test(path)
-    )
-      rejectProtocol(req);
-  });
-  app.addHook('preValidation', async (req) => {
-    if (req.url.split('?')[0] !== '/mcp') return;
-    const calls = Array.isArray(req.body) ? req.body : [req.body];
-    if (
-      calls.some((call: any) =>
-        call?.method === 'tools/call' && call.params?.name !== 'get_connection_context',
-      )
     )
       rejectProtocol(req);
   });
@@ -521,8 +516,15 @@ export async function buildApp(
       server.registerTool(
         name,
         {
-          description: descriptions[name],
+          description:
+            descriptions[name] +
+            (name === 'create_attachment_upload' || name === 'complete_attachment_upload'
+              ? ' MCP 不支持附件二进制传输，请在松仓网站上传或下载。'
+              : ''),
           _meta: {
+            ...(name === 'create_attachment_upload' || name === 'complete_attachment_upload'
+              ? { 'acornary/attachmentTransport': 'unsupported' }
+              : {}),
             ...(name === 'propose_catalog_change' ? { ui: { resourceUri: uiResource.uri } } : {}),
             ...(cloud
               ? {
@@ -552,6 +554,7 @@ export async function buildApp(
                 !identity.scopes.has(reads.has(name) ? 'inventory:read' : 'inventory:write'))
             )
               throw new DomainError('FORBIDDEN', 'OAuth scope is required.');
+            assertMcpAttachmentTransport(name);
             const result = await execute({ ...(identity?.ctx ?? ctx), source: 'MCP' }, name, args);
             if (identity)
               app.log.info(
@@ -569,7 +572,7 @@ export async function buildApp(
               _meta: { 'acornary/trace': traceMetadata() },
             };
           } catch (e) {
-            const error = failure(e);
+            const error = mcpFailure(e);
             return {
               isError: true,
               content: [{ type: 'text' as const, text: JSON.stringify({ error }) }],

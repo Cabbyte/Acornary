@@ -105,7 +105,7 @@ async function grant(
 }
 beforeAll(async () => {
   if (
-    !['/acornary_test', '/acornary_test_w6_lifecycle'].includes(
+    !['/acornary_test', '/acornary_test_w6_lifecycle', '/acornary_test_w8_mcp'].includes(
       new URL(process.env.DATABASE_URL!).pathname,
     )
   )

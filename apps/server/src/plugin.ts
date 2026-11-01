@@ -31,6 +31,23 @@ import { execute, type Context } from './service.js';
 import { webSnapshotV2 } from './web.js';
 import { inventoryIcons } from './plugin-icons.js';
 
+// MCP Apps have no authenticated binary channel. Reject before issuing tickets
+// or committing uploads, including attempts through the app-only command tool.
+export function assertMcpAttachmentTransport(operation: string) {
+  if (operation === 'create_attachment_upload' || operation === 'complete_attachment_upload')
+    throw new DomainError(
+      'ATTACHMENT_TRANSPORT_UNSUPPORTED',
+      'MCP Apps cannot upload or download attachment bytes. Use the Acornary website.',
+    );
+}
+
+export function mcpFailure(error: unknown) {
+  const rejected = failure(error);
+  return rejected.code === 'ATTACHMENT_TRANSPORT_UNSUPPORTED'
+    ? { ...rejected, recovery: 'USE_WEB' }
+    : rejected;
+}
+
 export interface PluginIdentity {
   ctx: Context;
   scopes: Set<string>;
@@ -56,10 +73,11 @@ export function pluginScope(current: PluginIdentity, cloud: boolean) {
 export async function pluginResource() {
   const html = await readFile(resolve('apps/web/dist/plugin/index.html'), 'utf8').catch(() => null);
   const hash = createHash('sha256')
+    .update('plugin-envelope:2\n')
     .update(html ?? 'not-built')
     .digest('hex')
     .slice(0, 16);
-  return { html, uri: `ui://acornary/inventory-${hash}.html` };
+  return { html, uri: `ui://acornary/inventory-v2-${hash}.html` };
 }
 export function registerInventoryApp(
   server: McpServer,
@@ -160,10 +178,9 @@ export function registerInventoryApp(
           throw new DomainError('SESSION_CHANGED', 'The UI authorization context has changed.');
         // Compare before entering execute(), including its idempotency replay.
         // This request's authenticated context is fixed; the input cannot replace it.
-        const result = await execute(
-          { ...current.ctx, source: 'MCP_UI' },
-          args.operation,
-          args.input,
+        assertMcpAttachmentTransport(args.operation);
+        const result = pluginWriteResultSchema.parse(
+          await execute({ ...current.ctx, source: 'MCP_UI' }, args.operation, args.input),
         );
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result) }],
@@ -171,7 +188,7 @@ export function registerInventoryApp(
           _meta: { 'acornary/trace': traceMetadata() },
         };
       } catch (error) {
-        const rejected = failure(error);
+        const rejected = mcpFailure(error);
         return {
           isError: true,
           content: [{ type: 'text' as const, text: JSON.stringify({ error: rejected }) }],
@@ -268,7 +285,8 @@ export function registerInventoryApp(
             _meta: {
               'acornary/trace': traceMetadata(),
               [pluginMetaKey]: {
-                version: 1,
+                version: 2,
+                protocol: 2,
                 snapshot,
                 session: {
                   mode: cloud ? 'cloud' : 'local',
@@ -283,7 +301,7 @@ export function registerInventoryApp(
             },
           };
         } catch (error) {
-          const rejected = failure(error);
+          const rejected = mcpFailure(error);
           return {
             isError: true,
             content: [{ type: 'text' as const, text: JSON.stringify({ error: rejected }) }],

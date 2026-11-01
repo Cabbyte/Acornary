@@ -369,7 +369,7 @@ describe('voice intake contracts and atomic writes', () => {
     try {
       await client.connect(
         new StreamableHTTPClientTransport(new URL(`${address}/mcp`), {
-          requestInit: { headers: { Authorization: `Bearer ${token}`, 'X-Acornary-Protocol': '2' } },
+          requestInit: { headers: { Authorization: `Bearer ${token}` } },
         }),
       );
       const tool = (await client.listTools()).tools.find((t) => t.name === 'move_items')!;

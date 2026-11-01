@@ -1,5 +1,6 @@
 import type {
   AttachmentSummaryV2,
+  DateFact,
   ItemDetailV2,
   NoteSummaryV2,
   NoteV2,
@@ -137,6 +138,7 @@ export function adaptItemDetail(
   const catalogNodeId = textValue(detail.catalog_node_id) ?? '';
   // Retired template IDs sit outside the legacy TemplateId union; keep them verbatim.
   const record = {
+    ...detail,
     id,
     parent_id: textValue(detail.parent_id) ?? null,
     catalog_node_id: catalogNodeId,
@@ -156,9 +158,15 @@ export function adaptItemDetail(
   return {
     item,
     pathIds: pathIds(detail.path_ids),
-    dates: reminderToFacts(reminderOf(detail.reminder), snapshot.household.timezone, now),
+    dates: Array.isArray(detail.dates)
+      ? (detail.dates as DateFact[])
+          .map(nextDateFact)
+          .filter((fact): fact is DateFactView => fact !== null)
+      : reminderToFacts(reminderOf(detail.reminder), snapshot.household.timezone, now),
     notes,
-    attachments: [],
-    split: null,
+    attachments: Array.isArray(detail.attachments)
+      ? (detail.attachments as AttachmentSummaryV2[]).map(adaptAttachment)
+      : [],
+    split: splitOf(detail.split),
   };
 }

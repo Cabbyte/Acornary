@@ -64,7 +64,7 @@ describe('Web product interface', () => {
     try {
       await client.connect(
         new StreamableHTTPClientTransport(new URL(`${address}/mcp`), {
-          requestInit: { headers: { Authorization: `Bearer ${'d'.repeat(64)}`, 'X-Acornary-Protocol': '2' } },
+          requestInit: { headers: { Authorization: `Bearer ${'d'.repeat(64)}` } },
         }),
       );
       const view = await client.callTool({ name: 'open_inventory', arguments: {} });
@@ -409,7 +409,7 @@ describe('PostgreSQL domain transactions', () => {
     try {
       expect((await post('/api/read/create_items')).statusCode).toBe(403);
       expect((await app.inject({ url: '/api/read/create_items', headers: { 'x-acornary-protocol': '2' } })).statusCode).toBe(404);
-      expect((await app.inject({ method: 'POST', url: '/mcp', payload: {}, headers: { 'x-acornary-protocol': '2' } })).statusCode).toBe(401);
+      expect((await app.inject({ method: 'POST', url: '/mcp', payload: {} })).statusCode).toBe(401);
       expect((await post('/api/read/query_items', { origin: 'https://evil.example' })).statusCode).toBe(
         403,
       );
@@ -435,7 +435,7 @@ describe('PostgreSQL domain transactions', () => {
     try {
       await client.connect(
         new StreamableHTTPClientTransport(new URL(`${address}/mcp`), {
-          requestInit: { headers: { Authorization: `Bearer ${'b'.repeat(64)}`, 'X-Acornary-Protocol': '2' } },
+          requestInit: { headers: { Authorization: `Bearer ${'b'.repeat(64)}` } },
         }),
       );
       const list = await client.listTools();

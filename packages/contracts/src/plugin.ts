@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { noteTarget, sensitivity } from './notes.js';
 import { entityId } from './ids.js';
 import { schemas, reads, type Operation } from './index.js';
 import type { SnapshotV2 } from './read-v2.js';
@@ -116,7 +117,8 @@ const snapshot = z
 
 export const pluginEnvelopeSchema = z
   .object({
-    version: z.literal(1),
+    version: z.literal(2),
+    protocol: z.literal(2),
     session: z.object({
       mode: z.enum(['local', 'cloud']),
       authenticated: z.literal(true),
@@ -150,7 +152,8 @@ export const pluginWriteSchema = z.strictObject({
   ),
   input: z.record(z.string(), z.unknown()),
 });
-export const pluginWriteResultSchema = z.strictObject({
+// Preserve additional domain receipt fields as commands evolve.
+export const pluginWriteResultSchema = z.looseObject({
   operation_id: entityId('operation'),
   changed: z.boolean(),
   affected_objects: z.array(
@@ -171,7 +174,45 @@ export const pluginWriteResultSchema = z.strictObject({
       }),
     )
     .optional(),
+  children: z
+    .array(
+      z.looseObject({
+        item_id: entityId('item'),
+        revision: z.number().int().positive(),
+      }),
+    )
+    .optional(),
+  split_id: z.string().optional(),
+  split: z
+    .looseObject({
+      split_id: z.string(),
+      source_item_id: entityId('item'),
+      child_item_ids: z.array(entityId('item')),
+      count: z.number().int(),
+      created_at: z.string(),
+    })
+    .nullable()
+    .optional(),
+  source_item_id: entityId('item').optional(),
+  source_revision: z.number().int().positive().optional(),
+  deadline_id: z.string().optional(),
+  deadline: z.record(z.string(), z.unknown()).optional(),
   note_id: entityId('note').optional(),
+  note: z
+    .looseObject({
+      id: entityId('note'),
+      target: noteTarget,
+      title: z.string().nullable().optional(),
+      excerpt: z.string().optional(),
+      created_by: z.string(),
+      created_at: z.string(),
+      updated_by: z.string(),
+      updated_at: z.string(),
+      archived: z.boolean(),
+      sensitivity,
+      redacted_paths: z.array(z.string()),
+    })
+    .optional(),
   proposal_id: z.uuid().optional(),
   receipt: z.record(z.string(), z.unknown()).optional(),
   summary: z.string(),

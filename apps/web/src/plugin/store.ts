@@ -5,7 +5,7 @@ export interface WidgetBridge {
   setWidgetState?: (state: unknown) => void | Promise<void>;
 }
 interface PrivateState {
-  version: 1;
+  version: 2;
   scope: string;
   records: Record<string, unknown>;
   route?: string;
@@ -20,25 +20,29 @@ export class WidgetStore implements RecordStore {
   ) {
     const widget = bridge()?.widgetState as
       { privateContent?: { acornary?: PrivateState } } | undefined;
-    const saved = widget?.privateContent?.acornary;
+    // v1 payloads may contain retired item_id note commands. Discard them
+    // explicitly; the next confirmed host save replaces the old private state.
+    const persisted = widget?.privateContent?.acornary;
+    const saved =
+      (persisted as { version?: number } | undefined)?.version === 1 ? undefined : persisted;
     if (
       saved &&
       (typeof saved.scope !== 'string' ||
         (saved.scope === scope &&
-          (saved.version !== 1 ||
+          (saved.version !== 2 ||
             !saved.records ||
             typeof saved.records !== 'object' ||
             Array.isArray(saved.records))))
     )
       throw new Error('当前组件的草稿状态无法安全恢复，请先核对原操作结果。');
     this.state =
-      saved?.version === 1 &&
+      saved?.version === 2 &&
       saved.scope === scope &&
       saved.records &&
       typeof saved.records === 'object' &&
       !Array.isArray(saved.records)
         ? structuredClone(saved)
-        : { version: 1, scope, records: {} };
+        : { version: 2, scope, records: {} };
   }
   get route() {
     return typeof this.state.route === 'string' &&
