@@ -29,7 +29,7 @@ describe.skipIf(!url)('Batch 1 operations on isolated PostgreSQL 18', () => {
   const snapshot = async () =>
     (
       await c.query(`SELECT idempotency_key,result::text,fingerprint,
-    fingerprint_format,created_at::text FROM operations WHERE idempotency_key < 'legacy-1000'
+    created_at::text FROM operations WHERE idempotency_key < 'legacy-1000'
     ORDER BY household_id,actor_id,idempotency_key`)
     ).rows;
   async function receipt(

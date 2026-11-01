@@ -74,7 +74,6 @@ test('database rows, foreign keys, derived paths, APIs, notes and fixed registry
   await expect(notes.locator('.note')).toContainText('800 mL');
   await expect(notes.locator('script')).toHaveCount(0);
   await expect(page.getByTestId('records-events')).toContainText('NOTE_UPDATE');
-  await expect(page.getByTestId('records-operations')).toContainText('fingerprint_format');
   await page.screenshot({ path: 'output/playwright/database-records.png', fullPage: true });
   await page.getByRole('tab', { name: '派生结果（非存储）', exact: true }).click();
   await expect(page.getByTestId('derived')).toContainText('path_ids');

@@ -38,7 +38,6 @@ import {
   commitIntake,
 } from './intake.js';
 import { currentChangeId } from './change-watermark.js';
-import { legacyInput } from './fingerprint.js';
 import { randomUUID, createHash } from 'node:crypto';
 import { Decimal } from 'decimal.js';
 import {
@@ -576,12 +575,7 @@ async function executeCommand(ctx: Context, name: Operation, raw: unknown): Prom
       ).rows[0];
       if (old) {
         requireFact(
-          old.fingerprint ===
-            (old.fingerprint_format === 'legacy_v1'
-              ? createHash('sha256')
-                  .update(canonical({ name, input: legacyInput(name, input) }))
-                  .digest('hex')
-              : fingerprint),
+          old.fingerprint === fingerprint,
           'IDEMPOTENCY_CONFLICT',
           'Key was used with different parameters.',
         );
