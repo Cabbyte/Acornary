@@ -369,7 +369,7 @@ describe('voice intake contracts and atomic writes', () => {
     try {
       await client.connect(
         new StreamableHTTPClientTransport(new URL(`${address}/mcp`), {
-          requestInit: { headers: { Authorization: `Bearer ${token}` } },
+          requestInit: { headers: { Authorization: `Bearer ${token}`, 'X-Acornary-Protocol': '2' } },
         }),
       );
       const tool = (await client.listTools()).tools.find((t) => t.name === 'move_items')!;
@@ -390,7 +390,7 @@ describe('voice intake contracts and atomic writes', () => {
         const http = await app.inject({
           method: 'POST',
           url: '/api/write/move_item',
-          headers: { host: 'localhost', origin: 'http://localhost', 'x-acornary-request': 'web' },
+          headers: { host: 'localhost', origin: 'http://localhost', 'x-acornary-request': 'web', 'x-acornary-protocol': '2' },
           payload: input,
         });
         expect(http.statusCode).toBe(code === 'REVISION_CONFLICT' ? 409 : 400);

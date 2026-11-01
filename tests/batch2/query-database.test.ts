@@ -9,15 +9,14 @@ const enabled = Boolean(process.env.DATABASE_URL);
 const id = (kind: string) => `${kind}_${randomUUID()}`;
 const binding = (template_id: string, values: any) => ({
   template_id,
-  template_version: 1,
+  template_version: template_id === 'lifecycle' ? 2 : 1,
   values,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 });
 let ctx: Context, sku: string, otherSku: string;
 let items: string[];
-const run = (input: any = {}) =>
-  execute(ctx, 'query_items', { include_terminal: true, ...input });
+const run = (input: any = {}) => execute(ctx, 'query_items', { include_terminal: true, ...input });
 async function item(
   catalog: string,
   attributes: any[],
@@ -81,7 +80,6 @@ describe.skipIf(!enabled)('Batch 2 migrated PostgreSQL queries', () => {
         [
           binding('lifecycle', {
             state: 'ACTIVE',
-            availability: 'AVAILABLE',
             expiry: { date: '2026-12-01', date_kind: 'USE_BY' },
           }),
           binding('contents', { remaining: { value: '1.25', unit: 'g' }, accuracy: 'MEASURED' }),
@@ -92,14 +90,14 @@ describe.skipIf(!enabled)('Batch 2 migrated PostgreSQL queries', () => {
       await item(sku, [binding('contents', { remaining: { value: '60', unit: 'percent' } })]),
       await item(sku, []),
       await item(sku, [
-        binding('lifecycle', { state: 'DISPOSED', availability: 'AVAILABLE' }),
+        binding('lifecycle', { state: 'DISPOSED' }),
         binding('contents', { remaining: { value: '100', unit: 'g' } }),
       ]),
     ];
     await db.query(
       db.pool,
-      `INSERT INTO notes(id,household_id,item_id,body,created_by)
-      VALUES($1,$2,$3,'ＮＯＴＥ　\t牛奶  100%_literal',$4)`,
+      `INSERT INTO notes(id,household_id,target_kind,target_id,body,created_by,updated_by)
+      VALUES($1,$2,'ITEM',$3,'ＮＯＴＥ　\t牛奶  100%_literal',$4,$4)`,
       [id('note'), ctx.household_id, items[0], ctx.actor_id],
     );
   });
@@ -113,7 +111,6 @@ describe.skipIf(!enabled)('Batch 2 migrated PostgreSQL queries', () => {
       matching_count: 5,
       current_count: 4,
       unknown_lifecycle_count: 3,
-      unknown_availability_count: 3,
       content_totals: {
         by_unit: {
           g: { value: '4', measured_count: 1, estimated_count: 0, unknown_accuracy_count: 1 },
@@ -124,12 +121,14 @@ describe.skipIf(!enabled)('Batch 2 migrated PostgreSQL queries', () => {
     });
     expect(r.summary.matching_count).toBe(r.matching_count);
     expect(typeof r.summary.as_of_change_id).toBe('string');
-    const available = await run({
-      attribute_filters: [
-        { template_id: 'lifecycle', path: 'availability', op: 'eq', value: 'AVAILABLE' },
-      ],
-    });
-    expect(available.data.map((r: any) => r.id)).toEqual([items[0]]);
+    await expect(
+      run({
+        attribute_filters: [
+          { template_id: 'lifecycle', path: 'availability', op: 'eq', value: 'AVAILABLE' },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: 'ATTRIBUTE_VALIDATION_FAILED' });
+    expect(r.summary).not.toHaveProperty('unknown_availability_count');
     expect((await execute(ctx, 'query_catalog_nodes', { name: '牛奶' })).matching_count).toBe(0);
     expect(
       (await execute(ctx, 'query_catalog_nodes', { name: '牛奶', include_hidden: true }))
@@ -337,7 +336,7 @@ describe.skipIf(!enabled)('Batch 2 migrated PostgreSQL queries', () => {
     expect(note.data[0].attributes[0]).not.toHaveProperty('created_at');
     const noteCount = await db.query(
       db.pool,
-      'SELECT count(*)::int AS n FROM notes WHERE household_id=$1 AND item_id=$2',
+      `SELECT count(*)::int AS n FROM notes WHERE household_id=$1 AND target_kind='ITEM' AND target_id=$2`,
       [ctx.household_id, note.data[0].id],
     );
     expect(noteCount.rows[0].n).toBe(1);

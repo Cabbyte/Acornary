@@ -121,9 +121,9 @@ describe.skipIf(!process.env.DATABASE_URL)('Batch 7 real PostgreSQL and private 
       after_revision: 2,
     });
     expect(
-      (await query(pool, 'SELECT item_id FROM notes WHERE id=$1', [catalog.note_id])).rows[0]
-        .item_id,
-    ).toBeNull();
+      (await query(pool, 'SELECT target_kind,target_id FROM notes WHERE id=$1', [catalog.note_id]))
+        .rows[0],
+    ).toEqual({ target_kind: 'CATALOG_NODE', target_id: sku });
     const before = (await query(pool, 'SELECT attributes FROM items WHERE id=$1', [item])).rows[0];
     await write('edit_item', {
       item_id: item,
@@ -140,7 +140,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Batch 7 real PostgreSQL and private 
 
   it('MODEL12 same-value writes do not increment revisions; wrong target, stale revision and household fail atomically', async () => {
     const note = await write('add_note', {
-      item_id: item,
+      target: target(),
       body: 'same',
       expected_revisions: { [item]: 1 },
     });
@@ -493,9 +493,10 @@ describe.skipIf(!process.env.DATABASE_URL)('Batch 7 real PostgreSQL and private 
         ...t.headers,
         authorization: 'Bearer test-token',
         origin: 'http://localhost:80',
+        'x-acornary-protocol': '2',
       };
       expect(
-        (await app.inject({ method: 'PUT', url: t.upload_url, headers: t.headers, payload: pdf }))
+        (await app.inject({ method: 'PUT', url: t.upload_url, headers: { ...t.headers, 'x-acornary-protocol': '2' }, payload: pdf }))
           .statusCode,
       ).toBe(401);
       expect(
@@ -513,7 +514,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Batch 7 real PostgreSQL and private 
       ).toBe(200);
       const done = await complete(t);
       const url = '/api/attachments/' + done.attachment.id;
-      expect((await app.inject({ url })).statusCode).toBe(401);
+      expect((await app.inject({ url, headers: { 'x-acornary-protocol': '2' } })).statusCode).toBe(401);
       const response = await app.inject({
         url,
         headers: { authorization: 'Bearer test-token', 'x-acornary-protocol': '2' },

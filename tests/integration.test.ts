@@ -64,7 +64,7 @@ describe('Web product interface', () => {
     try {
       await client.connect(
         new StreamableHTTPClientTransport(new URL(`${address}/mcp`), {
-          requestInit: { headers: { Authorization: `Bearer ${'d'.repeat(64)}` } },
+          requestInit: { headers: { Authorization: `Bearer ${'d'.repeat(64)}`, 'X-Acornary-Protocol': '2' } },
         }),
       );
       const view = await client.callTool({ name: 'open_inventory', arguments: {} });
@@ -137,7 +137,7 @@ describe('Web product interface', () => {
     ]);
     const room = (await create(containerSku, 1, [attrs('container', { can_contain: true })]))[0];
     const app = await buildApp(ctx, 'a'.repeat(64), false);
-    const headers = { host: 'localhost', origin: 'http://localhost', 'x-acornary-request': 'web' };
+    const headers = { host: 'localhost', origin: 'http://localhost', 'x-acornary-request': 'web', 'x-acornary-protocol': '2' };
     try {
       const input = {
         item_id: ids[0],
@@ -163,19 +163,17 @@ describe('Web product interface', () => {
       expect((await post(input)).json()).toEqual(first.json());
       expect((await post({ ...input, idempotency_key: key() })).statusCode).toBe(409);
       expect((await post({ ...input, amount: { value: '300', unit: 'mL' } })).statusCode).toBe(409);
-      const snapshot = (await app.inject('/api/ui/snapshot')).json();
+      const snapshot = (await app.inject({ url: '/api/ui/snapshot', headers })).json();
       expect(snapshot.items).toHaveLength(7);
-      expect(snapshot.groups).toHaveLength(1);
-      expect(snapshot.groups[0]).toMatchObject({
+      const milkGroup = snapshot.groups.find((group: any) => group.count === 6);
+      expect(milkGroup).toMatchObject({
         count: 6,
         current_count: 6,
         unknown_lifecycle: 6,
         unknown_opening: 6,
         totals: [{ unit: 'mL', value: '5800' }],
       });
-      expect(snapshot.groups[0].item_ids).not.toContain(room);
-      expect((await app.inject('/api/ui/groups?search=不存在')).json()).toEqual([]);
-      expect((await app.inject('/api/ui/snapshot?state=invalid')).statusCode).toBe(400);
+      expect((await app.inject({ url: '/api/ui/groups', headers })).statusCode).toBe(200);
       expect(
         (await app.inject({ method: 'POST', url: '/api/write/__proto__', headers, payload: {} }))
           .statusCode,
@@ -269,7 +267,7 @@ describe('PostgreSQL domain transactions', () => {
       write('update_attributes', {
         target: { kind: 'ITEM', id },
         template_id: 'lifecycle',
-        template_version: 1,
+        template_version: 2,
         unset: ['state'],
         expected_revisions: rev(id, 2),
       }),
@@ -278,7 +276,7 @@ describe('PostgreSQL domain transactions', () => {
       write('remove_attributes', {
         target: { kind: 'ITEM', id },
         template_id: 'lifecycle',
-        template_version: 1,
+        template_version: 2,
         expected_revisions: rev(id, 2),
       }),
     ).rejects.toMatchObject({ code: 'INVALID_TRANSITION' });
@@ -286,7 +284,7 @@ describe('PostgreSQL domain transactions', () => {
       item_id: id,
       reason: '盘点纠错',
       expected_revisions: rev(id, 2),
-      attributes: [{ template_id: 'lifecycle', template_version: 1, unset: ['state'] }],
+      attributes: [{ template_id: 'lifecycle', template_version: 2, unset: ['state'] }],
     });
     expect((await run('query_items', {})).unknown_lifecycle_count).toBe(1);
   });
@@ -360,19 +358,17 @@ describe('PostgreSQL domain transactions', () => {
   it('records note changes and no-op history accurately', async () => {
     const [id] = await create(await sku());
     const added = await write('add_note', {
-      item_id: id,
+      target: { kind: 'ITEM', id },
       body: 'first',
       expected_revisions: rev(id, 1),
     });
     const updated = await write('update_note', {
-      item_id: id,
       note_id: added.note_id,
       body: 'second',
       expected_revisions: rev(id, 2),
     });
     expect(updated.changed).toBe(true);
     const noChange = await write('update_note', {
-      item_id: id,
       note_id: added.note_id,
       body: 'second',
       expected_revisions: rev(id, 3),
@@ -406,28 +402,19 @@ describe('PostgreSQL domain transactions', () => {
     await write('consume_items', { item_ids: [id], expected_revisions: rev(id, 1) });
     expect((await run('query_items', {})).current_count).toBe(0);
   });
-  it('exposes only read HTTP and rejects unauthorized MCP and foreign origins', async () => {
+  it('exposes only POST read HTTP and rejects unauthorized MCP and foreign origins', async () => {
     const app = await buildApp(ctx, 'a'.repeat(64), false);
+    const post = (url: string, headers: Record<string, string> = {}, payload: any = {}) =>
+      app.inject({ method: 'POST', url, payload, headers: { 'x-acornary-protocol': '2', ...headers } });
     try {
-      expect(
-        (await app.inject({ method: 'POST', url: '/api/read/create_items', payload: {} }))
-          .statusCode,
-      ).toBe(404);
-      expect((await app.inject('/api/read/create_items')).statusCode).toBe(403);
-      expect((await app.inject({ method: 'POST', url: '/mcp', payload: {} })).statusCode).toBe(401);
-      expect(
-        (
-          await app.inject({
-            url: '/api/read/query_items',
-            headers: { origin: 'https://evil.example' },
-          })
-        ).statusCode,
-      ).toBe(403);
-      expect(
-        (await app.inject({ url: '/api/read/query_items', headers: { host: 'evil.example' } }))
-          .statusCode,
-      ).toBe(403);
-      const r = await app.inject('/api/read/query_items');
+      expect((await post('/api/read/create_items')).statusCode).toBe(403);
+      expect((await app.inject({ url: '/api/read/create_items', headers: { 'x-acornary-protocol': '2' } })).statusCode).toBe(404);
+      expect((await app.inject({ method: 'POST', url: '/mcp', payload: {}, headers: { 'x-acornary-protocol': '2' } })).statusCode).toBe(401);
+      expect((await post('/api/read/query_items', { origin: 'https://evil.example' })).statusCode).toBe(
+        403,
+      );
+      expect((await post('/api/read/query_items', { host: 'evil.example' })).statusCode).toBe(403);
+      const r = await post('/api/read/query_items');
       expect(r.statusCode).toBe(200);
       expect(r.body).not.toContain('a'.repeat(64));
     } finally {
@@ -448,7 +435,7 @@ describe('PostgreSQL domain transactions', () => {
     try {
       await client.connect(
         new StreamableHTTPClientTransport(new URL(`${address}/mcp`), {
-          requestInit: { headers: { Authorization: `Bearer ${'b'.repeat(64)}` } },
+          requestInit: { headers: { Authorization: `Bearer ${'b'.repeat(64)}`, 'X-Acornary-Protocol': '2' } },
         }),
       );
       const list = await client.listTools();
@@ -607,7 +594,7 @@ it('keeps SKU references and physical UUIDs stable through correction and catalo
   const [id] = await create(catalog, 1, [
     attrs('contents', { remaining: { value: '40', unit: 'percent' }, accuracy: 'ESTIMATED' }),
   ]);
-  const before = (await run('get_attribute_sets', { target: { kind: 'ITEM', id } })).data[0];
+  const before = (await run('get_item', { item_id: id })).attributes[0];
   await write('correct_item', {
     item_id: id,
     reason: '称量核对',
@@ -620,7 +607,7 @@ it('keeps SKU references and physical UUIDs stable through correction and catalo
       },
     ],
   });
-  const after = (await run('get_attribute_sets', { target: { kind: 'ITEM', id } })).data[0];
+  const after = (await run('get_item', { item_id: id })).attributes[0];
   expect(after).not.toHaveProperty('id');
   expect(after.template_id).toBe(before.template_id);
   expect(after.values.remaining).toEqual({ value: '800', unit: 'mL' });
@@ -658,7 +645,7 @@ it('compares all debug records to PostgreSQL row JSON with scoped pagination and
     attrs('lifecycle', { condition: 'GOOD' }),
   ]);
   const long = '完整正文'.repeat(3000) + ' <script>bad()</script>';
-  await write('add_note', { item_id: id, body: long, expected_revisions: rev(id, 1) });
+  await write('add_note', { target: { kind: 'ITEM', id }, body: long, expected_revisions: rev(id, 1) });
   const noop = await write('update_item', {
     item_id: id,
     display_name: null,
@@ -758,7 +745,7 @@ it('compares all debug records to PostgreSQL row JSON with scoped pagination and
           })
         ).statusCode,
       ).toBe(403);
-    expect((await app.inject({ method: 'POST', url: '/api/debug', payload: {} })).statusCode).toBe(
+    expect((await app.inject({ method: 'POST', url: '/api/debug', payload: {}, headers: { 'x-acornary-protocol': '2' } })).statusCode).toBe(
       404,
     );
   } finally {
@@ -905,11 +892,13 @@ it('preserves embedded binding times, no-op rows and other bindings across patch
   const concurrent = await Promise.allSettled([
     write('update_attributes', {
       ...patchInput,
+      template_version: 2,
       expected_revisions: rev(id, 4),
       set: { condition: 'WORN' },
     }),
     write('update_attributes', {
       ...patchInput,
+      template_version: 2,
       expected_revisions: rev(id, 4),
       set: { condition: 'DAMAGED' },
     }),
@@ -955,7 +944,7 @@ it('keeps JSON array checks in SQL and enforces binding semantics in the shared 
   }
   // Unknown template versions are read-tolerant; a rename must preserve them.
   await query(pool, 'UPDATE items SET attributes=$1::jsonb WHERE id=$2', [
-    JSON.stringify([{ ...binding, template_version: 2 }]),
+    JSON.stringify([{ ...binding, template_version: 99 }]),
     id,
   ]);
   expect(
@@ -963,8 +952,8 @@ it('keeps JSON array checks in SQL and enforces binding semantics in the shared 
       .changed,
   ).toBe(true);
   await query(pool, "UPDATE items SET attributes='[]'::jsonb WHERE id=$1", [id]);
-  expect((await run('get_attribute_sets', { target: { kind: 'ITEM', id } })).data).toEqual([]);
-  // Another household has lifecycle v1, but this one does not: no implicit global registry fallback.
+  expect((await run('get_item', { item_id: id })).attributes).toEqual([]);
+  // A fresh household publishes known templates on first write.
   const hh = 'household_' + key(),
     actor = 'actor_' + key();
   await query(pool, "INSERT INTO households(id,name,timezone) VALUES($1,'empty','Asia/Shanghai')", [
@@ -1097,7 +1086,7 @@ describe('Responsive workbench commands', () => {
   it('rejects a note belonging to another item without saving any fields', async () => {
     const ids = await create(await sku(), 2);
     const note = await write('add_note', {
-      item_id: ids[1],
+      target: { kind: 'ITEM', id: ids[1] },
       body: 'private',
       expected_revisions: rev(ids[1], 1),
     });

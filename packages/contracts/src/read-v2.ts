@@ -144,6 +144,7 @@ export interface ProductGroupV2 {
 export interface SnapshotV2 {
   protocol: 2;
   household: { id: string; name: string; timezone: string };
+  container_catalog_id: string | null;
   as_of_change_id: string;
   server_time: string;
   catalog: CatalogRecordV2[];
@@ -205,7 +206,6 @@ export interface ItemQuerySummaryV2 {
   matching_count: number;
   current_count?: number;
   unknown_lifecycle_count?: number;
-  unknown_availability_count?: number;
   content_totals?: ContentTotalsV2;
   as_of_change_id: string;
 }
@@ -216,7 +216,6 @@ export interface ItemQueryResultV2 {
   matching_count: number;
   current_count: number;
   unknown_lifecycle_count: number;
-  unknown_availability_count: number;
   content_totals: ContentTotalsV2;
   as_of_change_id: string;
   stale: boolean;

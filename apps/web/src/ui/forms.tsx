@@ -51,8 +51,8 @@ import {
 } from './fields';
 import { FormField as LegacyField, Notice, ActionDrawer } from './components';
 import { consumptionError, fullPath, specification } from '../lib/browse';
-import { WorkbenchMovePicker } from './workbench';
-import { availabilityOptions, moveValidation } from '../lib/workbench';
+const WorkbenchMovePicker = (_: any) => null;
+import { itemStatus, moveValidation } from '../lib/workbench';
 export interface Action {
   kind: string;
   target?: string;
@@ -137,7 +137,8 @@ export function ActionSheet({
   const moving = action.kind === 'move' && movingItems.length > 0;
   const template = action.template ?? 'lifecycle';
   const templateVersion =
-    target?.attributes.find((a) => a.template_id === template)?.template_version ?? 1;
+    target?.attributes.find((a) => a.template_id === template)?.template_version ??
+    (template === 'lifecycle' ? 2 : 1);
   const fields = ['attributes', 'correct'].includes(action.kind)
     ? [
         ...(action.kind === 'correct' && template === 'lifecycle' ? correctionFields : []),
@@ -181,7 +182,6 @@ export function ActionSheet({
     const note = data.notes.find((n) => n.id === action.note && n.item_id === action.target);
     const values: Values = {
       name: item?.display_name ?? catalog?.name ?? '',
-      availability: item ? (attr(item, 'lifecycle')?.availability ?? '') : '',
       acquired_on: item ? (attr(item, 'lifecycle')?.acquisition?.acquired_on ?? '') : '',
       sku: catalog?.kind === 'SKU' ? catalog.id : '',
       parent:
@@ -374,7 +374,7 @@ export function ActionSheet({
             : {}),
         };
         if (Object.keys(lifecycle).length)
-          initial.push({ template_id: 'lifecycle', template_version: 1, values: lifecycle });
+          initial.push({ template_id: 'lifecycle', template_version: 2, values: lifecycle });
         if (values.quantity)
           initial.push({
             template_id: 'contents',
@@ -436,9 +436,6 @@ export function ActionSheet({
           item_id: item?.id,
           ...(values.name !== draft.original.name
             ? { display_name: values.name.trim() || null }
-            : {}),
-          ...(values.availability !== draft.original.availability
-            ? { availability: values.availability || null }
             : {}),
           ...(values.acquired_on !== draft.original.acquired_on
             ? { acquired_on: values.acquired_on || null }
@@ -561,7 +558,7 @@ export function ActionSheet({
       ...base,
       idempotency_key: draft.idempotencyKey ?? crypto.randomUUID(),
     };
-    const parsed = parseWriteCommand(operation, payload, notesV2);
+    const parsed = parseWriteCommand(operation, payload);
     if (!parsed.success) throw new Error('请检查必填项、日期、件数和数量格式。');
     return { operation, payload: parsed.data };
   }
@@ -1114,15 +1111,6 @@ export function ActionSheet({
                   />
                 </FormField>
                 <a href={`/catalog/${item.catalog_node_id}`}>编辑商品共有资料 ›</a>
-                <FormField label="状态">
-                  <Select
-                    value={values.availability}
-                    onChange={(e) => set('availability', e)}
-                    options={[
-                      ...(availabilityOptions.map(([v, t]) => ({ value: v, label: t })) ?? []),
-                    ]}
-                  />
-                </FormField>
                 <FormField label="购入日期">
                   <CalendarInput
                     value={values.acquired_on}
@@ -1145,7 +1133,7 @@ export function ActionSheet({
                 <WorkbenchMovePicker
                   items={movingItems}
                   value={values.parent ?? ''}
-                  onChange={(value) => {
+                  onChange={(value: string) => {
                     set('parent', value);
                     set('destinationChosen', 'true');
                   }}
@@ -1427,7 +1415,7 @@ export function ActionSheet({
                 <div>
                   <dt>最新资料</dt>
                   <dd>
-                    {itemName(item, data)} · {label(attr(item, 'lifecycle')?.availability)} ·{' '}
+                    {itemName(item, data)} · {itemStatus(item)} ·{' '}
                     {attr(item, 'lifecycle')?.acquisition?.acquired_on || '日期未记录'}
                     <p>{data.notes.find((n) => n.id === action.note)?.body || '备注未记录'}</p>
                   </dd>

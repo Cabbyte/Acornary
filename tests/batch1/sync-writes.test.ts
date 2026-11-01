@@ -111,13 +111,12 @@ describe.skipIf(!process.env.DATABASE_URL)('Batch 1 sync writes (PostgreSQL)', (
   it('logs note creation, update and combined edit only on the owning item', async () => {
     const item = (await create()).affected_objects[0].id;
     const added = await write('add_note', {
-      item_id: item,
+      target: { kind: 'ITEM', id: item },
       body: 'First note',
       expected_revisions: { [item]: 1 },
     });
     expect(await expectLogged(added)).toHaveLength(1);
     const updated = await write('update_note', {
-      item_id: item,
       note_id: added.note_id,
       body: 'Updated note',
       expected_revisions: { [item]: 2 },
@@ -151,17 +150,16 @@ describe.skipIf(!process.env.DATABASE_URL)('Batch 1 sync writes (PostgreSQL)', (
   it('does not log a same-value item or note write or advance the watermark', async () => {
     const item = (await create(1, { display_name: 'Unchanged' })).affected_objects[0].id;
     const added = await write('add_note', {
-      item_id: item,
+      target: { kind: 'ITEM', id: item },
       body: 'Unchanged note',
       expected_revisions: { [item]: 1 },
     });
     const before = await state();
     for (const [name, input] of [
-      ['update_item', { display_name: 'Unchanged' }],
+      ['update_item', { item_id: item, display_name: 'Unchanged' }],
       ['update_note', { note_id: added.note_id, body: 'Unchanged note' }],
     ] as const) {
       const result = await write(name, {
-        item_id: item,
         expected_revisions: { [item]: 2 },
         ...input,
       });

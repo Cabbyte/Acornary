@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const coreSearchSchema = z.object({
-  ui: z.enum(['next', 'legacy']).optional().catch(undefined),
+  ui: z.literal('next').optional().catch(undefined),
   view: z.enum(['all', 'attention']).optional().catch(undefined),
   location: z.string().optional().catch(undefined),
   category: z.string().optional().catch(undefined),

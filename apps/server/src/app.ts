@@ -40,7 +40,7 @@ import {
 import { DomainError } from '../../../packages/domain/src/index.js';
 import { execute, type Context } from './service.js';
 import { pool, query } from './db.js';
-import { webSnapshot, webSnapshotV2 } from './web.js';
+import { webSnapshotV2 } from './web.js';
 import { syncState, syncChanges, syncFetch, syncBootstrap } from './sync-api.js';
 import { pluginResource, registerInventoryApp } from './plugin.js';
 import { pluginWriteTool } from '../../../packages/contracts/src/plugin.js';
@@ -210,9 +210,8 @@ export async function buildApp(
       });
     }
   });
-  const requireProtocol = process.env.ACORNARY_REQUIRE_PROTOCOL_V2 === '1';
   const rejectProtocol = (req: FastifyRequest) => {
-    if (requireProtocol && req.headers['x-acornary-protocol'] !== '2')
+    if (req.headers['x-acornary-protocol'] !== '2')
       throw new DomainError(
         'PROTOCOL_VERSION_UNSUPPORTED',
         'This server requires X-Acornary-Protocol: 2.',
@@ -229,7 +228,7 @@ export async function buildApp(
     ];
     if (
       !negotiation.includes(path) &&
-      /^\/api\/(read|write|ui|sync|attachments|debug|terminal\/v1)(\/|$)/.test(path)
+      /^\/api\/(read|write|ui|sync|attachments|debug)(\/|$)/.test(path)
     )
       rejectProtocol(req);
   });
@@ -436,17 +435,15 @@ export async function buildApp(
     return { household, container_catalog_id: install?.container_catalog_id,
       protocol: { current: 2, min: 2 }, features: [...implementedFeatures] };
   });
-  app.get('/api/read/:operation', async (req) => {
+  const readOperation = async (req: FastifyRequest, input: unknown) => {
     const name = (req.params as any).operation as Operation;
     if (!reads.has(name)) throw new DomainError('FORBIDDEN', 'This HTTP interface is read-only.');
-    let input: unknown = {};
-    try {
-      input = JSON.parse((req.query as any).input ?? '{}');
-    } catch {
-      throw new DomainError('ATTRIBUTE_VALIDATION_FAILED', 'Invalid JSON query.');
-    }
     return execute({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }, name, input);
-  });
+  };
+  app.post('/api/read/:operation', async (req) => readOperation(req, req.body ?? {}));
+  app.get('/api/read/get_connection_context', async (req) =>
+    execute({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }, 'get_connection_context', {}),
+  );
   registerExportRoutes(app, token, !!cloud, req => ({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }), execute);
   app.post('/api/read/query_inventory_groups', async req =>
     execute({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }, 'query_inventory_groups', req.body));
@@ -462,12 +459,9 @@ export async function buildApp(
   const snapshotFor = (req: FastifyRequest) => {
     const trace = traces.getStore();
     if (trace) trace.tool = 'web_snapshot';
-    const protocol = req.headers['x-acornary-protocol'];
-    if (protocol !== undefined && protocol !== '2')
-      throw new DomainError('PROTOCOL_VERSION_UNSUPPORTED', 'Unsupported snapshot protocol.');
-    return timed('business_ms', async () => protocol === '2'
-      ? webSnapshotV2(webContexts.get(req) ?? ctx)
-      : webSnapshot(webContexts.get(req) ?? ctx, req.query));
+    return timed('business_ms', async () =>
+      webSnapshotV2(webContexts.get(req) ?? ctx),
+    );
   };
   app.get('/api/ui/snapshot', snapshotFor);
   app.get('/api/ui/groups', async (req) => (await snapshotFor(req)).groups);

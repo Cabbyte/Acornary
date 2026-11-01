@@ -779,7 +779,7 @@ test('late authorization errors from cancelled history cannot expire the new hou
   await page.screenshot({ path: 'output/playwright/plugin-late-auth-new-session-active.png' });
 });
 
-test('Ant Design iframe dropdown and calendar preserve local dates and explicit submission', async ({
+test('Ant Design iframe calendar preserves local dates and explicit submission', async ({
   page,
 }) => {
   const f = await fixture(page, 'edit');
@@ -789,8 +789,7 @@ test('Ant Design iframe dropdown and calendar preserve local dates and explicit 
   await expect(embedded.locator('.ant-picker-dropdown')).toBeVisible();
   await date.fill('2026-10-07');
   await date.press('Enter');
-  await embedded.getByRole('combobox', { name: '状态', exact: true }).click();
-  await embedded.getByRole('option', { name: '可用', exact: true }).click();
+  await expect(embedded.getByRole('combobox', { name: '状态', exact: true })).toHaveCount(0);
   expect(await writes(page)).toHaveLength(0);
   await page.screenshot({
     path: `output/playwright/antd-mcp-${process.env.ACORNARY_E2E_BROWSER ?? 'chromium'}.png`,
@@ -804,7 +803,6 @@ test('Ant Design iframe dropdown and calendar preserve local dates and explicit 
   expect(commands[0].arguments.input).toMatchObject({
     item_id: f.id,
     acquired_on: '2026-10-07',
-    availability: 'AVAILABLE',
   });
 });
 

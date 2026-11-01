@@ -98,7 +98,8 @@ type ObjectState = {
   binding_statuses?: Record<string, string>;
   raw_bindings?: Record<string, string>;
 };
-const versionOf = (obj: ObjectState, name: string) => obj.versions?.[name] ?? 1;
+const versionOf = (obj: ObjectState, name: string) =>
+  obj.versions?.[name] ?? (name === 'lifecycle' ? 2 : 1);
 const table = (kind: string) => (kind === 'ITEM' ? 'items' : 'catalog_nodes');
 
 const eventTypes: Record<string, (typeof registeredEventTypes)[number]> = {
@@ -266,12 +267,6 @@ async function validate(
       'STATE_CONFLICT',
       'Disposition changes require dispose_item or a reasoned correction.',
     );
-  requireFact(
-    JSON.stringify(obj.sets.lifecycle?.availability) ===
-      JSON.stringify(before?.sets.lifecycle?.availability),
-    'ATTRIBUTE_VALIDATION_FAILED',
-    'Legacy availability is read-only.',
-  );
   if (
     obj.kind === 'ITEM' &&
     terminal.has(obj.sets.lifecycle?.state) &&
@@ -350,8 +345,12 @@ async function validate(
         );
       }
     }
-    obj.sets[name] = prune(validateValues(name, value, versionOf(obj, name)));
-    if (!Object.keys(obj.sets[name]).length) delete obj.sets[name];
+    // Historical v1 remains readable; live lifecycle writes use the current field set.
+    obj.sets[name] = prune(
+      validateValues(name, value, name === 'lifecycle' ? 2 : versionOf(obj, name)),
+    );
+    if (!Object.keys(obj.sets[name]).length && !(name === 'lifecycle' && versionOf(obj, name) === 2))
+      delete obj.sets[name];
   }
   if (obj.kind === 'ITEM') {
     const catalog = await load(c, ctx, { kind: 'CATALOG_NODE', id: obj.row.catalog_node_id });
@@ -490,7 +489,7 @@ function mutateAttributes(obj: ObjectState, input: any, mode: string) {
     );
     obj.sets[name] = validateValues(name, input.values, to);
     requireFact(
-      Object.keys(prune(structuredClone(obj.sets[name]))).length,
+      (name === 'lifecycle' && to === 2) || Object.keys(prune(structuredClone(obj.sets[name]))).length,
       'ATTRIBUTE_VALIDATION_FAILED',
       'Upgrade requires nonempty complete values.',
     );
@@ -513,7 +512,9 @@ function mutateAttributes(obj: ObjectState, input: any, mode: string) {
     obj.sets[name] = input.values;
     return;
   }
-  obj.sets[name] = patch(obj.sets[name] ?? {}, input.set, input.unset, [...definition.paths]);
+  obj.sets[name] = patch(obj.sets[name] ?? {}, input.set, input.unset, [
+    ...(name === 'lifecycle' ? templates.lifecycle.paths : definition.paths),
+  ]);
 }
 export async function execute(ctx: Context, name: Operation, raw: unknown): Promise<any> {
   return timed('business_ms', async () => {
@@ -946,14 +947,6 @@ async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
       AND ${predicates.join(' AND ')})`);
   }
   const current = `coalesce(__sets->'lifecycle'->>'state','') NOT IN ('CONSUMED','DISPOSED','LOST','ARCHIVED')`;
-  if (
-    (input.attribute_filters ?? []).some(
-      (f: any) =>
-        f.template_id === 'lifecycle' && f.path === 'availability' && f.value === 'AVAILABLE',
-    )
-  )
-    where.push(current);
-
   for (const term of [input.name, input.search]) {
     if (!term || !normalizeQuerySearch(term)) continue;
     const pattern = bind('%' + normalizeQuerySearch(term).replace(/[\\%_]/g, '\\$&') + '%');
@@ -969,7 +962,7 @@ async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
       WHERE a->>'template_id'='product' AND ${match('f.value')})`);
     if (isItem)
       fields.push(
-        `EXISTS(SELECT 1 FROM notes n WHERE n.household_id=$1 AND n.item_id=o.id AND ${match('n.body')})`,
+        `EXISTS(SELECT 1 FROM notes n WHERE n.household_id=$1 AND n.target_kind='ITEM' AND n.target_id=o.id AND ${match('n.body')})`,
       );
     where.push(`(${fields.join(' OR ')})`);
   }
@@ -1050,7 +1043,6 @@ async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
     'matching_count',(SELECT count(*) FROM matching),
     'current_count',count(*),
     'unknown_lifecycle_count',count(*) FILTER (WHERE (__sets #>> '{lifecycle,state}') IS NULL),
-    'unknown_availability_count',count(*) FILTER (WHERE (__sets #>> '{lifecycle,availability}') IS NULL),
     'content_totals',jsonb_build_object(
       'by_unit',(SELECT coalesce(jsonb_object_agg(unit,to_jsonb(units)-'unit'),'{}'::jsonb) FROM units),
       'unknown_quantity_count',count(*) FILTER (WHERE (__sets #> '{contents,remaining}') IS NULL),
@@ -1192,12 +1184,6 @@ async function read(c: Client, ctx: Context, name: Operation, input: any): Promi
   }
   if (name === 'query_stock') return readStock(c, ctx, input);
   if (name === 'get_history') return readHistory(c, ctx, input);
-  if (name === 'get_attribute_sets') {
-    const obj = await load(c, ctx, input.target);
-    return {
-      data: await bindingRecords(c, ctx, obj),
-    };
-  }
   if (name === 'get_item' || name === 'get_catalog_node')
     return view(
       c,
@@ -1746,7 +1732,6 @@ async function applyDomainCommand(
             const set: Record<string, unknown> = {},
               unset: string[] = [];
             for (const [field, path] of [
-              ['availability', 'availability'],
               ['acquired_on', 'acquisition.acquired_on'],
             ]) {
               if (input[field] === null) unset.push(path);

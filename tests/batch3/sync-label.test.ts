@@ -36,7 +36,11 @@ db('Batch 3 sync and labels (real PostgreSQL)', () => {
       .rows;
   const update = async (id: string, name: Operation, extra: any) => {
     const item = (await rows()).find((i) => i.id === id)!;
-    return write(name, { item_id: id, expected_revisions: { [id]: item.revision }, ...extra });
+    return write(name, {
+      ...(name === 'add_note' ? { target: { kind: 'ITEM', id } } : { item_id: id }),
+      expected_revisions: { [id]: item.revision },
+      ...extra,
+    });
   };
   const renameSku = async (name: string) => {
     const row = (await query(pool, 'SELECT revision FROM catalog_nodes WHERE id=$1', [sku]))
@@ -440,7 +444,7 @@ db('Batch 3 sync and labels (real PostgreSQL)', () => {
     ).toBeGreaterThanOrEqual(new Date(actual.find((i) => i.id === ids[0]).created_at).getTime());
   });
 
-  it('snapshot v2, groups and HTTP negotiation preserve v1 and never inline note bodies in v2', async () => {
+  it('snapshot v2, groups and HTTP negotiation never inline note bodies', async () => {
     const [id] = await create(1, {
       initial_attributes: [bind('contents', { remaining: { value: '0.1', unit: 'g' } })],
     });
@@ -456,8 +460,7 @@ db('Batch 3 sync and labels (real PostgreSQL)', () => {
     expect(all.groups[0]).not.toHaveProperty('item_ids');
     const app = await buildApp(ctx, 'test-token', false, { mode: 'local' });
     try {
-      const v1 = (await app.inject({ url: '/api/ui/snapshot' })).json();
-      expect(v1.notes[0].body).toContain('Only note');
+      expect((await app.inject({ url: '/api/ui/snapshot' })).statusCode).toBe(409);
       const v2 = (
         await app.inject({ url: '/api/ui/snapshot', headers: { 'x-acornary-protocol': '2' } })
       ).json();
@@ -468,7 +471,7 @@ db('Batch 3 sync and labels (real PostgreSQL)', () => {
       expect(v2.groups).toEqual(all.groups);
       expect(
         (
-          await app.inject({ method: 'POST', url: '/api/read/query_inventory_groups', payload: {} })
+          await app.inject({ method: 'POST', url: '/api/read/query_inventory_groups', payload: {}, headers: { 'x-acornary-protocol': '2' } })
         ).json().groups,
       ).toEqual(all.groups);
       expect((await app.inject({ url: '/api/sync/state' })).statusCode).toBe(409);

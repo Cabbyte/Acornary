@@ -20,7 +20,7 @@ for (const installation of [first, second]) {
   const client = new Client({ name: 'isolated-mock-host', version: '1' });
   await client.connect(
     new StreamableHTTPClientTransport(new URL(`${address}/mcp`), {
-      requestInit: { headers: { authorization: `Bearer ${token}` } },
+      requestInit: { headers: { authorization: `Bearer ${token}`, 'x-acornary-protocol': '2' } },
     }),
   );
   clients.push(client);

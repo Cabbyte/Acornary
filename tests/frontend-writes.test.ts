@@ -13,18 +13,15 @@ const base = {
 };
 describe('production write compatibility', () => {
   it('preserves v1 note payloads and only uses target-shaped writes for notes_v2', () => {
-    const legacy = parseWriteCommand('add_note', { ...base, item_id: item });
-    expect(legacy.success && legacy.data).toEqual({ ...base, item_id: item });
+    expect(parseWriteCommand('add_note', { ...base, item_id: item }).success).toBe(false);
     const next = { ...base, target: { kind: 'ITEM', id: item } };
-    expect(parseWriteCommand('add_note', next).success).toBe(false);
-    expect(parseWriteCommand('add_note', next, true).success).toBe(true);
+    expect(parseWriteCommand('add_note', next).success).toBe(true);
     expect(
-      parseWriteCommand('update_note', { ...base, note_id: note, title: null }, true).success,
+      parseWriteCommand('update_note', { ...base, note_id: note, title: null }).success,
     ).toBe(true);
   });
   it('restores both note command generations without mutating the original attempt', () => {
     for (const payload of [
-      { ...base, item_id: item },
       { ...base, target: { kind: 'ITEM', id: item } },
     ]) {
       const draft = {
@@ -57,7 +54,6 @@ describe('workspace search boundary', () => {
   it('validates core search while preserving old dialog aliases and dropping cursors', () => {
     expect(
       validateWorkspaceSearch({
-        ui: 'legacy',
         view: 'attention',
         q: '牛奶',
         sort: 'name',
@@ -68,7 +64,6 @@ describe('workspace search boundary', () => {
         cursor: 'opaque',
       }),
     ).toEqual({
-      ui: 'legacy',
       view: 'attention',
       q: '牛奶',
       sort: 'name',

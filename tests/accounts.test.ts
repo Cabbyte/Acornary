@@ -32,6 +32,7 @@ function browser(ip = '203.0.113.' + Math.floor(Math.random() * 200 + 1), applic
           origin: config.origin,
           'x-real-ip': ip,
           cookie: [...jar].map(([k, v]) => `${k}=${v}`).join('; '),
+          'x-acornary-protocol': '2',
           ...(body ? { 'content-type': 'application/json' } : {}),
           ...(household ? { 'x-acornary-household': household } : {}),
           'x-acornary-request': 'web',
@@ -68,7 +69,11 @@ async function register() {
   return { b, email, userId: session.user_id };
 }
 beforeAll(async () => {
-  if (!new URL(process.env.DATABASE_URL!).pathname.endsWith('acornary_test'))
+  if (
+    !['/acornary_test', '/acornary_test_w6_lifecycle'].includes(
+      new URL(process.env.DATABASE_URL!).pathname,
+    )
+  )
     throw Error('Isolated database required');
   app = await buildApp({ ...(await initialize()), source: 'TEST' }, '', false, config);
   await app.ready();

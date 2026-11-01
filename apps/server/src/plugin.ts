@@ -28,7 +28,7 @@ import {
 } from '../../../packages/contracts/src/plugin.js';
 import { DomainError } from '../../../packages/domain/src/index.js';
 import { execute, type Context } from './service.js';
-import { webSnapshot } from './web.js';
+import { webSnapshotV2 } from './web.js';
 import { inventoryIcons } from './plugin-icons.js';
 
 export interface PluginIdentity {
@@ -255,7 +255,7 @@ export function registerInventoryApp(
           const current = identity();
           if (!current?.scopes.has('inventory:read'))
             throw new DomainError('FORBIDDEN', 'OAuth read scope is required.');
-          const snapshot = await timed('business_ms', () => webSnapshot(current.ctx, {}));
+          const snapshot = await timed('business_ms', () => webSnapshotV2(current.ctx));
           if (trace) trace.outcome = 'SUCCESS';
           const summary = {
             household: snapshot.household.name,

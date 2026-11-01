@@ -5,7 +5,7 @@ import { execute, type Context } from '../../apps/server/src/service.js';
 import { pool, query, transaction } from '../../apps/server/src/db.js';
 import { publishTemplate, definitionHashes } from '../../apps/server/src/registry.js';
 import { registry, templateDefinition, type Profile } from '../../packages/contracts/src/registry.js';
-import { webSnapshot } from '../../apps/server/src/web.js';
+import { webSnapshotV2 } from '../../apps/server/src/web.js';
 import { approvedExecute } from '../catalog-helpers.js';
 import type { Operation } from '../../packages/contracts/src/index.js';
 
@@ -83,8 +83,7 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
     );
     expect((await catalogRead(ctx, sku)).attributes[0].status).toBe('UNKNOWN');
     expect(
-      (await execute(ctx, 'get_attribute_sets', { target: { kind: 'ITEM', id: item } })).data[0]
-        .values,
+      (await itemRead(ctx, item)).attributes.find((a: any) => a.template_id === 'z_future')?.values,
     ).toEqual(originals[0].values);
     const container = id('item');
     await query(
@@ -99,12 +98,11 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
     );
     let revision = 1;
     for (const [operation, input] of [
-      ['update_item', { display_name: 'renamed' }],
-      ['move_item', { parent_id: container }],
-      ['add_note', { body: 'preserve the opaque payload' }],
+      ['update_item', { item_id: item, display_name: 'renamed' }],
+      ['move_item', { item_id: item, parent_id: container }],
+      ['add_note', { target: { kind: 'ITEM', id: item }, body: 'preserve the opaque payload' }],
     ] as const) {
       await write(ctx, operation, {
-        item_id: item,
         ...input,
         expected_revisions: { [item]: revision++ },
       });
@@ -149,7 +147,7 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
       expected_revisions: { [sku]: 2 },
     });
     expect((await raw('catalog_nodes', sku)).attributes).toBe(catalogBaseline.attributes);
-    const snapshot = await webSnapshot(ctx, {});
+    const snapshot = await webSnapshotV2(ctx);
     expect(snapshot.items.find((i) => i.id === item)?.attributes.slice(0, 2)).toEqual(
       originals.map((a) => ({ ...publicBinding(a), status: 'UNKNOWN' })),
     );
@@ -220,7 +218,7 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
       expected_revisions: { [item]: 1 },
     });
     await write(ctx, 'add_note', {
-      item_id: item,
+      target: { kind: 'ITEM', id: item },
       body: 'note',
       expected_revisions: { [item]: 2 },
     });
@@ -242,9 +240,9 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
     expect(await raw('items', item)).toEqual({ ...before, revision: 3 });
     expect(
       (await execute(ctx, 'list_attribute_templates', {})).data.some(
-        (t: any) => t.id === 'lifecycle',
+        (t: any) => t.id === 'lifecycle' && t.version === 2,
       ),
-    ).toBe(false);
+    ).toBe(true);
     const parent = id('item');
     await query(
       pool,
@@ -336,7 +334,7 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
       expect((await itemRead(ctx, item)).effective_capabilities).toEqual(expected);
       expect((await raw('catalog_nodes', sku)).attributes).toBe(before.attributes);
     }
-    const snap = await webSnapshot(ctx, {});
+    const snap = await webSnapshotV2(ctx);
     expect(snap.catalog.find((r) => r.id === sku)).toMatchObject({
       effective_capabilities: ['container'],
       one_off: true,
@@ -629,7 +627,7 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
     const { ctx, sku, item } = await fixture();
     expect(await execute(ctx, 'get_connection_context', {})).toMatchObject({
       protocol: { current: 2, min: 2 },
-      features: ['frozen_export', 'query_v2', 'history_v2', 'snapshot_v2', 'groups_v2', 'sync_v2', 'profile_capabilities', 'deadline', 'notes_v2', 'attachments', 'stock', 'void', 'split', 'references', 'units_v2'],
+      features: ['frozen_export', 'query_v2', 'history_v2', 'snapshot_v2', 'groups_v2', 'sync_v2', 'profile_capabilities', 'deadline', 'notes_v2', 'attachments', 'stock', 'void', 'split', 'references', 'units_v2', 'protocol_v2'],
     });
     for (const assignment of ["profile='OTHER'", "record_state='INVALID'", 'one_off=NULL'])
       await expect(

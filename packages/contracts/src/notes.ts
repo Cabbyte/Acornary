@@ -31,20 +31,16 @@ const content = {
   sensitivity: sensitivity.optional(),
 };
 export const fileSchemas = {
-  add_note: z
-    .strictObject({
-      ...write,
-      ...content,
-      target: noteTarget.optional(),
-      item_id: entityId('item').optional(),
-    })
-    .refine((v) => !!v.target !== !!v.item_id),
+  add_note: z.strictObject({
+    ...write,
+    ...content,
+    target: noteTarget,
+  }),
   update_note: z.strictObject({
     ...write,
     ...content,
     note_id: entityId('note'),
     target: noteTarget.optional(),
-    item_id: entityId('item').optional(),
   }),
   archive_note: z.strictObject({
     ...write,

@@ -192,14 +192,13 @@ export async function syncFetch(ctx: Context, raw: unknown): Promise<SyncFetchRe
     const notes = (
       await query(
         c,
-        `SELECT n.id,jsonb_build_object('kind','ITEM','id',n.item_id) AS target,
+        `SELECT n.id,jsonb_build_object('kind',n.target_kind,'id',n.target_id) AS target,
       n.title,left(n.body,160) AS excerpt,false AS archived,'NORMAL' AS sensitivity,n.created_by,
-      coalesce((SELECT e.actor_id FROM events e WHERE e.household_id=n.household_id AND e.target_kind='ITEM'
-        AND e.target_id=n.item_id AND EXISTS(SELECT 1 FROM jsonb_array_elements(e.changes) d
+      coalesce((SELECT e.actor_id FROM events e WHERE e.household_id=n.household_id AND e.target_kind=n.target_kind
+        AND e.target_id=n.target_id AND EXISTS(SELECT 1 FROM jsonb_array_elements(e.changes) d
           WHERE d->>'path'=ANY(ARRAY['notes.' || n.id || '.body','notes.' || n.id || '.title']))
         ORDER BY e.recorded_at DESC,e.id DESC LIMIT 1),n.created_by) AS updated_by,n.created_at,n.updated_at,
       coalesce(v.last_change_id,0)::text AS last_change_id FROM notes n
-      JOIN items i ON i.household_id=n.household_id AND i.id=n.item_id
       LEFT JOIN sync_object_versions v ON v.household_id=n.household_id AND v.object_kind='NOTE' AND v.object_id=n.id
       WHERE n.household_id=$1 AND n.id=ANY($2::text[]) AND coalesce(v.change_kind,'UPSERT') <> 'TOMBSTONE'`,
         [ctx.household_id, input.ids.filter((i) => i.kind === 'NOTE').map((i) => i.id)],

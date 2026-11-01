@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { configureReadTransport, read } from '../../lib/api';
+import { read } from '../../lib/api';
 import { useSession } from '../../lib/session';
 import type {
   ConnectionContext,
@@ -31,9 +31,6 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
   });
   const features = useMemo(() => resolveFeatures(q.data), [q.data]);
   const protocolOk = !q.data?.protocol || q.data.protocol.current >= 2;
-  useEffect(() => {
-    configureReadTransport(features.has('protocol_v2') ? 'post' : 'get');
-  }, [features]);
   return (
     <ConnectionContextValue.Provider
       value={{ context: q.data, features, protocolOk, loading: q.isLoading }}

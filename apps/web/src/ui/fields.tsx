@@ -38,11 +38,6 @@ export const definitions: Partial<Record<TemplateId, Definition[]>> = {
       options: ['BEST_BEFORE', 'USE_BY', 'ESTIMATED'],
     },
     { path: 'expiry.after_opening_days', label: '开封后保质天数', type: 'number' },
-    {
-      path: 'availability',
-      label: '可用状态',
-      options: ['AVAILABLE', 'IN_USE', 'LOANED', 'CLEANING', 'MAINTENANCE', 'IN_TRANSIT'],
-    },
     { path: 'condition', label: '物品状况', options: ['NEW', 'GOOD', 'WORN', 'DAMAGED', 'BROKEN'] },
     { path: 'acquisition.acquired_on', label: '购入日期', type: 'date' },
     { path: 'acquisition.batch_label', label: '批次名称' },

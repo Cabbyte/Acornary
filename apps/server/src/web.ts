@@ -12,65 +12,9 @@ import { decorateRecords } from './registry.js';
 import { query, transaction, type Client } from './db.js';
 import type { Context } from './service.js';
 import { DomainError } from '../../../packages/domain/src/index.js';
-import {
-  inventoryFilterSchema,
-  productGroups,
-  type InventoryData,
-} from '../../../packages/contracts/src/web.js';
 
 // A coherent household snapshot, with a constant number of queries instead of per-item loads.
 // No authentication tables or raw debug records are part of the product read model.
-export async function webSnapshot(ctx: Context, rawFilter: unknown) {
-  const parsed = inventoryFilterSchema.safeParse(rawFilter);
-  if (!parsed.success)
-    throw new DomainError(
-      'ATTRIBUTE_VALIDATION_FAILED',
-      'Invalid inventory filter.',
-      parsed.error.issues,
-    );
-  return transaction(async (c) => {
-    await query(c, 'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
-    const household = (
-      await query(c, 'SELECT id,name,timezone FROM households WHERE id=$1', [ctx.household_id])
-    ).rows[0];
-    const installation = (
-      await query(c, 'SELECT container_catalog_id FROM household_settings WHERE household_id=$1', [
-        ctx.household_id,
-      ])
-    ).rows[0];
-    const data: InventoryData = {
-      household,
-      container_catalog_id: installation?.container_catalog_id ?? '',
-      cached_at: new Date().toISOString(),
-      catalog: (
-        await query(
-          c,
-          "SELECT id,parent_id,kind,name,revision,attributes,profile,capabilities,one_off,record_state,voided_at,created_at,updated_at FROM catalog_nodes WHERE household_id=$1 AND record_state='VALID' ORDER BY created_at,id",
-          [ctx.household_id],
-        )
-      ).rows,
-      items: (
-        await query(
-          c,
-          "SELECT id,parent_id,catalog_node_id,display_name,revision,attributes,record_state,voided_at,created_at,updated_at FROM items WHERE household_id=$1 AND record_state='VALID' ORDER BY created_at,id",
-          [ctx.household_id],
-        )
-      ).rows,
-      notes: (
-        await query(
-          c,
-          'SELECT id,item_id,title,body,updated_at FROM notes WHERE household_id=$1 ORDER BY updated_at DESC,id',
-          [ctx.household_id],
-        )
-      ).rows,
-    };
-    await decorateRecords(c, ctx.household_id, data.catalog, data.items);
-    return { ...data, groups: productGroups(data, parsed.data) };
-  });
-}
-
-/** Server-only v2 aggregation: receives the complete SQL matching set, including containers.
- * Unlike the v1 UI helper it does not apply another, subtly different filter. */
 export function inventoryGroupsV2(items: any[], catalog: any[]): ProductGroupV2[] {
   const skus = new Map(catalog.map((s) => [s.id, s]));
   const groups = new Map<string, ProductGroupV2>();
@@ -189,7 +133,7 @@ export async function readItemsV2(c: Client, household: string, selection: Recor
     await query(
       c,
       `SELECT o.*,v.last_change_id::text,${splitInfoSql()} AS split,
-    (SELECT count(*) FROM notes n WHERE n.household_id=o.household_id AND n.item_id=o.id) AS note_count
+    (SELECT count(*) FROM notes n WHERE n.household_id=o.household_id AND n.target_kind='ITEM' AND n.target_id=o.id) AS note_count
     FROM items o LEFT JOIN sync_object_versions v ON v.household_id=o.household_id AND v.object_kind='ITEM' AND v.object_id=o.id
     WHERE o.household_id=$1 AND o.record_state='VALID' AND coalesce(v.change_kind,'UPSERT') <> 'TOMBSTONE'
     AND ($2::text[] IS NULL OR o.id=ANY($2::text[])) AND o.id > $3
@@ -228,11 +172,17 @@ export async function webSnapshotV2(ctx: Context): Promise<SnapshotV2> {
     ).rows[0];
     const asOf = String(await currentChangeId(c, ctx.household_id));
     const time = new Date().toISOString();
+    const installation = (
+      await query(c, 'SELECT container_catalog_id FROM household_settings WHERE household_id=$1', [
+        ctx.household_id,
+      ])
+    ).rows[0];
     return {
       protocol: 2,
       household,
       as_of_change_id: asOf,
       server_time: time,
+      container_catalog_id: installation?.container_catalog_id ?? null,
       ...(await readInventoryV2(c, ctx.household_id)),
       cached_at: time,
     };

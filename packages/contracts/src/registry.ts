@@ -197,7 +197,7 @@ const positive = z
   .max(80)
   .regex(/^(0|[1-9]\d*)(\.\d+)?$/);
 const lifeState = z.enum(['ACTIVE', 'CONSUMED', 'DISPOSED', 'LOST', 'ARCHIVED']);
-export const templates = {
+const historicalTemplates = {
   ...semanticsTemplates,
   product: {
     target_kind: 'CATALOG_NODE',
@@ -298,6 +298,13 @@ export const templates = {
   deadline: deadlineTemplate,
   service: deadlineServiceTemplate,
 } as const;
+// Keep the published v1 schema intact for historical bindings and events.
+const lifecycleV2 = {
+  ...historicalTemplates.lifecycle,
+  paths: historicalTemplates.lifecycle.paths.filter((path) => path !== 'availability'),
+  schema: historicalTemplates.lifecycle.schema.omit({ availability: true }),
+};
+export const templates = { ...historicalTemplates, lifecycle: lifecycleV2 } as const;
 export type TemplateId = keyof typeof templates;
 export const productV2 = {
   ...templates.product,
@@ -315,13 +322,14 @@ export const productV2 = {
 };
 // Published versions and explicit upgrade edges; adding a version does not rewrite old schemas.
 export const registry = [
-  ...Object.entries(templates).map(([id, template]) => ({
+  ...Object.entries(historicalTemplates).map(([id, template]) => ({
     id: id as TemplateId,
     version: 1,
     ...template,
     retired: false,
     upgrade_from: [] as number[],
   })),
+  { id: 'lifecycle' as const, version: 2, ...lifecycleV2, retired: false, upgrade_from: [1] },
   { id: 'product' as const, version: 2, ...productV2, retired: false, upgrade_from: [1] },
   { id: 'clothing' as const, version: 2, ...clothingV2, retired: false, upgrade_from: [1] },
   { id: 'device' as const, version: 2, ...deviceV2, retired: false, upgrade_from: [1] },

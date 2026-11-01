@@ -1,3 +1,4 @@
+import { derivedAvailability } from '../../../../../../packages/contracts/src/semantics.js';
 import type {
   AttributeBindingV2,
   CatalogRecordV2,
@@ -39,8 +40,7 @@ const LIFECYCLE_STATUS: Record<string, StatusView> = {
 
 const AVAILABILITY_STATUS: Record<string, StatusView> = {
   AVAILABLE: { label: '可用', tone: 'success' },
-  IN_USE: { label: '使用中', tone: 'info' },
-  LOANED: { label: '已借出', tone: 'warning' },
+  UNAVAILABLE: { label: '暂不可用', tone: 'warning' },
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -125,11 +125,16 @@ const statusFor = (
   if (recordState === 'VOID') return { label: '已作废', tone: 'danger' };
   const lifecycle = bindingValues(attributes, 'lifecycle');
   const state = textValue(lifecycle?.state);
-  if (state) return LIFECYCLE_STATUS[state] ?? { label: state, tone: 'neutral' };
-  const availability = textValue(lifecycle?.availability);
+  if (state && state !== 'ACTIVE')
+    return LIFECYCLE_STATUS[state] ?? { label: state, tone: 'neutral' };
+  const availability = derivedAvailability(
+    Object.fromEntries(
+      attributes.filter((a) => a.status === 'KNOWN').map((a) => [a.template_id, a.values]),
+    ),
+  );
   if (availability)
     return AVAILABILITY_STATUS[availability] ?? { label: availability, tone: 'neutral' };
-  return { label: '未记录', tone: 'neutral' };
+  return state === 'ACTIVE' ? LIFECYCLE_STATUS.ACTIVE : { label: '未记录', tone: 'neutral' };
 };
 
 const factsFor = (attributes: readonly AttributeBindingV2[]): FactView[] => {
