@@ -3,10 +3,10 @@ import { embeddedRuntime } from './runtime.js';
 import type { Operation } from '../../../../packages/contracts/src/index.js';
 import type {
   HistoryEvent,
+  InventorySnapshot,
   WriteResult,
 } from '../../../../packages/contracts/src/web.js';
 import { PROTOCOL_HEADER, PROTOCOL_VERSION } from '../features/api/protocol.js';
-import type { SnapshotV2 } from '../../../../packages/contracts/src/read-v2.js';
 
 export class ApiError extends Error {
   constructor(
@@ -136,7 +136,7 @@ export const read = <T>(name: Operation | 'get_note', input: unknown, signal?: A
 };
 export const snapshot = (household?: string, signal?: AbortSignal) =>
   embeddedRuntime()?.transport.snapshot(signal) ??
-  request<SnapshotV2>('/api/ui/snapshot', {
+  request<InventorySnapshot>('/api/ui/snapshot', {
     headers: household ? { 'X-Acornary-Household': household } : {},
     signal,
   });

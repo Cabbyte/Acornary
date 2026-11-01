@@ -2,13 +2,13 @@ import { Button, Skeleton } from 'antd';
 import { embeddedRuntime } from './runtime';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { SnapshotV2 } from '../../../../packages/contracts/src/read-v2';
+import type { InventorySnapshot } from '../../../../packages/contracts/src/web';
 import { ApiError, snapshot } from './api';
 import { persist, stored } from './storage';
 import { useSession } from './session';
 import { Notice } from '../ui/components';
 const Context = createContext<{
-  data: SnapshotV2;
+  data: InventorySnapshot;
   refresh: () => Promise<void>;
   stale: boolean;
   cacheWarning: string;
@@ -19,7 +19,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   const key = session.cache_key!;
   const [cached, setCached] = useState<{
     key: string;
-    data: SnapshotV2;
+    data: InventorySnapshot;
   }>();
   const [cacheWarning, setCacheWarning] = useState('');
   const q = useQuery({
@@ -31,7 +31,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   });
   useEffect(() => {
     let cancelled = false;
-    void stored<SnapshotV2>(`${key}:snapshot`)
+    void stored<InventorySnapshot>(`${key}:snapshot`)
       .then((data) => {
         if (!cancelled) setCached(data ? { key, data } : undefined);
       })

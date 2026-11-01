@@ -17,7 +17,6 @@ import {
   type WriteResult,
 } from '../../../../packages/contracts/src/web.js';
 import { ApiError, messages } from '../lib/api.js';
-import type { SnapshotV2 } from '../../../../packages/contracts/src/read-v2.js';
 import type { InventoryTransport, Selection } from '../lib/runtime.js';
 import type { Operation } from '../../../../packages/contracts/src/index.js';
 import type { ConnectionContext } from '../../../../packages/contracts/src/read-v2.js';
@@ -179,7 +178,7 @@ export class PluginClient implements InventoryTransport {
     if (this.seed) {
       const seed = this.seed;
       this.seed = undefined;
-      return seed.snapshot as unknown as SnapshotV2;
+      return seed.snapshot;
     }
     const previous = this.envelope?.session.cache_key;
     const envelope = await this.fetchEnvelope(signal);
@@ -187,7 +186,7 @@ export class PluginClient implements InventoryTransport {
     this.accept(envelope);
     if (previous !== envelope.session.cache_key)
       throw new ApiError('UNAUTHORIZED', '连接账号或家庭已改变，正在重新加载。', 401);
-    return envelope.snapshot as unknown as SnapshotV2;
+    return envelope.snapshot;
   }
   async context(): Promise<ConnectionContext> {
     const result = await this.call('get_connection_context', {});
