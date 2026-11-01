@@ -56,10 +56,6 @@ export const messages: Record<string, string> = {
   SPLIT_NOT_CONSERVED: '拆分数量必须与来源内容一致。',
   NETWORK: '连接中断或响应未返回。输入已保留，请重试同一次操作。',
 };
-let readTransport: 'get' | 'post' = 'get';
-export const configureReadTransport = (mode: 'get' | 'post') => {
-  readTransport = mode;
-};
 export async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const embedded = embeddedRuntime();
   if (embedded) return embedded.transport.request<T>(url);
@@ -131,14 +127,10 @@ async function requestImpl<T>(
 export const read = <T>(name: Operation | 'get_note', input: unknown, signal?: AbortSignal) => {
   const embedded = embeddedRuntime();
   if (embedded) return embedded.transport.read<T>(name, input, signal);
-  if (readTransport === 'post')
-    return request<T>(`/api/read/${name}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-      signal,
-    });
-  return request<T>(`/api/read/${name}?input=${encodeURIComponent(JSON.stringify(input))}`, {
+  return request<T>(`/api/read/${name}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
     signal,
   });
 };

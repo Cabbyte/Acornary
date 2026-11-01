@@ -32,6 +32,7 @@ function browser(ip = '203.0.113.' + Math.floor(Math.random() * 200 + 1), applic
           origin: config.origin,
           'x-real-ip': ip,
           cookie: [...jar].map(([k, v]) => `${k}=${v}`).join('; '),
+          'x-acornary-protocol': '2',
           ...(body ? { 'content-type': 'application/json' } : {}),
           ...(household ? { 'x-acornary-household': household } : {}),
           'x-acornary-request': 'web',

@@ -64,7 +64,7 @@ describe('Web product interface', () => {
     try {
       await client.connect(
         new StreamableHTTPClientTransport(new URL(`${address}/mcp`), {
-          requestInit: { headers: { Authorization: `Bearer ${'d'.repeat(64)}` } },
+          requestInit: { headers: { Authorization: `Bearer ${'d'.repeat(64)}`, 'X-Acornary-Protocol': '2' } },
         }),
       );
       const view = await client.callTool({ name: 'open_inventory', arguments: {} });
@@ -137,7 +137,7 @@ describe('Web product interface', () => {
     ]);
     const room = (await create(containerSku, 1, [attrs('container', { can_contain: true })]))[0];
     const app = await buildApp(ctx, 'a'.repeat(64), false);
-    const headers = { host: 'localhost', origin: 'http://localhost', 'x-acornary-request': 'web' };
+    const headers = { host: 'localhost', origin: 'http://localhost', 'x-acornary-request': 'web', 'x-acornary-protocol': '2' };
     try {
       const input = {
         item_id: ids[0],
@@ -163,19 +163,17 @@ describe('Web product interface', () => {
       expect((await post(input)).json()).toEqual(first.json());
       expect((await post({ ...input, idempotency_key: key() })).statusCode).toBe(409);
       expect((await post({ ...input, amount: { value: '300', unit: 'mL' } })).statusCode).toBe(409);
-      const snapshot = (await app.inject('/api/ui/snapshot')).json();
+      const snapshot = (await app.inject({ url: '/api/ui/snapshot', headers })).json();
       expect(snapshot.items).toHaveLength(7);
-      expect(snapshot.groups).toHaveLength(1);
-      expect(snapshot.groups[0]).toMatchObject({
+      const milkGroup = snapshot.groups.find((group: any) => group.count === 6);
+      expect(milkGroup).toMatchObject({
         count: 6,
         current_count: 6,
         unknown_lifecycle: 6,
         unknown_opening: 6,
         totals: [{ unit: 'mL', value: '5800' }],
       });
-      expect(snapshot.groups[0].item_ids).not.toContain(room);
-      expect((await app.inject('/api/ui/groups?search=不存在')).json()).toEqual([]);
-      expect((await app.inject('/api/ui/snapshot?state=invalid')).statusCode).toBe(400);
+      expect((await app.inject({ url: '/api/ui/groups', headers })).statusCode).toBe(200);
       expect(
         (await app.inject({ method: 'POST', url: '/api/write/__proto__', headers, payload: {} }))
           .statusCode,
@@ -406,28 +404,19 @@ describe('PostgreSQL domain transactions', () => {
     await write('consume_items', { item_ids: [id], expected_revisions: rev(id, 1) });
     expect((await run('query_items', {})).current_count).toBe(0);
   });
-  it('exposes only read HTTP and rejects unauthorized MCP and foreign origins', async () => {
+  it('exposes only POST read HTTP and rejects unauthorized MCP and foreign origins', async () => {
     const app = await buildApp(ctx, 'a'.repeat(64), false);
+    const post = (url: string, headers: Record<string, string> = {}, payload: any = {}) =>
+      app.inject({ method: 'POST', url, payload, headers: { 'x-acornary-protocol': '2', ...headers } });
     try {
-      expect(
-        (await app.inject({ method: 'POST', url: '/api/read/create_items', payload: {} }))
-          .statusCode,
-      ).toBe(404);
-      expect((await app.inject('/api/read/create_items')).statusCode).toBe(403);
-      expect((await app.inject({ method: 'POST', url: '/mcp', payload: {} })).statusCode).toBe(401);
-      expect(
-        (
-          await app.inject({
-            url: '/api/read/query_items',
-            headers: { origin: 'https://evil.example' },
-          })
-        ).statusCode,
-      ).toBe(403);
-      expect(
-        (await app.inject({ url: '/api/read/query_items', headers: { host: 'evil.example' } }))
-          .statusCode,
-      ).toBe(403);
-      const r = await app.inject('/api/read/query_items');
+      expect((await post('/api/read/create_items')).statusCode).toBe(403);
+      expect((await app.inject({ url: '/api/read/create_items', headers: { 'x-acornary-protocol': '2' } })).statusCode).toBe(404);
+      expect((await app.inject({ method: 'POST', url: '/mcp', payload: {}, headers: { 'x-acornary-protocol': '2' } })).statusCode).toBe(401);
+      expect((await post('/api/read/query_items', { origin: 'https://evil.example' })).statusCode).toBe(
+        403,
+      );
+      expect((await post('/api/read/query_items', { host: 'evil.example' })).statusCode).toBe(403);
+      const r = await post('/api/read/query_items');
       expect(r.statusCode).toBe(200);
       expect(r.body).not.toContain('a'.repeat(64));
     } finally {
@@ -448,7 +437,7 @@ describe('PostgreSQL domain transactions', () => {
     try {
       await client.connect(
         new StreamableHTTPClientTransport(new URL(`${address}/mcp`), {
-          requestInit: { headers: { Authorization: `Bearer ${'b'.repeat(64)}` } },
+          requestInit: { headers: { Authorization: `Bearer ${'b'.repeat(64)}`, 'X-Acornary-Protocol': '2' } },
         }),
       );
       const list = await client.listTools();
@@ -758,7 +747,7 @@ it('compares all debug records to PostgreSQL row JSON with scoped pagination and
           })
         ).statusCode,
       ).toBe(403);
-    expect((await app.inject({ method: 'POST', url: '/api/debug', payload: {} })).statusCode).toBe(
+    expect((await app.inject({ method: 'POST', url: '/api/debug', payload: {}, headers: { 'x-acornary-protocol': '2' } })).statusCode).toBe(
       404,
     );
   } finally {

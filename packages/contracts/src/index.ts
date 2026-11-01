@@ -52,6 +52,7 @@ export const implementedFeatures = [
   'split',
   'references',
   'units_v2',
+  'protocol_v2',
 ] as const;
 export * from './errors.js';
 export * from './export.js';

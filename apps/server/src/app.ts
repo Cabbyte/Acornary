@@ -210,9 +210,8 @@ export async function buildApp(
       });
     }
   });
-  const requireProtocol = process.env.ACORNARY_REQUIRE_PROTOCOL_V2 === '1';
   const rejectProtocol = (req: FastifyRequest) => {
-    if (requireProtocol && req.headers['x-acornary-protocol'] !== '2')
+    if (req.headers['x-acornary-protocol'] !== '2')
       throw new DomainError(
         'PROTOCOL_VERSION_UNSUPPORTED',
         'This server requires X-Acornary-Protocol: 2.',
@@ -229,7 +228,7 @@ export async function buildApp(
     ];
     if (
       !negotiation.includes(path) &&
-      /^\/api\/(read|write|ui|sync|attachments|debug|terminal\/v1)(\/|$)/.test(path)
+      /^\/api\/(read|write|ui|sync|attachments|debug)(\/|$)/.test(path)
     )
       rejectProtocol(req);
   });
@@ -436,17 +435,12 @@ export async function buildApp(
     return { household, container_catalog_id: install?.container_catalog_id,
       protocol: { current: 2, min: 2 }, features: [...implementedFeatures] };
   });
-  app.get('/api/read/:operation', async (req) => {
+  const readOperation = async (req: FastifyRequest, input: unknown) => {
     const name = (req.params as any).operation as Operation;
     if (!reads.has(name)) throw new DomainError('FORBIDDEN', 'This HTTP interface is read-only.');
-    let input: unknown = {};
-    try {
-      input = JSON.parse((req.query as any).input ?? '{}');
-    } catch {
-      throw new DomainError('ATTRIBUTE_VALIDATION_FAILED', 'Invalid JSON query.');
-    }
     return execute({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }, name, input);
-  });
+  };
+  app.post('/api/read/:operation', async (req) => readOperation(req, req.body ?? {}));
   registerExportRoutes(app, token, !!cloud, req => ({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }), execute);
   app.post('/api/read/query_inventory_groups', async req =>
     execute({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }, 'query_inventory_groups', req.body));

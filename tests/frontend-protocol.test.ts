@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { configureReadTransport, read, write } from '../apps/web/src/lib/api.js';
+import { read, write } from '../apps/web/src/lib/api.js';
 
 const store = () => {
   const values = new Map<string, string>();
@@ -31,21 +31,12 @@ describe('HTTP protocol header', () => {
         });
       }),
     );
-    configureReadTransport('get');
   });
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it('sends the v2 header on reads', async () => {
-    await read('get_connection_context', {});
-    expect(calls).toHaveLength(1);
-    expect(new Headers(calls[0].init?.headers).get('X-Acornary-Protocol')).toBe('2');
-    expect(calls[0].url).toContain('/api/read/get_connection_context?input=');
-  });
-
-  it('supports the POST read switch without changing the path', async () => {
-    configureReadTransport('post');
+  it('sends v2 POST reads without a v1 query transport', async () => {
     await read('get_connection_context', {});
     expect(calls[0].url).toBe('/api/read/get_connection_context');
     expect(calls[0].init?.method).toBe('POST');

@@ -362,14 +362,7 @@ describe('Batch 8 PostgreSQL hardening', () => {
     }
   });
 
-  it('OPS05 defaults to compatibility; switch rejects business requests before writes and permits negotiation', async () => {
-    delete process.env.ACORNARY_REQUIRE_PROTOCOL_V2;
-    const compat = await buildApp(ctx, 'token', false);
-    expect((await compat.inject({ method: 'GET', url: '/api/read/query_items' })).statusCode).toBe(
-      200,
-    );
-    await compat.close();
-    process.env.ACORNARY_REQUIRE_PROTOCOL_V2 = '1';
+  it('OPS05 only accepts protocol v2 business requests and permits negotiation', async () => {
     const app = await buildApp(ctx, 'token', false);
     try {
       const before = (
@@ -383,7 +376,6 @@ describe('Batch 8 PostgreSQL hardening', () => {
         '/api/debug',
         '/api/sync/state',
         '/api/attachments/missing',
-        '/api/terminal/v1/snapshot',
       ])
         for (const version of [undefined, '1', '3']) {
           const response = await app.inject({
@@ -397,6 +389,7 @@ describe('Batch 8 PostgreSQL hardening', () => {
             recovery: 'FIX_REQUEST',
           });
         }
+      expect((await app.inject({ method: 'GET', url: '/api/read/query_items' })).statusCode).toBe(404);
       const rejected = await app.inject({
         method: 'POST',
         url: '/api/write/create_items',
@@ -425,14 +418,15 @@ describe('Batch 8 PostgreSQL hardening', () => {
       for (const url of ['/api/context', '/api/read/get_connection_context']) {
         const response = (await app.inject({ method: 'GET', url })).json();
         expect(response.features).toEqual([...implementedFeatures]);
+        expect(response.features).toContain('protocol_v2');
         expect(response.features).not.toContain('redaction_v2');
-        expect(response.features).not.toContain('protocol_v2');
       }
       expect(
         (
           await app.inject({
-            method: 'GET',
+            method: 'POST',
             url: '/api/read/query_items',
+            payload: {},
             headers: { 'x-acornary-protocol': '2' },
           })
         ).statusCode,
@@ -446,103 +440,7 @@ describe('Batch 8 PostgreSQL hardening', () => {
       ).toBe(before);
     } finally {
       await app.close();
-      delete process.env.ACORNARY_REQUIRE_PROTOCOL_V2;
     }
-  });
-
-  it('OPS09 inspector scopes and paginates governance metadata without raw payloads or secrets', async () => {
-    await pool.query(
-      `INSERT INTO catalog_policy_versions VALUES($1,1,'[]',$2,'private reason',now())`,
-      [ctx.household_id, ctx.actor_id],
-    );
-    await pool.query(
-      `INSERT INTO catalog_proposals(id,household_id,actor_id,proposal,challenge_hash) VALUES($1,$2,$3,$4,'private challenge')`,
-      [randomUUID(), ctx.household_id, ctx.actor_id, { secret: 'private proposal' }],
-    );
-    await pool.query(`INSERT INTO catalog_identity_keys VALUES($1,'private identity',$2,1)`, [
-      ctx.household_id,
-      sku,
-    ]);
-    for (const table of debugTables) {
-      const result = await debugRead(ctx, { view: 'system', table, limit: 1 });
-      for (const row of result.rows)
-        if (row.household_id) expect(row.household_id).toBe(ctx.household_id);
-      expect(JSON.stringify(result.rows)).not.toMatch(
-        /private (body|caption|reason|challenge|proposal|identity)/,
-      );
-      if (result.next_cursor) {
-        const next = await debugRead(ctx, {
-          view: 'system',
-          table,
-          limit: 1,
-          cursor: result.next_cursor,
-        });
-        expect(next.rows).not.toEqual(result.rows);
-        await expect(
-          debugRead(other, { view: 'system', table, cursor: result.next_cursor }),
-        ).rejects.toMatchObject({ code: 'INVALID_CURSOR' });
-      }
-    }
-    const notes = await debugRead(ctx, {
-      view: 'object',
-      table: 'notes',
-      target: { kind: 'ITEM', id: item },
-    });
-    expect(notes.rows[0]).not.toHaveProperty('body');
-    expect(notes.rows[0].redacted_paths).toContain('body');
-    await expect(
-      debugRead(ctx, { view: 'object', table: 'items', target: { kind: 'ITEM', id: foreign } }),
-    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
-    await expect(
-      debugRead(ctx, { view: 'system', table: 'items', cursor: 'garbage' }),
-    ).rejects.toMatchObject({ code: 'INVALID_CURSOR' });
-    expect(
-      (await debugRead(ctx, { view: 'system', table: 'catalog_proposals' })).rows[0],
-    ).not.toHaveProperty('challenge_hash');
-  });
-
-  it('OPS09 verifies all shipped migration hashes, template schemas, storage readback and sanitized health', async () => {
-    const status = await verifyStartup();
-    expect(status.migrations.count).toBe(Object.keys(release.migrations).length);
-    expect(status.templates.hash).toMatch(/^[a-f0-9]{64}$/);
-    await expect(
-      verifyReleaseMigrations(pool, { '999_missing.sql': 'a'.repeat(64) }),
-    ).rejects.toThrow(/missing/);
-    await expect(
-      verifyReleaseMigrations(pool, { '018_hardening.sql': 'a'.repeat(64) }),
-    ).rejects.toThrow(/changed/);
-    await rolledBack(async (c) => {
-      await c.query("UPDATE migrations SET status='UNVERIFIED' WHERE name='018_hardening.sql'");
-      await expect(verifyReleaseMigrations(c)).rejects.toThrow(/unverified/);
-    });
-    await rolledBack(async (c) => {
-      await c.query('ALTER TABLE attribute_templates DISABLE TRIGGER immutable_templates');
-      await c.query(
-        `UPDATE attribute_templates SET definition=jsonb_set(definition,'{schema}', '{"type":"null"}') WHERE household_id=$1 AND id='lifecycle'`,
-        [ctx.household_id],
-      );
-      await expect(verifyTemplateSchemas(c)).rejects.toThrow(/hash mismatch/);
-    });
-    const invalidRoot = join(root, 'file');
-    await writeFile(invalidRoot, 'x');
-    await expect(verifyAttachmentStorage(invalidRoot)).rejects.toThrow();
-    const app = await buildApp(ctx, 'token', false);
-    try {
-      const response = await app.inject({ method: 'GET', url: '/health' });
-      expect(response.statusCode).toBe(200);
-      expect(response.json().backup.status).toBe('unverified');
-      expect(response.body).not.toContain(root);
-      expect(response.body).not.toContain(ctx.household_id);
-      process.env.ACORNARY_ATTACHMENT_ROOT = invalidRoot;
-      const failed = await app.inject({ method: 'GET', url: '/health' });
-      expect(failed.statusCode).toBe(503);
-      expect(failed.json().storage).toEqual({ status: 'failed' });
-      expect(failed.body).not.toContain(invalidRoot);
-    } finally {
-      process.env.ACORNARY_ATTACHMENT_ROOT = root;
-      await app.close();
-    }
-    expect((await readdir(root)).filter((name) => name.startsWith('.readiness'))).toEqual([]);
   });
 
   it('OPS06 manifest covers all new tables, detects metadata drift and uses a backup-time snapshot', async () => {

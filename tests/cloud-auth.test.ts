@@ -48,6 +48,7 @@ const inject = (options: any) =>
     ...options,
     remoteAddress: config.trustedProxy,
     headers: {
+      'x-acornary-protocol': '2',
       ...headers,
       ...(ctx ? { 'x-acornary-household': ctx.household_id } : {}),
       ...options.headers,

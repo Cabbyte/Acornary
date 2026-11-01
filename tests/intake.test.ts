@@ -393,7 +393,7 @@ it('keeps confirmation outside generic HTTP/model commands and hides its challen
   try {
     await client.connect(
       new StreamableHTTPClientTransport(new URL(address + '/mcp'), {
-        requestInit: { headers: { Authorization: 'Bearer ' + 'c'.repeat(64) } },
+        requestInit: { headers: { Authorization: 'Bearer ' + 'c'.repeat(64), 'X-Acornary-Protocol': '2' } },
       }),
     );
     const view = await client.callTool({ name: 'open_inventory', arguments: {} });
@@ -421,7 +421,7 @@ it('keeps confirmation outside generic HTTP/model commands and hides its challen
     const denied = await app.inject({
       method: 'POST',
       url: '/api/write/confirm_catalog_change',
-      headers: { origin: 'http://localhost:80', 'x-acornary-request': 'web' },
+      headers: { origin: 'http://localhost:80', 'x-acornary-request': 'web', 'x-acornary-protocol': '2' },
       payload: { proposal_id: proposal.proposal_id, challenge: hidden.challenge },
     });
     expect(denied.statusCode).toBe(403);
