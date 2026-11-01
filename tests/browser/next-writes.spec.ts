@@ -93,7 +93,18 @@ test('intake review, consume, edit, move and notes preserve real command behavio
   expect(
     updated.attributes.find((a: any) => a.template_id === 'contents').values.remaining.value,
   ).toBe('800.1');
-  expect(snapshot.notes.find((n: any) => n.item_id === f.id).body).toBe('更新后的使用记录。');
+  const detailResponse = await page.request.post('/api/read/get_item', {
+    headers: { 'X-Acornary-Protocol': '2' },
+    data: { item_id: f.id },
+  });
+  expect(detailResponse.ok()).toBe(true);
+  const detail = await detailResponse.json();
+  const noteResponse = await page.request.post('/api/read/get_note', {
+    headers: { 'X-Acornary-Protocol': '2' },
+    data: { note_id: detail.notes[0].id },
+  });
+  expect(noteResponse.ok()).toBe(true);
+  expect((await noteResponse.json()).body).toBe('更新后的使用记录。');
   expect(errors).toEqual([]);
 });
 

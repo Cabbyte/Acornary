@@ -58,7 +58,7 @@ export function SettingsDetails({ section }: { section?: string }) {
         <p className="section-label">本机缓存</p>
         <div className="grouped">
           <Row title="上次更新" detail={time(data.cached_at)} />
-          <Row title="缓存范围" subtitle={`${data.catalog.length} 条目录、${data.items.length} 件实物、${data.notes.length} 条笔记；历史仅缓存打开过的最近记录。`} />
+          <Row title="缓存范围" subtitle={`${data.catalog.length} 条目录、${data.items.length} 件实物；历史仅缓存打开过的最近记录。`} />
           <Row title="添加到主屏幕" subtitle="像 App 一样打开松仓" onClick={() => setInstall(true)} />
         </div>
         <Button disabled={!online || busy} onClick={async () => { setBusy(true); try { await refresh(); setError(''); } catch { setError('更新失败，请检查连接后重试。'); } finally { setBusy(false); } }} htmlType="button" type="default">{busy ? '正在更新…' : '更新缓存'}</Button>

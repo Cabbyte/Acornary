@@ -11,15 +11,11 @@ import {
   pluginWriteTool,
   type PluginEnvelope,
 } from '../../../../packages/contracts/src/plugin.js';
-import {
-  inventoryFilterSchema,
-  productGroups,
-  type WriteResult,
-} from '../../../../packages/contracts/src/web.js';
+import type { WriteResult } from '../../../../packages/contracts/src/web.js';
 import { ApiError, messages } from '../lib/api.js';
 import type { InventoryTransport, Selection } from '../lib/runtime.js';
 import type { Operation } from '../../../../packages/contracts/src/index.js';
-import type { ConnectionContext } from '../../../../packages/contracts/src/read-v2.js';
+import type { ConnectionContext, SnapshotV2 } from '../../../../packages/contracts/src/read-v2.js';
 import { domainErrorStatus } from '../../../../packages/contracts/src/errors.js';
 import { applyHostLayout } from '../ui/viewport.js';
 
@@ -174,7 +170,7 @@ export class PluginClient implements InventoryTransport {
     if (!parsed.success) throw new ApiError('NETWORK', '库存响应格式不正确，请重新打开插件。');
     return parsed.data;
   }
-  async snapshot(signal?: AbortSignal) {
+  async snapshot(signal?: AbortSignal): Promise<SnapshotV2> {
     if (this.seed) {
       const seed = this.seed;
       this.seed = undefined;
@@ -225,13 +221,7 @@ export class PluginClient implements InventoryTransport {
       action === 'review' ? response._meta?.[pluginReviewMetaKey] : response.structuredContent
     ) as T;
   }
-  async request<T>(url: string): Promise<T> {
-    if (url.startsWith('/api/ui/groups?') && this.envelope) {
-      const filter = inventoryFilterSchema.parse(
-        Object.fromEntries(new URLSearchParams(url.split('?')[1])),
-      );
-      return productGroups(this.envelope.snapshot, filter) as T;
-    }
+  async request<T>(_url: string): Promise<T> {
     throw new ApiError('FORBIDDEN', '此功能请在松仓网站中使用。', 403);
   }
   select(selection: Selection | null) {

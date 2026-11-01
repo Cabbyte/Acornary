@@ -40,7 +40,7 @@ export function itemDate(item: ItemRecord) {
           : '到期日期';
   return { title, date: expiry?.date, text: expiry?.date ?? '日期未记录' };
 }
-export function itemLabelContent(item: ItemRecord, data: InventoryData) {
+export function itemLabelContent(item: ItemRecord, data: Pick<InventoryData, 'catalog' | 'items'>) {
   const sku = data.catalog.find((c) => c.id === item.catalog_node_id);
   const date = itemDate(item);
   return {

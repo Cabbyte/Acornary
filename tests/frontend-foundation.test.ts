@@ -3,7 +3,6 @@ import { resolveFeatures, SAFE_BASELINE } from '../apps/web/src/features/api/fea
 import {
   isItemDetailV2,
   isItemRecordV2,
-  isSnapshotV2,
 } from '../apps/web/src/features/inventory/adapters/shape.js';
 import { domainErrorStatus, errorRecovery } from '../packages/contracts/src/errors.js';
 import type { ConnectionContext } from '../packages/contracts/src/read-v2.js';
@@ -37,12 +36,6 @@ describe('feature registry', () => {
 });
 
 describe('shape guards', () => {
-  it('detects snapshot v2 and does not mistake v1 for it', () => {
-    expect(isSnapshotV2({ protocol: 2, items: [] })).toBe(true);
-    expect(isSnapshotV2({ household: {}, items: [], notes: [], cached_at: '' })).toBe(false);
-    expect(isSnapshotV2(null)).toBe(false);
-  });
-
   it('detects item detail v2 and item record v2', () => {
     expect(isItemDetailV2({ item: {}, dates: [] })).toBe(true);
     expect(isItemDetailV2({ id: 'item', attributes: [] })).toBe(false);

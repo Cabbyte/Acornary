@@ -89,11 +89,14 @@ describe('Plugin recovery boundaries', () => {
           host: 'mcp',
         },
         snapshot: {
-          household: { id: 'b', name: 'b' },
-          container_catalog_id: '',
+          household: { id: 'b', name: 'b', timezone: 'Asia/Shanghai' },
+          protocol: 2,
+          as_of_change_id: '42',
+          server_time: '2026-10-01',
+          container_catalog_id: null,
           catalog: [],
           items: [],
-          notes: [],
+          groups: [],
           cached_at: 'now',
         },
       }).success,
@@ -115,11 +118,14 @@ it.each(['success', 'authorization-error'])(
         can_write: true,
       },
       snapshot: {
-        household: { id: family, name: family },
-        container_catalog_id: '',
+        household: { id: family, name: family, timezone: 'Asia/Shanghai' },
+        protocol: 2,
+        as_of_change_id: '42',
+        server_time: '2026-10-01',
+        container_catalog_id: null,
         catalog: [],
         items: [],
-        notes: [],
+        groups: [],
         cached_at: '2026-10-01',
       },
     });
@@ -185,7 +191,7 @@ it('retries failed context clears and coalesces queued selections to the latest 
   vi.useRealTimers();
 });
 
-it('retains the household timezone in the shared plugin snapshot while accepting legacy caches', () => {
+it('retains v2 snapshot metadata and rejects legacy caches', () => {
   const envelope = {
     version: 1,
     session: {
@@ -198,10 +204,13 @@ it('retains the household timezone in the shared plugin snapshot while accepting
     },
     snapshot: {
       household: { id: 'home', name: '家', timezone: 'America/Los_Angeles' },
-      container_catalog_id: '',
+      protocol: 2,
+      as_of_change_id: '42',
+      server_time: '2026-10-01',
+      container_catalog_id: null,
       catalog: [],
       items: [],
-      notes: [],
+      groups: [],
       cached_at: '2026-10-14',
     },
   };
@@ -212,5 +221,12 @@ it('retains the household timezone in the shared plugin snapshot while accepting
     ...envelope,
     snapshot: { ...envelope.snapshot, household: { id: 'home', name: '家' } },
   };
-  expect(pluginEnvelopeSchema.parse(legacy).snapshot.household.timezone).toBeUndefined();
+  expect(pluginEnvelopeSchema.safeParse(legacy).success).toBe(false);
+  expect(pluginEnvelopeSchema.parse(envelope).snapshot).toEqual(envelope.snapshot);
+  expect(
+    pluginEnvelopeSchema.safeParse({
+      ...envelope,
+      snapshot: { ...envelope.snapshot, protocol: undefined },
+    }).success,
+  ).toBe(false);
 });

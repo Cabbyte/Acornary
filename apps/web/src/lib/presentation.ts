@@ -73,7 +73,7 @@ export const pieceUnit = (sku?: CatalogRecord) =>
   attr(sku ?? { attributes: [] }, 'product')?.specification?.match(
     /[/／]\s*(瓶|袋|盒|件|个|包|台)\s*$/,
   )?.[1] ?? '件';
-export function itemTitle(item: ItemRecord, data: InventoryData) {
+export function itemTitle(item: ItemRecord, data: Pick<InventoryData, 'catalog' | 'items'>) {
   const sku = data.catalog.find((c) => c.id === item.catalog_node_id);
   return (
     item.display_name ||

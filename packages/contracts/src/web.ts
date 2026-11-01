@@ -75,9 +75,6 @@ export interface ProductGroup {
   totals: { unit: string; value: string; estimated: boolean; unknown_accuracy: boolean }[];
   unknown_quantity: number;
 }
-export interface InventorySnapshot extends InventoryData {
-  groups: ProductGroup[];
-}
 export interface WriteResult {
   operation_id: string;
   created_items?: { client_ref: string; item_id: string; after_revision: number }[];
@@ -128,11 +125,14 @@ export function ancestors<T extends { id: string; parent_id: string | null }>(
   }
   return path;
 }
-export const itemName = (item: ItemRecord, data: InventoryData) =>
+export const itemName = (item: ItemRecord, data: Pick<InventoryData, 'catalog'>) =>
   item.display_name ||
   data.catalog.find((c) => c.id === item.catalog_node_id)?.name ||
   '未命名物品';
-export const locationName = (item: Pick<ItemRecord, 'parent_id'>, data: InventoryData) =>
+export const locationName = (
+  item: Pick<ItemRecord, 'parent_id'>,
+  data: Pick<InventoryData, 'catalog' | 'items'>,
+) =>
   ancestors(item.parent_id, data.items)
     .map((i) => itemName(i, data))
     .join(' / ') || '未记录位置';

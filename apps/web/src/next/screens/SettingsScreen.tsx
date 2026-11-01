@@ -94,7 +94,7 @@ export function SettingsScreen() {
                 <div>
                   <strong>缓存范围</strong>
                   <p className={styles.hint}>
-                    {data.catalog.length} 条目录、{physicalCount} 件物品、{data.notes.length} 条笔记
+                    {data.catalog.length} 条目录、{physicalCount} 件物品
                   </p>
                 </div>
               </div>

@@ -1,14 +1,7 @@
 import type {
   ItemDetailV2,
   ItemRecordV2,
-  SnapshotV2,
 } from '../../../../../../packages/contracts/src/read-v2.js';
-
-export function isSnapshotV2(value: unknown): value is SnapshotV2 {
-  if (!value || typeof value !== 'object') return false;
-  const snapshot = value as Record<string, unknown>;
-  return snapshot.protocol === 2 && Array.isArray(snapshot.items);
-}
 
 export function isItemDetailV2(value: unknown): value is ItemDetailV2 {
   if (!value || typeof value !== 'object') return false;
