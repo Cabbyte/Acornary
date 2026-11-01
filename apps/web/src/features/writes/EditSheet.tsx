@@ -2,7 +2,6 @@ import { Input } from 'antd';
 import { useState } from 'react';
 import { Button, Field } from '../../ui/primitives';
 import { CalendarInput } from '../../ui/inputs';
-import { label } from '../../lib/presentation';
 import type { WriteFieldsProps } from './types';
 import styles from './WriteSheet.module.css';
 
@@ -47,9 +46,6 @@ export function EditSheet({
               placeholder={productName}
               onChange={(e) => onChange('name', e.target.value)}
             />
-          </Field>
-          <Field label="状态" hint="已记录的状态，仅供查阅。">
-            <Input readOnly value={label(values.availability)} />
           </Field>
           <Field label="购入日期">
             <CalendarInput

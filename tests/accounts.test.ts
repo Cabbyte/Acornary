@@ -69,7 +69,11 @@ async function register() {
   return { b, email, userId: session.user_id };
 }
 beforeAll(async () => {
-  if (!new URL(process.env.DATABASE_URL!).pathname.endsWith('acornary_test'))
+  if (
+    !['/acornary_test', '/acornary_test_w6_lifecycle'].includes(
+      new URL(process.env.DATABASE_URL!).pathname,
+    )
+  )
     throw Error('Isolated database required');
   app = await buildApp({ ...(await initialize()), source: 'TEST' }, '', false, config);
   await app.ready();

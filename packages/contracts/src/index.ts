@@ -315,7 +315,6 @@ export const schemas = {
     ...write,
     item_id: uuid,
     display_name: text.nullable().optional(),
-    availability: templates.lifecycle.schema.shape.availability.unwrap().nullable().optional(),
     acquired_on: z.iso.date().nullable().optional(),
     note: z
       .strictObject({ note_id: entityId('note').optional(), body: z.string().max(100000) })
@@ -411,7 +410,7 @@ export const descriptions: Record<Operation, string> = {
   create_items_batch:
     '将 1–100 包不同规格的实物一次入库，每条一个独立 ID。每条 client_ref 必须唯一；尽量同时提供已知位置、重量和日期。整批成功或回滚；同键同参数重试返回原 ID。创建商品 SKU 不会新增库存。',
   update_items_lifecycle:
-    '原子更新明确物品的生命周期；每条使用 lifecycle v1 的 set/unset，全部 item_id 必须提供 expected_revisions，任一失败整批回滚。',
+    '原子更新明确物品的生命周期；每条使用绑定版本的 set/unset；新绑定使用 lifecycle v2，全部 item_id 必须提供 expected_revisions，任一失败整批回滚。',
   upgrade_attributes:
     '按登记的升级规则显式升级绑定；提交 from_version、to_version、完整目标 values 和对象 revision；保留需继续使用的旧值。',
   query_catalog_nodes:
@@ -432,7 +431,7 @@ export const descriptions: Record<Operation, string> = {
   move_item: '移动明确 UUID 的物品或容器，后代相对位置不变。',
   move_items: '将明确选择的物品原子地移至同一位置；全部版本必须匹配，任一失败则全部回滚。',
   edit_item:
-    '原子编辑一件实物的名称、可用状态、购入日期和指定备注；未提供的可选字段保持不变，不修改同款商品资料。',
+    '原子编辑一件实物的名称、购入日期和指定备注；未提供的可选字段保持不变，不修改同款商品资料。',
   open_item:
     '开封用户明确指定的 UUID。多个候选必须先询问用户。opened_at 仅填写用户提供的已知时间。',
   consume_items: '整件消耗用户明确指定的 item_ids，不接受自动选取或 FEFO。',
