@@ -24,7 +24,7 @@ Batch 3–8 的后端能力已经实现并合并到集成分支：
 
 | 范围 | 结果 |
 | --- | --- |
-| 全仓库既有回归 | **157 passed / 2 todo / 0 failed**，20 个文件 |
+| 全仓库既有回归（含前端） | **196 passed / 2 todo / 0 failed**，27 个文件 |
 | Batch 1 + 2（新验收） | **84 passed / 1 todo** |
 | 10k 读路径基准 | items p95 **70.3 ms**、history **6.0 ms**、search **112.3 ms** |
 | Batch 3 sync/label | **17 passed / 4 skipped** |
@@ -77,15 +77,21 @@ Batch 3–8 的后端能力已经实现并合并到集成分支：
 
 ## 6. 合并状态
 
-后端全部工作在 `codex/wave2-integration`，基于 `codex/data-model-v2`。主工作树当前有另一条前端的未提交改动（`apps/web/src/next`、frontend-refactor 文档），因此**没有**把后端分支强合并进主工作树，也没有触碰这些前端文件。
+前端重构已提交为 `b754b12`，后端 `codex/wave2-integration` 已合入 `codex/data-model-v2`：
 
-推荐收口：
+- 合并提交：`b6ab798 Merge backend data-model v2 implementation`
+- 合并后契约对齐：`f3fe4ba Align frontend v2 contracts with merged backend`
+- 合并后全仓回归：**196 passed / 2 todo / 0 failed**（27 个文件）
+- 根与 Web `tsc --noEmit`、server/Web/插件构建通过
 
-1. 前端完成并提交；
-2. 在干净工作树把 `codex/wave2-integration` 合入 `codex/data-model-v2`；
-3. 跑一次全仓回归 + 三端黄金样本；
-4. 解决 7 条 checksum、附件字节/异机恢复门禁；
-5. 再开启协议 v2 强制和生产切换。
+剩余是发布门禁，不是分支合并问题：
+
+1. 7 条历史 checksum 签署/核对；
+2. 附件缩略图/像素旋转、附件字节 manifest/GC/异机恢复；
+3. 三端 v2 切换、`get_item` v2 包装、全路径脱敏；
+4. 协议 v2 强制与生产切换。
+
+浏览器 Playwright 套件未在合并后的新后端进程上重跑；前端交接记录中的 34 项浏览器结果是合并前对旧后端进程的结果，不能替代本轮验收。
 
 ## 7. 证据入口
 

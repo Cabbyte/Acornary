@@ -1,6 +1,6 @@
 # 数据模型修复 · Batch 0 评审入口
 
-状态：`BACKEND_COMPLETE_WITH_GATES`。Batch 0–8 的后端实现、迁移和测试已完成并合并到 `codex/wave2-integration`；仍有附件媒体/字节、性能、历史 checksum、客户端切换和异机恢复门禁，详见 [后端完成报告](./backend-complete.md)。
+状态：`MERGED_WITH_GATES`。Batch 0–8 的后端实现、迁移和测试已完成，并与前端重构一起合入 `codex/data-model-v2`（合并 `b6ab798`，契约对齐 `f3fe4ba`）；仍有附件缩略图/字节、历史 checksum、客户端切换和异机恢复门禁，详见 [后端完成报告](./backend-complete.md)。
 
 后端全部批次的结果、测试证据和门禁见 [后端完成报告](./backend-complete.md)，Batch 1/2 的细节见 [Batch 1 + Batch 2 集成验收](./batch1/integration.md)。前端设计与重构的冻结基线见 [前端接口冻结 v2](./frozen-interfaces.md)；标 `F`/`PARTIAL` 的接口仍需按 `features` 灰化。
 
