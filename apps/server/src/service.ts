@@ -969,7 +969,7 @@ async function readQuery(c: Client, ctx: Context, name: Operation, input: any) {
       WHERE a->>'template_id'='product' AND ${match('f.value')})`);
     if (isItem)
       fields.push(
-        `EXISTS(SELECT 1 FROM notes n WHERE n.household_id=$1 AND n.item_id=o.id AND ${match('n.body')})`,
+        `EXISTS(SELECT 1 FROM notes n WHERE n.household_id=$1 AND n.target_kind='ITEM' AND n.target_id=o.id AND ${match('n.body')})`,
       );
     where.push(`(${fields.join(' OR ')})`);
   }

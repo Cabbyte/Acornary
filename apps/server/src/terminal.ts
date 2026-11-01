@@ -104,7 +104,7 @@ export async function terminalSnapshot(
             notes: (
               await query(
                 c,
-                'SELECT id,title,body,updated_at FROM notes WHERE household_id=$1 AND item_id=$2 ORDER BY updated_at DESC,id',
+                `SELECT id,title,body,updated_at FROM notes WHERE household_id=$1 AND target_kind='ITEM' AND target_id=$2 ORDER BY updated_at DESC,id`,
                 [ctx.household_id, itemId],
               )
             ).rows,

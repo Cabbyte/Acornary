@@ -98,12 +98,11 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
     );
     let revision = 1;
     for (const [operation, input] of [
-      ['update_item', { display_name: 'renamed' }],
-      ['move_item', { parent_id: container }],
-      ['add_note', { body: 'preserve the opaque payload' }],
+      ['update_item', { item_id: item, display_name: 'renamed' }],
+      ['move_item', { item_id: item, parent_id: container }],
+      ['add_note', { target: { kind: 'ITEM', id: item }, body: 'preserve the opaque payload' }],
     ] as const) {
       await write(ctx, operation, {
-        item_id: item,
         ...input,
         expected_revisions: { [item]: revision++ },
       });
@@ -219,7 +218,7 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
       expected_revisions: { [item]: 1 },
     });
     await write(ctx, 'add_note', {
-      item_id: item,
+      target: { kind: 'ITEM', id: item },
       body: 'note',
       expected_revisions: { [item]: 2 },
     });

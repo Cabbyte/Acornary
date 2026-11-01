@@ -50,7 +50,7 @@
 4. 删除 `legacyInput` 写入路径；历史 operation replay 只保留只读证明，不新增 fallback。
 5. 删除 `get_attribute_sets` 命令/合同/测试。
 
-### Phase 3 — 数据（进行中：attribute_sets 已删除；notes/lifecycle 待做）
+### Phase 3 — 数据（进行中：attribute_sets、notes.item_id/016a 已删除；lifecycle.availability 待做）
 1. 备份：`pg_dump` + 行数/摘要。
 2. `022_drop_attribute_sets.sql`：校验嵌入值后 drop table。
 3. `023_notes_target_only.sql`：回填缺失 target、校验、drop `item_id`/constraint、drop `016a` trigger/function；更新所有代码/tests。
@@ -84,7 +84,7 @@
 
 - Phase 1 已完成：`pages.tsx`、旧 `ui/browser|workbench|activity|catalog-tree|item-inspector|stash-results|inventory-layout`、`prototype` 已删除；Settings 详情提取到 `features/settings/SettingsDetails.tsx`；`ui=legacy` 已从 schema 和路由移除。
 - Phase 2 已完成：`GET /api/read/:operation` 已删除（仅保留 `get_connection_context` 协商 GET）；通用 `POST /api/read/:operation`；`protocol_v2` 已 advertise；业务 API 无 `X-Acornary-Protocol: 2` 返回 409；v1 snapshot 分支仍在，待删。
-- Phase 3 部分：`attribute_sets` 已通过 `022_drop_attribute_sets.sql` 删除；`get_attribute_sets` 命令已删；`notes.item_id`/`016a`/`lifecycle.availability` 仍待回填和迁移。
+- Phase 3 部分：`attribute_sets` 已通过 `022_drop_attribute_sets.sql` 删除；`get_attribute_sets` 命令已删；`notes.item_id`/`016a` 已通过 `023_notes_target_only.sql` 删除；`lifecycle.availability` 仍待迁移。
 - Phase 4 未开始。
 - 当前验收：全仓 **195 passed / 2 todo**；Batch 1/2 84、Batch 3 17/4、Batch 4 19、Batch 5 11、Batch 6 23、Batch 7 notes 15 + export 12、Batch 8 10/1。
 - 构建：Web/插件构建通过。注意 `ui/forms.tsx` 仍保留生产 ActionSheet 和少量 legacy 分支，后续可拆分。

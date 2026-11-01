@@ -358,19 +358,17 @@ describe('PostgreSQL domain transactions', () => {
   it('records note changes and no-op history accurately', async () => {
     const [id] = await create(await sku());
     const added = await write('add_note', {
-      item_id: id,
+      target: { kind: 'ITEM', id },
       body: 'first',
       expected_revisions: rev(id, 1),
     });
     const updated = await write('update_note', {
-      item_id: id,
       note_id: added.note_id,
       body: 'second',
       expected_revisions: rev(id, 2),
     });
     expect(updated.changed).toBe(true);
     const noChange = await write('update_note', {
-      item_id: id,
       note_id: added.note_id,
       body: 'second',
       expected_revisions: rev(id, 3),
@@ -647,7 +645,7 @@ it('compares all debug records to PostgreSQL row JSON with scoped pagination and
     attrs('lifecycle', { condition: 'GOOD' }),
   ]);
   const long = '完整正文'.repeat(3000) + ' <script>bad()</script>';
-  await write('add_note', { item_id: id, body: long, expected_revisions: rev(id, 1) });
+  await write('add_note', { target: { kind: 'ITEM', id }, body: long, expected_revisions: rev(id, 1) });
   const noop = await write('update_item', {
     item_id: id,
     display_name: null,
@@ -1086,7 +1084,7 @@ describe('Responsive workbench commands', () => {
   it('rejects a note belonging to another item without saving any fields', async () => {
     const ids = await create(await sku(), 2);
     const note = await write('add_note', {
-      item_id: ids[1],
+      target: { kind: 'ITEM', id: ids[1] },
       body: 'private',
       expected_revisions: rev(ids[1], 1),
     });

@@ -36,7 +36,11 @@ db('Batch 3 sync and labels (real PostgreSQL)', () => {
       .rows;
   const update = async (id: string, name: Operation, extra: any) => {
     const item = (await rows()).find((i) => i.id === id)!;
-    return write(name, { item_id: id, expected_revisions: { [id]: item.revision }, ...extra });
+    return write(name, {
+      ...(name === 'add_note' ? { target: { kind: 'ITEM', id } } : { item_id: id }),
+      expected_revisions: { [id]: item.revision },
+      ...extra,
+    });
   };
   const renameSku = async (name: string) => {
     const row = (await query(pool, 'SELECT revision FROM catalog_nodes WHERE id=$1', [sku]))

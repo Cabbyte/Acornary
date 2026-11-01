@@ -204,11 +204,10 @@ export async function mutateNote(
     else
       await query(
         c,
-        'INSERT INTO notes(id,household_id,item_id,target_kind,target_id,title,body,created_by,updated_by,sensitivity) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$8,$9)',
+        'INSERT INTO notes(id,household_id,target_kind,target_id,title,body,created_by,updated_by,sensitivity) VALUES($1,$2,$3,$4,$5,$6,$7,$7,$8)',
         [
           id,
           ctx.household_id,
-          target.kind === 'ITEM' ? target.id : null,
           target.kind,
           target.id,
           next.title,
@@ -358,19 +357,14 @@ export async function executeFiles(ctx: Context, name: keyof typeof fileSchemas,
       const prior = input.note_id ? await noteRow(c, ctx, input.note_id) : undefined;
       const target = prior
         ? { kind: prior.target_kind, id: prior.target_id }
-        : (input.target ?? { kind: 'ITEM', id: input.item_id });
+        : input.target;
       if (input.target)
         requireFact(
           canonical(input.target) === canonical(target),
           'NOT_FOUND',
           'Note not found on target.',
         );
-      if (input.item_id)
-        requireFact(
-          target.kind === 'ITEM' && target.id === input.item_id,
-          'NOT_FOUND',
-          'Note not found on target.',
-        );
+      requireFact(target, 'NOT_FOUND', 'A note target is required.');
       await checkTargetRevision(c, ctx, target, input);
       const note = await mutateNote(c, ctx, target, input, name === 'archive_note');
       result = {

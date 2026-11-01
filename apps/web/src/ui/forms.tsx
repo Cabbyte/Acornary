@@ -561,7 +561,7 @@ export function ActionSheet({
       ...base,
       idempotency_key: draft.idempotencyKey ?? crypto.randomUUID(),
     };
-    const parsed = parseWriteCommand(operation, payload, notesV2);
+    const parsed = parseWriteCommand(operation, payload);
     if (!parsed.success) throw new Error('请检查必填项、日期、件数和数量格式。');
     return { operation, payload: parsed.data };
   }

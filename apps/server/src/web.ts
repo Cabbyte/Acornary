@@ -59,7 +59,7 @@ export async function webSnapshot(ctx: Context, rawFilter: unknown) {
       notes: (
         await query(
           c,
-          'SELECT id,item_id,title,body,updated_at FROM notes WHERE household_id=$1 ORDER BY updated_at DESC,id',
+          `SELECT id, CASE WHEN target_kind='ITEM' THEN target_id END AS item_id,title,body,updated_at FROM notes WHERE household_id=$1 ORDER BY updated_at DESC,id`,
           [ctx.household_id],
         )
       ).rows,
@@ -189,7 +189,7 @@ export async function readItemsV2(c: Client, household: string, selection: Recor
     await query(
       c,
       `SELECT o.*,v.last_change_id::text,${splitInfoSql()} AS split,
-    (SELECT count(*) FROM notes n WHERE n.household_id=o.household_id AND n.item_id=o.id) AS note_count
+    (SELECT count(*) FROM notes n WHERE n.household_id=o.household_id AND n.target_kind='ITEM' AND n.target_id=o.id) AS note_count
     FROM items o LEFT JOIN sync_object_versions v ON v.household_id=o.household_id AND v.object_kind='ITEM' AND v.object_id=o.id
     WHERE o.household_id=$1 AND o.record_state='VALID' AND coalesce(v.change_kind,'UPSERT') <> 'TOMBSTONE'
     AND ($2::text[] IS NULL OR o.id=ANY($2::text[])) AND o.id > $3
