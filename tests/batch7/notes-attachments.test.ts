@@ -493,9 +493,10 @@ describe.skipIf(!process.env.DATABASE_URL)('Batch 7 real PostgreSQL and private 
         ...t.headers,
         authorization: 'Bearer test-token',
         origin: 'http://localhost:80',
+        'x-acornary-protocol': '2',
       };
       expect(
-        (await app.inject({ method: 'PUT', url: t.upload_url, headers: t.headers, payload: pdf }))
+        (await app.inject({ method: 'PUT', url: t.upload_url, headers: { ...t.headers, 'x-acornary-protocol': '2' }, payload: pdf }))
           .statusCode,
       ).toBe(401);
       expect(
@@ -513,7 +514,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Batch 7 real PostgreSQL and private 
       ).toBe(200);
       const done = await complete(t);
       const url = '/api/attachments/' + done.attachment.id;
-      expect((await app.inject({ url })).statusCode).toBe(401);
+      expect((await app.inject({ url, headers: { 'x-acornary-protocol': '2' } })).statusCode).toBe(401);
       const response = await app.inject({
         url,
         headers: { authorization: 'Bearer test-token', 'x-acornary-protocol': '2' },

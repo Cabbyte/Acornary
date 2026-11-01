@@ -389,7 +389,7 @@ describe('Batch 8 PostgreSQL hardening', () => {
             recovery: 'FIX_REQUEST',
           });
         }
-      expect((await app.inject({ method: 'GET', url: '/api/read/query_items' })).statusCode).toBe(404);
+      expect((await app.inject({ method: 'GET', url: '/api/read/query_items', headers: { 'x-acornary-protocol': '2' } })).statusCode).toBe(404);
       const rejected = await app.inject({
         method: 'POST',
         url: '/api/write/create_items',

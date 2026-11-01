@@ -494,9 +494,9 @@ describe.skipIf(!process.env.DATABASE_URL)(
           url: '/api/read/begin_export',
           payload: selection,
         };
-        expect((await app.inject(request)).statusCode).toBe(401);
+        expect((await app.inject({ ...request, headers: { 'x-acornary-protocol': '2' } })).statusCode).toBe(401);
         for (const url of ['/api/read/read_export', '/api/read/%72ead_export'])
-          expect((await app.inject({ url })).statusCode).toBe(401);
+          expect((await app.inject({ url, headers: { 'x-acornary-protocol': '2' } })).statusCode).toBe(404);
         expect(
           (await app.inject({ ...request, headers: { ...headers, authorization: 'Bearer wrong' } }))
             .statusCode,

@@ -441,6 +441,9 @@ export async function buildApp(
     return execute({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }, name, input);
   };
   app.post('/api/read/:operation', async (req) => readOperation(req, req.body ?? {}));
+  app.get('/api/read/get_connection_context', async (req) =>
+    execute({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }, 'get_connection_context', {}),
+  );
   registerExportRoutes(app, token, !!cloud, req => ({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }), execute);
   app.post('/api/read/query_inventory_groups', async req =>
     execute({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }, 'query_inventory_groups', req.body));
