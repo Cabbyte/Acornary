@@ -13,14 +13,14 @@ const second = await transaction((c) => createHousehold(c, '隔离的第二家�
 const clients: Client[] = [];
 for (const installation of [first, second]) {
   const token = randomBytes(32).toString('hex');
-  const server = await buildApp({ ...installation, source: 'PLUGIN_E2E' }, token, false, {
+  const server = await buildApp({ ...installation, source: 'TEST' }, token, false, {
     mode: 'local',
   });
   const address = await server.listen({ host: '127.0.0.1', port: 0 });
   const client = new Client({ name: 'isolated-mock-host', version: '1' });
   await client.connect(
     new StreamableHTTPClientTransport(new URL(`${address}/mcp`), {
-      requestInit: { headers: { authorization: `Bearer ${token}` } },
+      requestInit: { headers: { authorization: `Bearer ${token}`, 'X-Acornary-Protocol': '2' } },
     }),
   );
   clients.push(client);

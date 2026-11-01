@@ -1,0 +1,54 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+  min-width: 0;
+}
+
+.label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--ac-space-1);
+  color: var(--ac-ink);
+  font-family: var(--ac-font-sans);
+  font-size: var(--ac-text-body-size);
+  font-weight: 500;
+  line-height: var(--ac-text-body-line-height);
+}
+
+.required {
+  color: var(--ac-danger);
+}
+
+.control {
+  min-width: 0;
+}
+
+/* Phones get 16px inputs to avoid iOS zooming, and a 44px control height. */
+@media (max-width: 767px) {
+  .control :global(input),
+  .control :global(textarea),
+  .control :global(select) {
+    font-size: 16px;
+  }
+
+  .control :global(.ant-select-selector) {
+    min-height: var(--ac-control-touch);
+  }
+}
+
+.hint,
+.error {
+  margin: 0;
+  font-size: var(--ac-text-micro-size);
+  font-weight: var(--ac-text-body-weight);
+  line-height: var(--ac-text-micro-line-height);
+}
+
+.hint {
+  color: var(--ac-muted);
+}
+
+.error {
+  color: var(--ac-danger);
+}

@@ -1,6 +1,7 @@
+import { fixtureRead } from './governance.js';
 import { choose } from './controls.js';
 import { login } from './login.js';
-import { test, expect } from '@playwright/test';
+import { test, expect } from './legacy.js';
 test.beforeEach(async ({ page }) => {
   if (!process.env.ACORNARY_E2E_CLOUD) return;
   await page.goto('/inspect');
@@ -16,6 +17,8 @@ test('database rows, foreign keys, derived paths, APIs, notes and fixed registry
   page.on('request', (r) => {
     if (r.url().includes('/api/')) {
       methods.push(r.method());
+      expect(r.url()).not.toContain('/api/write/');
+      if (r.method() === 'POST') expect(r.url()).toContain('/api/read/');
       expect(r.headers().authorization).toBeUndefined();
     }
   });
@@ -25,7 +28,7 @@ test('database rows, foreign keys, derived paths, APIs, notes and fixed registry
   await page.goto('/inspect');
   await expect(page.getByRole('heading', { name: 'CatalogNode 目录树' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Item 容纳树' })).toBeVisible();
-  await page.getByLabel('搜索名称').fill('牛奶');
+  await page.getByLabel('搜索名称').fill('验收牛奶 1L');
   const rows = page.locator('main > .panel').first().locator('tbody tr[data-row-key]');
   await expect(rows).toHaveCount(6);
   await choose(page, '生命周期过滤', 'ACTIVE');
@@ -39,15 +42,28 @@ test('database rows, foreign keys, derived paths, APIs, notes and fixed registry
   await page.getByLabel('到期日期上限').press('Enter');
   await page.getByLabel('查询条码').fill('TEST-MILK-1L');
   await expect(rows).toHaveCount(6);
-  await rows.first().getByRole('button').click();
+  const milk = await fixtureRead(page);
+  const sku = milk.catalog.find((node: any) => node.name === '验收牛奶 1L');
+  const noted = milk.items.find(
+    (item: any) => item.catalog_node_id === sku.id && item.note_count > 0,
+  );
+  expect(noted).toBeTruthy();
+  await rows.filter({ hasText: noted.id }).getByRole('button').click();
   const core = page.getByTestId('records-items');
   await expect(core).toBeVisible();
   await expect(core.getByLabel('items · 行 1', { exact: true })).toContainText('item_');
   await expect(core.getByLabel('items · 行 1', { exact: true })).not.toContainText('path_ids');
-  await expect(core.getByLabel('items · 行 1', { exact: true })).toContainText('attributes');
+  await expect(core.getByLabel('items · 行 1', { exact: true })).toContainText('redacted_paths');
   const response = await page.request.get(
     '/api/debug?input=' +
-      encodeURIComponent(JSON.stringify({ view: 'system', table: 'items', limit: 200 })),
+      encodeURIComponent(
+        JSON.stringify({
+          view: 'object',
+          table: 'items',
+          target: { kind: 'ITEM', id: noted.id },
+          limit: 200,
+        }),
+      ),
     {
       headers: {
         'X-Acornary-Household': await page.evaluate(
@@ -59,22 +75,19 @@ test('database rows, foreign keys, derived paths, APIs, notes and fixed registry
   const db = (await response.json()).rows;
   const raw = JSON.parse((await core.getByLabel('items · 行 1', { exact: true }).textContent())!);
   expect(raw).toEqual(db.find((r: any) => r.id === raw.id));
-  const sets = page.getByTestId('embedded-attributes');
-  await expect(sets.locator('.binding')).toHaveCount(2);
-  for (const pre of await sets.locator('.binding pre').all()) {
-    const binding = JSON.parse((await pre.textContent())!);
-    expect(binding).not.toHaveProperty('id');
-    expect(binding.created_at).toBeTruthy();
-    expect(binding.updated_at).toBeTruthy();
-    expect(raw.attributes).toContainEqual(binding);
-  }
+  expect(raw).not.toHaveProperty('attributes');
+  expect(raw).not.toHaveProperty('display_name');
+  expect(raw.redacted_paths).toContain('attributes');
+  await expect(page.getByTestId('embedded-attributes').locator('.binding')).toHaveCount(0);
   const notes = page.getByTestId('records-notes');
-  await expect(notes.locator('.record pre')).toContainText('已核对');
-  await notes.getByText('Markdown 安全预览', { exact: true }).click();
-  await expect(notes.locator('.note')).toContainText('800 mL');
+  const note = JSON.parse((await notes.getByLabel('notes · 行 1', { exact: true }).textContent())!);
+  expect(note).not.toHaveProperty('body');
+  expect(note).not.toHaveProperty('title');
+  expect(note).not.toHaveProperty('item_id');
+  expect(note.target_kind).toBe('ITEM');
+  expect(note.target_id).toBe(raw.id);
   await expect(notes.locator('script')).toHaveCount(0);
   await expect(page.getByTestId('records-events')).toContainText('NOTE_UPDATE');
-  await expect(page.getByTestId('records-operations')).toContainText('fingerprint_format');
   await page.screenshot({ path: 'output/playwright/database-records.png', fullPage: true });
   await page.getByRole('tab', { name: '派生结果（非存储）', exact: true }).click();
   await expect(page.getByTestId('derived')).toContainText('path_ids');
@@ -99,12 +112,9 @@ test('database rows, foreign keys, derived paths, APIs, notes and fixed registry
   await expect(page.getByTestId('records-catalog_nodes')).toBeVisible();
   await page.getByRole('button', { name: '查看关联物品' }).click();
   await expect(rows).toHaveCount(6);
-  await page
-    .getByTestId('embedded-attributes')
-    .locator('.references button')
-    .filter({ hasText: 'product · v1' })
-    .click();
-  await expect(page.getByTestId('records-attribute_templates').locator('.record')).toHaveCount(1);
+  await page.locator('nav button').filter({ hasText: '模板定义' }).click();
+  await choose(page, 'attribute_templates 每页条数', '50');
+  await expect(page.getByTestId('records-attribute_templates')).toContainText('lifecycle');
   await page.locator('nav button').filter({ hasText: '操作记录' }).click();
   const ops = page.getByTestId('records-operations');
   await expect(ops.locator('.record')).toHaveCount(10);
@@ -115,7 +125,7 @@ test('database rows, foreign keys, derived paths, APIs, notes and fixed registry
   await page.locator('nav button').filter({ hasText: '迁移信息' }).click();
   await expect(page.getByTestId('records-migrations')).toContainText('003_embed_attributes.sql');
   await page.screenshot({ path: 'output/playwright/inspector.png', fullPage: true });
-  expect(new Set(methods)).toEqual(new Set(['GET']));
+  expect(new Set(methods)).toEqual(new Set(['GET', 'POST']));
   expect(errors).toEqual([]);
   await expect(page.locator('button').filter({ hasText: /保存|删除|上传|入库/ })).toHaveCount(0);
 });

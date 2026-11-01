@@ -83,6 +83,13 @@ class ReleaseTests(unittest.TestCase):
         self.assertLess(self.backend.calls.index('backup'), self.backend.calls.index('migrate'))
         self.assertEqual(r.read_json(self.root / 'schema.json'), self.backend.target)
 
+    def test_trusted_manifest_only_attests_previously_applied_migrations(self):
+        self.migration()
+        self.assertEqual(self.run_release()['phase'], 'succeeded')
+        manifest = next(self.root.glob('trusted-migrations-*.json'))
+        self.assertEqual(r.read_json(manifest), MIGRATION)
+        self.assertEqual(manifest.stat().st_mode & 0o777, 0o644)
+
     def test_backup_failure_never_runs_migration(self):
         self.migration(); self.backend.fail = 'backup'
         job = self.run_release()

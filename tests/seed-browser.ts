@@ -6,7 +6,7 @@ import { pool } from '../apps/server/src/db.js';
 if (!process.env.DATABASE_URL?.match(/\/acornary_e2e_\d+$/))
   throw new Error('Requires a fresh isolated E2E database.');
 const installation = await initialize();
-const ctx = { ...installation, source: 'E2E_FIXTURE' };
+const ctx = { ...installation, source: 'TEST' };
 let sequence = 0;
 const call = (name: any, input: any) =>
   approvedExecute(ctx, name, { idempotency_key: `fixture-${++sequence}`, ...input });
@@ -18,6 +18,7 @@ try {
     await call('create_catalog_node', {
       kind: 'SKU',
       name: '验收牛奶 1L',
+      profile: 'CONSUMABLE',
       parent_id: group,
       initial_attributes: [a('product', { brand: '示例', barcodes: ['TEST-MILK-1L'] })],
     })
@@ -42,7 +43,11 @@ try {
       count: 6,
       initial_attributes: [
         a('contents', { remaining: { value: '1000', unit: 'mL' }, accuracy: 'MEASURED' }),
-        a('lifecycle', { expiry: { date: '2026-10-01' } }),
+        {
+          template_id: 'lifecycle',
+          template_version: 2,
+          values: { expiry: { date: '2026-10-01' } },
+        },
       ],
     })
   ).affected_objects;
@@ -56,13 +61,12 @@ try {
   });
   await call('move_item', { item_id: bag, parent_id: room, expected_revisions: { [bag]: 1 } });
   const note = await call('add_note', {
-    item_id: id,
+    target: { kind: 'ITEM', id },
     expected_revisions: { [id]: 3 },
     title: '验收笔记',
     body: '初始笔记',
   });
   await call('update_note', {
-    item_id: id,
     note_id: note.note_id,
     expected_revisions: { [id]: 4 },
     body: '已核对：剩余 **800 mL**，位于行李箱。<script>alert(1)</script>',

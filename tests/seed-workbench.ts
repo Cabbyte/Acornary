@@ -10,7 +10,11 @@ const ctx = { ...installation, source: 'WORKBENCH_FIXTURE' };
 let seq = 0;
 const call = (name: any, input: any) =>
   approvedExecute(ctx, name, { idempotency_key: `workbench-fixture-${++seq}`, ...input });
-const a = (template_id: string, values: unknown) => ({ template_id, template_version: 1, values });
+const a = (template_id: string, values: unknown) => ({
+  template_id,
+  template_version: template_id === 'lifecycle' ? 2 : 1,
+  values,
+});
 const place = async (name: string, parent_id: string | null = null) =>
   (
     await call('create_items', {
@@ -70,9 +74,7 @@ try {
         count: 1,
         parent_id: index < 4 ? cables : parts,
         initial_attributes:
-          index === 16
-            ? []
-            : [a('lifecycle', { availability: index % 3 === 0 ? 'IN_USE' : 'AVAILABLE' })],
+          index === 16 ? [] : index % 3 === 0 ? [a('usage', { state: 'IN_USE' })] : [],
       })
     ).affected_objects[0].id;
     if (note)

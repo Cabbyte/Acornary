@@ -1,5 +1,5 @@
 import { login } from './login.js';
-import { test, expect } from '@playwright/test';
+import { test, expect } from './legacy.js';
 test('cloud login, private records and logout', async ({ page, context }) => {
   test.skip(!process.env.ACORNARY_E2E_CLOUD, 'Cloud-only access boundary');
   await page.goto('/');
@@ -29,12 +29,12 @@ test('cloud login, private records and logout', async ({ page, context }) => {
         },
       })
     ).status(),
-  ).toBe(404);
+  ).toBe(403);
   const inspector = await context.newPage();
   await inspector.goto('/inspect');
   await expect(inspector.getByRole('link', { name: '返回松仓' })).toBeVisible();
   await page.goto('/settings');
-  await page.getByRole('button', { name: '退出登录并清除本机缓存' }).click();
+  await page.getByRole('button', { name: '退出登录', exact: true }).click();
   await expect(page.getByRole('heading', { name: '欢迎回到松仓' })).toBeVisible();
   expect((await page.request.get('/api/context')).status()).toBe(401);
   await expect(inspector.getByRole('heading', { name: '欢迎回到松仓' })).toBeVisible();

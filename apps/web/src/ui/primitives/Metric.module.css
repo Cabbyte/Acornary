@@ -1,0 +1,28 @@
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-1);
+  min-width: 0;
+}
+
+.label {
+  color: var(--ac-muted);
+  font-size: var(--ac-text-micro-size);
+  font-weight: var(--ac-text-micro-weight);
+  line-height: var(--ac-text-micro-line-height);
+}
+
+.value {
+  color: var(--ac-ink);
+  font-size: var(--ac-text-title-size);
+  font-weight: var(--ac-text-title-weight);
+  line-height: var(--ac-text-title-line-height);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.hint {
+  color: var(--ac-muted);
+  font-size: var(--ac-text-micro-size);
+  line-height: var(--ac-text-micro-line-height);
+}

@@ -6,6 +6,7 @@ and requests simulate the trusted proxy from inside the application container.
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -22,6 +23,14 @@ compose_file = root / 'compose.json'
 env_file = root / 'deploy.env'
 env_file.write_text('ACORNARY_IMAGE=' + base + '\n')
 url = 'postgres://acornary_migrator:isolated-release-ci@postgres:5432/acornary'
+# Private synthetic fixture diagnostics; never enabled in the production controller.
+original_subprocess_run = subprocess.run
+def fixture_run(args, **kwargs):
+    result = original_subprocess_run(args, **kwargs)
+    if result.returncode and 'dist/apps/server/src/migrate.js' in args:
+        print('Fixture migration error:', result.stderr.decode() if isinstance(result.stderr, bytes) else result.stderr, flush=True)
+    return result
+subprocess.run = fixture_run
 image_map = {}
 household_id = ''
 
@@ -33,14 +42,16 @@ compose_file.write_text(json.dumps({'name': name, 'services': {
     'postgres': {'image': 'postgres:18-bookworm', 'environment': {
         'POSTGRES_USER': 'acornary_migrator', 'POSTGRES_PASSWORD': 'isolated-release-ci', 'POSTGRES_DB': 'acornary'},
         'healthcheck': {'test': ['CMD-SHELL', 'pg_isready -U acornary_migrator'], 'interval': '1s', 'retries': 60}},
-    'app': {'image': '${ACORNARY_IMAGE}', 'environment': {
+    'app': {'image': '${ACORNARY_IMAGE}', 'user': '1000:1000', 'read_only': True,
+        'tmpfs': ['/tmp'], 'volumes': ['attachments:/var/lib/acornary/attachments'], 'environment': {
         'DATABASE_URL': 'postgres://acornary_app:isolated-app-ci@postgres:5432/acornary',
         'ACORNARY_MODE': 'cloud', 'ACORNARY_ORIGIN': 'https://release.example.test',
+        'ACORNARY_ATTACHMENT_ROOT': '/var/lib/acornary/attachments',
         'ACORNARY_TRUSTED_PROXY': '127.0.0.1', 'BETTER_AUTH_SECRET': 'isolated-release-test-secret-32-characters'},
         'healthcheck': {'test': ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3210/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"],
                         'interval': '1s', 'timeout': '3s', 'retries': 10}},
     'admin': {'image': '${ACORNARY_IMAGE}', 'environment': {'DATABASE_URL': url}, 'profiles': ['ops']}
-}}))
+}, 'volumes': {'attachments': {}}}))
 
 class LocalBackend(r.DockerBackend):
     def prepare(self, image, job):
@@ -104,7 +115,7 @@ try:
     await manageOwner('create','release@example.test','Release-fixture-password-123!');
     const c={...await initialize(),source:'TEST'};
     const result=await execute(c,'create_items',{catalog_node_id:c.container_catalog_id,count:1,idempotency_key:'fixture-create',expected_revisions:{}});
-    await execute(c,'add_note',{item_id:result.affected_objects[0].id,body:'Persist across releases',idempotency_key:'fixture-note',expected_revisions:{[result.affected_objects[0].id]:1}});
+    await execute(c,'add_note',{target:{kind:'ITEM',id:result.affected_objects[0].id},body:'Persist across releases',idempotency_key:'fixture-note',expected_revisions:{[result.affected_objects[0].id]:1}});
     await pool.end();"""
     run(compose + ['run', '--rm', '-T', 'admin', 'node', '--input-type=module'], stdin=setup.encode())
     backend.start()
@@ -140,7 +151,7 @@ try:
     await execute(c,'create_items',{catalog_node_id:c.container_catalog_id,count:1,idempotency_key:'fixture-create',expected_revisions:{}});
     await pool.end();"""
     run(compose + ['run', '--rm', '-T', 'admin', 'node', '--input-type=module'], stdin=replay.encode())
-    next_migration = max(int(n.split('_')[0]) for n in metadata['migrations']) + 1
+    next_migration = max(int(re.match(r'^[0-9]+', n).group()) for n in metadata['migrations']) + 1
     added = {f'{next_migration:03}_release_probe.sql': 'CREATE TABLE release_probe(id integer PRIMARY KEY);'}
     upgraded = deploy('v9.0.2', added)
     assert upgraded['phase'] == 'succeeded' and upgraded.get('backup'), upgraded
@@ -155,16 +166,28 @@ try:
         run(['docker', 'exec', '-i', database_container, 'pg_restore', '-U', 'acornary_migrator', '-d', 'acornary_restore_release', '--no-owner', '--no-privileges'], stdin=stream)
     restored = run(['docker', 'exec', database_container, 'psql', '-X', '-t', '-A', '-U', 'acornary_migrator', '-d', 'acornary_restore_release', '-c', 'SELECT count(*) FROM migrations']).strip()
     assert int(restored) == len(metadata['migrations'])  # Snapshot precedes the probe migration.
-    rolled_back = deploy('v9.0.3', dict(added, **{f'{next_migration+1:03}_bad.sql': 'CREATE TABLE should_rollback(id int); SELECT 1/0;'}))
-    assert rolled_back['phase'] == 'failed' and rolled_back['recovered'], rolled_back
-    assert backend.database("SELECT to_regclass('public.should_rollback')").strip() == ''
     failed_start = deploy('v9.0.4', added, broken=True)
     assert failed_start['phase'] == 'failed' and failed_start['recovered'], failed_start
     committed = deploy('v9.0.5', dict(added, **{f'{next_migration+1:03}_committed.sql': 'CREATE TABLE committed_probe(id int);'}), broken=True)
     assert committed['phase'] == 'needs_attention', committed
     assert backend.database("SELECT to_regclass('public.committed_probe')").strip() == 'committed_probe'
     assert not run(compose + ['ps', '--status', 'running', '-q', 'app']).strip()
-    print('PASS: real image upgrades, persistent session/identity/items/notes/events, conditional backup + independent restore, SQL rollback, app recovery, committed-schema fail-closed.')
+    # A durable FAILED receipt must block recovery even when that file's DDL rolled back.
+    failure_config = dict(config, state_dir=str(root / 'failure-state'))
+    failure_backend = LocalBackend(failure_config)
+    failure_controller = r.Controller(failure_config, failure_backend)
+    actual = json.loads(backend.database("SELECT jsonb_object_agg(name,checksum) FROM migrations"))
+    r.save_json(failure_controller.root / 'current.json', dict(metadata, version='v9.0.5', image=base))
+    r.save_json(failure_controller.root / 'schema.json', actual)
+    failed_migrations = dict(added, **{f'{next_migration+1:03}_committed.sql': 'CREATE TABLE committed_probe(id int);',
+                                    f'{next_migration+2:03}_bad.sql': 'CREATE TABLE should_rollback(id int); SELECT 1/0;'})
+    digest = fixture('v9.0.6', failed_migrations)
+    job = failure_controller.enqueue('v9.0.6', SHA, digest)
+    rolled_back = failure_controller.perform(job['id'])
+    assert rolled_back['phase'] == 'needs_attention', rolled_back
+    assert backend.database("SELECT to_regclass('public.should_rollback')").strip() == ''
+    assert backend.database("SELECT status FROM migrations WHERE name LIKE '%_bad.sql'").strip() == 'FAILED'
+    print('PASS: real image upgrades, persistent session/identity/items/notes/events, conditional backup + independent restore, SQL rollback with durable failed receipt, app recovery, committed-schema fail-closed.')
 finally:
     subprocess.run(compose + ['down', '-v', '--remove-orphans'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     # Fixture images and non-secret logs can remain for diagnosis; no production resource is referenced.

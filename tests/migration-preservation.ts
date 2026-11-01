@@ -34,6 +34,7 @@ export function migratedRow(table: string, original: any) {
   for (const [field, kind] of Object.entries(fields[table] ?? {}))
     row[field] = prefixed(kind, row[field]);
   if (table === 'attribute_sets') delete row.id;
+  if (table === 'operations') row.fingerprint_format = 'legacy_v1';
   if (table === 'events') {
     row.target_id = prefixed(row.target_kind.toLowerCase(), row.target_id);
     for (const change of row.changes) {
@@ -54,7 +55,6 @@ export function migratedRow(table: string, original: any) {
     }
   }
   if (table === 'operations') {
-    row.fingerprint_format = 'legacy_v1';
     row.result.operation_id = prefixed('operation', row.result.operation_id);
     if (row.result.note_id) row.result.note_id = prefixed('note', row.result.note_id);
     for (const o of row.result.affected_objects) o.id = prefixed(o.kind.toLowerCase(), o.id);

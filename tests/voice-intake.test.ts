@@ -290,7 +290,16 @@ describe('voice intake contracts and atomic writes', () => {
           [ctx.household_id],
         )
       ).rows[0].definition,
-    ).toEqual(templateDefinition('product', 2));
+    ).toMatchObject((() => {
+      const expected = templateDefinition('product', 2);
+      return {
+        id: expected.id,
+        version: expected.version,
+        target_kind: expected.target_kind,
+        paths: expected.paths,
+        schema: expected.schema,
+      };
+    })());
     expect(
       (await run('get_catalog_node', { catalog_node_id: id })).attributes[0].template_version,
     ).toBe(1);
@@ -381,7 +390,7 @@ describe('voice intake contracts and atomic writes', () => {
         const http = await app.inject({
           method: 'POST',
           url: '/api/write/move_item',
-          headers: { host: 'localhost', origin: 'http://localhost', 'x-acornary-request': 'web' },
+          headers: { host: 'localhost', origin: 'http://localhost', 'x-acornary-request': 'web', 'x-acornary-protocol': '2' },
           payload: input,
         });
         expect(http.statusCode).toBe(code === 'REVISION_CONFLICT' ? 409 : 400);

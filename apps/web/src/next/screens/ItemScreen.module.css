@@ -1,0 +1,386 @@
+.screen {
+  display: flex;
+  width: 100%;
+  max-width: var(--ac-width-detail);
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--ac-space-5);
+}
+
+.identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ac-space-3);
+}
+
+.glyph {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+
+.glyph[data-tone='food'] {
+  background: var(--ac-cat-food);
+  color: var(--ac-cat-food-ink);
+}
+
+.glyph[data-tone='clothing'] {
+  background: var(--ac-cat-clothing);
+  color: var(--ac-cat-clothing-ink);
+}
+
+.glyph[data-tone='device'] {
+  background: var(--ac-cat-device);
+  color: var(--ac-cat-device-ink);
+}
+
+.glyph[data-tone='cleaning'] {
+  background: var(--ac-cat-cleaning);
+  color: var(--ac-cat-cleaning-ink);
+}
+
+.glyph[data-tone='neutral'] {
+  background: var(--ac-cat-neutral);
+  color: var(--ac-cat-neutral-ink);
+}
+
+.identityCopy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+  margin-right: auto;
+}
+
+.identityCopy strong {
+  color: var(--ac-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.identityCopy span {
+  color: var(--ac-muted);
+  font-size: 11px;
+}
+
+.identityText {
+  margin: 0;
+  color: var(--ac-muted);
+  font-size: var(--ac-text-body-size);
+  line-height: var(--ac-text-body-line-height);
+  overflow-wrap: anywhere;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ac-space-3);
+}
+
+.actionBar,
+.moreActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ac-space-2);
+}
+
+.actionBar button {
+  gap: 5px;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--ac-line);
+  list-style: none;
+}
+
+.fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ac-space-3);
+  min-width: 0;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--ac-line);
+}
+
+.fact:nth-child(odd) {
+  padding-right: var(--ac-space-4);
+}
+
+.fact:nth-child(even) {
+  padding-left: var(--ac-space-4);
+  border-left: 1px solid var(--ac-line);
+}
+
+.fact span {
+  color: var(--ac-muted);
+  font-size: 11px;
+}
+
+.fact strong {
+  overflow: hidden;
+  color: var(--ac-ink);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emptyLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ac-space-3);
+  margin: 0;
+  color: var(--ac-muted);
+}
+
+.muted {
+  margin: 0;
+  color: var(--ac-muted);
+}
+
+.notes,
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-1);
+  padding-bottom: var(--ac-space-3);
+  border-bottom: 1px solid var(--ac-line);
+}
+
+.note:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.noteTitle {
+  margin: 0;
+  color: var(--ac-ink);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.noteText {
+  margin: 0;
+  color: var(--ac-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.noteMeta {
+  color: var(--ac-muted);
+  font-size: var(--ac-text-micro-size);
+  line-height: var(--ac-text-micro-line-height);
+}
+
+.attachments {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ac-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attachment {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--ac-space-3);
+  border: 1px solid var(--ac-line);
+  border-radius: var(--ac-radius-control);
+  background: var(--ac-surface);
+}
+
+.attachmentName {
+  color: var(--ac-ink);
+  overflow-wrap: anywhere;
+}
+
+.attachmentMeta {
+  color: var(--ac-muted);
+  font-size: var(--ac-text-micro-size);
+}
+
+.event {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-1);
+}
+
+.eventHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ac-space-2);
+}
+
+.eventName {
+  color: var(--ac-ink);
+  font-weight: 600;
+}
+
+.reason {
+  margin: 0;
+  color: var(--ac-ink-2);
+}
+
+.historyError {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ac-space-2);
+  color: var(--ac-danger);
+}
+
+.errorActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ac-space-3);
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ac-control-touch);
+  padding: 0 var(--ac-space-2);
+  border-radius: var(--ac-radius-control);
+  color: var(--ac-accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.backLink:focus-visible,
+.technical summary:focus-visible {
+  outline: 2px solid var(--ac-accent);
+  outline-offset: 2px;
+}
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-3);
+}
+
+.skeletonBar,
+.skeletonShort,
+.skeletonBlock {
+  display: block;
+  border-radius: var(--ac-radius-control);
+  background: var(--ac-line);
+  animation: pulse 1s var(--ac-motion-easing) infinite alternate;
+}
+
+.skeletonBar {
+  width: 60%;
+  height: 28px;
+}
+
+.skeletonShort {
+  width: 40%;
+  height: 18px;
+}
+
+.skeletonBlock {
+  width: 100%;
+  height: 96px;
+}
+
+.technical {
+  padding-top: var(--ac-space-3);
+  border-top: 1px solid var(--ac-line);
+}
+
+.technical summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--ac-control-touch);
+  color: var(--ac-muted);
+  cursor: pointer;
+}
+
+.technical dl {
+  display: grid;
+  gap: var(--ac-space-2);
+  margin: var(--ac-space-2) 0 0;
+}
+
+.technical dl > div {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: var(--ac-space-2);
+}
+
+.technical dt {
+  color: var(--ac-muted);
+}
+
+.technical dd {
+  margin: 0;
+  color: var(--ac-ink-2);
+  overflow-wrap: anywhere;
+}
+
+@keyframes pulse {
+  from {
+    opacity: 0.55;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonBar,
+  .skeletonShort,
+  .skeletonBlock {
+    animation: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .facts {
+    grid-template-columns: 1fr;
+  }
+
+  .fact:nth-child(odd),
+  .fact:nth-child(even) {
+    padding-right: 0;
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metrics > *:nth-child(3) {
+    grid-column: span 2;
+  }
+}

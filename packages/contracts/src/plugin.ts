@@ -1,54 +1,124 @@
 import { z } from 'zod';
+import { noteTarget, sensitivity } from './notes.js';
 import { entityId } from './ids.js';
-import { templates, schemas, reads, type Operation } from './index.js';
-import { productGroups, inventoryFilterSchema } from './web.js';
+import { schemas, reads, type Operation } from './index.js';
+import type { SnapshotV2 } from './read-v2.js';
 
+const capability = z.enum([
+  'lifecycle.expiry',
+  'lifecycle.opening',
+  'contents',
+  'stock',
+  'asset',
+  'custody',
+  'service',
+  'deadline',
+  'clothing',
+  'wardrobe',
+  'container',
+  'usage',
+  'transport',
+]);
+const profile = z.enum(['CONSUMABLE', 'DURABLE', 'WEARABLE', 'SPACE', 'MISC']).nullable();
 const attribute = z.object({
-  template_id: z.enum(
-    Object.keys(templates) as [keyof typeof templates, ...(keyof typeof templates)[]],
-  ),
-  template_version: z.union([z.literal(1), z.literal(2)]),
+  template_id: z.string().min(1),
+  template_version: z.number().int().positive(),
   values: z.record(z.string(), z.unknown()),
+  status: z.enum(['KNOWN', 'UNKNOWN', 'RETIRED']),
 });
 const record = {
   id: z.union([entityId('item'), entityId('catalog_node')]),
   parent_id: z.union([entityId('item'), entityId('catalog_node')]).nullable(),
   revision: z.number().int().positive(),
   attributes: z.array(attribute),
+  effective_capabilities: z.array(capability),
+  record_state: z.enum(['VALID', 'VOID']),
+  voided_at: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  redacted_paths: z.array(z.string()),
 };
+const dateFact = z.object({
+  key: z.string(),
+  source: z.enum(['LIFECYCLE', 'DEADLINE']),
+  kind: z.enum(['EXPIRY', 'WARRANTY_END', 'SERVICE_DUE', 'RETURN_BY', 'RENEWAL', 'REORDER_BY']),
+  date_kind: z.enum(['BEST_BEFORE', 'USE_BY', 'ESTIMATED']).optional(),
+  due_on: z.string(),
+  basis: z.string().nullable(),
+  state: z.enum(['UPCOMING', 'DUE', 'OVERDUE', 'COMPLETED', 'UNKNOWN']),
+  completed_on: z.string().nullable(),
+  label: z.string(),
+});
 const snapshot = z
   .object({
-    household: z.object({
-      id: z.string().min(1),
-      name: z.string(),
-      timezone: z.string().optional(),
-    }),
-    container_catalog_id: z.string(),
-    catalog: z.array(z.object({ ...record, kind: z.enum(['GROUP', 'SKU']), name: z.string() })),
+    protocol: z.literal(2),
+    household: z.object({ id: z.string().min(1), name: z.string(), timezone: z.string() }),
+    container_catalog_id: z.string().nullable(),
+    as_of_change_id: z.string(),
+    server_time: z.string(),
+    catalog: z.array(
+      z.object({
+        ...record,
+        kind: z.enum(['GROUP', 'SKU']),
+        name: z.string(),
+        profile,
+        capabilities: z.array(capability).nullable(),
+        one_off: z.boolean(),
+      }),
+    ),
     items: z.array(
       z.object({
         ...record,
         catalog_node_id: entityId('catalog_node'),
         display_name: z.string().nullable(),
-        created_at: z.string(),
+        note_count: z.number().int().nonnegative(),
+        attachment_count: z.number().int().nonnegative(),
+        next_date: dateFact.nullable(),
+        split: z
+          .object({
+            split_id: z.string(),
+            source_item_id: z.string(),
+            child_item_ids: z.array(z.string()),
+            count: z.number().int(),
+            created_at: z.string(),
+          })
+          .nullable(),
       }),
     ),
-    notes: z.array(
+    groups: z.array(
       z.object({
-        id: entityId('note'),
-        item_id: entityId('item'),
-        title: z.string().nullable(),
-        body: z.string(),
-        updated_at: z.string(),
+        id: z.string(),
+        name: z.string(),
+        profile,
+        count: z.number(),
+        current_count: z.number(),
+        opened: z.number(),
+        sealed: z.number(),
+        unknown_opening: z.number(),
+        unknown_lifecycle: z.number(),
+        locations: z.number(),
+        totals: z.array(
+          z.object({
+            unit: z.string(),
+            value: z.string(),
+            estimated: z.boolean(),
+            unknown_accuracy: z.boolean(),
+          }),
+        ),
+        unknown_quantity: z.number(),
+        next_date: dateFact.nullable(),
+        overdue_count: z.number(),
+        low_stock: z.boolean().nullable(),
       }),
     ),
     cached_at: z.string(),
   })
-  .transform((data) => ({ ...data, groups: productGroups(data, inventoryFilterSchema.parse({})) }));
+  .transform((data): SnapshotV2 => data);
 
 export const pluginEnvelopeSchema = z
   .object({
-    version: z.literal(1),
+    version: z.literal(2),
+    protocol: z.literal(2),
     session: z.object({
       mode: z.enum(['local', 'cloud']),
       authenticated: z.literal(true),
@@ -82,7 +152,8 @@ export const pluginWriteSchema = z.strictObject({
   ),
   input: z.record(z.string(), z.unknown()),
 });
-export const pluginWriteResultSchema = z.strictObject({
+// Preserve additional domain receipt fields as commands evolve.
+export const pluginWriteResultSchema = z.looseObject({
   operation_id: entityId('operation'),
   changed: z.boolean(),
   affected_objects: z.array(
@@ -103,7 +174,45 @@ export const pluginWriteResultSchema = z.strictObject({
       }),
     )
     .optional(),
+  children: z
+    .array(
+      z.looseObject({
+        item_id: entityId('item'),
+        revision: z.number().int().positive(),
+      }),
+    )
+    .optional(),
+  split_id: z.string().optional(),
+  split: z
+    .looseObject({
+      split_id: z.string(),
+      source_item_id: entityId('item'),
+      child_item_ids: z.array(entityId('item')),
+      count: z.number().int(),
+      created_at: z.string(),
+    })
+    .nullable()
+    .optional(),
+  source_item_id: entityId('item').optional(),
+  source_revision: z.number().int().positive().optional(),
+  deadline_id: z.string().optional(),
+  deadline: z.record(z.string(), z.unknown()).optional(),
   note_id: entityId('note').optional(),
+  note: z
+    .looseObject({
+      id: entityId('note'),
+      target: noteTarget,
+      title: z.string().nullable().optional(),
+      excerpt: z.string().optional(),
+      created_by: z.string(),
+      created_at: z.string(),
+      updated_by: z.string(),
+      updated_at: z.string(),
+      archived: z.boolean(),
+      sensitivity,
+      redacted_paths: z.array(z.string()),
+    })
+    .optional(),
   proposal_id: z.uuid().optional(),
   receipt: z.record(z.string(), z.unknown()).optional(),
   summary: z.string(),

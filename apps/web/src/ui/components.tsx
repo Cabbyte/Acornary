@@ -2,16 +2,14 @@ import {
   Children,
   cloneElement,
   isValidElement,
-  useEffect,
   useId,
-  useState,
   type ReactElement,
   type ReactNode,
 } from 'react';
-import { Alert, Button, Card, Drawer, Empty as AntEmpty, Form, Typography } from 'antd';
+import { Alert, Button, Card, Empty as AntEmpty, Form, Typography } from 'antd';
 import { RightOutlined } from '@ant-design/icons';
 import { Link } from '@tanstack/react-router';
-import { useViewport } from './theme';
+import { Sheet } from './primitives/index.js';
 
 export function Row({
   title,
@@ -135,49 +133,12 @@ export function ActionDrawer({
   context?: ReactNode;
   footer?: ReactNode;
 }) {
-  const { mobile } = useViewport();
-  const [opener] = useState(() => {
-    const element = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    return { element, id: element?.id };
-  });
-  useEffect(
-    () => () => {
-      // Responsive detail panels may replace the original trigger while this drawer stays mounted.
-      requestAnimationFrame(() => {
-        const target = opener.element?.isConnected
-          ? opener.element
-          : opener.id
-            ? document.getElementById(opener.id)
-            : null;
-        target?.focus({ preventScroll: true });
-      });
-    },
-    [opener],
-  );
   return (
-    <Drawer
-      open
-      title={title}
-      size={mobile ? '100%' : 560}
-      onClose={() => {
-        if (!busy) onClose();
-      }}
-      keyboard={!busy}
-      mask={{ closable: !busy }}
-      closable={busy ? false : { 'aria-label': '关闭' }}
-      getContainer={() => document.body}
-      className="action-drawer"
-      styles={{
-        section: { height: '100%' },
-        body: { padding: mobile ? 16 : 24 },
-        footer: { padding: '12px 24px' },
-      }}
-      footer={footer}
-    >
+    <Sheet title={title} onClose={onClose} busy={busy} footer={footer} size="wide">
       <div className="stack">
         {context && <Card size="small">{context}</Card>}
         {children}
       </div>
-    </Drawer>
+    </Sheet>
   );
 }

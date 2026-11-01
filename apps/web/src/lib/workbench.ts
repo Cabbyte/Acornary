@@ -1,3 +1,4 @@
+import { derivedAvailability } from '../../../../packages/contracts/src/semantics.js';
 import {
   ancestors,
   attr,
@@ -21,18 +22,11 @@ export type WorkbenchFilter = {
   condition?: string;
   lifecycle?: string;
 };
-export const availabilityOptions = [
-  ['', '未记录'],
-  ['IN_USE', '使用中'],
-  ['AVAILABLE', '可用'],
-  ['LOANED', '已借出'],
-  ['CLEANING', '清洗中'],
-  ['MAINTENANCE', '维护中'],
-  ['IN_TRANSIT', '运输中'],
-] as const;
+const availabilityOf = (item: ItemRecord) =>
+  derivedAvailability(Object.fromEntries(item.attributes.map((a) => [a.template_id, a.values])));
 export function itemStatus(item: ItemRecord) {
   const life = attr(item, 'lifecycle');
-  return label(isTerminal(item) ? life?.state : life?.availability);
+  return label(isTerminal(item) ? life?.state : availabilityOf(item));
 }
 /** Only expose recorded facts; unknown opening must never look like sealed. */
 export function itemFacts(item: ItemRecord) {
@@ -41,7 +35,7 @@ export function itemFacts(item: ItemRecord) {
     ...(life?.opening?.state ? [label(life.opening.state)] : []),
     ...(attr(item, 'contents')?.remaining ? [`剩余 ${remaining(item)}`] : []),
     ...(life?.expiry?.date ? [`到期 ${life.expiry.date}`] : []),
-    ...(isTerminal(item) || life?.availability ? [itemStatus(item)] : []),
+    ...(isTerminal(item) || availabilityOf(item) ? [itemStatus(item)] : []),
   ].join(' · ');
 }
 export function workbenchItems(
@@ -64,9 +58,7 @@ export function workbenchItems(
       (i) =>
         !filter.status ||
         filter.status === 'terminal' ||
-        (filter.status === 'unknown'
-          ? !attr(i, 'lifecycle')?.availability
-          : attr(i, 'lifecycle')?.availability === filter.status),
+        (filter.status === 'unknown' ? !availabilityOf(i) : availabilityOf(i) === filter.status),
     )
     .filter(
       (i) =>
@@ -97,14 +89,14 @@ export function workbenchItems(
         a.id.localeCompare(b.id),
     );
 }
-export function moveTargets(data: InventoryData, selected: ItemRecord[]) {
+export function moveTargets(data: Pick<InventoryData, 'items'>, selected: ItemRecord[]) {
   const ids = new Set(selected.map((i) => i.id));
   return data.items.filter(
     (i) =>
       isContainer(i) && !isTerminal(i) && !ancestors(i.id, data.items).some((a) => ids.has(a.id)),
   );
 }
-export function moveValidation(data: InventoryData, selected: ItemRecord[], parent: string) {
+export function moveValidation(data: Pick<InventoryData, 'items'>, selected: ItemRecord[], parent: string) {
   if (!selected.length || selected.length > 100) return '请选择 1–100 件物品。';
   if (parent && !moveTargets(data, selected).some((i) => i.id === parent))
     return '请选择可用的目标位置。';

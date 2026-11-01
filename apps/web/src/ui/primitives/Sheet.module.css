@@ -1,0 +1,14 @@
+.title {
+  margin: 0;
+  color: var(--ac-ink);
+  font-family: var(--ac-font-sans);
+  font-size: var(--ac-text-title-size);
+  font-weight: var(--ac-text-title-weight);
+  line-height: var(--ac-text-title-line-height);
+  overflow-wrap: anywhere;
+}
+
+.close:global(.ant-drawer-close):focus-visible {
+  outline: 2px solid var(--ac-accent);
+  outline-offset: 2px;
+}

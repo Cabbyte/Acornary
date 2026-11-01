@@ -3,6 +3,7 @@ import zhCN from 'antd/locale/zh_CN';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import { useEffect, useState, type ReactNode } from 'react';
+import './tokens.css';
 import './layout.css';
 import { trackVisualViewport } from './viewport';
 

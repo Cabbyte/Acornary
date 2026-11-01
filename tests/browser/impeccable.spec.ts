@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './legacy.js';
 import { login } from './login.js';
 import { choose } from './controls.js';
 
@@ -9,18 +9,18 @@ test('Impeccable mobile facts, searchable intake and visible review preserve dra
   await page.goto('/items');
   await login(page);
   await expect(page.getByRole('heading', { name: '我的物品', level: 1 })).toBeVisible();
-  await expect(page.locator('.stash-group').first()).toBeVisible();
-  await page.getByRole('searchbox', { name: '搜索物品、规格、位置…' }).fill('验收牛奶 1L');
-  const rows = page.locator('.stash-instance').filter({ hasText: '验收牛奶 1L' });
+  await expect(page.locator('main a[href*="/items/item_"]').first()).toBeVisible();
+  await page.getByRole('searchbox', { name: '搜索物品', exact: true }).fill('验收牛奶 1L');
+  const links = page.locator('main a[href*="/items/item_"]');
+  const rows = links.locator('..');
   await expect(rows).toHaveCount(6);
-  await expect(rows.filter({ hasText: '已开封' })).toContainText('800 mL');
+  await expect(rows.filter({ hasText: '800 mL' })).toHaveCount(1);
   await expect(rows.filter({ hasText: '开封未记录' })).toHaveCount(0);
-  const ids = await rows.locator('.wb-instance-id').allTextContents();
+  const ids = await links.evaluateAll((nodes) => nodes.map((n) => n.getAttribute('href')));
   expect(new Set(ids).size).toBe(6);
   await expect(page.getByRole('combobox', { name: '排序' })).toHaveCount(0);
-  await page.getByRole('button', { name: '筛选', exact: true }).click();
-  await choose(page, '排序', '最近入库');
-  await page.getByRole('button', { name: '筛选', exact: true }).click();
+  await page.getByRole('button', { name: '按关注度', exact: true }).click();
+  await expect(page.getByRole('button', { name: '按名称', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '添加物品', exact: true }).click();
   const drawer = page.getByRole('dialog', { name: '入库', exact: true });
   const search = drawer.getByRole('combobox', { name: '选择商品', exact: true });
@@ -83,12 +83,12 @@ test('Impeccable MCP initial and partial host bounds constrain navigation and dr
   });
   await expect(view.getByRole('heading', { name: '我的物品' })).toBeVisible();
   const geometry = () =>
-    view.locator('.wb-bottom-nav').evaluate((nav) => {
+    view.getByRole('navigation', { name: '底部导航', exact: true }).evaluate((nav) => {
       const rect = nav.getBoundingClientRect();
       return {
         bottom: rect.bottom,
         left: rect.left,
-        header: document.querySelector('.wb-header')!.getBoundingClientRect().top,
+        header: document.querySelector('main')!.getBoundingClientRect().top,
       };
     });
   await expect.poll(geometry).toEqual({ bottom: 480, left: 12, header: 48 });
@@ -96,7 +96,7 @@ test('Impeccable MCP initial and partial host bounds constrain navigation and dr
     .poll(() => view.locator('.ant-app').evaluate((el) => el.getBoundingClientRect().bottom))
     .toBe(480);
   await view.locator('.ant-app').evaluate((el) => el.scrollTo(0, el.scrollHeight));
-  const last = view.locator('.stash-group').last();
+  const last = view.locator('main a[href*="/items/item_"]').last();
   await expect(last).toBeInViewport();
   expect(await last.evaluate((el) => el.getBoundingClientRect().bottom)).toBeLessThanOrEqual(420);
   await view.locator('.ant-app').evaluate((el) => el.scrollTo(0, 0));

@@ -45,8 +45,8 @@ export async function checkCatalog(
 ) {
   const tree = ui.getByRole('tree', { name: '商品分类树' });
   const query = ui.getByRole('searchbox', { name: '搜索分类', exact: true });
-  const products = ui.getByRole('table', { name: '商品列表' });
-  const productQuery = ui.getByRole('searchbox', { name: '搜索商品名称或规格' });
+  const products = ui.locator('main a[href*="/catalog/catalog_node_"]');
+  const productQuery = ui.getByRole('searchbox', { name: '搜索商品', exact: true });
   const separator = ui.getByRole('separator', { name: '调整分类栏宽度' });
   const path = `${f.first} / ${f.child} / ${f.leaf}`;
   await expect(separator).toHaveAttribute('aria-valuenow', '224');
@@ -66,48 +66,33 @@ export async function checkCatalog(
   await expect(tree.getByTitle(`${f.second} / ${f.child}`, { exact: true })).toBeVisible();
   await tree.getByTitle(path, { exact: true }).click();
   await expect(ui.getByLabel('当前商品分类')).toHaveText(path);
-  await expect(products.getByRole('row')).toHaveCount(21);
+  await expect(products).toHaveCount(22);
   await expect(tree.getByTitle(path, { exact: true })).toHaveText(`${path}22`);
-  await expect(products).not.toContainText(f.hidden);
+  await expect(ui.locator('main')).not.toContainText(f.hidden);
   await productQuery.fill(f.names[0]);
-  await expect(products.getByRole('row')).toHaveCount(2);
+  await expect(products).toHaveCount(1);
   await expect(tree.getByTitle(path, { exact: true })).toHaveText(`${path}22`);
-  await expect(products).toContainText('3 件实物');
+  await expect(products).toContainText('3 件在库');
+  await products.click();
+  await ui.getByRole('link', { name: '返回商品目录', exact: true }).click();
+  await expect(productQuery).toHaveValue(f.names[0]);
+  await expect(query).toHaveValue(f.child);
+  await expect(ui.getByLabel('当前商品分类')).toHaveText(path);
   await productQuery.fill('');
   await query.fill('');
   await expect(tree.getByText(f.leaf, { exact: true })).toBeVisible();
-  await ui.locator('.ant-pagination-next').click();
-  await expect(products.getByRole('row')).toHaveCount(3);
-  await products.getByRole('link', { name: f.names[20], exact: true }).click();
-  await expect(
-    ui.getByRole('table', { name: '实物列表' }).getByRole('columnheader', { name: '收纳位置' }),
-  ).toHaveCount(0);
-  await ui.getByRole('button', { name: '显示列', exact: true }).click();
-  await expect(ui.getByRole('checkbox', { name: '收纳位置', exact: true })).toHaveCount(0);
-  await ui.getByRole('button', { name: '显示列', exact: true }).click();
-  await ui.getByRole('link', { name: '返回', exact: true }).click();
-  await expect(products.getByRole('row')).toHaveCount(3);
-  await expect(ui.getByLabel('当前商品分类')).toHaveText(path);
-  await expect(tree.getByText(f.leaf, { exact: true })).toBeVisible();
-  await expect(separator).toHaveAttribute('aria-valuenow', '320');
   await query.fill(f.empty);
   await tree.getByTitle(`${f.first} / ${f.empty}`, { exact: true }).click();
-  await expect(products).toContainText('此分类下还没有商品');
+  await expect(ui.getByRole('heading', { name: '此分类下还没有商品', exact: true })).toBeVisible();
   await query.fill(f.first);
   await tree.getByTitle(f.first, { exact: true }).click();
-  await expect(products.getByRole('row')).toHaveCount(21);
-  await expect(ui.locator('.ant-pagination-item-active')).toHaveText('1');
+  await expect(products).toHaveCount(22);
   await query.fill(f.leaf);
-  await page.screenshot({
-    path: `output/playwright/catalog-${surface}-desktop.png`,
-    animations: 'disabled',
-  });
+  await page.screenshot({ path: `output/playwright/catalog-${surface}-desktop.png` });
   for (const width of [1024, 390, 360]) {
     await page.setViewportSize({ width, height: 1000 });
-    const trigger = ui.getByRole('button', { name: '分类', exact: true });
-    await trigger.click();
+    await ui.getByRole('button', { name: '分类', exact: true }).click();
     await expect(query).toHaveValue(f.leaf);
-    await expect(tree.getByTitle(path, { exact: true })).toBeVisible();
     await tree.getByTitle(path, { exact: true }).click();
     await expect(ui.getByRole('dialog', { name: '选择分类' })).toHaveCount(0);
     await expect(ui.getByLabel('当前商品分类')).toHaveText(path);
@@ -115,17 +100,14 @@ export async function checkCatalog(
       await ui.locator('body').evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     ).toBe(true);
   }
-  await page.screenshot({
-    path: `output/playwright/catalog-${surface}-mobile.png`,
-    animations: 'disabled',
-  });
+  await page.screenshot({ path: `output/playwright/catalog-${surface}-mobile.png` });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await expect(query).toHaveValue(f.leaf);
   await expect(separator).toHaveAttribute('aria-valuenow', '320');
   await ui.getByRole('button', { name: '未分类', exact: true }).click();
   await productQuery.fill(f.root);
-  await expect(products.getByRole('link', { name: f.root, exact: true })).toBeVisible();
-  await expect(products.getByRole('row')).toHaveCount(2);
+  await expect(products).toHaveCount(1);
+  await expect(products).toContainText(f.root);
   await ui.getByRole('button', { name: '全部商品', exact: true }).click();
   await expect(ui.getByLabel('当前商品分类')).toHaveText('全部商品');
 }

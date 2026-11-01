@@ -1,5 +1,5 @@
 import { fixtureCommand } from './governance.js';
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './legacy.js';
 import { createHash } from 'node:crypto';
 import { login } from './login.js';
 import { choose } from './controls.js';
@@ -20,7 +20,7 @@ async function fixture(page: Page) {
   const ids = (
     await write('create_items', {
       catalog_node_id: sku,
-      count: 30,
+      count: 60,
       initial_attributes: [
         {
           template_id: 'contents',
@@ -40,14 +40,16 @@ test('Ant Design cross-page UUID selection, responsive draft, date and keyboard 
   await expect(page.getByRole('heading', { name: '我的物品' })).toBeVisible();
   const f = await fixture(page);
   await page.reload();
-  await choose(page, '分组方式', '不分组');
-  await page.getByRole('searchbox', { name: '搜索物品、规格、位置…' }).fill(f.name);
-  await page.getByRole('checkbox', { name: '选择本页全部物品' }).check();
-  await expect(page.getByText('已选 20 件', { exact: true })).toBeVisible();
-  await page.getByTitle('2', { exact: true }).click();
-  await page.getByRole('checkbox', { name: '选择本页全部物品' }).check();
-  await expect(page.getByText('已选 30 件', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: f.name, exact: true }).first().click();
+  await page.getByRole('searchbox', { name: '搜索物品', exact: true }).fill(f.name);
+  await page.getByRole('button', { name: '选择', exact: true }).click();
+  await expect(page.getByRole('checkbox', { name: `选择 ${f.name}`, exact: true })).toHaveCount(50);
+  await page.getByRole('checkbox', { name: '选择当前已加载物品', exact: true }).check();
+  await expect(page.getByText('已选 50 件', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '加载更多', exact: true }).click();
+  await expect(page.getByRole('checkbox', { name: `选择 ${f.name}`, exact: true })).toHaveCount(60);
+  await page.getByRole('checkbox', { name: '选择当前已加载物品', exact: true }).check();
+  await expect(page.getByText('已选 60 件', { exact: true })).toBeVisible();
+  await page.locator('main a[href*="/items/item_"]').first().click();
   await page.getByRole('button', { name: '编辑', exact: true }).click();
   const drawer = page.getByRole('dialog', { name: '编辑物品', exact: true });
   const name = drawer.getByLabel('名称', { exact: true });
@@ -58,7 +60,7 @@ test('Ant Design cross-page UUID selection, responsive draft, date and keyboard 
   });
   await drawer.getByLabel('购入日期', { exact: true }).fill('2026-10-07');
   await drawer.getByLabel('购入日期', { exact: true }).press('Enter');
-  await choose(page, '状态', '可用');
+  await expect(drawer.getByLabel('状态', { exact: true })).toHaveCount(0);
   await name.dispatchEvent('keydown', {
     key: 'Enter',
     code: 'Enter',
@@ -78,11 +80,17 @@ test('Ant Design cross-page UUID selection, responsive draft, date and keyboard 
     });
   }
   await drawer.getByRole('button', { name: '取消', exact: true }).click();
+  await page.getByRole('button', { name: '保留草稿并关闭', exact: true }).click();
   await expect(page.getByRole('button', { name: '编辑', exact: true })).toBeFocused();
-  await page.getByRole('button', { name: '返回列表', exact: true }).click();
-  await expect(page.getByText('已选 30 件', { exact: true })).toBeVisible();
-  await page.getByRole('checkbox', { name: '选择本页全部物品' }).uncheck();
-  await expect(page.getByText('已选 20 件', { exact: true })).toBeVisible();
+  await page.locator('main').getByRole('link', { name: '我的物品', exact: true }).click();
+  await expect(page.getByRole('searchbox', { name: '搜索物品', exact: true })).toHaveValue(f.name);
+  await expect(page.getByText('已选 60 件', { exact: true })).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: `选择 ${f.name}`, exact: true })).toHaveCount(60);
+  await page
+    .getByRole('checkbox', { name: `选择 ${f.name}`, exact: true })
+    .last()
+    .uncheck();
+  await expect(page.getByText('已选 59 件', { exact: true })).toBeVisible();
 });
 test('Ant Design visual matrix covers lists, details, long forms, account, authorization and inspector', async ({
   page,
@@ -96,11 +104,8 @@ test('Ant Design visual matrix covers lists, details, long forms, account, autho
   const routes = [
     ['items', '/items'],
     ['catalog', '/catalog'],
-    ['detail', `/items/${f.ids[0]}/details`],
-    [
-      'long-form',
-      `/items/${f.ids[0]}/details?dialog=attributes&target=${f.ids[0]}&template=lifecycle`,
-    ],
+    ['detail', `/items/${f.ids[0]}`],
+    ['long-form', `/items/${f.ids[0]}?dialog=edit&target=${f.ids[0]}`],
     ['account', '/settings/account'],
     ['inspector', '/inspect'],
   ];

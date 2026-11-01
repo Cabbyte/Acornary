@@ -9,22 +9,20 @@ import {
   pluginReviewMetaKey,
   pluginViewTool,
   pluginWriteTool,
+  pluginWriteResultSchema,
   type PluginEnvelope,
 } from '../../../../packages/contracts/src/plugin.js';
-import {
-  inventoryFilterSchema,
-  productGroups,
-  type WriteResult,
-} from '../../../../packages/contracts/src/web.js';
+import type { WriteResult } from '../../../../packages/contracts/src/web.js';
 import { ApiError, messages } from '../lib/api.js';
 import type { InventoryTransport, Selection } from '../lib/runtime.js';
-import type { Operation } from '../../../../packages/contracts/src/index.js';
+import { schemas, type Operation } from '../../../../packages/contracts/src/index.js';
+import type { ConnectionContext, SnapshotV2 } from '../../../../packages/contracts/src/read-v2.js';
 import { domainErrorStatus } from '../../../../packages/contracts/src/errors.js';
 import { applyHostLayout } from '../ui/viewport.js';
 
 export class PluginClient implements InventoryTransport {
   readonly app = new App(
-    { name: 'Acornary', version: '0.1.0' },
+    { name: 'Acornary', version: '2.0.0' },
     { availableDisplayModes: ['fullscreen'] },
     { autoResize: true },
   );
@@ -137,7 +135,7 @@ export class PluginClient implements InventoryTransport {
         throw new ApiError(
           code,
           messages[code] ?? error?.message ?? '暂时无法完成，请重试。',
-          domainErrorStatus(code) ?? 0,
+          code === 'ATTACHMENT_TRANSPORT_UNSUPPORTED' ? 400 : (domainErrorStatus(code) ?? 0),
           error?.details,
           error?.request_id,
           error?.recovery,
@@ -173,7 +171,7 @@ export class PluginClient implements InventoryTransport {
     if (!parsed.success) throw new ApiError('NETWORK', '库存响应格式不正确，请重新打开插件。');
     return parsed.data;
   }
-  async snapshot(signal?: AbortSignal) {
+  async snapshot(signal?: AbortSignal): Promise<SnapshotV2> {
     if (this.seed) {
       const seed = this.seed;
       this.seed = undefined;
@@ -187,7 +185,11 @@ export class PluginClient implements InventoryTransport {
       throw new ApiError('UNAUTHORIZED', '连接账号或家庭已改变，正在重新加载。', 401);
     return envelope.snapshot;
   }
-  async read<T>(name: Operation, input: unknown, signal?: AbortSignal): Promise<T> {
+  async context(): Promise<ConnectionContext> {
+    const result = await this.call('get_connection_context', {});
+    return result.structuredContent as ConnectionContext;
+  }
+  async read<T>(name: Operation | 'get_note', input: unknown, signal?: AbortSignal): Promise<T> {
     return (await this.call(name, input, signal)).structuredContent as T;
   }
   async write(
@@ -205,9 +207,16 @@ export class PluginClient implements InventoryTransport {
       throw new ApiError('UNAUTHORIZED', '连接账号或家庭已改变，请重新打开操作。', 401);
     if (!this.envelope?.session.can_write)
       throw new ApiError('FORBIDDEN', '当前连接只有读取权限。', 403);
-    return (
-      await this.call(pluginWriteTool, { expected_scope: scope, operation: name, input: payload })
-    ).structuredContent as unknown as WriteResult;
+    // Reject retired draft payloads before dispatch without changing the exact
+    // original request (including its idempotency key) on retries.
+    if (!schemas[name].safeParse(payload).success)
+      throw new ApiError('ATTRIBUTE_VALIDATION_FAILED', '操作格式已过期，请重新打开操作。', 400);
+    const result = await this.call(pluginWriteTool, {
+      expected_scope: scope,
+      operation: name,
+      input: payload,
+    });
+    return pluginWriteResultSchema.parse(result.structuredContent);
   }
   async governance<T>(action: 'review' | 'confirm', input: unknown): Promise<T> {
     if (!this.envelope?.session.can_write)
@@ -221,13 +230,16 @@ export class PluginClient implements InventoryTransport {
     ) as T;
   }
   async request<T>(url: string): Promise<T> {
-    if (url.startsWith('/api/ui/groups?') && this.envelope) {
-      const filter = inventoryFilterSchema.parse(
-        Object.fromEntries(new URLSearchParams(url.split('?')[1])),
-      );
-      return productGroups(this.envelope.snapshot, filter) as T;
-    }
-    throw new ApiError('FORBIDDEN', '此功能请在松仓网站中使用。', 403);
+    if (!/^\/api\/attachments(?:\/|$)/.test(url))
+      throw new ApiError('FORBIDDEN', '此功能请在松仓网站中使用。', 403);
+    throw new ApiError(
+      'ATTACHMENT_TRANSPORT_UNSUPPORTED',
+      '插件无法上传或下载附件，请在松仓网站中使用。',
+      400,
+      undefined,
+      undefined,
+      'USE_WEB',
+    );
   }
   select(selection: Selection | null) {
     this.selectionSync.select(selection);

@@ -16,10 +16,16 @@ export default defineConfig({
   workers: 1,
   timeout: 30000,
   use: {
-    launchOptions:
-      spki && process.env.ACORNARY_E2E_BROWSER !== 'webkit'
+    actionTimeout: 15000,
+    extraHTTPHeaders: { 'X-Acornary-Protocol': '2' },
+    launchOptions: {
+      ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH
+        ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH }
+        : {}),
+      ...(spki && process.env.ACORNARY_E2E_BROWSER !== 'webkit'
         ? { args: [`--ignore-certificate-errors-spki-list=${spki}`] }
-        : {},
+        : {}),
+    },
     browserName: process.env.ACORNARY_E2E_BROWSER === 'webkit' ? 'webkit' : 'chromium',
     baseURL: process.env.ACORNARY_E2E_ORIGIN ?? 'http://127.0.0.1:3210',
     ignoreHTTPSErrors: !!process.env.ACORNARY_E2E_CLOUD,

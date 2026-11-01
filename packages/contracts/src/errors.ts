@@ -1,6 +1,19 @@
 // Known, definitive domain rejections. Unknown/transport errors must retain the
 // original idempotent request because their commit outcome is not established.
 const statuses: Record<string, number> = {
+  REFERENCE_INVALID: 400,
+  STATE_CONFLICT: 409,
+  SYNC_RESET_REQUIRED: 409,
+  PROTOCOL_VERSION_UNSUPPORTED: 409,
+  INVALID_CURSOR: 400,
+  CURSOR_STALE: 409,
+  ATTACHMENT_TOO_LARGE: 413,
+  ATTACHMENT_QUOTA_EXCEEDED: 409,
+  ATTACHMENT_TYPE_UNSUPPORTED: 400,
+  ATTACHMENT_TRANSPORT_UNSUPPORTED: 400,
+  REVEAL_AUDIT_REQUIRED: 400,
+  SPLIT_NOT_CONSERVED: 400,
+  TEMPLATE_DEFINITION_CONFLICT: 409,
   POLICY_REQUIRED: 409,
   POLICY_CONFLICT: 409,
   CLASSIFICATION_CONFLICT: 409,
@@ -24,13 +37,16 @@ const statuses: Record<string, number> = {
   INVALID_TRANSITION: 400,
   BARCODE_CONFLICT: 400,
   TEMPLATE_IN_USE: 400,
+  UNSUPPORTED_WRITE_ISOLATION: 400,
 };
 export const domainErrorStatus = (code: string): number | undefined =>
   Object.hasOwn(statuses, code) ? statuses[code] : undefined;
 
 export function errorRecovery(code: string) {
-  if (code === 'REVISION_CONFLICT') return 'REREAD_AND_REVIEW';
-  if (code === 'IDEMPOTENCY_CONFLICT') return 'RECOVER_ORIGINAL_REQUEST';
+  if (['REVISION_CONFLICT', 'STATE_CONFLICT', 'SYNC_RESET_REQUIRED', 'INVALID_CURSOR'].includes(code))
+    return 'REREAD_AND_REVIEW';
+  if (['IDEMPOTENCY_CONFLICT', 'CURSOR_STALE'].includes(code))
+    return 'RECOVER_ORIGINAL_REQUEST';
   if (['UNAUTHORIZED', 'FORBIDDEN', 'SESSION_CHANGED'].includes(code)) return 'REAUTHORIZE';
   return domainErrorStatus(code) ? 'FIX_REQUEST' : 'RETRY_SAME_REQUEST';
 }

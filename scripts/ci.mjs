@@ -67,6 +67,7 @@ try {
     true,
   );
   for (const task of ['typecheck', 'build', 'test']) docker(['exec', worker, 'pnpm', task]);
+  docker(['exec', worker, 'node', 'scripts/test-model-v2.mjs']);
   // Verify a real logical backup/restore of synthetic data, including policies,
   // approvals, identity keys, events and historical idempotency results.
   const restoredDb = `acornary_restore_${Date.now()}`;
@@ -168,6 +169,7 @@ try {
     worker,
     'pnpm',
     'test:e2e',
+    '--max-failures=1',
     ...(process.env.ACORNARY_E2E_GREP ? ['--grep', process.env.ACORNARY_E2E_GREP] : []),
   ]);
   if (!process.env.ACORNARY_E2E_GREP) {
@@ -184,6 +186,7 @@ try {
       worker,
       'pnpm',
       'test:e2e',
+      '--max-failures=1',
       '--grep',
       'Ant Design|Impeccable|six distinct items|Chinese composition Enter',
       '--output',

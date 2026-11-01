@@ -3,7 +3,7 @@ import { initialize } from './initialize.js';
 import { buildApp } from './app.js';
 import { pool, query } from './db.js';
 import { runtimeConfig } from './config.js';
-import { verifyReleaseMigrations } from './release.js';
+import { verifyStartup } from './release.js';
 const config = runtimeConfig();
 let token = '';
 let installed;
@@ -14,15 +14,14 @@ if (config.mode === 'local') {
 } else {
   // The runtime role has no DDL permissions. Migration/provisioning is an
   // explicit administrative step, never an implicit empty-household fallback.
-  const migrated = await query(pool, "SELECT 1 FROM migrations WHERE name='005_accounts.sql'");
   installed = (await query(pool, "SELECT * FROM installations WHERE slot='local'")).rows[0];
   const owner = (await query(pool, 'SELECT 1 FROM auth_owners')).rowCount;
-  if (!migrated.rowCount || !installed || !owner)
+  if (!installed || !owner)
     throw new Error(
       'Cloud database must be migrated, initialized and bound to an owner before startup.',
     );
 }
-await verifyReleaseMigrations();
+await verifyStartup();
 const app = await buildApp({ ...installed, source: 'MCP' }, token, true, config);
 await app.listen({
   host: process.env.BIND_HOST ?? '127.0.0.1',

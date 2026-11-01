@@ -1,5 +1,5 @@
 import { choose } from './controls.js';
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './legacy.js';
 import { randomUUID } from 'node:crypto';
 test.beforeEach(() => test.skip(!process.env.ACORNARY_E2E_CLOUD, 'Cloud accounts'));
 async function verifyEmail(page: Page, email: string) {
@@ -87,7 +87,7 @@ test('passkey-first registration, optional password, last credential protection,
   await choose(page, '当前家庭', '通行密钥测试家庭');
   await expect(page.getByRole('heading', { name: '我的物品' })).toBeVisible();
   await page.goto('/settings');
-  await page.getByRole('button', { name: '退出登录并清除本机缓存' }).click();
+  await page.getByRole('button', { name: '退出登录', exact: true }).click();
   await expect(page.getByRole('button', { name: '使用通行密钥登录' })).toBeVisible();
   await page.getByRole('button', { name: '使用通行密钥登录' }).click();
   await expect(page.getByRole('heading', { name: '我的物品' })).toBeVisible();

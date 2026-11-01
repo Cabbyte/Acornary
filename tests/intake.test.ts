@@ -24,6 +24,7 @@ const rule = (extra = {}) => ({
   allow_new_groups: true,
   max_new_depth: 2,
   naming_guidance: '具体食物类型，不用重量或位置',
+  identity_fields: ['product.brand', 'product.model', 'product.specification'],
   ...extra,
 });
 async function proposalApproval(proposal: any, identity = ctx) {
@@ -64,7 +65,7 @@ const newProduct = (name = '鸡胸肉', extra = {}) => ({
   name,
   parent_id: branch,
   classification_reason: '食品分支允许直接挂食品',
-  initial_attributes: [attr('product', { brand: '农场甲', specification: '散装原切' })],
+  initial_attributes: [attr('product', { brand: '农场甲', model: '标准', specification: '散装原切' })],
   ...extra,
 });
 beforeAll(async () => {
@@ -420,7 +421,7 @@ it('keeps confirmation outside generic HTTP/model commands and hides its challen
     const denied = await app.inject({
       method: 'POST',
       url: '/api/write/confirm_catalog_change',
-      headers: { origin: 'http://localhost:80', 'x-acornary-request': 'web' },
+      headers: { origin: 'http://localhost:80', 'x-acornary-request': 'web', 'x-acornary-protocol': '2' },
       payload: { proposal_id: proposal.proposal_id, challenge: hidden.challenge },
     });
     expect(denied.statusCode).toBe(403);
@@ -464,7 +465,7 @@ it('supports exact top-level exceptions, normalized concurrent identity and an e
     'commit_intake',
     await batch(
       newProduct('ＡＢＣ食品', {
-        initial_attributes: [attr('product', { brand: 'FOO', specification: '500g' })],
+        initial_attributes: [attr('product', { brand: 'FOO', model: '标准', specification: '500g' })],
       }),
     ),
   );
@@ -473,7 +474,7 @@ it('supports exact top-level exceptions, normalized concurrent identity and an e
     'commit_intake',
     await batch(
       newProduct('abc食品', {
-        initial_attributes: [attr('product', { brand: ' foo ', specification: '500g' })],
+        initial_attributes: [attr('product', { brand: ' foo ', model: '标准', specification: '500g' })],
       }),
     ),
   );

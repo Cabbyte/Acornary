@@ -37,7 +37,7 @@ export const visibleProducts = (data: InventoryData) =>
       c.id !== data.container_catalog_id &&
       attr(c, 'catalog')?.visibility !== 'HIDDEN',
   );
-export const fullPath = (id: string | null, data: InventoryData) =>
+export const fullPath = (id: string | null, data: Pick<InventoryData, 'catalog' | 'items'>) =>
   ['全部位置', ...ancestors(id, data.items).map((i) => itemName(i, data))].join(' / ');
 export const categoryPath = (sku: CatalogRecord, data: InventoryData) =>
   ancestors(sku.parent_id, data.catalog)

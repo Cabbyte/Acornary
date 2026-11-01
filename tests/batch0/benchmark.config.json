@@ -1,0 +1,60 @@
+{
+  "status": "NOT_RUN",
+  "seed": 20261031,
+  "dataset": {
+    "items": 10000,
+    "events": 100000,
+    "notes": 10000,
+    "households": 2,
+    "container_depth": 10
+  },
+  "runtime": { "node_major": 24, "postgres_major": 18, "timezone": "Asia/Shanghai" },
+  "resources": {
+    "cpus": 2,
+    "memory_mib": 4096,
+    "note": "Proposed local baseline; record actual hardware/storage and deployment-equivalence separately."
+  },
+  "warm": { "warmup_per_query": 100, "samples_per_query_per_round": 1000, "rounds": 3 },
+  "cold": {
+    "process_restarts": 30,
+    "os_cache_policy": "Record whether cleared; never label process-cold as disk-cold."
+  },
+  "concurrency": [
+    { "readers": 1, "writers": 0 },
+    { "readers": 5, "writers": 1 }
+  ],
+  "queries": [
+    "items_first_page",
+    "items_deep_container",
+    "items_attribute_filter",
+    "history_household",
+    "history_item",
+    "history_operation",
+    "search_chinese_one_character",
+    "search_chinese_two_characters",
+    "search_nfkc",
+    "search_note",
+    "catalog_groups_and_aggregate"
+  ],
+  "thresholds": {
+    "items_p95_ms": 300,
+    "history_p95_ms": 150,
+    "search_p95_ms": 200,
+    "inventory_business_sql_max": 5,
+    "write_regression_percent_max": 10
+  },
+  "required_evidence": [
+    "raw_samples",
+    "p95_by_query_and_round",
+    "business_sql_count",
+    "total_sql_count_including_auth_and_transaction",
+    "explain_analyze_buffers",
+    "dataset_sha256",
+    "source_sha256",
+    "versions",
+    "actual_resources",
+    "baseline_write_throughput",
+    "candidate_write_throughput"
+  ],
+  "measurement_note": "Fixture generation and auditing do not execute this benchmark or establish latency/SQL-count acceptance."
+}

@@ -26,7 +26,7 @@ import {
   type TerminalSnapshot,
 } from '../../../packages/contracts/src/terminal.js';
 
-import { labelHistoryPaths, terminalLabelTimes, type LabelHistoryEvent } from './terminal-label-history.js';
+import { ensureLabelProjection } from './label-projection.js';
 
 type Cloud = Extract<RuntimeConfig, { mode: 'cloud' }>;
 type Identity = Context & { account: { id: string; name: string } };
@@ -36,6 +36,7 @@ export async function terminalSnapshot(
   ctx: Context,
   itemId?: string,
 ): Promise<TerminalSnapshot & { notes?: unknown[] }> {
+  await ensureLabelProjection(ctx.household_id);
   return transaction(async (c) => {
     await query(c, 'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
     const household = (
@@ -56,17 +57,11 @@ export async function terminalSnapshot(
       items: (
         await query(
           c,
-          'SELECT id,parent_id,catalog_node_id,display_name,revision,attributes,created_at FROM items WHERE household_id=$1 ORDER BY created_at,id',
+          'SELECT id,parent_id,catalog_node_id,display_name,revision,attributes,created_at,label_updated_at FROM items WHERE household_id=$1 ORDER BY created_at,id',
           [ctx.household_id],
         )
       ).rows,
     };
-    const history = (await query<LabelHistoryEvent>(c,
-      `SELECT id,target_kind,target_id,before_revision,recorded_at,changes FROM events
-       WHERE household_id=$1 AND EXISTS (
-         SELECT 1 FROM jsonb_array_elements(changes) change WHERE change->>'path'=ANY($2::text[])
-       ) ORDER BY recorded_at DESC,id DESC`, [ctx.household_id, labelHistoryPaths])).rows;
-    const labelTimes = terminalLabelTimes(data, history);
     const catalog = new Map(data.catalog.map((r) => [r.id, r]));
     const selected = data.items.filter((i) => (itemId ? i.id === itemId : !isTerminal(i)));
     if (itemId && !selected.length)
@@ -79,7 +74,7 @@ export async function terminalSnapshot(
       return {
         id: i.id,
         created_at: new Date(i.created_at).toISOString(),
-        label_updated_at: labelTimes.get(i.id)!,
+        label_updated_at: new Date((i as typeof i & { label_updated_at: string }).label_updated_at).toISOString(),
         name: itemName(i, data),
         brand: product?.brand ?? '',
         specification: product?.specification ?? '',
@@ -109,7 +104,7 @@ export async function terminalSnapshot(
             notes: (
               await query(
                 c,
-                'SELECT id,title,body,updated_at FROM notes WHERE household_id=$1 AND item_id=$2 ORDER BY updated_at DESC,id',
+                `SELECT id,title,body,updated_at FROM notes WHERE household_id=$1 AND target_kind='ITEM' AND target_id=$2 ORDER BY updated_at DESC,id`,
                 [ctx.household_id, itemId],
               )
             ).rows,

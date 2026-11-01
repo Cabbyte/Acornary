@@ -1,8 +1,7 @@
 import { Button, Input, Tree, Typography, type TreeDataNode } from 'antd';
 import { FolderOutlined, SearchOutlined } from '@ant-design/icons';
 import { useEffect, useMemo } from 'react';
-import { ancestors, type CatalogRecord } from '../../../../packages/contracts/src/web';
-import { visibleProducts } from '../lib/browse';
+import { ancestors, attr, type CatalogRecord } from '../../../../packages/contracts/src/web';
 import { useInventory } from '../lib/inventory';
 
 // A view-only filter, never a catalog node ID.
@@ -31,7 +30,12 @@ export function CatalogTree({
     const children = new Map<string | null, CatalogRecord[]>();
     for (const group of groups)
       children.set(group.parent_id, [...(children.get(group.parent_id) ?? []), group]);
-    const products = visibleProducts(data);
+    const products = data.catalog.filter(
+      (node) =>
+        node.kind === 'SKU' &&
+        node.id !== data.container_catalog_id &&
+        attr(node, 'catalog')?.visibility !== 'HIDDEN',
+    );
     const counts = new Map<string, number>();
     for (const product of products)
       for (const parent of ancestors(product.parent_id, data.catalog))
@@ -51,7 +55,7 @@ export function CatalogTree({
     if (parents.some((id) => !expanded.includes(id)))
       onExpand([...new Set([...expanded, ...parents])]);
     // Expanding the selected path must not prevent manual collapsing afterwards.
-  }, [active, data.catalog]);
+  }, [active, data.catalog, query]);
   const needle = query.trim().toLocaleLowerCase();
   const path = (id: string) =>
     ancestors(id, data.catalog)
@@ -99,6 +103,7 @@ export function CatalogTree({
       {shortcut('', '全部商品', total)}
       {unclassified > 0 && shortcut(UNCATEGORIZED, '未分类', unclassified)}
       <Tree
+        key={needle ? 'search' : 'tree'}
         aria-label="商品分类树"
         blockNode
         showIcon

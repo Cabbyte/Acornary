@@ -1,0 +1,68 @@
+id,wave,area,task,if_status,depends,files,acceptance
+FND-01,0,契约,新增 read-v2.ts：FeatureKey/ConnectionContext/SnapshotV2/ItemRecordV2/ItemDetail/QueryResult/DateFact/NoteSummary/AttachmentSummary,I,—,packages/contracts/src/read-v2.ts; packages/contracts/src/index.ts,类型可编译；导出被 web 引用；无运行时依赖
+FND-02,0,壳层,ConnectionProvider + FeatureRegistry；无 features 时 baseline query_v2/history_v2,I/F,FND-01,apps/web/src/features/api/connection.tsx,context 缺失/旧响应时 baseline；有 features 以服务端为准
+FND-03,0,协议,所有 HTTP 业务请求加 X-Acornary-Protocol: 2；read GET/POST 开关,I/F,FND-02,apps/web/src/lib/api.ts; features/api/protocol.ts,请求头断言；GET 默认；POST 开关可回退
+FND-04,0,错误,新增错误码/status/recovery/messages；协议错误不重试写,I/F,FND-01,packages/contracts/src/errors.ts; apps/web/src/lib/api.ts,新码有状态/文案/恢复；PROTOCOL 错误不重试
+FND-05,0,传输,InventoryTransport.context()；HTTP/plugin 实现；插件 fallback,I/F,FND-02,apps/web/src/lib/runtime.ts; plugin/client.ts,HTTP 取 context；插件取 tool context；失败 baseline
+FND-06,0,测试,v1/v2 快照、旧/新详情、query 页、错误信封 fixtures,I,FND-01,tests/fixtures/read-v2/*,fixtures 可解析；覆盖未知模板/redacted
+FND-07,0,适配,isSnapshotV2 / isItemDetailV2 形状检测,I,FND-06,features/inventory/adapters/shape.ts,v1/v2 都可识别；未知形状不崩溃
+FND-08,0,错误,request_id/recovery 展示；技术详情可复制,I/F,FND-04,ui/patterns/ErrorNotice.tsx,错误主文案+恢复动作；request_id 可查
+FND-09,0,插件,插件 envelope v1/v2 兼容；features/context；server groups,I/F,FND-02; FND-05,packages/contracts/src/plugin.ts; apps/server/src/plugin.ts; apps/web/src/plugin/client.ts,v1/v2 envelope 都可解析；无 features baseline；不本地 productGroups
+ADP-01,1,适配,SnapshotAdapter：v1/v2 → InventoryView；notes→note_count/摘要,I/F,W0,features/inventory/adapters/snapshot.ts,v1/v2 都产出同一 View；列表不读正文
+ADP-02,1,适配,RecordAdapter：Item/Catalog/Binding 默认值/record_state/redacted,I/F,ADP-01,features/inventory/adapters/record.ts,缺字段不补肯定事实；默认 VALID/0/[]
+ADP-03,1,适配,useItemQuery：cursor/stale/summary/去重/条件变化清游标,I,W0,features/api/query.ts,翻页不重复；INVALID_CURSOR 重载；stale 标记
+ADP-04,1,适配,useCatalogQuery：kind/search/sort/cursor/include_hidden,I,W0,features/api/query.ts,目录查询走服务端；不本地过滤全表
+ADP-05,1,适配,useHistoryQuery：event_type/date/cursor,I,W0,features/api/query.ts,动态/对象历史用服务端游标
+ADP-06,1,适配,DetailAdapter：旧扁平 → ItemDetail；path/dates/notes/attachments/split,I/F,ADP-02,features/inventory/adapters/detail.ts,旧/新详情都产出 ItemDetailView
+ADP-07,1,适配,GroupAdapter：snapshot.groups；无 item_ids；展开查询,I/F,ADP-01,features/inventory/adapters/groups.ts,不本地算总数；组展开用 query_items
+ADP-08,1,适配,DateAdapter：reminder/next_date → DateFact[]；state 推导,I/F,ADP-02,features/inventory/adapters/dates.ts,未知保持 UNKNOWN；家庭时区
+ADP-09,1,适配,NoteAdapter：body→160 字摘要；note_count；正文缓存,I/F,ADP-01,features/inventory/adapters/notes.ts,列表无正文；摘要稳定
+ADP-10,1,适配,TemplateRegistry：旧 definitions→TemplateDefinition.fields,I/F,ADP-02,features/inventory/adapters/templates.ts; ui/fields.tsx,旧模板可渲染；v2 fields 优先
+ADP-11,1,适配,CapabilityAdapter：effective_capabilities；无则 [] 不复制默认,I/F,ADP-02,features/inventory/adapters/capabilities.ts,profile null 不猜；能力只读服务端
+ADP-12,1,测试,适配层 fixtures/单元测试,I,ADP-01..11,tests/web/adapters.test.ts,覆盖缺字段/未知模板/v1/v2
+UI-01,2,设计系统,tokens.ts/tokens.css/Ant theme 同源,I,—,apps/web/src/ui/tokens.ts; tokens.css; theme.ts,CSS 无裸色值；Ant 用真实色值
+UI-02,2,设计系统,8 个 primitives：Button/Field/Sheet/PageHeader/Toolbar/ItemRow/StatusTag/EmptyState,I,UI-01,apps/web/src/ui/primitives/*,每个有状态/键盘/aria 示例
+UI-03,2,壳层,AppShell：侧栏/底部导航/内容宽度/container query,I,UI-01,apps/web/src/app/shell/*,390/768/1440 无溢出
+UI-04,2,路由,显式路由 + validateSearch + lazy,I,UI-03,apps/web/src/app/router.tsx,筛选进 URL；刷新/后退保持
+UI-05,2,状态,FeatureGate/Banner/Skeleton/ErrorBoundary,I,W0/UI-02,ui/patterns/*,F 无入口；错误不白屏
+UI-06,2,设计系统,/ui kitchen-sink + 组件状态,I,UI-02,apps/web/src/features/ui-kitchen/*,所有 primitive 可预览
+UI-07,2,测试,视觉回归 + axe 基线 390/768/1440,I,UI-03,tests/browser/visual.spec.ts,基线截图；axe 0 critical
+LST-01,3,列表,列表用 useItemQuery + ItemRow + 服务端分页,I,W1/W2,features/inventory/screens/InventoryScreen.tsx,无本地 search/统计；分页正确
+LST-02,3,列表,组展开 query_items(catalog_node_ids),I,LST-01,features/inventory/components/GroupList.tsx,组内分页；不依赖 item_ids
+LST-03,3,列表,搜索/筛选/排序/游标/stale,I,LST-01,features/inventory/components/Toolbar.tsx,条件变化清游标；stale 提示
+LST-04,3,列表,选择/批量/移动入口,I,LST-01,features/inventory/components/SelectionBar.tsx,只选当前结果；批量移动
+DET-01,3,详情,DetailAdapter + 新档案布局,I,W1/W2,features/inventory/screens/ItemScreen.tsx,首屏 3 指标+1 主操作；旧/新数据
+DET-02,3,详情,历史/笔记摘要/附件占位,I/F,DET-01,features/inventory/components/DetailSections.tsx,无正文列表；附件 F 隐藏
+CAT-01,3,目录,useCatalogQuery + 树 + 管理表格,I,W1/W2,features/catalog/*,目录走服务端；树来自快照
+ACT-01,3,动态,useHistoryQuery + 人话 feed + 技术折叠,I,W1/W2,features/activity/*,操作者/对象/时间；diff 可折叠
+PERF-01,3,性能,删除本地 productGroups/searchInventory；索引化 View Model,I,ADP-01/03,features/inventory/model/*,5k 输入<100ms；无 O(n²)
+FRM-01,4,表单,Sheet/Field/Draft/ActionBar 原语,I,W2,features/*/sheets/*,草稿/焦点/移动端
+FRM-02,4,表单,入库：已有/新商品；最近/扫码/位置,I,FRM-01,features/intake/*,≤3/≤5 动作；幂等
+FRM-03,4,表单,消耗/移动/编辑/笔记/开封,I,FRM-01,features/*/sheets/*,现有命令全可用
+FRM-04,4,表单,错误/冲突/幂等/离线恢复,I,W0/FRM-01,features/api/write.ts,409 重读；不自动重发
+FRM-05,4,表单,手机全屏 Sheet + 底部 ActionBar,I,FRM-01,ui/primitives/Sheet.tsx,键盘/安全区/44px
+FRM-06,4,表单,打印/标签不回归,I,FRM-01,ui/label-print/*,打印协议不变
+CAP-01,5,能力,profile/capabilities 徽标/入口,F,W1/W2,features/inventory/components/ProfileBadge.tsx,baseline 不显示；F 正确
+CAP-02,5,表单,TemplateDefinition.fields 动态表单,F,CAP-01,features/forms/TemplateFields.tsx,fields 顺序/控件/单位
+CAP-03,5,日期,deadline 区块/date_filters/complete,F,CAP-01,features/dates/*,完成/周期/服务日期
+CAP-04,5,补货,stock/补货入口,F,CAP-01,features/stock/*,低库存/null 不猜
+CAP-05,5,处置,void/split/dispose 菜单/确认,F,CAP-01,features/inventory/actions/*,状态冲突处理
+CAP-06,5,字段,references/units 字段,F,CAP-02,features/forms/ReferenceField.tsx,引用校验/单位
+CAP-07,5,测试,F 功能矩阵 + mock,F,CAP-01..06,tests/web/features.test.ts,baseline 隐藏；单开可用
+NTS-01,6,笔记,list_notes/get_note hooks,F,W5,features/notes/api.ts,摘要/正文分离
+NTS-02,6,笔记,笔记摘要/正文/归档 UI,F,NTS-01,features/notes/*,列表摘要；详情正文
+ATT-01,6,附件,create upload/PUT/complete,F,W5,features/attachments/*,票据/进度/重试
+ATT-02,6,附件,缩略图/画廊/排序,F,ATT-01,features/attachments/Gallery.tsx,鉴权 URL；无公开链接
+ATT-03,6,附件,25 MiB/20/5 GiB/类型错误,F,ATT-01,features/attachments/errors.ts,错误文案/限制
+ATT-04,6,附件,sensitivity/redaction/reveal,F,ATT-02,features/attachments/Sensitive.tsx,审计提示；缓存排除
+ATT-05,6,测试,附件 fixture/浏览器测试,F,ATT-01..04,tests/browser/attachments.spec.ts,上传/失败/权限
+SYN-01,7,同步,sync state/generation 客户端,F,W1,features/sync/state.ts,generation/游标
+SYN-02,7,同步,bootstrap/changes/fetch,F,SYN-01,features/sync/api.ts,分页/墓碑/fetch
+SYN-03,7,同步,离线缓存/重置/事务,F,SYN-02,features/sync/storage.ts,SYNC_RESET_REQUIRED 清缓存
+SYN-04,7,同步,冲突/断线/Android 协调测试,F,SYN-03,tests/sync/*,断线/重置/跨端
+CLN-01,8,清理,删除旧页面/列表/详情/死 CSS,I,W3/W4,apps/web/src/pages.tsx; workbench.tsx; browser.tsx; layout.css,一套实现；0 死类
+CLN-02,8,清理,删除本地 productGroups/searchInventory 调用,I,PERF-01,features/inventory/model/*,仅服务端统计/搜索
+CLN-03,8,性能,bundle/route split/5k 基准,I,W3,vite config; tests/perf,预算达标
+CLN-04,8,测试,a11y/视觉回归/axe,I,W2/W3,tests/browser/*,0 critical；基线稳定
+CLN-05,8,文档,运行手册/回滚/feature 说明,I,全部,docs/frontend-refactor-*.md,可交接
+CLN-06,8,发布,全量回归 + 默认开关,I,全部,release checklist,旧入口关闭；回滚验证

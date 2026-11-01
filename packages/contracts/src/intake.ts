@@ -1,3 +1,4 @@
+import { templateId } from './registry.js';
 import { z } from 'zod';
 import { entityId } from './ids.js';
 
@@ -10,19 +11,11 @@ const catalogId = entityId('catalog_node');
 const itemId = entityId('item');
 export const revisionMap = z.record(z.union([catalogId, itemId]), z.int().positive());
 export const intakeAttribute = z.strictObject({
-  template_id: z.enum([
-    'product',
-    'lifecycle',
-    'contents',
-    'container',
-    'catalog',
-    'clothing',
-    'device',
-  ]),
+  template_id: templateId,
   template_version: z.int().positive(),
   values: z.record(z.string(), z.unknown()),
 });
-const attributes = z.array(intakeAttribute).max(7);
+const attributes = z.array(intakeAttribute).max(16);
 export const catalogRuleSchema = z.strictObject({
   branch_id: catalogId,
   standard_name: name.optional(),
@@ -53,9 +46,10 @@ export const catalogRuleSchema = z.strictObject({
         'clothing.size',
         'device.connector',
         'device.rated_power_w',
+        'device.electrical',
       ]),
     )
-    .max(9)
+    .max(10)
     .default([
       'product.brand',
       'product.model',
@@ -74,6 +68,7 @@ const defaults = z.strictObject({
   initial_attributes: attributes.optional(),
 });
 export const newIntakeProduct = z.strictObject({
+  one_off: z.boolean().optional(),
   name,
   parent_id: catalogId.nullable(),
   initial_attributes: attributes.optional(),
@@ -122,6 +117,7 @@ export const catalogProposalSchema = z.discriminatedUnion('kind', [
   z.strictObject({
     kind: z.literal('catalog_command'),
     operation: z.enum([
+      'void_catalog_node',
       'create_catalog_node',
       'update_catalog_node',
       'move_catalog_node',

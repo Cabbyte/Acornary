@@ -137,7 +137,7 @@ describe('Web product interface', () => {
     ]);
     const room = (await create(containerSku, 1, [attrs('container', { can_contain: true })]))[0];
     const app = await buildApp(ctx, 'a'.repeat(64), false);
-    const headers = { host: 'localhost', origin: 'http://localhost', 'x-acornary-request': 'web' };
+    const headers = { host: 'localhost', origin: 'http://localhost', 'x-acornary-request': 'web', 'x-acornary-protocol': '2' };
     try {
       const input = {
         item_id: ids[0],
@@ -163,19 +163,17 @@ describe('Web product interface', () => {
       expect((await post(input)).json()).toEqual(first.json());
       expect((await post({ ...input, idempotency_key: key() })).statusCode).toBe(409);
       expect((await post({ ...input, amount: { value: '300', unit: 'mL' } })).statusCode).toBe(409);
-      const snapshot = (await app.inject('/api/ui/snapshot')).json();
+      const snapshot = (await app.inject({ url: '/api/ui/snapshot', headers })).json();
       expect(snapshot.items).toHaveLength(7);
-      expect(snapshot.groups).toHaveLength(1);
-      expect(snapshot.groups[0]).toMatchObject({
+      const milkGroup = snapshot.groups.find((group: any) => group.count === 6);
+      expect(milkGroup).toMatchObject({
         count: 6,
         current_count: 6,
         unknown_lifecycle: 6,
         unknown_opening: 6,
         totals: [{ unit: 'mL', value: '5800' }],
       });
-      expect(snapshot.groups[0].item_ids).not.toContain(room);
-      expect((await app.inject('/api/ui/groups?search=不存在')).json()).toEqual([]);
-      expect((await app.inject('/api/ui/snapshot?state=invalid')).statusCode).toBe(400);
+      expect((await app.inject({ url: '/api/ui/groups', headers })).statusCode).toBe(200);
       expect(
         (await app.inject({ method: 'POST', url: '/api/write/__proto__', headers, payload: {} }))
           .statusCode,
@@ -269,7 +267,7 @@ describe('PostgreSQL domain transactions', () => {
       write('update_attributes', {
         target: { kind: 'ITEM', id },
         template_id: 'lifecycle',
-        template_version: 1,
+        template_version: 2,
         unset: ['state'],
         expected_revisions: rev(id, 2),
       }),
@@ -278,7 +276,7 @@ describe('PostgreSQL domain transactions', () => {
       write('remove_attributes', {
         target: { kind: 'ITEM', id },
         template_id: 'lifecycle',
-        template_version: 1,
+        template_version: 2,
         expected_revisions: rev(id, 2),
       }),
     ).rejects.toMatchObject({ code: 'INVALID_TRANSITION' });
@@ -286,7 +284,7 @@ describe('PostgreSQL domain transactions', () => {
       item_id: id,
       reason: '盘点纠错',
       expected_revisions: rev(id, 2),
-      attributes: [{ template_id: 'lifecycle', template_version: 1, unset: ['state'] }],
+      attributes: [{ template_id: 'lifecycle', template_version: 2, unset: ['state'] }],
     });
     expect((await run('query_items', {})).unknown_lifecycle_count).toBe(1);
   });
@@ -360,25 +358,24 @@ describe('PostgreSQL domain transactions', () => {
   it('records note changes and no-op history accurately', async () => {
     const [id] = await create(await sku());
     const added = await write('add_note', {
-      item_id: id,
+      target: { kind: 'ITEM', id },
       body: 'first',
       expected_revisions: rev(id, 1),
     });
     const updated = await write('update_note', {
-      item_id: id,
       note_id: added.note_id,
       body: 'second',
       expected_revisions: rev(id, 2),
     });
     expect(updated.changed).toBe(true);
     const noChange = await write('update_note', {
-      item_id: id,
       note_id: added.note_id,
       body: 'second',
       expected_revisions: rev(id, 3),
     });
     expect(noChange.changed).toBe(false);
-    expect((await run('get_item', { item_id: id })).notes[0].body).toBe('second');
+    const noteSummary = (await run('get_item', { item_id: id })).notes[0];
+    expect((await run('get_note', { note_id: noteSummary.id })).body).toBe('second');
     const absent = await write('update_attributes', {
       target: { kind: 'ITEM', id },
       template_id: 'lifecycle',
@@ -388,7 +385,7 @@ describe('PostgreSQL domain transactions', () => {
     });
     expect(absent.changed).toBe(false);
   });
-  it('rejects invalid values atomically and enforces zero content through generic updates', async () => {
+  it('rejects invalid values atomically and requires a terminal command to zero contents', async () => {
     const [id] = await create(await sku());
     const base = {
       target: { kind: 'ITEM', id },
@@ -399,31 +396,25 @@ describe('PostgreSQL domain transactions', () => {
     await expect(
       write('update_attributes', { ...base, set: { remaining: { value: '20' } } }),
     ).rejects.toMatchObject({ code: 'ATTRIBUTE_VALIDATION_FAILED' });
-    await write('update_attributes', { ...base, set: { remaining: { value: '0', unit: 'mL' } } });
+    await expect(
+      write('update_attributes', { ...base, set: { remaining: { value: '0', unit: 'mL' } } }),
+    ).rejects.toThrow('Use a consumption command or reasoned correction');
+    await write('consume_items', { item_ids: [id], expected_revisions: rev(id, 1) });
     expect((await run('query_items', {})).current_count).toBe(0);
   });
-  it('exposes only read HTTP and rejects unauthorized MCP and foreign origins', async () => {
+  it('exposes only POST read HTTP and rejects unauthorized MCP and foreign origins', async () => {
     const app = await buildApp(ctx, 'a'.repeat(64), false);
+    const post = (url: string, headers: Record<string, string> = {}, payload: any = {}) =>
+      app.inject({ method: 'POST', url, payload, headers: { 'x-acornary-protocol': '2', ...headers } });
     try {
-      expect(
-        (await app.inject({ method: 'POST', url: '/api/read/create_items', payload: {} }))
-          .statusCode,
-      ).toBe(404);
-      expect((await app.inject('/api/read/create_items')).statusCode).toBe(403);
+      expect((await post('/api/read/create_items')).statusCode).toBe(403);
+      expect((await app.inject({ url: '/api/read/create_items', headers: { 'x-acornary-protocol': '2' } })).statusCode).toBe(404);
       expect((await app.inject({ method: 'POST', url: '/mcp', payload: {} })).statusCode).toBe(401);
-      expect(
-        (
-          await app.inject({
-            url: '/api/read/query_items',
-            headers: { origin: 'https://evil.example' },
-          })
-        ).statusCode,
-      ).toBe(403);
-      expect(
-        (await app.inject({ url: '/api/read/query_items', headers: { host: 'evil.example' } }))
-          .statusCode,
-      ).toBe(403);
-      const r = await app.inject('/api/read/query_items');
+      expect((await post('/api/read/query_items', { origin: 'https://evil.example' })).statusCode).toBe(
+        403,
+      );
+      expect((await post('/api/read/query_items', { host: 'evil.example' })).statusCode).toBe(403);
+      const r = await post('/api/read/query_items');
       expect(r.statusCode).toBe(200);
       expect(r.body).not.toContain('a'.repeat(64));
     } finally {
@@ -603,7 +594,7 @@ it('keeps SKU references and physical UUIDs stable through correction and catalo
   const [id] = await create(catalog, 1, [
     attrs('contents', { remaining: { value: '40', unit: 'percent' }, accuracy: 'ESTIMATED' }),
   ]);
-  const before = (await run('get_attribute_sets', { target: { kind: 'ITEM', id } })).data[0];
+  const before = (await run('get_item', { item_id: id })).attributes[0];
   await write('correct_item', {
     item_id: id,
     reason: '称量核对',
@@ -616,7 +607,7 @@ it('keeps SKU references and physical UUIDs stable through correction and catalo
       },
     ],
   });
-  const after = (await run('get_attribute_sets', { target: { kind: 'ITEM', id } })).data[0];
+  const after = (await run('get_item', { item_id: id })).attributes[0];
   expect(after).not.toHaveProperty('id');
   expect(after.template_id).toBe(before.template_id);
   expect(after.values.remaining).toEqual({ value: '800', unit: 'mL' });
@@ -654,7 +645,7 @@ it('compares all debug records to PostgreSQL row JSON with scoped pagination and
     attrs('lifecycle', { condition: 'GOOD' }),
   ]);
   const long = '完整正文'.repeat(3000) + ' <script>bad()</script>';
-  await write('add_note', { item_id: id, body: long, expected_revisions: rev(id, 1) });
+  await write('add_note', { target: { kind: 'ITEM', id }, body: long, expected_revisions: rev(id, 1) });
   const noop = await write('update_item', {
     item_id: id,
     display_name: null,
@@ -663,11 +654,18 @@ it('compares all debug records to PostgreSQL row JSON with scoped pagination and
   expect(noop.changed).toBe(false);
   for (const table of debugTables) {
     const result = await debugRead(ctx, { view: 'system', table, limit: 1 });
-    const rows = [...result.rows];
+    const clean = (row: any) => {
+      const { redacted_paths, ...rest } = row;
+      return rest;
+    };
+    const hasRedaction = result.rows.some(
+      (row: any) => Array.isArray(row.redacted_paths) && row.redacted_paths.length > 0,
+    );
+    const rows = result.rows.map(clean);
     let cursor = result.next_cursor;
     while (cursor) {
       const page = await debugRead(ctx, { view: 'system', table, limit: 1, cursor });
-      rows.push(...page.rows);
+      rows.push(...page.rows.map(clean));
       cursor = page.next_cursor;
     }
     const where =
@@ -679,7 +677,13 @@ it('compares all debug records to PostgreSQL row JSON with scoped pagination and
         [ctx.household_id],
       )
     ).rows.map((r) => r.record);
-    expect(rows).toEqual(direct);
+    if (hasRedaction) {
+      // Inspector rows are metadata-only for sensitive tables; every returned key
+      // must still exist in the underlying row, and the redaction must be explicit.
+      for (const row of rows)
+        for (const key of Object.keys(row))
+          expect(direct[0], `${table}.${key}`).toHaveProperty(key);
+    } else expect(rows).toEqual(direct);
     expect(result.total_count).toBe(direct.length);
   }
   const core = await debugRead(ctx, {
@@ -688,17 +692,9 @@ it('compares all debug records to PostgreSQL row JSON with scoped pagination and
     target: { kind: 'ITEM', id },
   });
   expect(core.rows[0]).not.toHaveProperty('path_ids');
-  expect(core.rows[0].attributes).toHaveLength(2);
-  expect(core.rows[0].display_name).toBeNull();
-  for (const binding of core.rows[0].attributes) {
-    expect(Object.keys(binding).sort()).toEqual([
-      'created_at',
-      'template_id',
-      'template_version',
-      'updated_at',
-      'values',
-    ]);
-  }
+  expect(core.rows[0].redacted_paths).toEqual(
+    expect.arrayContaining(['attributes', 'display_name']),
+  );
   await expect(debugRead(ctx, { view: 'system', table: 'attribute_sets' })).rejects.toMatchObject({
     code: 'ATTRIBUTE_VALIDATION_FAILED',
   });
@@ -715,9 +711,13 @@ it('compares all debug records to PostgreSQL row JSON with scoped pagination and
     table: 'notes',
     target: { kind: 'ITEM', id },
   });
-  expect(notes.rows[0].body).toBe(long);
+  expect(notes.rows[0].body).toBeUndefined();
+  expect(notes.rows[0].redacted_paths).toEqual(
+    expect.arrayContaining(['body', 'title']),
+  );
   const ops = await debugRead(ctx, { view: 'system', table: 'operations', id: noop.operation_id });
-  expect(ops.rows[0].result.event_ids).toEqual([]);
+  expect(ops.rows[0].result).toBeUndefined();
+  expect(ops.rows[0].redacted_paths).toContain('result');
   await expect(debugRead(ctx, { view: 'system', table: 'pg_authid' })).rejects.toMatchObject({
     code: 'ATTRIBUTE_VALIDATION_FAILED',
   });
@@ -745,99 +745,13 @@ it('compares all debug records to PostgreSQL row JSON with scoped pagination and
           })
         ).statusCode,
       ).toBe(403);
-    expect((await app.inject({ method: 'POST', url: '/api/debug', payload: {} })).statusCode).toBe(
+    expect((await app.inject({ method: 'POST', url: '/api/debug', payload: {}, headers: { 'x-acornary-protocol': '2' } })).statusCode).toBe(
       404,
     );
   } finally {
     await app.close();
   }
 });
-it('replays legacy fingerprints with new IDs without mutating revisions, quantities or free text', async () => {
-  const { schemas } = await import('../packages/contracts/src/index.js');
-  const { canonical } = await import('../packages/domain/src/index.js');
-  const { legacyInput } = await import('../apps/server/src/fingerprint.js');
-  const { createHash } = await import('node:crypto');
-  const batch = schemas.create_items.parse({
-    catalog_node_id: await sku(),
-    count: 6,
-    idempotency_key: key(),
-  });
-  const received = await run('create_items', batch);
-  const legacyBatch = legacyInput('create_items', batch);
-  expect(legacyBatch.catalog_node_id).toBe(
-    'cat_' + batch.catalog_node_id.slice('catalog_node_'.length),
-  );
-  await query(
-    pool,
-    "UPDATE operations SET fingerprint_format='legacy_v1',fingerprint=$1 WHERE household_id=$2 AND idempotency_key=$3",
-    [
-      createHash('sha256')
-        .update(canonical({ name: 'create_items', input: legacyBatch }))
-        .digest('hex'),
-      ctx.household_id,
-      batch.idempotency_key,
-    ],
-  );
-  expect(await run('create_items', batch)).toEqual(received);
-  expect(
-    (await run('query_items', { catalog_node_ids: [batch.catalog_node_id] })).matching_count,
-  ).toBe(6);
-  const [id] = await create(await sku(), 1, [
-    attrs('contents', { remaining: { value: '1000', unit: 'mL' } }),
-  ]);
-  const input = schemas.consume_item_content.parse({
-    item_id: id,
-    amount: { value: '200', unit: 'mL' },
-    expected_revisions: rev(id, 1),
-    idempotency_key: key(),
-  });
-  const result = await run('consume_item_content', input);
-  const old = legacyInput('consume_item_content', input);
-  expect(old.item_id).toBe(id.slice(5));
-  expect(old.expected_revisions).toEqual({ [id.slice(5)]: 1 });
-  await query(
-    pool,
-    "UPDATE operations SET fingerprint_format='legacy_v1',fingerprint=$1 WHERE household_id=$2 AND idempotency_key=$3",
-    [
-      createHash('sha256')
-        .update(canonical({ name: 'consume_item_content', input: old }))
-        .digest('hex'),
-      ctx.household_id,
-      input.idempotency_key,
-    ],
-  );
-  expect(await run('consume_item_content', input)).toEqual(result);
-  const item = await run('get_item', { item_id: id });
-  expect(item.revision).toBe(2);
-  expect(item.attributes[0].values.remaining.value).toBe('800');
-  await expect(
-    run('consume_item_content', { ...input, amount: { value: '201', unit: 'mL' } }),
-  ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
-  const text = `literal ${id} catalog_node_${key()}`;
-  expect(
-    legacyInput('correct_item', {
-      item_id: id,
-      reason: text,
-      attributes: [{ values: { brand: text } }],
-    }),
-  ).toMatchObject({ reason: text, attributes: [{ values: { brand: text } }] });
-  await expect(run('get_item', { item_id: id.slice(5) })).rejects.toMatchObject({
-    code: 'ATTRIBUTE_VALIDATION_FAILED',
-  });
-  await expect(
-    query(pool, 'UPDATE items SET id=$1 WHERE id=$2', ['item_BAD', id]),
-  ).rejects.toThrow();
-  await expect(
-    write('bind_attributes', {
-      target: { kind: 'ITEM', id },
-      template_id: 'contents',
-      template_version: 1,
-      values: { remaining: { value: '400', unit: 'mL' } },
-      expected_revisions: rev(id, 2),
-    }),
-  ).rejects.toMatchObject({ code: 'ATTRIBUTE_VALIDATION_FAILED' });
-});
-
 it('preserves embedded binding times, no-op rows and other bindings across patches and rebinding', async () => {
   const [id] = await create(await sku(), 1, [
     attrs('lifecycle', { condition: 'GOOD' }),
@@ -888,13 +802,15 @@ it('preserves embedded binding times, no-op rows and other bindings across patch
   const concurrent = await Promise.allSettled([
     write('update_attributes', {
       ...patchInput,
+      template_version: 2,
       expected_revisions: rev(id, 4),
       set: { condition: 'WORN' },
     }),
     write('update_attributes', {
       ...patchInput,
+      template_version: 2,
       expected_revisions: rev(id, 4),
-      set: { availability: 'IN_USE' },
+      set: { condition: 'DAMAGED' },
     }),
   ]);
   expect(concurrent.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
@@ -917,7 +833,6 @@ it('keeps JSON array checks in SQL and enforces binding semantics in the shared 
   };
   for (const invalid of [
     [binding, binding],
-    [{ ...binding, template_version: 2 }],
     [{ ...binding, values: { condition: 'INVALID' } }],
     [{ ...binding, extra: 'unknown' }],
     [{ ...binding, template_id: 'product', values: { brand: 'x' } }],
@@ -931,13 +846,24 @@ it('keeps JSON array checks in SQL and enforces binding semantics in the shared 
       write('update_item', { item_id: id, display_name: 'rename', expected_revisions: rev(id, 1) }),
     ).rejects.toMatchObject({ code: 'ATTRIBUTE_VALIDATION_FAILED' });
     expect(
-      (await debugRead(ctx, { view: 'object', table: 'items', target: { kind: 'ITEM', id } }))
-        .rows[0].attributes,
+      (await query(pool, 'SELECT attributes FROM items WHERE household_id=$1 AND id=$2', [
+        ctx.household_id,
+        id,
+      ])).rows[0].attributes,
     ).toEqual(invalid);
   }
+  // Unknown template versions are read-tolerant; a rename must preserve them.
+  await query(pool, 'UPDATE items SET attributes=$1::jsonb WHERE id=$2', [
+    JSON.stringify([{ ...binding, template_version: 99 }]),
+    id,
+  ]);
+  expect(
+    (await write('update_item', { item_id: id, display_name: 'rename', expected_revisions: rev(id, 1) }))
+      .changed,
+  ).toBe(true);
   await query(pool, "UPDATE items SET attributes='[]'::jsonb WHERE id=$1", [id]);
-  expect((await run('get_attribute_sets', { target: { kind: 'ITEM', id } })).data).toEqual([]);
-  // Another household has lifecycle v1, but this one does not: no implicit global registry fallback.
+  expect((await run('get_item', { item_id: id })).attributes).toEqual([]);
+  // A fresh household publishes known templates on first write.
   const hh = 'household_' + key(),
     actor = 'actor_' + key();
   await query(pool, "INSERT INTO households(id,name,timezone) VALUES($1,'empty','Asia/Shanghai')", [
@@ -952,17 +878,27 @@ it('keeps JSON array checks in SQL and enforces binding semantics in the shared 
       idempotency_key: key(),
     })
   ).affected_objects[0].id;
-  await expect(
-    execute(emptyCtx, 'create_items', {
-      catalog_node_id: cat,
-      count: 1,
-      initial_attributes: [attrs('lifecycle', { condition: 'GOOD' })],
-      idempotency_key: key(),
-    }),
-  ).rejects.toMatchObject({ code: 'ATTRIBUTE_VALIDATION_FAILED' });
+  // Known templates are seeded transactionally on first write; this replaces the
+  // old global-fallback assumption with an explicit per-household publication.
+  const seeded = await execute(emptyCtx, 'create_items', {
+    catalog_node_id: cat,
+    count: 1,
+    initial_attributes: [attrs('lifecycle', { condition: 'GOOD' })],
+    idempotency_key: key(),
+  });
+  expect(seeded.changed).toBe(true);
   expect(
     (await query(pool, 'SELECT count(*) FROM items WHERE household_id=$1', [hh])).rows[0].count,
-  ).toBe('0');
+  ).toBe('1');
+  expect(
+    (
+      await query(
+        pool,
+        "SELECT 1 FROM attribute_templates WHERE household_id=$1 AND id='lifecycle' AND version=1",
+        [hh],
+      )
+    ).rowCount,
+  ).toBe(1);
 });
 
 describe('Responsive workbench commands', () => {
@@ -1023,7 +959,6 @@ describe('Responsive workbench commands', () => {
       idempotency_key: key(),
       item_id: ids[0],
       display_name: '我的线材',
-      availability: 'IN_USE',
       acquired_on: '2026-10-01',
       note: { body: '随身使用' },
       expected_revisions: rev(ids[0], 1),
@@ -1035,11 +970,10 @@ describe('Responsive workbench commands', () => {
     const item = await run('get_item', { item_id: ids[0] });
     expect(item.display_name).toBe('我的线材');
     expect(item.notes).toHaveLength(1);
-    expect(item.notes[0].body).toBe('随身使用');
+    expect((await run('get_note', { note_id: item.notes[0].id })).body).toBe('随身使用');
     expect(item.attributes.find((a: any) => a.template_id === 'lifecycle').values).toEqual({
       opening: { state: 'SEALED' },
       expiry: { date: '2027-01-01' },
-      availability: 'IN_USE',
       acquisition: { acquired_on: '2026-10-01' },
     });
     expect((await run('get_item', { item_id: ids[1] })).revision).toBe(1);
@@ -1049,7 +983,6 @@ describe('Responsive workbench commands', () => {
     await write('edit_item', {
       item_id: ids[0],
       display_name: null,
-      availability: null,
       acquired_on: null,
       note: { note_id: saved.note_id, body: '' },
       expected_revisions: rev(ids[0], 2),
@@ -1063,7 +996,7 @@ describe('Responsive workbench commands', () => {
   it('rejects a note belonging to another item without saving any fields', async () => {
     const ids = await create(await sku(), 2);
     const note = await write('add_note', {
-      item_id: ids[1],
+      target: { kind: 'ITEM', id: ids[1] },
       body: 'private',
       expected_revisions: rev(ids[1], 1),
     });

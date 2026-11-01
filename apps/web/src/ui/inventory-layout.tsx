@@ -1,3 +1,4 @@
+import { useSession } from '../lib/session.js';
 import { Splitter } from 'antd';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
@@ -8,7 +9,8 @@ const rememberedWidths = new Map<string, number>();
 const clamp = (n: number, max = maxWidth) => Math.max(minWidth, Math.min(max, n));
 
 export function useLocationPanelWidth(panel: 'location' | 'catalog' = 'location') {
-  const widthKey = `acornary-${panel}-panel-width`;
+  const { session } = useSession();
+  const widthKey = `acornary-${panel}-panel-width:${session.cache_key ?? session.household_id ?? 'pending'}`;
   const [width, setWidth] = useState(() => {
     let rememberedWidth = rememberedWidths.get(widthKey) ?? defaultWidth;
     try {

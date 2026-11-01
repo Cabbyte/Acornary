@@ -1,0 +1,71 @@
+.fields {
+  display: grid;
+  gap: var(--ac-space-4, 16px);
+  min-width: 0;
+}
+.fields :global(.ant-select),
+.fields :global(.ant-picker),
+.fields :global(.ant-input-number) {
+  width: 100%;
+}
+.context {
+  padding-block: 16px;
+  border-bottom: 1px solid var(--ac-line);
+  overflow-wrap: anywhere;
+}
+.context h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+.context p,
+.context ul {
+  margin: 8px 0;
+  color: var(--ac-muted);
+}
+.preview {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  background: var(--ac-paper);
+  border-radius: 8px;
+}
+.preview span,
+.hint {
+  color: var(--ac-muted);
+  font-size: 12px;
+}
+.preview strong {
+  color: var(--ac-ink);
+  font-variant-numeric: tabular-nums;
+  font-size: 20px;
+}
+.footer,
+.tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.footer {
+  position: sticky;
+  bottom: -16px;
+  z-index: 2;
+  background: var(--ac-surface);
+  padding-block: 16px;
+  border-top: 1px solid var(--ac-line);
+}
+.tabs button {
+  background: var(--ac-surface);
+  color: var(--ac-ink);
+  border: 1px solid var(--ac-line);
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+.tabs button[aria-selected='true'] {
+  background: var(--ac-accent-soft);
+  color: var(--ac-accent);
+}
+.tabs button:focus-visible {
+  outline: 2px solid var(--ac-accent);
+  outline-offset: 2px;
+}

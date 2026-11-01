@@ -1,10 +1,14 @@
+import type { Profile, CapabilityKey, RecordState, BindingStatus } from './registry.js';
 import { Decimal } from 'decimal.js';
 import { z } from 'zod';
 import { templates, type TemplateId } from './index.js';
 
 export interface Attribute {
-  template_id: TemplateId;
-  template_version: 1 | 2;
+  template_id: string;
+  template_version: number;
+  status?: BindingStatus;
+  created_at?: string;
+  updated_at?: string;
   values: Record<string, unknown>;
 }
 export interface CatalogRecord {
@@ -14,6 +18,14 @@ export interface CatalogRecord {
   name: string;
   revision: number;
   attributes: Attribute[];
+  // Optional while old cached snapshots remain readable; current server snapshots emit these.
+  profile?: Profile | null;
+  capabilities?: CapabilityKey[] | null;
+  effective_capabilities?: CapabilityKey[];
+  one_off?: boolean;
+  record_state?: RecordState;
+  created_at?: string;
+  updated_at?: string;
 }
 export interface ItemRecord {
   id: string;
@@ -23,6 +35,9 @@ export interface ItemRecord {
   revision: number;
   attributes: Attribute[];
   created_at: string;
+  updated_at?: string;
+  record_state?: RecordState;
+  effective_capabilities?: CapabilityKey[];
 }
 export interface NoteRecord {
   id: string;
@@ -59,9 +74,6 @@ export interface ProductGroup {
   locations: number;
   totals: { unit: string; value: string; estimated: boolean; unknown_accuracy: boolean }[];
   unknown_quantity: number;
-}
-export interface InventorySnapshot extends InventoryData {
-  groups: ProductGroup[];
 }
 export interface WriteResult {
   operation_id: string;
@@ -113,11 +125,14 @@ export function ancestors<T extends { id: string; parent_id: string | null }>(
   }
   return path;
 }
-export const itemName = (item: ItemRecord, data: InventoryData) =>
+export const itemName = (item: ItemRecord, data: Pick<InventoryData, 'catalog'>) =>
   item.display_name ||
   data.catalog.find((c) => c.id === item.catalog_node_id)?.name ||
   '未命名物品';
-export const locationName = (item: Pick<ItemRecord, 'parent_id'>, data: InventoryData) =>
+export const locationName = (
+  item: Pick<ItemRecord, 'parent_id'>,
+  data: Pick<InventoryData, 'catalog' | 'items'>,
+) =>
   ancestors(item.parent_id, data.items)
     .map((i) => itemName(i, data))
     .join(' / ') || '未记录位置';

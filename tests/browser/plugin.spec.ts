@@ -1,60 +1,45 @@
 import { choose } from './controls.js';
-import { test, expect, type Page } from '@playwright/test';
 import { catalogFixture, checkCatalog } from './catalog-checks.js';
+import { test, expect, type Page } from '@playwright/test';
 const origin = 'http://127.0.0.1:3212';
 const view = (page: Page) => page.frameLocator('#inventory');
-test('Ant Design catalog tree works in the MCP sandbox and isolates household state', async ({
-  page,
-}) => {
-  test.setTimeout(90000);
+test('Ant Design catalog tree preserves browse state in the MCP sandbox', async ({ page }) => {
   await page.goto(origin);
   await expect(view(page).getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
-  const f = await catalogFixture((name, input) =>
+  const data = await catalogFixture((name, input) =>
     page.evaluate(
       async ({ name, input }) => {
-        const h = (window as any).host;
-        const result = await (name === 'create_catalog_node'
-          ? h.fixtureCatalog({ idempotency_key: crypto.randomUUID(), ...input })
-          : h.call(name, {
-              idempotency_key: crypto.randomUUID(),
-              ...input,
-            }));
-        if (result.isError) throw new Error(JSON.stringify(result));
+        const host = (window as any).host;
+        const args = { idempotency_key: crypto.randomUUID(), ...input };
+        const result =
+          name === 'create_catalog_node'
+            ? await host.fixtureCatalog(args)
+            : await host.call(name, args);
+        if (result.isError) throw new Error(JSON.stringify(result.structuredContent));
         return result.structuredContent;
       },
       { name, input },
     ),
   );
   await restoreRoute(page, '/catalog');
-  await checkCatalog(page, view(page), f, 'plugin');
-  await view(page).getByRole('link', { name: '我的物品', exact: true }).click();
-  await expect(view(page).getByRole('separator', { name: '调整位置栏宽度' })).toHaveAttribute(
-    'aria-valuenow',
-    '224',
-  );
-  await expect(view(page).getByRole('columnheader', { name: '收纳位置', exact: true })).toHaveCount(
-    0,
-  );
-  await view(page).getByRole('link', { name: '商品目录', exact: true }).click();
-  await expect(view(page).getByRole('searchbox', { name: '搜索分类', exact: true })).toHaveValue(
-    f.leaf,
-  );
-  await page.evaluate(async () => {
+  await checkCatalog(page, view(page), data, 'plugin');
+});
+test('v2 catalog navigation and household changes isolate the selected item', async ({ page }) => {
+  const f = await fixture(page);
+  await restoreRoute(page, `/catalog/${f.sku}`);
+  await expect
+    .poll(() => page.evaluate(() => (window as any).host.context?.selection?.id))
+    .toBe(f.sku);
+  await page.evaluate(() => {
     const h = (window as any).host;
     h.family = 1;
-    h.notify(await h.call('get_inventory_view'));
+    h.notify({ content: [] });
   });
-  // An in-flight refresh can coalesce this notification; allow the 5s polling interval.
   await expect(view(page).getByRole('heading', { name: '我的物品', exact: true })).toBeVisible({
-    timeout: 10_000,
+    timeout: 10000,
   });
-  await view(page).getByRole('link', { name: '商品目录', exact: true }).click();
-  await expect(view(page).getByRole('searchbox', { name: '搜索分类', exact: true })).toHaveValue(
-    '',
-  );
-  await expect(view(page).getByRole('searchbox', { name: '搜索商品名称或规格' })).toHaveValue('');
-  await expect(view(page).getByLabel('当前商品分类')).toHaveText('全部商品');
-  await expect(view(page).getByRole('tree', { name: '商品分类树' })).not.toContainText(f.first);
+  await expect.poll(() => page.evaluate(() => (window as any).host.context?.selection)).toBeNull();
+  await expect(view(page).getByText(f.name, { exact: true })).toHaveCount(0);
 });
 async function fixture(page: Page, dialog = '') {
   await page.goto(origin);
@@ -66,8 +51,8 @@ async function fixture(page: Page, dialog = '') {
         ? h.fixtureCatalog({ idempotency_key: crypto.randomUUID(), ...args })
         : h.call(name, { idempotency_key: crypto.randomUUID(), ...args });
     const name = '插件验收 ' + crypto.randomUUID().slice(0, 6);
-    const sku = (await call('create_catalog_node', { kind: 'SKU', name })).structuredContent
-      .affected_objects[0].id;
+    const sku = (await call('create_catalog_node', { kind: 'SKU', name, profile: 'CONSUMABLE' }))
+      .structuredContent.affected_objects[0].id;
     const container = h.initial._meta['acornary/view'].snapshot.container_catalog_id;
     const place = (
       await call('create_items', {
@@ -101,7 +86,7 @@ async function fixture(page: Page, dialog = '') {
       h.saved = {
         privateContent: {
           acornary: {
-            version: 1,
+            version: 2,
             scope: h.initial._meta['acornary/view'].session.cache_key,
             records: {},
             route: `/items/${f.id}${dialog ? '?dialog=' + dialog + '&target=' + f.id : ''}`,
@@ -130,7 +115,7 @@ async function restoreRoute(page: Page, route: string) {
     h.saved = {
       privateContent: {
         acornary: {
-          version: 1,
+          version: 2,
           scope: h.initial._meta['acornary/view'].session.cache_key,
           records: {},
           route,
@@ -141,37 +126,24 @@ async function restoreRoute(page: Page, route: string) {
   }, route);
 }
 
-test('Ant Design icon navigation works with denied storage in the MCP sandbox', async ({
-  page,
-}) => {
+test('v2 navigation works with denied storage in the MCP sandbox', async ({ page }) => {
   await page.goto(origin);
   const embedded = view(page);
   await expect(embedded.getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
-  const frame = page
-    .frames()
-    .find((frame) => frame.parentFrame() && frame.url() === 'about:srcdoc')!;
   expect(
-    await frame.evaluate(() => {
+    await embedded.locator('body').evaluate(() => {
       try {
-        localStorage.getItem('acornary-sidebar-collapsed');
+        localStorage.getItem('test');
         return false;
       } catch {
         return true;
       }
     }),
   ).toBe(true);
-  await embedded.getByRole('button', { name: '收起侧栏', exact: true }).click();
-  const sidebar = embedded.locator('.wb-sidebar');
-  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeCloseTo(64, 0);
-  const navigation = embedded.getByRole('menu', { name: '主导航', exact: true });
-  await navigation.getByRole('menuitem', { name: '商品目录', exact: true }).click();
-  await expect(embedded.getByRole('heading', { name: '商品目录', exact: true })).toBeVisible();
-  await page.setViewportSize({ width: 1024, height: 900 });
-  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeCloseTo(64, 0);
-  await navigation.getByRole('menuitem', { name: '我的物品', exact: true }).click();
-  await expect(embedded.getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
-  await embedded.getByRole('button', { name: '展开侧栏', exact: true }).click();
-  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeCloseTo(200, 0);
+  for (const name of ['商品目录', '我的物品']) {
+    await embedded.getByRole('link', { name, exact: true }).first().click();
+    await expect(embedded.getByRole('heading', { name, exact: true })).toBeVisible();
+  }
   expect(await writes(page)).toHaveLength(0);
 });
 
@@ -260,22 +232,21 @@ test('sandbox resource, shared UI, selection, actual conversational move and mis
   await expect(
     view(page).getByRole('heading', { name: '没有通知也会刷新', exact: true }),
   ).toBeVisible({ timeout: 12000 });
-  await view(page).getByRole('button', { name: '返回列表', exact: true }).click();
-  await view(page).getByRole('link', { name: '我的物品', exact: true }).click();
+  await view(page).getByRole('link', { name: '我的物品', exact: true }).first().click();
   await expect.poll(() => page.evaluate(() => (window as any).host.context?.selection)).toBeNull();
   expect(errors).toEqual([]);
   expect(await page.evaluate(() => (window as any).host.sizes.length)).toBeGreaterThan(0);
 });
 
-test('workbench search, query inspector and atomic editing share the sandbox model context', async ({
-  page,
-}) => {
+test('v2 search and atomic editing share the sandbox model context', async ({ page }) => {
   const f = await fixture(page);
-  await view(page).getByRole('button', { name: '返回列表', exact: true }).click();
-  const search = view(page).getByRole('searchbox', { name: '搜索物品、规格、位置…' });
+  await view(page).getByRole('link', { name: '我的物品', exact: true }).first().click();
+  const search = view(page).getByRole('searchbox', { name: '搜索物品' });
   await search.fill(f.name);
   await search.press('Enter');
-  await view(page).locator('.stash-item-open').filter({ hasText: f.name }).click();
+  await view(page)
+    .getByRole('link', { name: new RegExp(f.name) })
+    .click();
   await expect
     .poll(() => page.evaluate(() => (window as any).host.context?.selection?.id))
     .toBe(f.id);
@@ -293,9 +264,7 @@ test('workbench search, query inspector and atomic editing share the sandbox mod
   await expect(
     view(page).getByRole('heading', { name: f.name + '已核对', exact: true }),
   ).toBeVisible();
-  await expect(view(page).getByRole('dialog', { name: '物品详情', exact: true })).toContainText(
-    '工作台原子保存的备注',
-  );
+  await expect(view(page).getByText('工作台原子保存的备注', { exact: true })).toBeVisible();
   await expect
     .poll(() => page.evaluate(() => (window as any).host.context?.selection?.revision))
     .toBe(2);
@@ -437,41 +406,35 @@ test('switching the backend household clears old inventory, selection and privat
   expect(await writes(page)).toHaveLength(0);
 });
 
-test('Ant Design SKU selection clears when switching households and returning', async ({
-  page,
-}) => {
+test('v1 widget drafts are cleared instead of sending legacy note payloads', async ({ page }) => {
   const f = await fixture(page);
-  await restoreRoute(page, `/items/group/${f.sku}`);
-  const embedded = view(page);
-  await embedded.getByRole('button', { name: '选择实物', exact: true }).click();
-  await embedded.getByRole('checkbox', { name: '选择本页全部物品' }).check();
-  await expect(embedded.getByRole('button', { name: '将选中 1 件标记为用完' })).toBeEnabled();
-  const firstName = await page.evaluate(
-    () => (window as any).host.initial._meta['acornary/view'].snapshot.household.name,
-  );
-  for (const family of [1, 0]) {
-    await page.evaluate((family) => {
-      const h = (window as any).host;
-      h.family = family;
-      h.notify({ content: [] });
-    }, family);
-    await expect(
-      embedded.getByRole('button', {
-        name: `切换家庭：${family ? '隔离的第二家庭' : firstName}`,
-        exact: true,
-      }),
-      // A notification during an in-flight read may wait for the 5 s poll and debounce.
-    ).toBeVisible({ timeout: 10000 });
-    await expect(embedded.getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
-    await expect
-      .poll(() => page.evaluate(() => (window as any).host.context?.selection))
-      .toBeNull();
-  }
-  await embedded.getByRole('link', { name: '商品目录', exact: true }).click();
-  await embedded.getByRole('searchbox', { name: '搜索商品名称或规格' }).fill(f.name);
-  await embedded.getByRole('link', { name: f.name, exact: true }).click();
-  await expect(embedded.getByRole('button', { name: '选择实物', exact: true })).toBeVisible();
-  await expect(embedded.getByRole('checkbox')).toHaveCount(0);
+  await page.evaluate(async (id) => {
+    const h = (window as any).host;
+    const scope = h.initial._meta['acornary/view'].session.cache_key;
+    h.saved = {
+      privateContent: {
+        acornary: {
+          version: 1,
+          scope,
+          route: `/items/${id}?dialog=note&target=${id}`,
+          records: {
+            [`${scope}:draft:note:${id}::::`]: {
+              attempt: { operation: 'add_note', payload: { item_id: id, body: 'old payload' } },
+            },
+          },
+        },
+      },
+    };
+    await h.mount();
+  }, f.id);
+  await expect(view(page).getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
+  await expect(view(page).getByRole('dialog')).toHaveCount(0);
+  await expect
+    .poll(() => page.evaluate(() => (window as any).host.saved.privateContent.acornary.version))
+    .toBe(2);
+  expect(
+    await page.evaluate(() => (window as any).host.saved.privateContent.acornary.records),
+  ).toEqual({});
   expect(await writes(page)).toHaveLength(0);
 });
 
@@ -745,7 +708,7 @@ test('late authorization errors from cancelled history cannot expire the new hou
       return rpc(method, params);
     };
   });
-  await restoreRoute(page, `/catalog/${f.sku}/history`);
+  await restoreRoute(page, `/items/${f.id}`);
   await expect.poll(() => page.evaluate(() => !!(window as any).host.releaseOld)).toBe(true);
   await page.evaluate(() => {
     const h = (window as any).host;
@@ -779,7 +742,7 @@ test('late authorization errors from cancelled history cannot expire the new hou
   await page.screenshot({ path: 'output/playwright/plugin-late-auth-new-session-active.png' });
 });
 
-test('Ant Design iframe dropdown and calendar preserve local dates and explicit submission', async ({
+test('Ant Design iframe calendar preserves local dates and explicit submission', async ({
   page,
 }) => {
   const f = await fixture(page, 'edit');
@@ -789,8 +752,7 @@ test('Ant Design iframe dropdown and calendar preserve local dates and explicit 
   await expect(embedded.locator('.ant-picker-dropdown')).toBeVisible();
   await date.fill('2026-10-07');
   await date.press('Enter');
-  await embedded.getByRole('combobox', { name: '状态', exact: true }).click();
-  await embedded.getByRole('option', { name: '可用', exact: true }).click();
+  await expect(embedded.getByRole('combobox', { name: '状态', exact: true })).toHaveCount(0);
   expect(await writes(page)).toHaveLength(0);
   await page.screenshot({
     path: `output/playwright/antd-mcp-${process.env.ACORNARY_E2E_BROWSER ?? 'chromium'}.png`,
@@ -804,55 +766,26 @@ test('Ant Design iframe dropdown and calendar preserve local dates and explicit 
   expect(commands[0].arguments.input).toMatchObject({
     item_id: f.id,
     acquired_on: '2026-10-07',
-    availability: 'AVAILABLE',
   });
 });
 
-test('Ant Design location resizing and drawer state survive opaque sandbox storage denial', async ({
+test('plugin hides unsupported actions and rejects attachment transport tools', async ({
   page,
 }) => {
-  await page.goto(origin);
-  const embedded = view(page);
-  await expect(embedded.getByRole('heading', { name: '我的物品', exact: true })).toBeVisible();
-  expect(
-    await embedded.locator('body').evaluate(() => {
-      try {
-        window.localStorage.getItem('acornary-location-panel-width');
-        return false;
-      } catch {
-        return true;
-      }
-    }),
-  ).toBe(true);
-  const separator = embedded.getByRole('separator', { name: '调整位置栏宽度' });
-  await separator.focus();
-  await separator.press('End');
-  await expect(separator).toHaveAttribute('aria-valuenow', '320');
-  await embedded.getByRole('link', { name: '商品目录', exact: true }).click();
-  await embedded.getByRole('link', { name: '我的物品', exact: true }).click();
-  await expect(separator).toHaveAttribute('aria-valuenow', '320');
-  await embedded.getByRole('searchbox', { name: '搜索位置', exact: true }).fill('验收');
-  await page.setViewportSize({ width: 1024, height: 900 });
-  await embedded.getByRole('button', { name: '位置', exact: true }).click();
-  await expect(
-    embedded.getByRole('dialog', { name: '选择位置' }).getByRole('searchbox'),
-  ).toHaveValue('验收');
-  await page.screenshot({
-    animations: 'disabled',
-    path: 'output/playwright/navigation-mcp-drawer.png',
+  await fixture(page);
+  for (const name of ['上传附件', '下载附件', '拆分', '处置', '作废', '库存阈值', '引用']) {
+    await expect(view(page).getByRole('button', { name, exact: true })).toHaveCount(0);
+  }
+  const result = await page.evaluate(async () => {
+    const h = (window as any).host;
+    return h.call('apply_inventory_command', {
+      expected_scope: h.initial._meta['acornary/view'].session.cache_key,
+      operation: 'create_attachment_upload',
+      input: {},
+    });
   });
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await expect(embedded.getByRole('dialog', { name: '选择位置' })).toHaveCount(0);
-  await expect(embedded.getByRole('searchbox', { name: '搜索位置', exact: true })).toHaveValue(
-    '验收',
-  );
-  await expect(separator).toHaveAttribute('aria-valuenow', '320');
-  await page.screenshot({
-    animations: 'disabled',
-    path: 'output/playwright/navigation-mcp-desktop.png',
-  });
-  await embedded.getByRole('button', { name: '更多添加选项' }).click();
-  await expect(embedded.getByRole('menuitem', { name: '添加位置', exact: true })).toBeVisible();
+  expect(result.isError).toBe(true);
+  expect(result.structuredContent.error.code).toBe('ATTACHMENT_TRANSPORT_UNSUPPORTED');
 });
 
 test('Ant Design policy card confirms only the rule and intake keeps a new product draft until the atomic commit', async ({
@@ -961,7 +894,7 @@ test('product v2 shelf life remains versioned when edited in the plugin', async 
         f.sku,
       ),
     )
-    .toEqual({
+    .toMatchObject({
       template_id: 'product',
       template_version: 2,
       values: { brand: '盒马', shelf_life_days: 16, storage: { requirement: 'REFRIGERATED' } },
@@ -969,4 +902,44 @@ test('product v2 shelf life remains versioned when edited in the plugin', async 
   const last = (await writes(page)).at(-1)!;
   expect(last.arguments.input.template_version).toBe(2);
   expect(last.arguments.input.expected_revisions).toEqual({ [f.sku]: 2 });
+});
+
+test('v2 note editing fetches the full body and writes a target after remount', async ({
+  page,
+}) => {
+  const f = await fixture(page);
+  const body = '完整笔记正文'.repeat(50);
+  const note = await page.evaluate(
+    async ({ id, body }) => {
+      const h = (window as any).host;
+      const result = await h.call('add_note', {
+        target: { kind: 'ITEM', id },
+        body,
+        expected_revisions: { [id]: 1 },
+        idempotency_key: crypto.randomUUID(),
+      });
+      return result.structuredContent.note;
+    },
+    { id: f.id, body },
+  );
+  expect(note).not.toHaveProperty('body');
+  await restoreRoute(page, `/items/${f.id}`);
+  await view(page).getByRole('button', { name: '编辑笔记', exact: true }).click();
+  const input = view(page).getByLabel('笔记内容', { exact: true });
+  await expect(input).toHaveValue(body);
+  expect(
+    await page.evaluate(() => (window as any).host.calls.some((c: any) => c.name === 'get_note')),
+  ).toBe(true);
+  await input.fill(body + '已修改');
+  await view(page).getByRole('button', { name: '保存', exact: true }).click();
+  await expect(input).toHaveCount(0);
+  const command = (await writes(page)).at(-1)!.arguments;
+  expect(command.operation).toBe('update_note');
+  expect(command.input.target).toEqual({ kind: 'ITEM', id: f.id });
+  expect(command.input).not.toHaveProperty('item_id');
+  const saved = await page.evaluate(
+    async (note_id) => (await (window as any).host.call('get_note', { note_id })).structuredContent,
+    note.id,
+  );
+  expect(saved.body).toBe(body + '已修改');
 });

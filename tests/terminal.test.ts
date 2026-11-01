@@ -104,7 +104,11 @@ async function grant(
   return result.json();
 }
 beforeAll(async () => {
-  if (!new URL(process.env.DATABASE_URL!).pathname.endsWith('acornary_test'))
+  if (
+    !['/acornary_test', '/acornary_test_w6_lifecycle', '/acornary_test_w8_mcp'].includes(
+      new URL(process.env.DATABASE_URL!).pathname,
+    )
+  )
     throw new Error('Isolated database required');
   ctx = { ...(await initialize()), source: 'TEST' };
   await query(pool, 'DELETE FROM "user" WHERE id IN (SELECT user_id FROM auth_owners)');
@@ -230,7 +234,7 @@ it('projects recent label dates from recorded events across shared SKU edits and
   const specTime = await eventTime(specification);
   expect((await read(custom)).label_updated_at).toBe(specTime);
   expect((await read(shared)).label_updated_at).toBe(specTime);
-  await write('add_note', { item_id: shared, body: '不影响标签', expected_revisions: { [shared]: 1 } });
+  await write('add_note', { target: { kind: 'ITEM', id: shared }, body: '不影响标签', expected_revisions: { [shared]: 1 } });
   await write('move_items', { item_ids: [shared], parent_id: container, expected_revisions: { [shared]: 2 } });
   await write('open_item', { item_id: shared, opened_at: '2020-01-01T00:00:00Z', expected_revisions: { [shared]: 3 } });
   await write('consume_item_content', { item_id: shared, amount: { value: '1', unit: 'mL' }, expected_revisions: { [shared]: 4 } });
