@@ -179,7 +179,7 @@ export function ActionSheet({
   useEffect(() => {
     let cancelled = false;
     const original = target ? fieldValues(sourceValues(), fields) : {};
-    const note = data.notes.find((n) => n.id === action.note && n.item_id === action.target);
+    const note = (data as any).notes?.find((n: any) => n.id === action.note && n.item_id === action.target);
     const values: Values = {
       name: item?.display_name ?? catalog?.name ?? '',
       acquired_on: item ? (attr(item, 'lifecycle')?.acquisition?.acquired_on ?? '') : '',
@@ -1417,7 +1417,7 @@ export function ActionSheet({
                   <dd>
                     {itemName(item, data)} · {itemStatus(item)} ·{' '}
                     {attr(item, 'lifecycle')?.acquisition?.acquired_on || '日期未记录'}
-                    <p>{data.notes.find((n) => n.id === action.note)?.body || '备注未记录'}</p>
+                    <p>{(data as any).notes?.find((n: any) => n.id === action.note)?.body || '备注未记录'}</p>
                   </dd>
                 </div>
               )}

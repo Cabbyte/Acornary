@@ -40,7 +40,7 @@ import {
 import { DomainError } from '../../../packages/domain/src/index.js';
 import { execute, type Context } from './service.js';
 import { pool, query } from './db.js';
-import { webSnapshot, webSnapshotV2 } from './web.js';
+import { webSnapshotV2 } from './web.js';
 import { syncState, syncChanges, syncFetch, syncBootstrap } from './sync-api.js';
 import { pluginResource, registerInventoryApp } from './plugin.js';
 import { pluginWriteTool } from '../../../packages/contracts/src/plugin.js';
@@ -459,12 +459,9 @@ export async function buildApp(
   const snapshotFor = (req: FastifyRequest) => {
     const trace = traces.getStore();
     if (trace) trace.tool = 'web_snapshot';
-    const protocol = req.headers['x-acornary-protocol'];
-    if (protocol !== undefined && protocol !== '2')
-      throw new DomainError('PROTOCOL_VERSION_UNSUPPORTED', 'Unsupported snapshot protocol.');
-    return timed('business_ms', async () => protocol === '2'
-      ? webSnapshotV2(webContexts.get(req) ?? ctx)
-      : webSnapshot(webContexts.get(req) ?? ctx, req.query));
+    return timed('business_ms', async () =>
+      webSnapshotV2(webContexts.get(req) ?? ctx),
+    );
   };
   app.get('/api/ui/snapshot', snapshotFor);
   app.get('/api/ui/groups', async (req) => (await snapshotFor(req)).groups);

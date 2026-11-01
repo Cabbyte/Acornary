@@ -83,8 +83,8 @@
 ## 4. 进度记录（2026-11-01）
 
 - Phase 1 已完成：`pages.tsx`、旧 `ui/browser|workbench|activity|catalog-tree|item-inspector|stash-results|inventory-layout`、`prototype` 已删除；Settings 详情提取到 `features/settings/SettingsDetails.tsx`；`ui=legacy` 已从 schema 和路由移除。
-- Phase 2 已完成：`GET /api/read/:operation` 已删除（仅保留 `get_connection_context` 协商 GET）；通用 `POST /api/read/:operation`；`protocol_v2` 已 advertise；业务 API 无 `X-Acornary-Protocol: 2` 返回 409；v1 snapshot 分支仍在，待删。
+- Phase 2 已完成：`GET /api/read/:operation` 已删除（仅保留 `get_connection_context` 协商 GET）；通用 `POST /api/read/:operation`；`protocol_v2` 已 advertise；业务 API 无 `X-Acornary-Protocol: 2` 返回 409；v1 snapshot 分支已删除，HTTP/插件统一 v2。
 - Phase 3 完成：`attribute_sets`（022）、`get_attribute_sets`、`notes.item_id`/`016a`（023）、`lifecycle.availability`→usage/custody/service/transport + lifecycle v2（024）已完成。
-- Phase 4 未开始。
+- Phase 4 未开始；前端 `InventorySnapshot`/plugin transform 仍保留少量 v1 缓存兼容类型，待最后收口。
 - 当前验收：全仓 **199 passed / 2 todo**；Batch 1/2 84、Batch 3 17/4、Batch 4 19、Batch 5 11、Batch 6 23、Batch 7 notes 15 + export 12、Batch 8 10/1。
 - 构建：Web/插件构建通过。注意 `ui/forms.tsx` 仍保留生产 ActionSheet 和少量 legacy 分支，后续可拆分。

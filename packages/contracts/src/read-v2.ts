@@ -144,6 +144,7 @@ export interface ProductGroupV2 {
 export interface SnapshotV2 {
   protocol: 2;
   household: { id: string; name: string; timezone: string };
+  container_catalog_id: string | null;
   as_of_change_id: string;
   server_time: string;
   catalog: CatalogRecordV2[];

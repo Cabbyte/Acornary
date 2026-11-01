@@ -5,7 +5,7 @@ import { execute, type Context } from '../../apps/server/src/service.js';
 import { pool, query, transaction } from '../../apps/server/src/db.js';
 import { publishTemplate, definitionHashes } from '../../apps/server/src/registry.js';
 import { registry, templateDefinition, type Profile } from '../../packages/contracts/src/registry.js';
-import { webSnapshot } from '../../apps/server/src/web.js';
+import { webSnapshotV2 } from '../../apps/server/src/web.js';
 import { approvedExecute } from '../catalog-helpers.js';
 import type { Operation } from '../../packages/contracts/src/index.js';
 
@@ -147,7 +147,7 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
       expected_revisions: { [sku]: 2 },
     });
     expect((await raw('catalog_nodes', sku)).attributes).toBe(catalogBaseline.attributes);
-    const snapshot = await webSnapshot(ctx, {});
+    const snapshot = await webSnapshotV2(ctx);
     expect(snapshot.items.find((i) => i.id === item)?.attributes.slice(0, 2)).toEqual(
       originals.map((a) => ({ ...publicBinding(a), status: 'UNKNOWN' })),
     );
@@ -334,7 +334,7 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
       expect((await itemRead(ctx, item)).effective_capabilities).toEqual(expected);
       expect((await raw('catalog_nodes', sku)).attributes).toBe(before.attributes);
     }
-    const snap = await webSnapshot(ctx, {});
+    const snap = await webSnapshotV2(ctx);
     expect(snap.catalog.find((r) => r.id === sku)).toMatchObject({
       effective_capabilities: ['container'],
       one_off: true,

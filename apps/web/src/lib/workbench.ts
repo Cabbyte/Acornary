@@ -104,7 +104,7 @@ export function moveValidation(data: InventoryData, selected: ItemRecord[], pare
   return '';
 }
 export function latestNote(data: InventoryData, id: string) {
-  return data.notes
+  return (data.notes ?? [])
     .filter((n) => n.item_id === id)
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at) || a.id.localeCompare(b.id))[0];
 }

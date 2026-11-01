@@ -140,6 +140,7 @@ const v2Catalog: CatalogRecordV2 = {
 
 const v2Snapshot: SnapshotV2 = {
   protocol: 2,
+  container_catalog_id: null,
   household,
   as_of_change_id: '42',
   server_time: '2026-10-31T12:00:00+08:00',
