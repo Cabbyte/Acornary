@@ -58,7 +58,7 @@
 5. 移除 `lifecycle.availability` 合同/UI/编辑路径；更新查询摘要。
 6. `EDIT` 只做历史盘点，不删事件；如需统一，另立迁移并保留原文。
 
-### Phase 4 — 垃圾与收口（待做）
+### Phase 4 — 垃圾与收口（核心完成；前端 cache 类型/死分支为 follow-up）
 1. 删除无引用文件、缓存、临时脚本。
 2. 更新 docs/repair/README、frontend handoff、legacy 说明。
 3. 空库迁移 001–024、全量测试、nested batches、`npm run build`、浏览器冒烟。
@@ -88,3 +88,16 @@
 - Phase 4 未开始；前端 `InventorySnapshot`/plugin transform 仍保留少量 v1 缓存兼容类型，待最后收口。
 - 当前验收：全仓 **199 passed / 2 todo**；Batch 1/2 84、Batch 3 17/4、Batch 4 19、Batch 5 11、Batch 6 23、Batch 7 notes 15 + export 12、Batch 8 10/1。
 - 构建：Web/插件构建通过。注意 `ui/forms.tsx` 仍保留生产 ActionSheet 和少量 legacy 分支，后续可拆分。
+
+
+## 5. 合并与最终验收（2026-11-01）
+
+- 已合入 `codex/data-model-v2`：合并提交 `8ac88f0`。
+- 空库迁移 `001`–`024` 通过。
+- 最终全仓：**199 passed / 2 todo / 0 failed**（28 个文件）。
+- `tsc` 根+Web、`npm run build` 通过。
+- 删除约 5,591 行，新增 926 行。
+- 保留的 follow-up（不在实时 v1 路径）：
+  - `InventorySnapshot`/plugin transform 的旧本地缓存类型；
+  - `ui/forms.tsx` 中 `production=false` 的不可达历史分支；
+  - `hardware/` 未跟踪资料保留。
