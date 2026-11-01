@@ -121,17 +121,21 @@ const bindingVersion = (attributes: readonly AttributeBindingV2[], templateId: s
 const statusFor = (
   recordState: RecordState,
   attributes: readonly AttributeBindingV2[],
+  derived?: unknown,
 ): StatusView => {
   if (recordState === 'VOID') return { label: '已作废', tone: 'danger' };
   const lifecycle = bindingValues(attributes, 'lifecycle');
   const state = textValue(lifecycle?.state);
   if (state && state !== 'ACTIVE')
     return LIFECYCLE_STATUS[state] ?? { label: state, tone: 'neutral' };
-  const availability = derivedAvailability(
-    Object.fromEntries(
-      attributes.filter((a) => a.status === 'KNOWN').map((a) => [a.template_id, a.values]),
-    ),
-  );
+  const availability =
+    typeof derived === 'string'
+      ? derived
+      : derivedAvailability(
+          Object.fromEntries(
+            attributes.filter((a) => a.status === 'KNOWN').map((a) => [a.template_id, a.values]),
+          ),
+        );
   if (availability)
     return AVAILABILITY_STATUS[availability] ?? { label: availability, tone: 'neutral' };
   return state === 'ACTIVE' ? LIFECYCLE_STATUS.ACTIVE : { label: '未记录', tone: 'neutral' };
@@ -222,7 +226,11 @@ export function adaptItem(
     ...(subtitle === undefined ? {} : { subtitle }),
     location,
     profile: context.profile ?? null,
-    status: statusFor(recordState, attributes),
+    status: statusFor(
+      recordState,
+      attributes,
+      (record as { derived_availability?: unknown }).derived_availability,
+    ),
     facts: factsFor(attributes),
     attention: attentionFor(record as { next_date?: DateFact | null }, attributes),
     revision: record.revision,

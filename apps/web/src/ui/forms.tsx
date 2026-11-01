@@ -98,7 +98,6 @@ export function ActionSheet({
 }) {
   const { data, refresh, stale } = useInventory();
   const client = useQueryClient();
-  const notesV2 = useFeature('notes_v2');
   const profileEnabled = useFeature('profile_capabilities');
   const { modal } = App.useApp();
   const { session, online } = useSession();
@@ -208,7 +207,7 @@ export function ActionSheet({
         return undefined;
       })
       .then(async (saved) => {
-        if (!saved && action.kind === 'note' && action.note) {
+        if (!saved && (action.kind === 'note' || action.kind === 'edit') && action.note) {
           try {
             const note = toNoteView(await read<NoteV2>('get_note', { note_id: action.note }));
             if (note.itemId !== action.target || note.body === undefined)
@@ -471,11 +470,7 @@ export function ActionSheet({
       case 'note':
         operation = action.note ? 'update_note' : 'add_note';
         input = {
-          ...(notesV2
-            ? action.note
-              ? {}
-              : { target: { kind: 'ITEM', id: item?.id } }
-            : { item_id: item?.id }),
+          target: { kind: 'ITEM', id: item?.id },
           ...(action.note
             ? { note_id: action.note, title: values.title || null }
             : values.title

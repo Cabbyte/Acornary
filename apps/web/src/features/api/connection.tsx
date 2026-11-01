@@ -29,7 +29,7 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
     staleTime: 60_000,
     retry: false,
   });
-  const features = useMemo(() => resolveFeatures(q.data), [q.data]);
+  const features = useMemo(() => resolveFeatures(q.data, session.host), [q.data, session.host]);
   const protocolOk = !q.data?.protocol || q.data.protocol.current >= 2;
   return (
     <ConnectionContextValue.Provider

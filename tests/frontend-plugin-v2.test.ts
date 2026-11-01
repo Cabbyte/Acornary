@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { pluginEnvelopeSchema } from '../packages/contracts/src/plugin.js';
-import type { SnapshotV2 } from '../packages/contracts/src/read-v2.js';
+import { resolveFeatures } from '../apps/web/src/features/api/features.js';
+import { adaptItemDetail } from '../apps/web/src/features/inventory/adapters/detail.js';
+import { adaptSnapshot } from '../apps/web/src/features/inventory/adapters/snapshot.js';
+import type { ConnectionContext, SnapshotV2 } from '../packages/contracts/src/read-v2.js';
 
 const household = {
   id: 'household_11111111-1111-4111-8111-111111111111',
@@ -85,7 +88,8 @@ const snapshot: SnapshotV2 = {
   ],
 };
 const envelope = (snapshot: unknown) => ({
-  version: 1,
+  version: 2,
+  protocol: 2,
   session: {
     mode: 'local',
     authenticated: true,
@@ -129,4 +133,49 @@ describe('plugin envelope v2 snapshot', () => {
       ).toBe(false);
     },
   );
+});
+
+it('rejects the old envelope even when its snapshot has protocol 2', () => {
+  expect(pluginEnvelopeSchema.safeParse({ ...envelope(snapshot), version: 1 }).success).toBe(false);
+  expect(
+    pluginEnvelopeSchema.safeParse({ ...envelope(snapshot), protocol: undefined }).success,
+  ).toBe(false);
+});
+
+it('intersects plugin capabilities with advertised features while preserving Web support', () => {
+  const context = {
+    features: ['stock', 'void', 'split', 'references', 'attachments', 'notes_v2', 'deadline'],
+  } as ConnectionContext;
+  const plugin = resolveFeatures(context, 'mcp');
+  for (const feature of ['stock', 'void', 'split', 'references', 'attachments'] as const) {
+    expect(plugin.has(feature)).toBe(false);
+    expect(resolveFeatures(context, 'web').has(feature)).toBe(true);
+  }
+  expect(plugin.has('notes_v2')).toBe(true);
+  expect(plugin.has('deadline')).toBe(true);
+  expect(resolveFeatures(undefined, 'mcp').has('notes_v2')).toBe(false);
+});
+
+it('preserves flat get_item metadata and uses the server derived availability', () => {
+  const raw = {
+    ...snapshot.items[0],
+    record_state: 'VOID',
+    voided_at: timestamp,
+    notes: [],
+    attachments: [],
+    path_ids: [itemId],
+    dates: [],
+  };
+  const detail = adaptItemDetail(raw, adaptSnapshot(snapshot));
+  expect(detail.item.recordState).toBe('VOID');
+  expect(detail.item.voidedAt).toBe(timestamp);
+  expect(detail.item.redactedPaths).toEqual(record.redacted_paths);
+  expect(detail.item.noteCount).toBe(3);
+  expect(detail.split).toEqual(raw.split);
+  expect(detail.pathIds).toEqual([itemId]);
+  const available = adaptItemDetail(
+    { ...raw, record_state: 'VALID', derived_availability: 'UNAVAILABLE' },
+    adaptSnapshot(snapshot),
+  );
+  expect(available.item.status.label).toBe('暂不可用');
 });

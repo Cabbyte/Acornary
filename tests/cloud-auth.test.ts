@@ -48,7 +48,7 @@ const inject = (options: any) =>
     ...options,
     remoteAddress: config.trustedProxy,
     headers: {
-      'x-acornary-protocol': '2',
+      ...(options.url === '/mcp' ? {} : { 'x-acornary-protocol': '2' }),
       ...headers,
       ...(ctx ? { 'x-acornary-household': ctx.household_id } : {}),
       ...options.headers,
@@ -96,7 +96,7 @@ const call = (token: string, name = 'query_items', args: any = {}) =>
 
 beforeAll(async () => {
   if (
-    !['/acornary_test', '/acornary_test_w6_lifecycle'].includes(
+    !['/acornary_test', '/acornary_test_w6_lifecycle', '/acornary_test_w8_mcp'].includes(
       new URL(process.env.DATABASE_URL!).pathname,
     )
   )
@@ -298,6 +298,13 @@ describe('cloud OAuth and private inspector', () => {
     });
     expect(uiDenied.statusCode).toBe(403);
     expect(uiDenied.headers['www-authenticate']).toContain('inventory:write');
+    for (const name of [
+      'void_item', 'dispose_item', 'split_item', 'add_note', 'add_deadline', 'create_attachment_upload',
+    ]) {
+      const response = await call(readGrant.access_token, name, {});
+      expect(response.statusCode, name).toBe(403);
+      expect(response.headers['www-authenticate']).toContain('inventory:write');
+    }
     expect((await call(readGrant.access_token)).statusCode).toBe(200);
     const rotated = await tokenPost({
       grant_type: 'refresh_token',

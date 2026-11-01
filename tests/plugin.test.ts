@@ -1,7 +1,7 @@
 import { SelectionSync } from '../apps/web/src/plugin/selection.js';
 import { describe, it, expect, vi } from 'vitest';
 import { WidgetStore, type WidgetBridge } from '../apps/web/src/plugin/store.js';
-import { pluginEnvelopeSchema } from '../packages/contracts/src/plugin.js';
+import { pluginEnvelopeSchema, pluginWriteResultSchema } from '../packages/contracts/src/plugin.js';
 import { draftSchema } from '../apps/web/src/lib/draft.js';
 import { PluginClient } from '../apps/web/src/plugin/client.js';
 
@@ -79,7 +79,8 @@ describe('Plugin recovery boundaries', () => {
   it('rejects a host envelope whose selected household disagrees with the snapshot', () => {
     expect(
       pluginEnvelopeSchema.safeParse({
-        version: 1,
+        version: 2,
+        protocol: 2,
         session: {
           mode: 'cloud',
           authenticated: true,
@@ -108,7 +109,8 @@ it.each(['success', 'authorization-error'])(
   'ignores a late %s even after the host switches back to the original identity',
   async (outcome) => {
     const envelope = (family: string) => ({
-      version: 1,
+      version: 2,
+      protocol: 2,
       session: {
         mode: 'local',
         authenticated: true,
@@ -193,7 +195,8 @@ it('retries failed context clears and coalesces queued selections to the latest 
 
 it('retains v2 snapshot metadata and rejects legacy caches', () => {
   const envelope = {
-    version: 1,
+    version: 2,
+    protocol: 2,
     session: {
       mode: 'local',
       authenticated: true,
@@ -229,4 +232,108 @@ it('retains v2 snapshot metadata and rejects legacy caches', () => {
       snapshot: { ...envelope.snapshot, protocol: undefined },
     }).success,
   ).toBe(false);
+});
+
+it('discards v1 widget drafts and persists only a clean v2 state', async () => {
+  let saved: any = {
+    privateContent: {
+      acornary: {
+        version: 1,
+        scope: 's',
+        route: '/items/old?dialog=note',
+        records: {
+          's:draft:note': { attempt: { operation: 'add_note', payload: { item_id: 'old' } } },
+        },
+      },
+    },
+  };
+  const bridge = {
+    get widgetState() {
+      return saved;
+    },
+    setWidgetState(value: unknown) {
+      saved = value;
+    },
+  };
+  const store = new WidgetStore(() => bridge, 's');
+  expect(await store.get('s:draft:note')).toBeUndefined();
+  expect(store.route).toBe('/items');
+  await store.rememberRoute('/items');
+  expect(saved.privateContent.acornary).toEqual({
+    version: 2,
+    scope: 's',
+    route: '/items',
+    records: {},
+  });
+});
+
+it('fails clearly for attachment byte requests without calling the host', async () => {
+  const client = new PluginClient();
+  const call = vi.spyOn(client.app, 'callServerTool');
+  await expect(client.request('/api/attachments/attachment-test')).rejects.toMatchObject({
+    code: 'ATTACHMENT_TRANSPORT_UNSUPPORTED',
+  });
+  expect(call).not.toHaveBeenCalled();
+});
+
+it('never dispatches a legacy item_id note payload even if a caller bypasses draft parsing', async () => {
+  const client = new PluginClient();
+  client.envelope = pluginEnvelopeSchema.parse({
+    version: 2,
+    protocol: 2,
+    session: {
+      mode: 'local',
+      authenticated: true,
+      host: 'mcp',
+      household_id: 'home',
+      cache_key: 'scope',
+      can_write: true,
+    },
+    snapshot: {
+      protocol: 2,
+      household: { id: 'home', name: 'Home', timezone: 'UTC' },
+      container_catalog_id: null,
+      as_of_change_id: '0',
+      server_time: 'now',
+      cached_at: 'now',
+      catalog: [],
+      items: [],
+      groups: [],
+    },
+  });
+  const call = vi.spyOn(client.app, 'callServerTool');
+  await expect(
+    client.write(
+      'add_note',
+      {
+        item_id: 'item_11111111-1111-4111-8111-111111111111',
+        body: 'old',
+        idempotency_key: 'old-key',
+        expected_revisions: { 'item_11111111-1111-4111-8111-111111111111': 1 },
+      },
+      'home',
+      undefined,
+      'scope',
+    ),
+  ).rejects.toMatchObject({ code: 'ATTRIBUTE_VALIDATION_FAILED' });
+  expect(call).not.toHaveBeenCalled();
+});
+
+it('preserves extensible write receipts including deadline and source fields', () => {
+  const result = {
+    operation_id: 'operation_11111111-1111-4111-8111-111111111111',
+    changed: false,
+    affected_objects: [],
+    event_ids: [],
+    summary: 'No changes.',
+    split_id: 'split_1',
+    deadline_id: 'deadline_1',
+    deadline: { due_on: '2026-11-01' },
+    source_item_id: 'item_11111111-1111-4111-8111-111111111111',
+    source_revision: 2,
+    proposal_id: '11111111-1111-4111-8111-111111111111',
+    receipt: { item_count: 0 },
+    future_receipt_field: { retained: true },
+  };
+  expect(pluginWriteResultSchema.parse(result)).toEqual(result);
 });

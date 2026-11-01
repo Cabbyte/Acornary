@@ -393,7 +393,7 @@ it('keeps confirmation outside generic HTTP/model commands and hides its challen
   try {
     await client.connect(
       new StreamableHTTPClientTransport(new URL(address + '/mcp'), {
-        requestInit: { headers: { Authorization: 'Bearer ' + 'c'.repeat(64), 'X-Acornary-Protocol': '2' } },
+        requestInit: { headers: { Authorization: 'Bearer ' + 'c'.repeat(64) } },
       }),
     );
     const view = await client.callTool({ name: 'open_inventory', arguments: {} });

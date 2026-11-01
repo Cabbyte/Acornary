@@ -78,7 +78,7 @@ const host = (window.host = {
     // The opaque iframe cannot access sessionStorage; supply the preference in its saved route.
     if (sessionStorage.getItem('acornary-ui') === 'legacy') {
       const saved = this.saved?.privateContent?.acornary ?? {
-        version: 1,
+        version: 2,
         scope: this.initial._meta['acornary/view'].session.cache_key,
         records: {},
         route: '/items',
