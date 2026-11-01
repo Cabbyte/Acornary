@@ -205,7 +205,6 @@ export interface ItemQuerySummaryV2 {
   matching_count: number;
   current_count?: number;
   unknown_lifecycle_count?: number;
-  unknown_availability_count?: number;
   content_totals?: ContentTotalsV2;
   as_of_change_id: string;
 }
@@ -216,7 +215,6 @@ export interface ItemQueryResultV2 {
   matching_count: number;
   current_count: number;
   unknown_lifecycle_count: number;
-  unknown_availability_count: number;
   content_totals: ContentTotalsV2;
   as_of_change_id: string;
   stale: boolean;

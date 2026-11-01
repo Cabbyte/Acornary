@@ -85,7 +85,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Batch 6 migrated PostgreSQL', () => 
       throw new Error('Use the isolated Batch 6 database.');
   });
   afterAll(() => pool.end());
-  it('MODEL04 disposition and DISPOSED share one event, preserve lifecycle v1, replay and reject bypass', async () => {
+  it('MODEL04 disposition and DISPOSED share one event, create lifecycle v2, replay and reject bypass', async () => {
     const { ctx, sku } = await fixture(),
       itemId = await item(ctx, sku);
     await expect(update(ctx, itemId, 1, 'lifecycle', { state: 'DISPOSED' })).rejects.toMatchObject({
@@ -107,7 +107,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Batch 6 migrated PostgreSQL', () => 
     const row = await get(ctx, itemId);
     expect(values(row, 'disposition')).toEqual(input.disposition);
     expect(row.attributes.find((a: any) => a.template_id === 'lifecycle')).toMatchObject({
-      template_version: 1,
+      template_version: 2,
       values: { state: 'DISPOSED' },
     });
     expect((await execute(ctx, 'query_items', {})).data).toHaveLength(0);
@@ -839,7 +839,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Batch 6 migrated PostgreSQL', () => 
       expect(result).toEqual({ refs: true, splits: true, can_delete: false, can_update: false });
     });
   });
-  it('MODEL15 availability stays read-only and state facts vary independently of location', async () => {
+  it('MODEL15 historical availability remains readable and state facts vary independently of location', async () => {
     const { ctx, sku } = await fixture(),
       i = await item(ctx, sku, [attr('lifecycle', { availability: 'LOANED' })]);
     expect((await get(ctx, i)).derived_availability).toBeNull();

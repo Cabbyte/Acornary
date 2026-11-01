@@ -22,6 +22,7 @@ export const labels: Record<string, string> = {
   SEALED: '未开封',
   OPENED: '已开封',
   AVAILABLE: '可用',
+  UNAVAILABLE: '暂不可用',
   IN_USE: '使用中',
   LOANED: '已借出',
   CLEANING: '清洗中',

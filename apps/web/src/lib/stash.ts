@@ -78,9 +78,9 @@ export function itemAttention(
   const percent = remainingPercent(item, data);
   if (percent !== undefined && percent < 30) result.push('low');
   if (
-    ['LOANED', 'CLEANING', 'MAINTENANCE', 'IN_TRANSIT'].includes(
-      attr(item, 'lifecycle')?.availability ?? '',
-    )
+    attr(item, 'custody')?.status === 'LOANED_OUT' ||
+    ['CLEANING', 'MAINTENANCE', 'REPAIR'].includes(attr(item, 'service')?.state ?? '') ||
+    attr(item, 'transport')?.state === 'IN_TRANSIT'
   )
     result.push('away');
   return result;

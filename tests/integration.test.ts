@@ -267,7 +267,7 @@ describe('PostgreSQL domain transactions', () => {
       write('update_attributes', {
         target: { kind: 'ITEM', id },
         template_id: 'lifecycle',
-        template_version: 1,
+        template_version: 2,
         unset: ['state'],
         expected_revisions: rev(id, 2),
       }),
@@ -276,7 +276,7 @@ describe('PostgreSQL domain transactions', () => {
       write('remove_attributes', {
         target: { kind: 'ITEM', id },
         template_id: 'lifecycle',
-        template_version: 1,
+        template_version: 2,
         expected_revisions: rev(id, 2),
       }),
     ).rejects.toMatchObject({ code: 'INVALID_TRANSITION' });
@@ -284,7 +284,7 @@ describe('PostgreSQL domain transactions', () => {
       item_id: id,
       reason: '盘点纠错',
       expected_revisions: rev(id, 2),
-      attributes: [{ template_id: 'lifecycle', template_version: 1, unset: ['state'] }],
+      attributes: [{ template_id: 'lifecycle', template_version: 2, unset: ['state'] }],
     });
     expect((await run('query_items', {})).unknown_lifecycle_count).toBe(1);
   });
@@ -892,11 +892,13 @@ it('preserves embedded binding times, no-op rows and other bindings across patch
   const concurrent = await Promise.allSettled([
     write('update_attributes', {
       ...patchInput,
+      template_version: 2,
       expected_revisions: rev(id, 4),
       set: { condition: 'WORN' },
     }),
     write('update_attributes', {
       ...patchInput,
+      template_version: 2,
       expected_revisions: rev(id, 4),
       set: { condition: 'DAMAGED' },
     }),
@@ -942,7 +944,7 @@ it('keeps JSON array checks in SQL and enforces binding semantics in the shared 
   }
   // Unknown template versions are read-tolerant; a rename must preserve them.
   await query(pool, 'UPDATE items SET attributes=$1::jsonb WHERE id=$2', [
-    JSON.stringify([{ ...binding, template_version: 2 }]),
+    JSON.stringify([{ ...binding, template_version: 99 }]),
     id,
   ]);
   expect(
@@ -951,7 +953,7 @@ it('keeps JSON array checks in SQL and enforces binding semantics in the shared 
   ).toBe(true);
   await query(pool, "UPDATE items SET attributes='[]'::jsonb WHERE id=$1", [id]);
   expect((await run('get_item', { item_id: id })).attributes).toEqual([]);
-  // Another household has lifecycle v1, but this one does not: no implicit global registry fallback.
+  // A fresh household publishes known templates on first write.
   const hh = 'household_' + key(),
     actor = 'actor_' + key();
   await query(pool, "INSERT INTO households(id,name,timezone) VALUES($1,'empty','Asia/Shanghai')", [

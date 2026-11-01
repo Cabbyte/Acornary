@@ -13,7 +13,7 @@ const call = (name: Operation, input: Record<string, unknown>) =>
   approvedExecute(ctx, name, { idempotency_key: `web-demo-${++sequence}`, ...input });
 const attribute = (template_id: string, values: Record<string, unknown>) => ({
   template_id,
-  template_version: 1,
+  template_version: template_id === 'lifecycle' ? 2 : 1,
   values,
 });
 try {
@@ -127,9 +127,7 @@ try {
     catalog_node_id: shirt,
     count: 1,
     parent_id: wardrobe,
-    initial_attributes: [
-      attribute('lifecycle', { state: 'ACTIVE', condition: 'GOOD', availability: 'AVAILABLE' }),
-    ],
+    initial_attributes: [attribute('lifecycle', { state: 'ACTIVE', condition: 'GOOD' })],
   });
   await call('create_items', {
     catalog_node_id: shirt,

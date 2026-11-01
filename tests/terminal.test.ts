@@ -104,7 +104,11 @@ async function grant(
   return result.json();
 }
 beforeAll(async () => {
-  if (!new URL(process.env.DATABASE_URL!).pathname.endsWith('acornary_test'))
+  if (
+    !['/acornary_test', '/acornary_test_w6_lifecycle'].includes(
+      new URL(process.env.DATABASE_URL!).pathname,
+    )
+  )
     throw new Error('Isolated database required');
   ctx = { ...(await initialize()), source: 'TEST' };
   await query(pool, 'DELETE FROM "user" WHERE id IN (SELECT user_id FROM auth_owners)');

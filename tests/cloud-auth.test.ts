@@ -95,7 +95,11 @@ const call = (token: string, name = 'query_items', args: any = {}) =>
   );
 
 beforeAll(async () => {
-  if (!new URL(process.env.DATABASE_URL!).pathname.endsWith('acornary_test'))
+  if (
+    !['/acornary_test', '/acornary_test_w6_lifecycle'].includes(
+      new URL(process.env.DATABASE_URL!).pathname,
+    )
+  )
     throw new Error('Isolated acornary_test required');
   ctx = { ...(await initialize()), source: 'TEST' };
   // Only remove an owner from earlier isolated test runs, never business rows.
@@ -426,7 +430,7 @@ describe('cloud OAuth and private inspector', () => {
       operation: 'create_catalog_node',
       input: await approvedInput(ctx, 'create_catalog_node', {
         kind: 'SKU',
-        name: 'UI household binding',
+        name: `UI household binding ${randomUUID()}`,
         idempotency_key: randomUUID(),
       }),
     };

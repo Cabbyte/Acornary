@@ -7,6 +7,7 @@ import type {
 import type { InventorySnapshot } from '../../packages/contracts/src/web.js';
 import {
   adaptCatalog,
+  adaptItem,
   adaptGroup,
   adaptItemDetail,
   adaptSnapshot,
@@ -468,4 +469,18 @@ describe('capability adapters', () => {
     expect(hasCapability({ capabilities: null }, 'stock')).toBe(false);
     expect(hasCapability({ capabilities: ['stock'] }, 'stock')).toBe(true);
   });
+});
+
+it('derives inventory status from structured facts and ignores historical availability', () => {
+  const record = structuredClone(v1Snapshot.items[0]);
+  record.attributes = [
+    { template_id: 'lifecycle', template_version: 1, values: { availability: 'AVAILABLE' } },
+  ];
+  expect(adaptItem(record, []).status).toEqual({ label: '未记录', tone: 'neutral' });
+  record.attributes = [
+    { template_id: 'lifecycle', template_version: 2, values: { state: 'ACTIVE' } },
+    { template_id: 'custody', template_version: 1, values: { status: 'LOANED_OUT' } },
+  ];
+  expect(adaptItem(record, []).status).toEqual({ label: '暂不可用', tone: 'warning' });
+  expect(adaptItem(record, []).attention).toContain('away');
 });
