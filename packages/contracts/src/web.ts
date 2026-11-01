@@ -1,10 +1,14 @@
+import type { Profile, CapabilityKey, RecordState, BindingStatus } from './registry.js';
 import { Decimal } from 'decimal.js';
 import { z } from 'zod';
 import { templates, type TemplateId } from './index.js';
 
 export interface Attribute {
-  template_id: TemplateId;
-  template_version: 1 | 2;
+  template_id: string;
+  template_version: number;
+  status?: BindingStatus;
+  created_at?: string;
+  updated_at?: string;
   values: Record<string, unknown>;
 }
 export interface CatalogRecord {
@@ -14,6 +18,14 @@ export interface CatalogRecord {
   name: string;
   revision: number;
   attributes: Attribute[];
+  // Optional while old cached snapshots remain readable; current server snapshots emit these.
+  profile?: Profile | null;
+  capabilities?: CapabilityKey[] | null;
+  effective_capabilities?: CapabilityKey[];
+  one_off?: boolean;
+  record_state?: RecordState;
+  created_at?: string;
+  updated_at?: string;
 }
 export interface ItemRecord {
   id: string;
@@ -23,6 +35,9 @@ export interface ItemRecord {
   revision: number;
   attributes: Attribute[];
   created_at: string;
+  updated_at?: string;
+  record_state?: RecordState;
+  effective_capabilities?: CapabilityKey[];
 }
 export interface NoteRecord {
   id: string;

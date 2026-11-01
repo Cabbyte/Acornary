@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { redactFor } from './redaction.js';
 import { z } from 'zod';
 import { target } from '../../../packages/contracts/src/index.js';
 import { DomainError, requireFact } from '../../../packages/domain/src/index.js';
@@ -15,6 +17,14 @@ export const debugTables = [
   'barcode_index',
   'installations',
   'migrations',
+  'catalog_policy_versions',
+  'catalog_proposals',
+  'catalog_identity_keys',
+  'attachments',
+  'attachment_blobs',
+  'upload_sessions',
+  'item_splits',
+  'attribute_references',
 ] as const;
 const schema = z.strictObject({
   view: z.enum(['object', 'system']),
@@ -24,7 +34,7 @@ const schema = z.strictObject({
   template_id: z.string().max(100).optional(),
   template_version: z.int().positive().optional(),
   limit: z.int().min(1).max(200).default(50),
-  cursor: z.string().max(100).optional(),
+  cursor: z.string().max(500).optional(),
 });
 export async function debugRead(ctx: Context, raw: unknown) {
   const parsed = schema.safeParse(raw);
@@ -87,12 +97,28 @@ export async function debugRead(ctx: Context, raw: unknown) {
           where += ` AND EXISTS (SELECT 1 FROM ${ownTable} o CROSS JOIN LATERAL jsonb_array_elements(o.attributes) a WHERE o.household_id=t.household_id AND o.id=${id} AND a->>'template_id'=t.id AND a->>'template_version'=t.version::text)`;
           break;
         case 'notes':
+        case 'attachments':
+        case 'upload_sessions':
+          where += ` AND t.target_id=${id} AND t.target_kind=${kind}`;
+          break;
+        case 'item_splits':
           requireFact(
             input.target.kind === 'ITEM',
             'ATTRIBUTE_VALIDATION_FAILED',
-            'Notes belong to items.',
+            'Splits belong to items.',
           );
-          where += ` AND t.item_id=${id}`;
+          where += ` AND (t.source_item_id=${id} OR t.child_item_id=${id})`;
+          break;
+        case 'attribute_references':
+          where += ` AND ((t.source_id=${id} AND t.source_kind=${kind}) OR (t.target_id=${id} AND t.target_kind=${kind}))`;
+          break;
+        case 'catalog_identity_keys':
+          requireFact(
+            input.target.kind === 'CATALOG_NODE',
+            'ATTRIBUTE_VALIDATION_FAILED',
+            'Identity keys belong to catalog nodes.',
+          );
+          where += ` AND t.catalog_node_id=${id}`;
           break;
         case 'events':
           where += ` AND t.target_id=${id} AND t.target_kind=${kind}`;
@@ -119,7 +145,15 @@ export async function debugRead(ctx: Context, raw: unknown) {
       );
     if (input.id) {
       requireFact(
-        !['barcode_index', 'installations', 'migrations'].includes(table),
+        ![
+          'barcode_index',
+          'installations',
+          'migrations',
+          'catalog_policy_versions',
+          'catalog_identity_keys',
+          'item_splits',
+          'attribute_references',
+        ].includes(table),
         'ATTRIBUTE_VALIDATION_FAILED',
         'This relation has no independent ID.',
       );
@@ -141,14 +175,24 @@ export async function debugRead(ctx: Context, raw: unknown) {
       );
       where += ` AND t.version=${bind(input.template_version)}`;
     }
-    const offset = input.cursor ? Number(Buffer.from(input.cursor, 'base64url').toString()) : 0;
-    requireFact(
-      Number.isSafeInteger(offset) &&
-        offset >= 0 &&
-        (!input.cursor || /^\d+$/.test(Buffer.from(input.cursor, 'base64url').toString())),
-      'ATTRIBUTE_VALIDATION_FAILED',
-      'Invalid cursor.',
-    );
+    const { cursor, limit, ...filters } = input;
+    const scope = createHash('sha256')
+      .update(JSON.stringify([ctx.household_id, filters]))
+      .digest('hex');
+    let offset = 0;
+    if (cursor) {
+      try {
+        const value = JSON.parse(Buffer.from(cursor, 'base64url').toString());
+        requireFact(
+          value.scope === scope && Number.isSafeInteger(value.offset) && value.offset >= 0,
+          'INVALID_CURSOR',
+          'Invalid inspector cursor.',
+        );
+        offset = value.offset;
+      } catch {
+        throw new DomainError('INVALID_CURSOR', 'Invalid inspector cursor.');
+      }
+    }
     const count = Number(
       (await query(c, `SELECT count(*) AS count FROM ${table} t WHERE ${where}`, params)).rows[0]
         .count,
@@ -159,7 +203,7 @@ export async function debugRead(ctx: Context, raw: unknown) {
         `SELECT to_jsonb(t) AS record FROM ${table} t WHERE ${where} ORDER BY to_jsonb(t)::text LIMIT ${bind(input.limit)} OFFSET ${bind(offset)}`,
         params,
       )
-    ).rows.map((r) => r.record);
+    ).rows.map((r) => redactInspectorRecord(table, r.record));
     const columns = (
       await query(
         c,
@@ -182,8 +226,34 @@ export async function debugRead(ctx: Context, raw: unknown) {
       total_count: count,
       next_cursor:
         offset + input.limit < count
-          ? Buffer.from(String(offset + input.limit)).toString('base64url')
+          ? Buffer.from(JSON.stringify({ scope, offset: offset + input.limit })).toString(
+              'base64url',
+            )
           : null,
     };
   });
+}
+
+// Inspector is metadata-only. Opaque documents can contain old secrets without
+// classification labels, so omit them in full; no inspector reveal capability.
+export function redactInspectorRecord(table: string, record: Record<string, any>) {
+  const omitted: Record<string, string[]> = {
+    items: ['attributes', 'display_name'],
+    catalog_nodes: ['attributes', 'name'],
+    notes: ['body', 'title'],
+    attachments: ['caption'],
+    attachment_blobs: ['storage_key', 'thumbnail_key', 'sha256'],
+    upload_sessions: ['ticket_hash', 'storage_key', 'expected_sha256'],
+    catalog_policy_versions: ['rules', 'reason'],
+    catalog_proposals: ['proposal', 'result', 'challenge_hash', 'challenge_scope'],
+    catalog_identity_keys: ['identity_key'],
+    events: ['changes', 'reason'],
+    operations: ['result', 'fingerprint'],
+    migrations: ['error', 'checkpoint'],
+  };
+  return redactFor(
+    'inspect',
+    record,
+    Object.fromEntries((omitted[table] ?? []).map((key) => [key, 'SECRET' as const])),
+  );
 }

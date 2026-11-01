@@ -82,11 +82,12 @@ type FeatureKey =
   | 'references'
   | 'units_v2'
   | 'sync_v2'
+  | 'frozen_export'
   | 'redaction_v2'
   | 'protocol_v2';
 ```
 
-`I`：`query_v2`、`history_v2` 已实现；`protocol_v2` 仍是 `F`——当前 `get_connection_context` 不返回 `protocol`/`features`，前端可先按“无 features”降级。其余 `F`。  
+`I`（服务端）：`query_v2`、`history_v2`、`snapshot_v2`、`groups_v2`、`sync_v2`、`profile_capabilities`、`deadline`、`notes_v2`、`attachments`（媒体/字节门禁除外）、`stock`、`void`、`split`、`references`、`units_v2`。`protocol_v2` 由 `ACORNARY_REQUIRE_PROTOCOL_V2=1` 启用；`redaction_v2` 为 PARTIAL；冻结导出已实现。  
 前端规则：**任何 `F` 功能在 `features` 未返回前不得显示入口**；不要用“后端已合并”推断功能可用。
 
 ### 1.3 传输、鉴权与 CSRF
@@ -1015,15 +1016,17 @@ type SyncBootstrap = {
 | --- | --- | --- |
 | `query_items` / `query_catalog_nodes` / `get_history` 新参数 | I | Wave 1 已实现；列表不内联笔记 |
 | `get_item` / `get_catalog_node` | I（旧形状） | v2 包装形状 `F` |
-| 快照 v2 | F | 当前 v1 仍有 notes 正文；重构按 v2 类型 |
-| `query_inventory_groups` | F | 当前只有 snapshot.groups |
-| `profile` / `capabilities` | F | 表列/协议未实现 |
-| `deadline` / `DateFact` | F | 未实现 |
-| 笔记 target / summaries | F | 当前 Note 只挂 Item、返回正文 |
-| 附件 | F | 未实现 |
-| `void` / `split` / `dispose` / `references` / 单位 / `stock` | F | 设计冻结，未实现 |
-| 同步 v2 | F | 只有内部 `sync_changes` 表和 hook |
-| 协议 v2 强制 | F | 当前未按最低版本拒绝 |
+| 快照 v2 | I | 协议头 `X-Acornary-Protocol: 2` 返回；无头保持 v1 |
+| `query_inventory_groups` | I | 服务端同匹配集合聚合 |
+| `profile` / `capabilities` | I | 表列、默认/覆盖、`effective_capabilities`、表单过滤 |
+| `deadline` / `DateFact` | I | 模板、四个命令、`date_facts`、`date_filters` |
+| 笔记 target / summaries | I | Item/CatalogNode、摘要/归档/敏感度；正文走 `get_note` |
+| 附件 | PARTIAL | 元数据/票据/上传/下载/脱敏、EXIF/eXIf/XMP 剥离与尺寸已实现；缩略图/备份字节门禁未完成 |
+| `void` / `split` / `dispose` / `references` / 单位 / `stock` | I | 服务端命令、反向索引、`query_stock` |
+| 同步 v2 | I | state/changes/fetch/bootstrap、generation/prune |
+| 协议 v2 强制 | I | `ACORNARY_REQUIRE_PROTOCOL_V2=1` 开启；默认兼容 |
+| 冻结导出（QUERY04/05） | I | begin/read/cancel_export；一小时冻结、TTL、敏感披露审计 |
+| 全路径脱敏 | PARTIAL | 笔记/附件/检查器/详情已覆盖；非全部读取路径 |
 
 ## 14. 变更流程
 

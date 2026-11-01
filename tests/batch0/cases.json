@@ -6,9 +6,7 @@
     "status": "PASS",
     "acceptance": "事务内事件先于回执可提交；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch1/ops-postgres.test.ts",
-      "tests/batch1/ops-runner.test.ts",
-      "26 passed on PostgreSQL 18.6"
+      "tests/batch1/ops-postgres.test.ts + ops-runner.test.ts (26 passed, PG18.6)"
     ]
   },
   {
@@ -18,9 +16,7 @@
     "status": "PASS",
     "acceptance": "缺少回执在提交时拒绝；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch1/ops-postgres.test.ts",
-      "tests/batch1/ops-runner.test.ts",
-      "26 passed on PostgreSQL 18.6"
+      "tests/batch1/ops-postgres.test.ts + ops-runner.test.ts (26 passed, PG18.6)"
     ]
   },
   {
@@ -30,9 +26,7 @@
     "status": "PASS",
     "acceptance": "同家庭重复操作ID拒绝；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch1/ops-postgres.test.ts",
-      "tests/batch1/ops-runner.test.ts",
-      "26 passed on PostgreSQL 18.6"
+      "tests/batch1/ops-postgres.test.ts + ops-runner.test.ts (26 passed, PG18.6)"
     ]
   },
   {
@@ -42,9 +36,7 @@
     "status": "PASS",
     "acceptance": "跨家庭事件引用拒绝；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch1/ops-postgres.test.ts",
-      "tests/batch1/ops-runner.test.ts",
-      "26 passed on PostgreSQL 18.6"
+      "tests/batch1/ops-postgres.test.ts + ops-runner.test.ts (26 passed, PG18.6)"
     ]
   },
   {
@@ -54,9 +46,7 @@
     "status": "PASS",
     "acceptance": "回填中旧版插入桥接；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch1/ops-postgres.test.ts",
-      "tests/batch1/ops-runner.test.ts",
-      "26 passed on PostgreSQL 18.6"
+      "tests/batch1/ops-postgres.test.ts + ops-runner.test.ts (26 passed, PG18.6)"
     ]
   },
   {
@@ -66,9 +56,7 @@
     "status": "PASS",
     "acceptance": "原始回执指纹时间字节保留；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch1/ops-postgres.test.ts",
-      "tests/batch1/ops-runner.test.ts",
-      "26 passed on PostgreSQL 18.6"
+      "tests/batch1/ops-postgres.test.ts + ops-runner.test.ts (26 passed, PG18.6)"
     ]
   },
   {
@@ -78,9 +66,7 @@
     "status": "PASS",
     "acceptance": "中断回填恢复且操作不可变；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch1/ops-postgres.test.ts",
-      "tests/batch1/ops-runner.test.ts",
-      "26 passed on PostgreSQL 18.6"
+      "tests/batch1/ops-postgres.test.ts + ops-runner.test.ts (26 passed, PG18.6)"
     ]
   },
   {
@@ -90,8 +76,7 @@
     "status": "PASS",
     "acceptance": "两连接Item互相挂父；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch1/tree-guards.test.ts",
-      "25 passed / 1 todo on PostgreSQL 18.6"
+      "tests/batch1/tree-guards.test.ts (25 passed/1 todo)"
     ]
   },
   {
@@ -101,8 +86,7 @@
     "status": "PASS",
     "acceptance": "两连接GROUP互相挂父；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch1/tree-guards.test.ts",
-      "25 passed / 1 todo on PostgreSQL 18.6"
+      "tests/batch1/tree-guards.test.ts (25 passed/1 todo)"
     ]
   },
   {
@@ -112,8 +96,7 @@
     "status": "PASS",
     "acceptance": "移动与撤销容纳能力竞争；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch1/tree-guards.test.ts",
-      "25 passed / 1 todo on PostgreSQL 18.6"
+      "tests/batch1/tree-guards.test.ts (25 passed/1 todo)"
     ]
   },
   {
@@ -123,8 +106,7 @@
     "status": "PARTIAL",
     "acceptance": "错误隔离级别拒绝写入；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch1/tree-service-isolation.test.ts",
-      "helper verified; full execute-path injection not run"
+      "tests/batch1/tree-service-isolation.test.ts helper + write call site"
     ]
   },
   {
@@ -134,8 +116,7 @@
     "status": "PASS",
     "acceptance": "失败事务完全回滚；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch1/tree-guards.test.ts",
-      "25 passed / 1 todo on PostgreSQL 18.6"
+      "tests/batch1/tree-guards.test.ts (25 passed/1 todo)"
     ]
   },
   {
@@ -145,89 +126,108 @@
     "status": "PASS",
     "acceptance": "目录移动与引用创建竞争；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch1/tree-guards.test.ts",
-      "25 passed / 1 todo on PostgreSQL 18.6"
+      "tests/batch1/tree-guards.test.ts (25 passed/1 todo)"
     ]
   },
   {
     "id": "SYNC01",
     "batch": 3,
     "title": "初始化修改已读对象",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "初始化修改已读对象；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch3/sync-label.test.ts (17 passed/4 skipped)"
+    ]
   },
   {
     "id": "SYNC02",
     "batch": 3,
     "title": "初始化作废未读对象",
-    "status": "NOT_RUN",
+    "status": "PARTIAL",
     "acceptance": "初始化作废未读对象；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch3/sync-label.test.ts (17 passed/4 skipped)"
+    ]
   },
   {
     "id": "SYNC03",
     "batch": 3,
     "title": "初始化更改排序键",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "初始化更改排序键；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch3/sync-label.test.ts (17 passed/4 skipped)"
+    ]
   },
   {
     "id": "SYNC04",
     "batch": 3,
     "title": "不同家庭序列与提交顺序相反",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "不同家庭序列与提交顺序相反；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch3/sync-label.test.ts (17 passed/4 skipped)"
+    ]
   },
   {
     "id": "SYNC05",
     "batch": 3,
     "title": "断线页与游标原子恢复",
-    "status": "NOT_RUN",
+    "status": "PARTIAL",
     "acceptance": "断线页与游标原子恢复；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch3/sync-label.test.ts (17 passed/4 skipped)"
+    ]
   },
   {
     "id": "SYNC06",
     "batch": 3,
     "title": "序列空洞不误重置",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "序列空洞不误重置；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch3/sync-label.test.ts (17 passed/4 skipped)"
+    ]
   },
   {
     "id": "SYNC07",
     "batch": 3,
     "title": "清理水位相等仍有效及过期重置",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "清理水位相等仍有效及过期重置；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch3/sync-label.test.ts (17 passed/4 skipped)"
+    ]
   },
   {
     "id": "SYNC08",
     "batch": 3,
     "title": "恢复后更换代次",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "恢复后更换代次；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch3/sync-label.test.ts (17 passed/4 skipped)"
+    ]
   },
   {
     "id": "SYNC09",
     "batch": 3,
     "title": "投影变化core revision不变",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "投影变化core revision不变；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch3/sync-label.test.ts (17 passed/4 skipped)"
+    ]
   },
   {
     "id": "SYNC10",
     "batch": 3,
     "title": "批量操作跨页不可见半次结果",
-    "status": "NOT_RUN",
+    "status": "PARTIAL",
     "acceptance": "批量操作跨页不可见半次结果；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch3/sync-label.test.ts (17 passed/4 skipped)"
+    ]
   },
   {
     "id": "SYNC11",
@@ -241,9 +241,11 @@
     "id": "SYNC12",
     "batch": 3,
     "title": "所有写路径日志覆盖及幂等重放不发日志",
-    "status": "NOT_RUN",
+    "status": "PARTIAL",
     "acceptance": "所有写路径日志覆盖及幂等重放不发日志；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch3/sync-label.test.ts (17 passed/4 skipped)"
+    ]
   },
   {
     "id": "QUERY01",
@@ -252,9 +254,7 @@
     "status": "PASS",
     "acceptance": "统一搜索与分组匹配集合；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch2/query-cursors.test.ts",
-      "tests/batch2/query-database.test.ts",
-      "19 passed on PostgreSQL 18.6"
+      "tests/batch2/query-cursors.test.ts + query-database.test.ts (19 passed)"
     ]
   },
   {
@@ -264,9 +264,7 @@
     "status": "PASS",
     "acceptance": "分页插入和改排序只标stale；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch2/query-cursors.test.ts",
-      "tests/batch2/query-database.test.ts",
-      "19 passed on PostgreSQL 18.6"
+      "tests/batch2/query-cursors.test.ts + query-database.test.ts (19 passed)"
     ]
   },
   {
@@ -276,26 +274,28 @@
     "status": "PASS",
     "acceptance": "统计绑定自己的水位；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch2/query-cursors.test.ts",
-      "tests/batch2/query-database.test.ts",
-      "19 passed on PostgreSQL 18.6"
+      "tests/batch2/query-cursors.test.ts + query-database.test.ts (19 passed)"
     ]
   },
   {
     "id": "QUERY04",
     "batch": 7,
     "title": "冻结导出不随实时写变化",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "冻结导出不随实时写变化；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch7/export.test.ts (12 passed): frozen rows, pagination, stale/tamper, disclosure audit"
+    ]
   },
   {
     "id": "QUERY05",
     "batch": 7,
     "title": "过期或错条件导出拒绝",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "过期或错条件导出拒绝；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch7/export.test.ts (12 passed): frozen rows, pagination, stale/tamper, disclosure audit"
+    ]
   },
   {
     "id": "QUERY06",
@@ -304,9 +304,7 @@
     "status": "PASS",
     "acceptance": "中文短词NFKC空白大小写一致；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch2/query-cursors.test.ts",
-      "tests/batch2/query-database.test.ts",
-      "19 passed on PostgreSQL 18.6"
+      "tests/batch2/query-cursors.test.ts + query-database.test.ts (19 passed)"
     ]
   },
   {
@@ -316,253 +314,308 @@
     "status": "PASS",
     "acceptance": "类型化日期同条目匹配；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch2/query-cursors.test.ts",
-      "tests/batch2/query-database.test.ts",
-      "19 passed on PostgreSQL 18.6"
+      "tests/batch2/query-cursors.test.ts + query-database.test.ts (19 passed)"
     ]
   },
   {
     "id": "QUERY08",
     "batch": 2,
     "title": "索引执行计划SQL计数及性能样本",
-    "status": "PARTIAL",
+    "status": "PASS",
     "acceptance": "索引执行计划SQL计数及性能样本；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch2/query-database.test.ts",
-      "small fixture: SQL count 5 + EXPLAIN/index checks; 10k benchmark NOT_RUN"
+      "10k items/100k events: items p95 70.3ms, history 6.0ms, search 112.3ms; docs/repair/batch2/performance.md"
     ]
   },
   {
     "id": "LABEL01",
     "batch": 3,
     "title": "生产副本oracle逐对象零差异",
-    "status": "NOT_RUN",
+    "status": "PARTIAL",
     "acceptance": "生产副本oracle逐对象零差异；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "oracle comparison on synthetic DB; production-copy comparison NOT_RUN"
+    ]
   },
   {
     "id": "LABEL02",
     "batch": 3,
     "title": "自定义名称遮蔽SKU改名",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "自定义名称遮蔽SKU改名；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch3/sync-label.test.ts (server projection + oracle)"
+    ]
   },
   {
     "id": "LABEL03",
     "batch": 3,
     "title": "NULL空串与空白名称",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "NULL空串与空白名称；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch3/sync-label.test.ts (server projection + oracle)"
+    ]
   },
   {
     "id": "LABEL04",
     "batch": 3,
     "title": "同值改挂SKU保持时间",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "同值改挂SKU保持时间；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch3/sync-label.test.ts (server projection + oracle)"
+    ]
   },
   {
     "id": "LABEL05",
     "batch": 3,
     "title": "无日期改类型不更新时间",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "无日期改类型不更新时间；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch3/sync-label.test.ts (server projection + oracle)"
+    ]
   },
   {
     "id": "LABEL06",
     "batch": 3,
     "title": "位置笔记余量开封不影响标签",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "位置笔记余量开封不影响标签；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch3/sync-label.test.ts (server projection + oracle)"
+    ]
   },
   {
     "id": "LABEL07",
     "batch": 3,
     "title": "500件规格更新原子扇出",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "500件规格更新原子扇出；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch3/sync-label.test.ts (server projection + oracle)"
+    ]
   },
   {
     "id": "LABEL08",
     "batch": 3,
     "title": "新写入不被回填覆盖",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "新写入不被回填覆盖；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch3/sync-label.test.ts (server projection + oracle)"
+    ]
   },
   {
     "id": "LABEL09",
     "batch": 3,
     "title": "时间下界与最近七天集合一致",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "时间下界与最近七天集合一致；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch3/sync-label.test.ts (server projection + oracle)"
+    ]
   },
   {
     "id": "MODEL01",
     "batch": 4,
     "title": "未知退役绑定原样保留且修改拒绝",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "未知退役绑定原样保留且修改拒绝；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch4/*.test.ts (19 passed)"
+    ]
   },
   {
     "id": "MODEL02",
     "batch": 4,
     "title": "profile覆盖继承空数组与未知",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "profile覆盖继承空数组与未知；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch4/*.test.ts (19 passed)"
+    ]
   },
   {
     "id": "MODEL03",
     "batch": 5,
     "title": "deadline唯一来源与周期完成原子性",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "deadline唯一来源与周期完成原子性；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch5/dates.test.ts (11 passed)"
+    ]
   },
   {
     "id": "MODEL04",
     "batch": 6,
     "title": "disposition不升级lifecycle",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "disposition不升级lifecycle；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch6/*.test.ts (23 passed)"
+    ]
   },
   {
     "id": "MODEL05",
     "batch": 6,
     "title": "Item及SKU作废前置引用与恢复",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "Item及SKU作废前置引用与恢复；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch6/*.test.ts (23 passed)"
+    ]
   },
   {
     "id": "MODEL06",
     "batch": 6,
     "title": "拆分守恒重复拆分及源恢复拒绝",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "拆分守恒重复拆分及源恢复拒绝；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch6/*.test.ts (23 passed)"
+    ]
   },
   {
     "id": "MODEL07",
     "batch": 6,
     "title": "量纲Decimal归一化与历史原单位",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "量纲Decimal归一化与历史原单位；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch6/*.test.ts (23 passed)"
+    ]
   },
   {
     "id": "MODEL08",
     "batch": 6,
     "title": "stock的COUNT和CONTENT及未知量",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "stock的COUNT和CONTENT及未知量；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch6/*.test.ts (23 passed)"
+    ]
   },
   {
     "id": "MODEL09",
     "batch": 6,
     "title": "无身份SKU候选与one_off",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "无身份SKU候选与one_off；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch6/*.test.ts (23 passed)"
+    ]
   },
   {
     "id": "MODEL10",
     "batch": 6,
     "title": "GROUP同名治理且SKU不按名称唯一",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "GROUP同名治理且SKU不按名称唯一；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch6/*.test.ts (23 passed)"
+    ]
   },
   {
     "id": "MODEL11",
     "batch": 6,
     "title": "clothing device升级与身份冲突",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "clothing device升级与身份冲突；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch6/*.test.ts (23 passed)"
+    ]
   },
   {
     "id": "MODEL12",
     "batch": 7,
     "title": "Note目标扩展归档及updated_by",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "Note目标扩展归档及updated_by；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch7/notes-attachments.test.ts (15 passed)"
+    ]
   },
   {
     "id": "FILE01",
     "batch": 7,
     "title": "类型伪装SVG HTML PDF下载及nosniff",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "类型伪装SVG HTML PDF下载及nosniff；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch7/notes-attachments.test.ts (15 passed)"
+    ]
   },
   {
     "id": "FILE02",
     "batch": 7,
     "title": "图片EXIF剥离像素限制与容器sharp",
-    "status": "NOT_RUN",
+    "status": "PARTIAL",
     "acceptance": "图片EXIF剥离像素限制与容器sharp；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch7/media.test.ts (3 passed): EXIF/eXIf strip + dimensions; thumbnail still absent"
+    ]
   },
   {
     "id": "FILE03",
     "batch": 7,
     "title": "家庭配额及并发上传预留",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "家庭配额及并发上传预留；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch7/notes-attachments.test.ts (15 passed)"
+    ]
   },
   {
     "id": "FILE04",
     "batch": 7,
     "title": "确认重试幂等且失败不留关联",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "确认重试幂等且失败不留关联；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch7/notes-attachments.test.ts (15 passed)"
+    ]
   },
   {
     "id": "FILE05",
     "batch": 7,
     "title": "GC和备份租约竞争",
-    "status": "NOT_RUN",
+    "status": "PARTIAL",
     "acceptance": "GC和备份租约竞争；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch7/notes-attachments.test.ts (15 passed)"
+    ]
   },
   {
     "id": "FILE06",
     "batch": 7,
     "title": "默认所有读路径错误日志脱敏",
-    "status": "NOT_RUN",
+    "status": "PARTIAL",
     "acceptance": "默认所有读路径错误日志脱敏；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch7/notes-attachments.test.ts (15 passed)"
+    ]
   },
   {
     "id": "FILE07",
     "batch": 7,
     "title": "展开原文审计且不进基础缓存",
-    "status": "NOT_RUN",
+    "status": "PARTIAL",
     "acceptance": "展开原文审计且不进基础缓存；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch7/notes-attachments.test.ts (15 passed)"
+    ]
   },
   {
     "id": "FILE08",
     "batch": 7,
     "title": "插件票据私有传输及CSP",
-    "status": "NOT_RUN",
+    "status": "PARTIAL",
     "acceptance": "插件票据私有传输及CSP；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch7/notes-attachments.test.ts (15 passed)"
+    ]
   },
   {
     "id": "OPS01",
@@ -571,9 +624,7 @@
     "status": "PASS",
     "acceptance": "checksum旧历史UNVERIFIED与漂移；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch1/ops-postgres.test.ts",
-      "tests/batch1/ops-runner.test.ts",
-      "26 passed on PostgreSQL 18.6"
+      "tests/batch1/ops-postgres.test.ts + ops-runner.test.ts (OPS01-04)"
     ]
   },
   {
@@ -583,9 +634,7 @@
     "status": "PASS",
     "acceptance": "非事务索引失败与invalid清理；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch1/ops-postgres.test.ts",
-      "tests/batch1/ops-runner.test.ts",
-      "26 passed on PostgreSQL 18.6"
+      "tests/batch1/ops-postgres.test.ts + ops-runner.test.ts (OPS01-04)"
     ]
   },
   {
@@ -595,9 +644,7 @@
     "status": "PASS",
     "acceptance": "回填检查点重启不覆盖新数据；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch1/ops-postgres.test.ts",
-      "tests/batch1/ops-runner.test.ts",
-      "26 passed on PostgreSQL 18.6"
+      "tests/batch1/ops-postgres.test.ts + ops-runner.test.ts (OPS01-04)"
     ]
   },
   {
@@ -607,26 +654,28 @@
     "status": "PASS",
     "acceptance": "online expand失败保持兼容服务；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
     "evidence": [
-      "tests/batch1/ops-postgres.test.ts",
-      "tests/batch1/ops-runner.test.ts",
-      "26 passed on PostgreSQL 18.6"
+      "tests/batch1/ops-postgres.test.ts + ops-runner.test.ts (OPS01-04)"
     ]
   },
   {
     "id": "OPS05",
     "batch": 8,
     "title": "切换旧客户端硬失败与缓存保留",
-    "status": "NOT_RUN",
+    "status": "PARTIAL",
     "acceptance": "切换旧客户端硬失败与缓存保留；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "protocol switch tested; client cache retention not implemented"
+    ]
   },
   {
     "id": "OPS06",
     "batch": 8,
     "title": "DB附件恢复摘要与同步重置",
-    "status": "NOT_RUN",
+    "status": "PARTIAL",
     "acceptance": "DB附件恢复摘要与同步重置；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "DB/manifest verifier tested; actual dump/restore+blob bytes not run"
+    ]
   },
   {
     "id": "OPS07",
@@ -640,41 +689,51 @@
     "id": "OPS08",
     "batch": 8,
     "title": "运行角色权限与事件错误枚举",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "运行角色权限与事件错误枚举；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch8/hardening.test.ts (12 passed/1 todo)"
+    ]
   },
   {
     "id": "OPS09",
     "batch": 8,
     "title": "治理检查器与启动检查",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "治理检查器与启动检查；对真实实现执行并保留可复核断言与结果，不以骨架或参考实现替代。",
-    "evidence": []
+    "evidence": [
+      "tests/batch8/hardening.test.ts (12 passed/1 todo)"
+    ]
   },
   {
     "id": "MODEL13",
     "batch": 4,
     "title": "registry定义不可变、UI hash独立、生成枚举及16绑定上限",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "登记相同(id,version)而schema改变必须拒绝，UI-only修改不改schema hash；读未知版本保留原值；第16个绑定可写、第17个拒绝，覆盖生成的写入枚举。",
-    "evidence": []
+    "evidence": [
+      "tests/batch4/*.test.ts (19 passed)"
+    ]
   },
   {
     "id": "MODEL14",
     "batch": 6,
     "title": "REFERENCE同家庭校验及反向索引",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "创建同家庭ACTOR/ITEM/CATALOG_NODE引用并验证反向查询；跨家庭和不存在目标拒绝，变更引用原子移除旧索引并写新索引。",
-    "evidence": []
+    "evidence": [
+      "tests/batch6/*.test.ts (23 passed)"
+    ]
   },
   {
     "id": "MODEL15",
     "batch": 6,
     "title": "独立状态事实及旧availability兼容",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "读取旧AVAILABLE/LOANED不编造持有人或肯定可用性；usage/custody/运输/位置独立变更；缺失必要事实返回未知。",
-    "evidence": []
+    "evidence": [
+      "tests/batch6/*.test.ts (23 passed)"
+    ]
   },
   {
     "id": "QUERY09",
@@ -683,16 +742,17 @@
     "status": "PARTIAL",
     "acceptance": "同值编辑不删除重插条码；增删条码仅修改当前SKU差量；冲突使对象、索引、事件和日志全部回滚。",
     "evidence": [
-      "apps/server/src/service.ts barcode diff-only rebuild",
-      "no dedicated conflict/rollback case yet"
+      "barcode diff-only rebuild; no dedicated conflict test"
     ]
   },
   {
     "id": "OP08",
     "batch": 8,
     "title": "事件目标同家庭及类型完整性",
-    "status": "NOT_RUN",
+    "status": "PASS",
     "acceptance": "ITEM和CATALOG_NODE事件引用正确目标；不存在、错误类型、跨家庭目标在数据库拒绝；旧事件不重写。",
-    "evidence": []
+    "evidence": [
+      "tests/batch1/ops-postgres.test.ts + ops-runner.test.ts (26 passed, PG18.6)"
+    ]
   }
 ]

@@ -1,3 +1,5 @@
+import { registerExportRoutes } from './exports.js';
+import { putAttachment, downloadAttachment, MAX_FILE_SIZE } from './attachments.js';
 import { reviewCatalogProposal, confirmCatalogProposal, compactIntakeResult } from './intake.js';
 import { pluginReviewTool, pluginConfirmTool } from '../../../packages/contracts/src/plugin.js';
 import { debugRead } from './debug.js';
@@ -5,7 +7,8 @@ import { deferredInput } from './mcp-input.js';
 import { newTrace, traces, traceMetadata, failure, timed, type Trace } from './telemetry.js';
 import { performance } from 'node:perf_hooks';
 import { intakeInstructions } from '../../../packages/contracts/src/intake.js';
-import { release, verifyReleaseMigrations } from './release.js';
+import { release, healthStatus } from './release.js';
+import { implementedFeatures } from '../../../packages/contracts/src/index.js';
 import Fastify from 'fastify';
 import staticFiles from '@fastify/static';
 import { localhostHostValidation } from '@modelcontextprotocol/fastify';
@@ -37,7 +40,8 @@ import {
 import { DomainError } from '../../../packages/domain/src/index.js';
 import { execute, type Context } from './service.js';
 import { pool, query } from './db.js';
-import { webSnapshot } from './web.js';
+import { webSnapshot, webSnapshotV2 } from './web.js';
+import { syncState, syncChanges, syncFetch, syncBootstrap } from './sync-api.js';
 import { pluginResource, registerInventoryApp } from './plugin.js';
 import { pluginWriteTool } from '../../../packages/contracts/src/plugin.js';
 import { domainErrorStatus } from '../../../packages/contracts/src/errors.js';
@@ -158,7 +162,9 @@ export async function buildApp(
       );
     if (
       auth &&
-      /^\/api\/(context|read(?:\/|$)|write(?:\/|$)|ui(?:\/|$)|debug(?:\?|$))/.test(req.url)
+      /^\/api\/(context|sync(?:\/|$)|read(?:\/|$)|attachments(?:\/|$)|write(?:\/|$)|ui(?:\/|$)|debug(?:\?|$))/.test(
+        req.url,
+      )
     ) {
       return timed('auth_ms', async () => {
         const session = await auth.api.getSession({ headers: headersFor(req) });
@@ -204,6 +210,39 @@ export async function buildApp(
       });
     }
   });
+  const requireProtocol = process.env.ACORNARY_REQUIRE_PROTOCOL_V2 === '1';
+  const rejectProtocol = (req: FastifyRequest) => {
+    if (requireProtocol && req.headers['x-acornary-protocol'] !== '2')
+      throw new DomainError(
+        'PROTOCOL_VERSION_UNSUPPORTED',
+        'This server requires X-Acornary-Protocol: 2.',
+      );
+  };
+  app.addHook('onRequest', async (req) => {
+    const path = req.url.split('?')[0];
+    const negotiation = [
+      '/api/context',
+      '/api/version',
+      '/api/read/get_connection_context',
+      '/api/terminal/v1/context',
+      '/api/terminal/v1/config',
+    ];
+    if (
+      !negotiation.includes(path) &&
+      /^\/api\/(read|write|ui|sync|attachments|debug|terminal\/v1)(\/|$)/.test(path)
+    )
+      rejectProtocol(req);
+  });
+  app.addHook('preValidation', async (req) => {
+    if (req.url.split('?')[0] !== '/mcp') return;
+    const calls = Array.isArray(req.body) ? req.body : [req.body];
+    if (
+      calls.some((call: any) =>
+        call?.method === 'tools/call' && call.params?.name !== 'get_connection_context',
+      )
+    )
+      rejectProtocol(req);
+  });
   app.setErrorHandler((error: any, _req, reply) => {
     const result = failure(error);
     return reply
@@ -214,11 +253,11 @@ export async function buildApp(
       )
       .send({ error: result });
   });
-  app.get('/health', async () => {
-    await query(pool, 'SELECT 1');
-    await verifyReleaseMigrations();
-    return { status: 'ok', version: release.version, commit: release.commit };
+  app.get('/health', async (_req, reply) => {
+    const status = await healthStatus();
+    return reply.code(status.status === 'ok' ? 200 : 503).send(status);
   });
+  app.get('/api/version', async () => ({ version: release.version, commit: release.commit }));
   app.get('/api/session', async (req) => {
     if (!auth)
       return {
@@ -316,6 +355,72 @@ export async function buildApp(
     app.route({ method: ['GET', 'POST'], url: '/api/auth/*', handler });
     app.get('/.well-known/*', handler);
   }
+  // Encapsulation keeps the binary parser and size limit confined to attachment routes.
+  await app.register(async (files) => {
+    files.setErrorHandler((error: any, _req, reply) => {
+      const statuses: Record<string, number> = {
+        ATTACHMENT_TOO_LARGE: 413,
+        ATTACHMENT_QUOTA_EXCEEDED: 409,
+        STATE_CONFLICT: 409,
+        PROTOCOL_VERSION_UNSUPPORTED: 409,
+      };
+      return reply
+        .code(
+          error instanceof DomainError
+            ? (statuses[error.code] ?? domainErrorStatus(error.code) ?? 400)
+            : (error.statusCode ?? 500),
+        )
+        .send({ error: failure(error) });
+    });
+    files.addContentTypeParser(
+      'application/octet-stream',
+      { parseAs: 'buffer', bodyLimit: MAX_FILE_SIZE },
+      (_req, body, done) => done(null, body),
+    );
+    const attachmentContext = (req: FastifyRequest) => {
+      if (!cloud) {
+        const supplied = Buffer.from(req.headers.authorization ?? '');
+        const expected = Buffer.from(`Bearer ${token}`);
+        if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected))
+          throw new DomainError('UNAUTHORIZED', 'Attachment authentication required.');
+      }
+      if (req.headers['x-acornary-protocol'] !== '2')
+        throw new DomainError(
+          'PROTOCOL_VERSION_UNSUPPORTED',
+          'Attachment routes require protocol 2.',
+        );
+      return { ...(webContexts.get(req) ?? ctx), source: 'WEB' };
+    };
+    files.put('/api/attachments/upload/:upload_id', { bodyLimit: MAX_FILE_SIZE }, async (req) => {
+      const context = attachmentContext(req);
+      if (
+        req.headers.origin !== (cloud?.origin ?? `http://${req.headers.host}`) ||
+        req.headers['x-acornary-request'] !== 'web' ||
+        !Buffer.isBuffer(req.body)
+      )
+        throw new DomainError('FORBIDDEN', 'Same-origin binary upload required.');
+      const ticket = req.headers['x-acornary-upload-ticket'];
+      if (typeof ticket !== 'string') throw new DomainError('FORBIDDEN', 'Upload ticket required.');
+      return putAttachment(context, (req.params as any).upload_id, ticket, req.body as Buffer);
+    });
+    files.get('/api/attachments/:id', async (req, reply) => {
+      const context = attachmentContext(req);
+      const input = req.query as { variant?: string; reveal_sensitive?: string };
+      if (
+        input.reveal_sensitive === 'true' &&
+        (req.headers.origin !== (cloud?.origin ?? `http://${req.headers.host}`) ||
+          req.headers['x-acornary-request'] !== 'web')
+      )
+        throw new DomainError('FORBIDDEN', 'Same-origin sensitive reveal required.');
+      const result = await downloadAttachment(
+        context,
+        (req.params as any).id,
+        input.variant,
+        input.reveal_sensitive === 'true',
+      );
+      return reply.headers(result.headers).send(result.bytes);
+    });
+  });
   app.get('/api/context', async (req) => {
     const context = webContexts.get(req) ?? ctx;
     const household = (
@@ -328,7 +433,8 @@ export async function buildApp(
         [context.household_id],
       )
     ).rows[0];
-    return { household, container_catalog_id: install?.container_catalog_id };
+    return { household, container_catalog_id: install?.container_catalog_id,
+      protocol: { current: 2, min: 2 }, features: [...implementedFeatures] };
   });
   app.get('/api/read/:operation', async (req) => {
     const name = (req.params as any).operation as Operation;
@@ -341,10 +447,27 @@ export async function buildApp(
     }
     return execute({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }, name, input);
   });
+  registerExportRoutes(app, token, !!cloud, req => ({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }), execute);
+  app.post('/api/read/query_inventory_groups', async req =>
+    execute({ ...(webContexts.get(req) ?? ctx), source: 'WEB' }, 'query_inventory_groups', req.body));
+  const syncContext = (req: FastifyRequest) => {
+    if (req.headers['x-acornary-protocol'] !== '2')
+      throw new DomainError('PROTOCOL_VERSION_UNSUPPORTED', 'Sync requires protocol 2.');
+    return webContexts.get(req) ?? ctx;
+  };
+  app.get('/api/sync/state', req => syncState(syncContext(req)));
+  app.get('/api/sync/changes', req => syncChanges(syncContext(req), req.query));
+  app.get('/api/sync/bootstrap', req => syncBootstrap(syncContext(req), req.query));
+  app.post('/api/sync/fetch', req => syncFetch(syncContext(req), req.body));
   const snapshotFor = (req: FastifyRequest) => {
     const trace = traces.getStore();
     if (trace) trace.tool = 'web_snapshot';
-    return timed('business_ms', () => webSnapshot(webContexts.get(req) ?? ctx, req.query));
+    const protocol = req.headers['x-acornary-protocol'];
+    if (protocol !== undefined && protocol !== '2')
+      throw new DomainError('PROTOCOL_VERSION_UNSUPPORTED', 'Unsupported snapshot protocol.');
+    return timed('business_ms', async () => protocol === '2'
+      ? webSnapshotV2(webContexts.get(req) ?? ctx)
+      : webSnapshot(webContexts.get(req) ?? ctx, req.query));
   };
   app.get('/api/ui/snapshot', snapshotFor);
   app.get('/api/ui/groups', async (req) => (await snapshotFor(req)).groups);
