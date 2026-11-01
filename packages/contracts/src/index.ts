@@ -351,7 +351,6 @@ export const schemas = {
     ...attr,
     template_id: z.enum([...templateId.options, 'deadline', 'service']),
   }),
-  get_attribute_sets: z.strictObject({ target }),
   bind_attributes: z.strictObject({ ...write, target, ...attr, values }),
   update_attributes: z.strictObject({ ...write, target, ...patchShape }),
   remove_attributes: z.strictObject({ ...write, target, ...attr }),
@@ -382,7 +381,6 @@ export const reads = new Set<Operation>([
   'get_item',
   'list_attribute_templates',
   'get_attribute_template',
-  'get_attribute_sets',
   'get_history',
 ]);
 export const descriptions: Record<Operation, string> = {
@@ -444,7 +442,6 @@ export const descriptions: Record<Operation, string> = {
   list_attribute_templates:
     '发现已登记模板的最新版本，可按对象、档案和能力筛选；已有绑定使用其固定版本。',
   get_attribute_template: '读取指定模板版本和允许字段。',
-  get_attribute_sets: '读取目标已绑定的模板和值。',
   bind_attributes: '绑定尚未存在的模板，不覆盖已有值。',
   update_attributes: '按模板内路径 set/unset 更新，未涉及字段保留；Measurement 整体更新。',
   remove_attributes: '移除目标模板，不能绕过容纳或生命周期约束。',

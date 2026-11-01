@@ -57,7 +57,6 @@ describe('workspace search boundary', () => {
   it('validates core search while preserving old dialog aliases and dropping cursors', () => {
     expect(
       validateWorkspaceSearch({
-        ui: 'legacy',
         view: 'attention',
         q: '牛奶',
         sort: 'name',
@@ -68,7 +67,6 @@ describe('workspace search boundary', () => {
         cursor: 'opaque',
       }),
     ).toEqual({
-      ui: 'legacy',
       view: 'attention',
       q: '牛奶',
       sort: 'name',

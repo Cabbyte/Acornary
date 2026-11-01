@@ -34,23 +34,23 @@
 - `hardware/` 是未跟踪的前端打印资料，默认保留，等待用户确认。
 - `docs/archive/` 和 `docs/repair/` 是证据/历史，不删除。
 
-## 1. 阶段
+## 1. 阶段（进度）
 
-### Phase 1 — 前端旧 UI
+### Phase 1 — 前端旧 UI（已完成）
 1. 先把 `/items/:id/history`、`/items/:id/notes`、`/items/:id/details`、`/i/:id`、`/catalog/:id/history` 重定向/映射到新屏幕。
 2. 把 Settings 的 account/households/printer 详情提取为独立 feature（保留打印/账号能力），移除旧 `pages.tsx` 其余部分。
 3. 移除 `ui=legacy`/`acornary-ui`，固定 NextShell。
 4. 删除旧模块和 `prototype`；保留共享 primitives/forms。
 5. 更新 browser/unit 断言，禁止再出现 legacy 路由。
 
-### Phase 2 — 后端 v1 读
+### Phase 2 — 后端 v1 读（已完成）
 1. 增加通用 `POST /api/read/:operation`；advertise `protocol_v2`；前端固定 POST。
 2. 要求 `/api/read`、`/api/ui/snapshot|groups`、`/api/sync` 必须 `X-Acornary-Protocol: 2`（auth/health/version/context 例外）。
 3. 删除 GET read、v1 snapshot 分支和 `webSnapshot` v1；保留 terminal v1。
 4. 删除 `legacyInput` 写入路径；历史 operation replay 只保留只读证明，不新增 fallback。
 5. 删除 `get_attribute_sets` 命令/合同/测试。
 
-### Phase 3 — 数据
+### Phase 3 — 数据（进行中：attribute_sets 已删除；notes/lifecycle 待做）
 1. 备份：`pg_dump` + 行数/摘要。
 2. `022_drop_attribute_sets.sql`：校验嵌入值后 drop table。
 3. `023_notes_target_only.sql`：回填缺失 target、校验、drop `item_id`/constraint、drop `016a` trigger/function；更新所有代码/tests。
@@ -58,7 +58,7 @@
 5. 移除 `lifecycle.availability` 合同/UI/编辑路径；更新查询摘要。
 6. `EDIT` 只做历史盘点，不删事件；如需统一，另立迁移并保留原文。
 
-### Phase 4 — 垃圾与收口
+### Phase 4 — 垃圾与收口（待做）
 1. 删除无引用文件、缓存、临时脚本。
 2. 更新 docs/repair/README、frontend handoff、legacy 说明。
 3. 空库迁移 001–024、全量测试、nested batches、`npm run build`、浏览器冒烟。

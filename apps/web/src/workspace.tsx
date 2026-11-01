@@ -1,4 +1,3 @@
-import { Activity } from './ui/activity';
 import { PendingCatalogReviews } from './ui/catalog-review';
 import { App, Button } from 'antd';
 import type { FunctionComponent } from 'react';
@@ -22,12 +21,10 @@ import type { TemplateId } from '../../../packages/contracts/src/index';
 import { useSession } from './lib/session';
 import { useInventory } from './lib/inventory';
 import { time } from './lib/presentation';
-import { Home, Product, ItemDetail, Catalog, Settings, History, Notes } from './pages';
 const KitchenSink = lazy(() => import('./features/ui-kitchen/KitchenSink'));
 import { ActionSheet, type Action } from './ui/forms';
+import { SettingsDetails } from './features/settings/SettingsDetails';
 import { Empty, Notice } from './ui/components';
-import { clearBrowseSelections, InventorySearch, ProductCatalog } from './ui/browser';
-import { clearWorkbenchSelections, Workbench, WorkbenchShell } from './ui/workbench';
 import { NextShell } from './next/NextShell';
 import { ItemsScreen } from './features/items/screens/ItemsScreen';
 const ItemScreen = lazy(() =>
@@ -43,7 +40,6 @@ const SettingsScreen = lazy(() =>
   import('./next/screens/SettingsScreen').then((module) => ({ default: module.SettingsScreen })),
 );
 import { validateWorkspaceSearch } from './app/search';
-let volatileUI: 'next' | 'legacy' | undefined;
 export function Workspace() {
   const { session, expired } = useSession();
   return (
@@ -61,12 +57,6 @@ function WorkspaceContent() {
   const { data, stale, refresh, cacheWarning } = useInventory();
   const { session, online, expired, requestLogin, storageError } = useSession();
   const { message } = App.useApp();
-  useEffect(() => {
-    // Clear every list, including an unmounted SKU view, when the host changes households.
-    clearBrowseSelections();
-    clearWorkbenchSelections();
-  }, [session.cache_key]);
-  const [selectionVersion, resetSelection] = useState(0);
   const [receipt, setReceipt] = useState<{ scope: string; ids: string[] }>();
   useEffect(() => setReceipt(undefined), [session.cache_key]);
   const [connectionError, setConnectionError] = useState('');
@@ -95,29 +85,6 @@ function WorkspaceContent() {
   useEffect(() => {
     if (compactId) void navigate({ to: `/items/${compactId}/details`, replace: true });
   }, [compactId, navigate]);
-  // Explicit rollback is sticky for this tab, including old plain-anchor links.
-  let preferredUI: string | null = volatileUI ?? null;
-  try {
-    preferredUI = sessionStorage.getItem('acornary-ui') ?? preferredUI;
-  } catch {
-    /* Storage is optional. */
-  }
-  const requestedUI = params.get('ui');
-  const nextMode =
-    requestedUI === 'next' ||
-    (requestedUI !== 'legacy' &&
-      preferredUI !== 'legacy' &&
-      ['items', 'places', 'search', 'catalog', 'activity', 'settings', 'ui'].includes(section) &&
-      !(['items', 'catalog'].includes(section) && ['history', 'notes'].includes(parts[2] ?? '')));
-  useEffect(() => {
-    if (requestedUI !== 'next' && requestedUI !== 'legacy') return;
-    volatileUI = requestedUI;
-    try {
-      sessionStorage.setItem('acornary-ui', requestedUI);
-    } catch {
-      /* URL still works. */
-    }
-  }, [requestedUI]);
   const actionKeys = ['dialog', 'target', 'template', 'note', 'parent', 'ids', 'from'];
   const browseParams = Object.fromEntries([...params].filter(([key]) => !actionKeys.includes(key)));
   useEffect(() => {
@@ -180,99 +147,40 @@ function WorkspaceContent() {
     message.destroy();
   }, [location.pathname]);
   let page;
-  if (nextMode) {
-    if (section === 'items') {
-      if (id === 'group') page = <ItemsScreen catalogId={parts[2]} open={open} />;
-      else if (id) page = <ItemScreen id={id} open={open} />;
-      else page = <ItemsScreen open={open} />;
-    } else if (section === 'places') page = <ItemsScreen locationId={id} open={open} />;
-    else if (section === 'search') page = <ItemsScreen open={open} searchMode />;
-    else if (section === 'catalog') page = <CatalogScreen id={id} open={open} />;
-    else if (section === 'activity') page = <ActivityScreen />;
-    else if (section === 'settings') page = id ? <Settings section={id} /> : <SettingsScreen />;
-    else if (section === 'ui')
-      page = (
-        <Suspense fallback={<p role="status">正在加载界面基线…</p>}>
-          <KitchenSink />
-        </Suspense>
-      );
-    else if (section === 'login') page = <Home open={open} />;
-    else
-      page = (
-        <Empty title="页面不存在">
-          <Link to="/items" search={{ ui: 'next' }}>
-            返回我的物品
-          </Link>
-        </Empty>
-      );
-  } else if (section === 'i')
-    page = (
-      <Empty title={compactId ? '正在打开物品…' : '标签链接无效'}>
-        <Link to="/items">返回我的物品</Link>
-      </Empty>
-    );
-  else if (section === 'items')
-    page =
-      id === 'group' ? (
-        <Product id={parts[2]} open={open} />
-      ) : id ? (
-        parts[2] === 'history' ? (
-          <History id={id} />
-        ) : parts[2] === 'notes' ? (
-          <Notes id={id} open={open} />
-        ) : parts[2] === 'details' ? (
-          <ItemDetail id={id} open={open} />
-        ) : (
-          <Workbench
-            selectionVersion={selectionVersion}
-            key={`${session.cache_key}:${scope ?? ''}`}
-            id={scope}
-            detailId={id}
-            open={open}
-          />
-        )
-      ) : (
-        <Workbench
-          selectionVersion={selectionVersion}
-          key={`${session.cache_key}:root`}
-          open={open}
-        />
-      );
-  else if (section === 'places')
-    page = (
-      <Workbench
-        selectionVersion={selectionVersion}
-        key={`${session.cache_key}:${id ?? ''}`}
-        id={id}
-        open={open}
-      />
-    );
-  else if (section === 'search') page = <InventorySearch />;
-  else if (section === 'catalog')
-    page =
-      parts[2] === 'history' ? (
-        <History id={id} kind="CATALOG_NODE" />
-      ) : id ? (
-        <Catalog id={id === 'manage' ? undefined : id} open={open} />
-      ) : (
-        <ProductCatalog key={session.cache_key} open={open} />
-      );
-  else if (section === 'activity') page = <Activity />;
-  else if (section === 'settings') page = <Settings section={id} />;
+  const legacyRedirect =
+    section === 'i' && id
+      ? `/items/${expandItemId(id)}`
+      : section === 'items' && id && ['history', 'notes', 'details'].includes(parts[2] ?? '')
+        ? `/items/${id}`
+        : section === 'catalog' && id && parts[2] === 'history'
+          ? `/catalog/${id}`
+          : null;
+  if (legacyRedirect) {
+    void navigate({ to: legacyRedirect, replace: true });
+    page = <Empty title="正在打开新页面…" />;
+  } else if (section === 'items') {
+    if (id === 'group') page = <ItemsScreen catalogId={parts[2]} open={open} />;
+    else if (id) page = <ItemScreen id={id} open={open} />;
+    else page = <ItemsScreen open={open} />;
+  } else if (section === 'places') page = <ItemsScreen locationId={id} open={open} />;
+  else if (section === 'search') page = <ItemsScreen open={open} searchMode />;
+  else if (section === 'catalog') page = <CatalogScreen id={id} open={open} />;
+  else if (section === 'activity') page = <ActivityScreen />;
+  else if (section === 'settings')
+    page = id ? <SettingsDetails section={id} /> : <SettingsScreen />;
   else if (section === 'ui')
     page = (
       <Suspense fallback={<p role="status">正在加载界面基线…</p>}>
         <KitchenSink />
       </Suspense>
     );
-  else if (section === 'login') page = <Home open={open} />;
   else
     page = (
       <Empty title="页面不存在">
         <Link to="/items">返回我的物品</Link>
       </Empty>
     );
-  const Shell = nextMode ? NextShell : WorkbenchShell;
+  const Shell = NextShell;
   return (
     <Shell section={section}>
       {expired && (
@@ -334,7 +242,7 @@ function WorkspaceContent() {
         <ActionSheet
           key={JSON.stringify(action)}
           action={action}
-          production={nextMode}
+          production={true}
           onClose={close}
           onCreateProduct={() => open({ kind: 'catalog', from: 'intake' })}
           onSaved={(result) => {
@@ -342,7 +250,6 @@ function WorkspaceContent() {
               action.kind === 'intake'
                 ? result.affected_objects.find((o) => o.kind === 'ITEM')
                 : result.affected_objects[0];
-            if (action.kind === 'move') resetSelection((v) => v + 1);
             void message.success('已保存，库存和历史已更新');
             if (action.kind === 'catalog' && action.from === 'intake' && first) {
               open({ kind: 'intake', target: first.id });

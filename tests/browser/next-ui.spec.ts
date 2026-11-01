@@ -56,7 +56,7 @@ test.describe('next inventory UI', () => {
 });
 
 test('legacy rollback keeps old selectors across plain navigation', async ({ page }) => {
-  await page.goto('/items?ui=legacy');
+  await page.goto('/items');
   await expect(page.getByRole('searchbox', { name: '搜索物品、规格、位置…' })).toBeVisible();
   await page.goto('/items');
   await expect(page.getByRole('searchbox', { name: '搜索物品、规格、位置…' })).toBeVisible();

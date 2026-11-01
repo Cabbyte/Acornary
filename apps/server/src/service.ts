@@ -1192,12 +1192,6 @@ async function read(c: Client, ctx: Context, name: Operation, input: any): Promi
   }
   if (name === 'query_stock') return readStock(c, ctx, input);
   if (name === 'get_history') return readHistory(c, ctx, input);
-  if (name === 'get_attribute_sets') {
-    const obj = await load(c, ctx, input.target);
-    return {
-      data: await bindingRecords(c, ctx, obj),
-    };
-  }
   if (name === 'get_item' || name === 'get_catalog_node')
     return view(
       c,

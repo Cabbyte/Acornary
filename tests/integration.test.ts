@@ -596,7 +596,7 @@ it('keeps SKU references and physical UUIDs stable through correction and catalo
   const [id] = await create(catalog, 1, [
     attrs('contents', { remaining: { value: '40', unit: 'percent' }, accuracy: 'ESTIMATED' }),
   ]);
-  const before = (await run('get_attribute_sets', { target: { kind: 'ITEM', id } })).data[0];
+  const before = (await run('get_item', { item_id: id })).attributes[0];
   await write('correct_item', {
     item_id: id,
     reason: '称量核对',
@@ -609,7 +609,7 @@ it('keeps SKU references and physical UUIDs stable through correction and catalo
       },
     ],
   });
-  const after = (await run('get_attribute_sets', { target: { kind: 'ITEM', id } })).data[0];
+  const after = (await run('get_item', { item_id: id })).attributes[0];
   expect(after).not.toHaveProperty('id');
   expect(after.template_id).toBe(before.template_id);
   expect(after.values.remaining).toEqual({ value: '800', unit: 'mL' });
@@ -952,7 +952,7 @@ it('keeps JSON array checks in SQL and enforces binding semantics in the shared 
       .changed,
   ).toBe(true);
   await query(pool, "UPDATE items SET attributes='[]'::jsonb WHERE id=$1", [id]);
-  expect((await run('get_attribute_sets', { target: { kind: 'ITEM', id } })).data).toEqual([]);
+  expect((await run('get_item', { item_id: id })).attributes).toEqual([]);
   // Another household has lifecycle v1, but this one does not: no implicit global registry fallback.
   const hh = 'household_' + key(),
     actor = 'actor_' + key();

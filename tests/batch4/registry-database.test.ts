@@ -83,8 +83,7 @@ describe.skipIf(!enabled)('Batch 4 migrated PostgreSQL registry', () => {
     );
     expect((await catalogRead(ctx, sku)).attributes[0].status).toBe('UNKNOWN');
     expect(
-      (await execute(ctx, 'get_attribute_sets', { target: { kind: 'ITEM', id: item } })).data[0]
-        .values,
+      (await itemRead(ctx, item)).attributes.find((a: any) => a.template_id === 'z_future')?.values,
     ).toEqual(originals[0].values);
     const container = id('item');
     await query(

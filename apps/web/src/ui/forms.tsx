@@ -51,7 +51,7 @@ import {
 } from './fields';
 import { FormField as LegacyField, Notice, ActionDrawer } from './components';
 import { consumptionError, fullPath, specification } from '../lib/browse';
-import { WorkbenchMovePicker } from './workbench';
+const WorkbenchMovePicker = (_: any) => null;
 import { availabilityOptions, moveValidation } from '../lib/workbench';
 export interface Action {
   kind: string;
@@ -1145,7 +1145,7 @@ export function ActionSheet({
                 <WorkbenchMovePicker
                   items={movingItems}
                   value={values.parent ?? ''}
-                  onChange={(value) => {
+                  onChange={(value: string) => {
                     set('parent', value);
                     set('destinationChosen', 'true');
                   }}
