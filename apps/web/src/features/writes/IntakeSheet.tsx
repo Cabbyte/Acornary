@@ -107,6 +107,13 @@ export function IntakeSheet({
         >
           <summary>补充日期、开封与余量（可选）</summary>
           <div className="stack">
+            {!capabilities.opening && !capabilities.expiry && !capabilities.contents && (
+              <Notice>
+                {values.newProduct === 'true'
+                  ? '如需记录日期或余量，请先在商品目录建档并选择合适的商品类型，再选择该商品入库。'
+                  : '此商品尚未启用日期、开封或余量记录。可在商品目录的“编辑商品定义”中核对商品类型。'}
+              </Notice>
+            )}
             {capabilities.opening && (
               <Field label="开封状态">
                 <Select

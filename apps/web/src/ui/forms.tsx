@@ -50,6 +50,7 @@ import {
 import { Notice } from './components';
 import { consumptionError, fullPath, specification } from '../lib/browse';
 import { moveValidation } from '../lib/workbench';
+import { repairIntakeLocation } from '../features/writes/intake-draft';
 export interface Action {
   kind: string;
   target?: string;
@@ -122,6 +123,10 @@ export function ActionSheet({
   const item = data.items.find((i) => i.id === action.target),
     catalog = data.catalog.find((c) => c.id === action.target);
   const target = item ?? catalog;
+  const actionTitle =
+    action.kind === 'rename' && catalog?.kind === 'SKU'
+      ? '编辑商品定义'
+      : (titles[action.kind] ?? '编辑');
   const moveIds = action.ids?.split(',').filter(Boolean) ?? (item ? [item.id] : []);
   const movingItems = data.items.filter((i) => moveIds.includes(i.id));
   const moving = action.kind === 'move' && movingItems.length > 0;
@@ -181,7 +186,7 @@ export function ActionSheet({
       acquired_on: item ? (attr(item, 'lifecycle')?.acquisition?.acquired_on ?? '') : '',
       sku: catalog?.kind === 'SKU' ? catalog.id : '',
       parent:
-        target?.parent_id ??
+        (action.kind === 'intake' ? item?.parent_id : target?.parent_id) ??
         (action.ids
           ? data.items.find((i) => i.id === action.ids?.split(',')[0])?.parent_id
           : undefined) ??
@@ -195,6 +200,7 @@ export function ActionSheet({
       unit: 'mL',
       accuracy: '',
       kind: 'SKU',
+      profile: catalog?.profile ?? '',
       title: '',
       body: '',
       reason: '',
@@ -232,7 +238,9 @@ export function ActionSheet({
             return;
           }
           setDraft(
-            saved ?? {
+            (saved && action.kind === 'intake' && catalog
+              ? repairIntakeLocation(saved, catalog.parent_id)
+              : saved) ?? {
               values,
               original: { ...values },
               revisions,
@@ -412,13 +420,29 @@ export function ActionSheet({
         break;
       case 'catalog':
         operation = 'create_catalog_node';
-        input = { kind: values.kind, name: values.name.trim(), parent_id: values.parent || null };
+        input = {
+          kind: values.kind,
+          name: values.name.trim(),
+          parent_id: values.parent || null,
+          ...(profileEnabled && values.kind === 'SKU' && values.profile
+            ? { profile: values.profile }
+            : {}),
+        };
         break;
       case 'rename':
         operation = item ? 'update_item' : 'update_catalog_node';
         input = item
           ? { item_id: item.id, display_name: values.name.trim() || null }
-          : { catalog_node_id: catalog?.id, name: values.name.trim() };
+          : {
+              catalog_node_id: catalog?.id,
+              name: values.name.trim(),
+              ...(profileEnabled &&
+              catalog?.kind === 'SKU' &&
+              values.profile !== undefined &&
+              values.profile !== (draft.original.profile ?? catalog.profile ?? '')
+                ? { profile: values.profile || null }
+                : {}),
+            };
         break;
       case 'edit':
         operation = 'edit_item';
@@ -725,11 +749,7 @@ export function ActionSheet({
   );
   if (!draft)
     return (
-      <ProductionDrawer
-        context={context}
-        title={titles[action.kind] ?? '编辑'}
-        onClose={requestClose}
-      >
+      <ProductionDrawer context={context} title={actionTitle} onClose={requestClose}>
         <p role="status">{error || '正在恢复草稿…'}</p>
       </ProductionDrawer>
     );
@@ -765,7 +785,7 @@ export function ActionSheet({
           ? `移动 ${movingItems.length} 件物品`
           : action.kind === 'attributes'
             ? (templateLabels[template] ?? '编辑资料')
-            : (titles[action.kind] ?? '编辑')
+            : actionTitle
       }
       onClose={requestClose}
       busy={busy}
@@ -935,6 +955,31 @@ export function ActionSheet({
                 {selectParent(true)}
               </>
             )}
+            {profileEnabled &&
+              ((action.kind === 'catalog' && values.kind === 'SKU') ||
+                (action.kind === 'rename' && catalog?.kind === 'SKU')) && (
+                <Field
+                  label="商品类型"
+                  hint={
+                    catalog?.capabilities != null
+                      ? '此商品另设了自定义功能，修改类型会保留这些功能设置。'
+                      : '按商品用途选择，未确定时留空。类型决定可记录的日期、余量等资料；不会自动补全已有记录。'
+                  }
+                >
+                  <Select
+                    value={values.profile ?? catalog?.profile ?? ''}
+                    onChange={(value) => set('profile', value)}
+                    options={[
+                      { value: '', label: '未指定' },
+                      { value: 'CONSUMABLE', label: '消耗品（食品、日用耗材）' },
+                      { value: 'DURABLE', label: '耐用品（设备、工具）' },
+                      { value: 'WEARABLE', label: '衣物与穿戴用品' },
+                      { value: 'SPACE', label: '位置与收纳容器' },
+                      { value: 'MISC', label: '一般物品' },
+                    ]}
+                  />
+                </Field>
+              )}
             {action.kind === 'place' && selectParent()}
             {action.kind === 'open' && (
               <Field label="开封时间" hint="可选，仅填写你确认的时间；留空会保留为未记录。">
