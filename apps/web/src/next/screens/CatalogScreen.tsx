@@ -174,7 +174,7 @@ export function CatalogScreen({ id, open }: { id?: string; open: (action: Action
         <section aria-label="商品共有资料">
           <p>{keySpec(selected) || '尚未补充规格'}</p>
           <Button variant="secondary" onClick={() => open({ kind: 'rename', target: selected.id })}>
-            修改商品名称
+            编辑商品定义
           </Button>{' '}
           <Button
             variant="secondary"
