@@ -25,7 +25,14 @@ try {
   const helpers = httpAcceptance({
     origin,
     db,
-    mf: { dispatchFetch: (url, options) => fetch(url, { ...options, redirect: 'manual' }) },
+    mf: {
+      dispatchFetch: (url, options) => {
+        // Only local workerd fixtures may set the connecting IP. Cloudflare owns it on ingress.
+        const headers = new Headers(options?.headers);
+        headers.delete('cf-connecting-ip');
+        return fetch(url, { ...options, headers, redirect: 'manual' });
+      },
+    },
   });
   let health = await fetch(origin + '/health');
   assert.equal(health.status, 200);
@@ -110,12 +117,16 @@ try {
     sha256: sha,
   });
   assert.equal(reserved.status, 200);
+  const uploadHeaders = new Headers(inv.headers);
+  for (const [key, value] of Object.entries(reserved.data.headers)) uploadHeaders.set(key, value);
+  uploadHeaders.set('origin', origin);
+  uploadHeaders.set('cookie', a.cookie);
   const upload = await fetch(origin + reserved.data.upload_url, {
     method: 'PUT',
-    headers: { ...inv.headers, ...reserved.data.headers, origin, cookie: a.cookie },
+    headers: uploadHeaders,
     body: bytes,
   });
-  assert.equal(upload.status, 200);
+  assert.equal(upload.status, 200, await upload.text());
   const attached = await inv.run('complete_attachment_upload', {
     idempotency_key: crypto.randomUUID(),
     upload_id: reserved.data.upload_id,

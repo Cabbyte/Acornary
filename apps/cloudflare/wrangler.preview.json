@@ -2,10 +2,7 @@
   "account_id": "b3917d63f5b0f7e77219956e3ee92bce",
   "name": "acornary-cf-preview",
   "compatibility_date": "2026-11-05",
-  "compatibility_flags": [
-    "nodejs_compat",
-    "global_fetch_strictly_public"
-  ],
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "d1_databases": [
     {
       "binding": "AUTH_DB",
@@ -62,9 +59,7 @@
   "migrations": [
     {
       "tag": "native-v1",
-      "new_sqlite_classes": [
-        "HouseholdStore"
-      ]
+      "new_sqlite_classes": ["HouseholdStore"]
     }
   ],
   "assets": {
@@ -92,12 +87,7 @@
     "TERMINAL_SIGNING_FINGERPRINTS": "DD:FF:D0:88:78:90:C2:82:A9:2E:AC:A0:37:F9:CD:60:CC:66:1D:F4:B4:E3:98:AA:1B:2A:A1:A0:39:E6:4C:EC"
   },
   "triggers": {
-    "crons": [
-      "17 19 * * *"
-    ]
-  },
-  "limits": {
-    "cpu_ms": 300000
+    "crons": ["17 19 * * *"]
   },
   "observability": {
     "enabled": true,

@@ -10,7 +10,7 @@
 
 此分支将运行时完全迁移到 Cloudflare Workers：Static Assets 托管 WebUI 与 MCP UI，每家庭一个 SQLite Durable Object 保存库存与权限事实，D1 保存账号、OAuth 和家庭目录，私有 R2 保存附件与备份，Queues / Alarms / Cron 处理可恢复任务。
 
-目标预览地址为 `https://cf.acornary.protium.top`，REST 与 MCP 只替换 origin，保持 54 个操作的 schema、错误和业务语义。当前完整应用尚未发布：Cloudflare Workers Paid 和只读生产快照访问仍待就绪。既有 [正式站](https://acornary.protium.top) 继续承载正式库存，预览写入不会回灌。
+目标预览地址为 `https://cf.acornary.protium.top`，REST 与 MCP 只替换 origin，保持 54 个操作的 schema、错误和业务语义。预览先使用 Workers Free，保留完整业务功能；是否需要升级以真实平台验收为准。发布与数据迁移进度见 [验收记录](docs/cloudflare/acceptance.md)。既有 [正式站](https://acornary.protium.top) 继续承载正式库存，预览写入不会回灌。
 
 - [验收证据与剩余门槛](docs/cloudflare/acceptance.md)
 - [预览发布、CI 与 Android](docs/cloudflare/preview-release.md)

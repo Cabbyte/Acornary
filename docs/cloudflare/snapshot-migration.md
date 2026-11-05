@@ -1,6 +1,6 @@
 # Snapshot export and D1 account import
 
-These tools implement source snapshots, D1 account/directory import and verified R2 blob transfer. Household inventory import, activation and the application Worker are still separate unfinished work. `AUTH_IMPORTED` or `BLOBS_VERIFIED` does **not** mean the complete Acornary migration has finished.
+These tools implement source snapshots, D1 account/directory import and verified R2 blob transfer. Household inventory import and activation follow as separate verified steps below. `AUTH_IMPORTED` or `BLOBS_VERIFIED` does **not** mean the complete Acornary migration has finished.
 
 ## Export an isolated source package
 
@@ -40,7 +40,7 @@ Export cannot resume across disconnected PostgreSQL transactions: that would com
 
 ## Import accounts into an empty D1 destination
 
-Apply the three checked-in auth migrations to the destination first. For the isolated preview database:
+Apply all checked-in auth migrations to the destination first. For the isolated preview database:
 
 ```sh
 pnpm exec wrangler d1 migrations apply AUTH_DB \
@@ -60,7 +60,7 @@ The import plan uses a fixed allowlist of account columns. It preserves IDs, pas
 
 An empty destination is reserved for one exact plan. Each bounded chunk writes its data, ordered receipt and progress in one [D1 atomic batch](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch). Out-of-order chunks, foreign-key failures or duplicate identities roll back together. Concurrent duplicate delivery returns the existing receipt. Restarting the identical command resumes at the persisted chunk; a different snapshot or plan is rejected. Existing application data is never upserted or overwritten.
 
-Completion checks all expected account/directory row counts and records `AUTH_IMPORTED`. Household directory entries remain `PENDING`. Imported memberships are lookup projections, not authorization. Household DO import, authoritative membership verification, R2 verification and the activation coordinator must finish before traffic can be enabled. This implementation intentionally has no activation command yet.
+Completion checks all expected account/directory row counts and records `AUTH_IMPORTED`. Household directory entries remain `PENDING`. Imported memberships are lookup projections, not authorization. Household DO import, authoritative membership verification, R2 verification and the activation coordinator must finish before traffic can be enabled. Use the household import command with `--activate` after those checks complete.
 
 ## Transfer immutable attachments to private R2
 
@@ -85,7 +85,7 @@ pnpm cf:check:auth-remote
 pnpm cf:check:blobs-remote
 ```
 
-The first command runs 12 integration tests using a disposable PostgreSQL 18 container and real workerd D1/R2. Docker is required. It checks consistent reads during concurrent source writes, int64 preservation, actual blob corruption, source schema drift, production/preview credential separation, disabled-owner conversion, import replay/resumption, rollback, R2 collision handling, the 25 MiB limit and both persistent local CLIs. Containers and temporary files are removed afterward.
+The first command runs 14 integration tests using a disposable PostgreSQL 18 container and real workerd D1/R2. Docker is required. It checks consistent reads during concurrent source writes, int64 preservation, actual blob corruption, source schema drift, production/preview credential separation, disabled-owner conversion, import replay/resumption, rollback, R2 collision handling, the 25 MiB limit and both persistent local CLIs. Containers and temporary files are removed afterward.
 
 The two remote checks create uniquely named temporary D1/R2 resources, test real behavior and remove their resources. D1 checks ordered/concurrent import behavior. R2 uploads and reads back a 25 MiB file, checks retries and rejects different content at the same key. These commands do not use production or preview application data and are not part of automatic CI.
 

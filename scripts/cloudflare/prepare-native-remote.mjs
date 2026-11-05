@@ -121,7 +121,6 @@ Object.assign(config, {
     RELEASE_COMMIT: (await exec('git', ['rev-parse', 'HEAD'])).stdout.trim(),
     TERMINAL_CLIENT_ID: 'acceptance-terminal',
   },
-  limits: { cpu_ms: 300000 },
   observability: {
     enabled: true,
     logs: { enabled: true, invocation_logs: false },
