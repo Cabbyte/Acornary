@@ -438,14 +438,7 @@ export function attachmentWrite(
   );
 }
 
-/** Claim a bounded upload lease before R2 I/O. An immutable object key belongs to one attempt. */
-export function beginUpload(
-  ctx: Context,
-  id: string,
-  ticket: string,
-  size: number,
-  sourceSha256: string,
-) {
+function uploadSession(ctx: Context, id: string, ticket: string) {
   const c = ctx.db;
   authorizeFiles(c, ctx, true);
   const session = query(
@@ -458,6 +451,22 @@ export function beginUpload(
     'FORBIDDEN',
     'Invalid upload ticket.',
   );
+  return session;
+}
+/** Authenticate the reservation before accepting its body; size is a stored fact. */
+export function uploadSize(ctx: Context, id: string, ticket: string): number {
+  return Number(uploadSession(ctx, id, ticket).file_size);
+}
+/** Claim a bounded upload lease before R2 I/O. An immutable object key belongs to one attempt. */
+export function beginUpload(
+  ctx: Context,
+  id: string,
+  ticket: string,
+  size: number,
+  sourceSha256: string,
+) {
+  const c = ctx.db,
+    session = uploadSession(ctx, id, ticket);
   requireFact(
     size > 0 && size <= MAX_FILE_SIZE && size === Number(session.file_size),
     'ATTACHMENT_TOO_LARGE',

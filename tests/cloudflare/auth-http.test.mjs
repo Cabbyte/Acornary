@@ -44,7 +44,10 @@ before(async () => {
       },
       r2Buckets: { BLOBS: 'test-blobs', BACKUPS: 'test-backups' },
       d1Databases: { AUTH_DB: 'auth-http' },
-      durableObjects: { HOUSEHOLDS: { className: 'HouseholdStore', useSQLite: true } },
+      durableObjects: {
+        HOUSEHOLDS: { className: 'HouseholdStore', useSQLite: true },
+        UPLOADS: { className: 'AttachmentUpload', useSQLite: true },
+      },
       bindings: {
         ORIGIN: origin,
         AUTH_SECRET: 'test-only-independent-secret-32-characters',
@@ -114,6 +117,9 @@ async function fixture() {
     .run();
   let cookie = '';
   const client = {
+    get cookie() {
+      return cookie;
+    },
     user,
     email,
     password,
@@ -579,6 +585,69 @@ test('OAuth PKCE, MCP scopes, commands, refresh rotation and Android share the n
     403,
   );
 });
+test('upload coordinator streams 25 MiB, preserves errors and verifies concurrent private uploads', async () => {
+  const a = await fixture(),
+    inv = await inventory(a);
+  const bytes = Buffer.alloc(25 * 1024 * 1024, 65);
+  bytes.write('%PDF-1.7\n');
+  const sha256 = createHash('sha256').update(bytes).digest('hex');
+  const reserve = async () => {
+    const r = await inv.run('create_attachment_upload', {
+      idempotency_key: crypto.randomUUID(),
+      filename: 'maximum.pdf',
+      mime_type: 'application/pdf',
+      target: { kind: 'ITEM', id: inv.item },
+      file_size: bytes.length,
+      sha256,
+    });
+    assert.equal(r.status, 200);
+    return r.data;
+  };
+  const upload = (r, content = bytes, ticket) => {
+    const headers = new Headers(inv.headers);
+    for (const [k, v] of Object.entries(r.headers)) headers.set(k, v);
+    headers.set('cookie', a.cookie);
+    headers.set('origin', origin);
+    if (ticket) headers.set('x-acornary-upload-ticket', ticket);
+    return mf.dispatchFetch(origin + r.upload_url, { method: 'PUT', headers, body: content });
+  };
+  const first = await reserve(),
+    second = await reserve();
+  let bad = await upload(first, Buffer.from('%PDF-1.7\n'), 'incorrect-ticket');
+  assert.equal(bad.status, 403);
+  assert.equal((await bad.json()).error.code, 'FORBIDDEN');
+  const corrupt = Buffer.from(bytes);
+  corrupt[20] = 66;
+  bad = await upload(first, corrupt);
+  assert.equal(bad.status, 400);
+  assert.equal((await bad.json()).error.code, 'ATTRIBUTE_VALIDATION_FAILED');
+  for (const r of await Promise.all([upload(first), upload(second)])) {
+    assert.equal(r.status, 200, await r.clone().text());
+    assert.deepEqual(await r.json(), { uploaded: true });
+  }
+  assert.equal((await upload(first)).status, 200);
+  const completed = await inv.run('complete_attachment_upload', {
+    idempotency_key: crypto.randomUUID(),
+    upload_id: first.upload_id,
+    target: { kind: 'ITEM', id: inv.item },
+    expected_revisions: { [inv.item]: 1 },
+  });
+  assert.equal(completed.status, 200);
+  const downloaded = await mf.dispatchFetch(
+    origin + '/api/attachments/' + completed.data.attachment.id,
+    {
+      headers: { ...inv.headers, cookie: a.cookie },
+    },
+  );
+  assert.equal(downloaded.status, 200);
+  assert.equal(
+    createHash('sha256')
+      .update(Buffer.from(await downloaded.arrayBuffer()))
+      .digest('hex'),
+    sha256,
+  );
+});
+
 test('directory failure leaves a recoverable task and stale indexes never retain household authority', async () => {
   const a = await fixture();
   await db

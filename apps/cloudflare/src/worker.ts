@@ -6,7 +6,7 @@ import { Memberships } from './memberships.js';
 import { createMcp } from './mcp.js';
 import { handleTerminal } from './terminal-handler.js';
 import { invoke, execute, type BusinessContext } from './business-client.js';
-import { downloadAttachment, transferAttachment } from './attachment-transfer.js';
+import { downloadAttachment } from './attachment-transfer.js';
 import { household, type Env } from './environment.js';
 import { DomainError } from '../../../packages/domain/src/index.js';
 import { domainErrorStatus } from '../../../packages/contracts/src/errors.js';
@@ -19,6 +19,7 @@ import {
 import { terminalCallback } from '../../../packages/contracts/src/terminal.js';
 import { failure, traces, newTrace, traceMetadata } from './inventory/telemetry.js';
 export { HouseholdStore } from './household-store.js';
+export { AttachmentUpload } from './attachment-upload.js';
 const cache = new WeakMap<object, { auth: Auth; mcp?: ReturnType<typeof createMcp> }>();
 function application(env: Env) {
   let app = cache.get(env);
@@ -267,16 +268,17 @@ async function route(request: Request, env: Env): Promise<Response> {
       const ticket = request.headers.get('x-acornary-upload-ticket');
       if (!ticket || request.headers.get('content-type') !== 'application/octet-stream')
         throw new DomainError('FORBIDDEN', 'Same-origin binary upload and ticket required.');
-      return Response.json(
-        await transferAttachment(
-          household(env, hh!),
+      const result = JSON.parse(
+        await env.UPLOADS.getByName(`${hh}:${upload[1]}`).transfer(
           identity,
           upload[1],
           ticket,
           request.body,
-          env.BLOBS,
         ),
       );
+      if (result.error)
+        throw new DomainError(result.error.code, result.error.message, result.error.details);
+      return Response.json(result.data);
     }
     if (download && request.method === 'GET') {
       const reveal = url.searchParams.get('reveal_sensitive') === 'true';

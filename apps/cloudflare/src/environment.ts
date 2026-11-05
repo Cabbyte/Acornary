@@ -1,7 +1,9 @@
 import type { HouseholdStore } from './household-store.js';
+import type { AttachmentUpload } from './attachment-upload.js';
 export interface Env {
   AUTH_DB: D1Database;
   HOUSEHOLDS: DurableObjectNamespace<HouseholdStore>;
+  UPLOADS: DurableObjectNamespace<AttachmentUpload>;
   BLOBS: R2Bucket;
   BACKUPS: R2Bucket;
   JOBS: Queue;

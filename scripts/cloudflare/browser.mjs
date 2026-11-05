@@ -55,7 +55,10 @@ try {
       scriptPath: 'output/cloudflare-browser/worker.js',
       compatibilityDate: '2026-11-05',
       compatibilityFlags: ['nodejs_compat', 'global_fetch_strictly_public'],
-      durableObjects: { HOUSEHOLDS: { className: 'HouseholdStore', useSQLite: true } },
+      durableObjects: {
+        HOUSEHOLDS: { className: 'HouseholdStore', useSQLite: true },
+        UPLOADS: { className: 'AttachmentUpload', useSQLite: true },
+      },
       d1Databases: { AUTH_DB: 'browser' },
       r2Buckets: { BLOBS: 'blobs', BACKUPS: 'backups' },
       queueProducers: { JOBS: 'browser-jobs' },

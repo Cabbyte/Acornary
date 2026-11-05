@@ -14,6 +14,7 @@ import {
 import { terminalSnapshot } from './inventory/terminal.js';
 import {
   beginUpload,
+  uploadSize,
   confirmUpload,
   downloadMetadata,
   type UploadedMetadata,
@@ -216,6 +217,15 @@ export class HouseholdStore extends DurableObject<{ JOBS?: Queue }> {
           case 'sync':
             data = this.synchronize(identity, args.name, args.input);
             break;
+          case 'beginUpload':
+            data = this.beginUpload(identity, args.id, args.ticket, args.size, args.sha256);
+            break;
+          case 'uploadSize':
+            data = this.uploadSize(identity, args.id, args.ticket);
+            break;
+          case 'confirmUpload':
+            data = this.confirmUpload(identity, args.id, args.lease, args.meta);
+            break;
           case 'context':
             data = this.authorized(identity, false, (ctx) => ({
               household: this.db.query('SELECT * FROM households WHERE id=?1', [ctx.household_id])
@@ -371,6 +381,9 @@ export class HouseholdStore extends DurableObject<{ JOBS?: Queue }> {
             ? syncBootstrap(ctx, input)
             : syncFetch(ctx, input),
     );
+  }
+  uploadSize(identity: HouseholdIdentity, id: string, ticket: string) {
+    return this.authorized(identity, true, (ctx) => uploadSize(ctx, id, ticket));
   }
   beginUpload(
     identity: HouseholdIdentity,

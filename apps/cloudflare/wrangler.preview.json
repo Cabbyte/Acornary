@@ -53,6 +53,10 @@
       {
         "name": "HOUSEHOLDS",
         "class_name": "HouseholdStore"
+      },
+      {
+        "name": "UPLOADS",
+        "class_name": "AttachmentUpload"
       }
     ]
   },
@@ -60,6 +64,10 @@
     {
       "tag": "native-v1",
       "new_sqlite_classes": ["HouseholdStore"]
+    },
+    {
+      "tag": "native-v2-uploads",
+      "new_sqlite_classes": ["AttachmentUpload"]
     }
   ],
   "assets": {

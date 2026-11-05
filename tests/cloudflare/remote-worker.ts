@@ -5,6 +5,7 @@ import { fetchClientMetadataResource } from '../../apps/cloudflare/src/cimd-fetc
 import type { Env } from '../../apps/cloudflare/src/environment.js';
 export {
   HouseholdStore,
+  AttachmentUpload,
   MigrationEntrypoint,
   BackupEntrypoint,
 } from '../../apps/cloudflare/src/worker.js';

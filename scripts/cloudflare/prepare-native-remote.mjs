@@ -86,8 +86,16 @@ Object.assign(config, {
     binding: key.toUpperCase(),
     bucket_name: state.name + '-' + key,
   })),
-  durable_objects: { bindings: [{ name: 'HOUSEHOLDS', class_name: 'HouseholdStore' }] },
-  migrations: [{ tag: 'native-v1', new_sqlite_classes: ['HouseholdStore'] }],
+  durable_objects: {
+    bindings: [
+      { name: 'HOUSEHOLDS', class_name: 'HouseholdStore' },
+      { name: 'UPLOADS', class_name: 'AttachmentUpload' },
+    ],
+  },
+  migrations: [
+    { tag: 'native-v1', new_sqlite_classes: ['HouseholdStore'] },
+    { tag: 'native-v2-uploads', new_sqlite_classes: ['AttachmentUpload'] },
+  ],
   queues: {
     producers: [{ binding: 'JOBS', queue: state.name + '-jobs' }],
     consumers: [

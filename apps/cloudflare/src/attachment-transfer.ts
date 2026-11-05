@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import type { HouseholdStore, HouseholdIdentity } from './household-store.js';
 import { MAX_FILE_SIZE, SafeMediaProcessor, sniffMime } from './inventory/attachments.js';
 import { DomainError, requireFact } from '../../../packages/domain/src/index.js';
@@ -6,17 +5,26 @@ const objectKey = (key: string) => {
   if (!/^[a-f0-9]{64}$/.test(key)) throw new Error('Invalid private blob key');
   return `blobs/${key}.blob`;
 };
-const hash = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
-async function readBody(body: ReadableStream<Uint8Array> | null): Promise<Buffer> {
+const hash = async (bytes: Uint8Array) =>
+  Buffer.from(await crypto.subtle.digest('SHA-256', bytes)).toString('hex');
+async function readBody(
+  body: ReadableStream<Uint8Array> | null,
+  capacity: number,
+): Promise<Buffer> {
   requireFact(body, 'ATTRIBUTE_VALIDATION_FAILED', 'An attachment body is required.');
+  requireFact(
+    capacity > 0 && capacity <= MAX_FILE_SIZE,
+    'ATTACHMENT_TOO_LARGE',
+    'Invalid reservation size.',
+  );
   const reader = body.getReader(),
-    buffer = Buffer.allocUnsafe(MAX_FILE_SIZE);
+    buffer = Buffer.allocUnsafe(capacity);
   let size = 0;
   try {
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
-      if (size + value.byteLength > MAX_FILE_SIZE)
+      if (size + value.byteLength > capacity)
         throw new DomainError('ATTACHMENT_TOO_LARGE', 'Files are limited to 25 MiB.');
       buffer.set(value, size);
       size += value.byteLength;
@@ -30,16 +38,22 @@ async function readBody(body: ReadableStream<Uint8Array> | null): Promise<Buffer
   requireFact(size > 0, 'ATTRIBUTE_VALIDATION_FAILED', 'An attachment body is required.');
   return buffer.subarray(0, size);
 }
+type UploadStore = {
+  [K in 'uploadSize' | 'beginUpload' | 'confirmUpload']: (
+    ...args: Parameters<HouseholdStore[K]>
+  ) => Promise<ReturnType<HouseholdStore[K]>>;
+};
 export async function transferAttachment(
-  store: DurableObjectStub<HouseholdStore>,
+  store: UploadStore,
   identity: HouseholdIdentity,
   id: string,
   ticket: string,
   body: ReadableStream<Uint8Array> | null,
   bucket: R2Bucket,
 ) {
-  const bytes = await readBody(body),
-    sourceDigest = hash(bytes);
+  const size = await store.uploadSize(identity, id, ticket);
+  const bytes = await readBody(body, size),
+    sourceDigest = await hash(bytes);
   const lease = await store.beginUpload(identity, id, ticket, bytes.length, sourceDigest);
   if (lease.uploaded) return { uploaded: true };
   const mime = sniffMime(bytes),
@@ -49,7 +63,8 @@ export async function transferAttachment(
     'ATTACHMENT_TOO_LARGE',
     'Processed media exceeds reservation or changes type.',
   );
-  const digest = hash(media.bytes),
+  // PDFs and unmodified images retain the original buffer; do not hash identical bytes twice.
+  const digest = media.bytes === bytes ? sourceDigest : await hash(media.bytes),
     key = objectKey(lease.storage_key);
   const object = await bucket.put(key, media.bytes, {
     onlyIf: { etagDoesNotMatch: '*' },
@@ -60,21 +75,18 @@ export async function transferAttachment(
   requireFact(object, 'STATE_CONFLICT', 'Upload object already exists.');
   const persisted = await bucket.get(key);
   if (!persisted) throw new Error('Uploaded object was not readable');
-  const verification = createHash('sha256'),
-    reader = persisted.body.getReader();
-  let length = 0;
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      length += value.byteLength;
-      if (length > MAX_FILE_SIZE) throw new Error('Unexpected upload object length');
-      verification.update(value);
-    }
-  } finally {
-    reader.releaseLock();
+  if (persisted.size !== media.bytes.length) {
+    await persisted.body.cancel();
+    throw new Error('Unexpected upload object length');
   }
-  if (length !== media.bytes.length || verification.digest('hex') !== digest)
+  // Native streaming hashing preserves actual-byte read-back verification without a
+  // JavaScript chunk loop or a second whole-file buffer.
+  const verification = new crypto.DigestStream('SHA-256');
+  await persisted.body.pipeTo(verification);
+  if (
+    Number(verification.bytesWritten) !== media.bytes.length ||
+    Buffer.from(await verification.digest).toString('hex') !== digest
+  )
     throw new Error('Uploaded object checksum verification failed');
   return store.confirmUpload(identity, id, lease.lease_id, {
     mime_type: mime,

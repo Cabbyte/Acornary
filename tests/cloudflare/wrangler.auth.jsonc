@@ -1,6 +1,24 @@
 {
-  "name":"acornary-auth-test", "main":"auth-worker.ts", "compatibility_date":"2026-11-05",
-  "compatibility_flags":["nodejs_compat","global_fetch_strictly_public"],
-  "durable_objects":{"bindings":[{"name":"HOUSEHOLDS","class_name":"HouseholdStore"}]},
-  "migrations":[{"tag":"v1","new_sqlite_classes":["HouseholdStore"]}]
+  "name": "acornary-auth-test",
+  "main": "auth-worker.ts",
+  "compatibility_date": "2026-11-05",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "HOUSEHOLDS",
+        "class_name": "HouseholdStore",
+      },
+      {
+        "name": "UPLOADS",
+        "class_name": "AttachmentUpload",
+      },
+    ],
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["HouseholdStore", "AttachmentUpload"],
+    },
+  ],
 }
