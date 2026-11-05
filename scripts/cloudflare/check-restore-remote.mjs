@@ -155,16 +155,30 @@ try {
     assert.equal(sha(bytes), h.sha256);
     for (const blob of JSON.parse(bytes).blobs) copies.add(`objects/${blob.sha256}`);
   }
-  for (const key of copies) {
-    const o = await proxy.env.SOURCE.get(key);
-    assert.ok(o);
-    assert.ok(o.size <= 25 * 1024 * 1024);
-    const bytes = Buffer.from(await o.arrayBuffer()),
-      digest = sha(bytes);
-    await proxy.env.BACKUPS.put(key, bytes, { onlyIf: { etagDoesNotMatch: '*' }, sha256: digest });
-    const stored = await proxy.env.BACKUPS.get(key);
-    assert.ok(stored);
-    assert.equal(sha(Buffer.from(await stored.arrayBuffer())), digest);
+  const objects = [...copies];
+  for (let offset = 0; offset < objects.length; offset += 4) {
+    const copied = await Promise.allSettled(
+      objects.slice(offset, offset + 4).map(async (key) => {
+        const o = await proxy.env.SOURCE.get(key);
+        assert.ok(o);
+        assert.ok(o.size <= 25 * 1024 * 1024);
+        const bytes = Buffer.from(await o.arrayBuffer()),
+          digest = sha(bytes);
+        await proxy.env.BACKUPS.put(key, bytes, {
+          onlyIf: { etagDoesNotMatch: '*' },
+          sha256: digest,
+        });
+        const stored = await proxy.env.BACKUPS.get(key);
+        assert.ok(stored);
+        assert.equal(sha(Buffer.from(await stored.arrayBuffer())), digest);
+      }),
+    );
+    const failed = copied.find((result) => result.status === 'rejected');
+    if (failed) throw failed.reason;
+    if (offset % 100 === 0)
+      console.log(
+        `Copied ${Math.min(offset + 4, objects.length)}/${objects.length} verified backup objects`,
+      );
   }
   console.log(`Verified ${copies.size} copied backup objects`);
   const call = async (path, body) => {

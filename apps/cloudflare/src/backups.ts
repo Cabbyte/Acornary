@@ -120,15 +120,22 @@ export async function backupHousehold(env: Env, id: string, householdId: string)
   for (let page = 0; page < 8 && next < d.chunks; page++) {
     const chunks = await store.backupPage(id, next);
     if (!chunks.length) throw new Error('Frozen household backup is incomplete');
-    for (const chunk of chunks) {
-      if (chunk.ordinal !== next) throw new Error('Backup chunk order differs');
-      await putImmutable(
-        env.BACKUPS,
-        `${prefix(id)}/households/${householdId}/chunks/${next}.json`,
-        chunk.body,
-      );
-      next++;
-    }
+    for (const [index, chunk] of chunks.entries())
+      if (chunk.ordinal !== next + index) throw new Error('Backup chunk order differs');
+    // A page has at most four bounded chunks. Advance only after every immutable write succeeds.
+    // Partial delivery remains replayable and stays below the six outgoing-connection limit.
+    const writes = await Promise.allSettled(
+      chunks.map((chunk) =>
+        putImmutable(
+          env.BACKUPS,
+          `${prefix(id)}/households/${householdId}/chunks/${chunk.ordinal}.json`,
+          chunk.body,
+        ),
+      ),
+    );
+    const failed = writes.find((result) => result.status === 'rejected');
+    if (failed?.status === 'rejected') throw failed.reason;
+    next += chunks.length;
   }
   await env.AUTH_DB.prepare(
     'UPDATE cf_backup_households SET next_chunk=MAX(next_chunk,?) WHERE backup_id=? AND household_id=?',
