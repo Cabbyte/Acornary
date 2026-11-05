@@ -1,0 +1,109 @@
+{
+  "account_id": "b3917d63f5b0f7e77219956e3ee92bce",
+  "name": "acornary-cf-preview",
+  "compatibility_date": "2026-11-05",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+  "d1_databases": [
+    {
+      "binding": "AUTH_DB",
+      "database_name": "acornary-cf-preview-auth",
+      "database_id": "c61d4fc5-d759-468a-b0c9-cf6e155cdf9e",
+      "migrations_dir": "migrations/auth"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BLOBS",
+      "bucket_name": "acornary-cf-preview-blobs"
+    },
+    {
+      "binding": "BACKUPS",
+      "bucket_name": "acornary-cf-preview-backups"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "JOBS",
+        "queue": "acornary-cf-preview-jobs"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "acornary-cf-preview-jobs",
+        "max_batch_size": 1,
+        "max_batch_timeout": 5,
+        "max_retries": 8,
+        "dead_letter_queue": "acornary-cf-preview-failed"
+      }
+    ]
+  },
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "main": "src/worker.ts",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    {
+      "pattern": "cf.acornary.protium.top",
+      "custom_domain": true
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "HOUSEHOLDS",
+        "class_name": "HouseholdStore"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "native-v1",
+      "new_sqlite_classes": [
+        "HouseholdStore"
+      ]
+    }
+  ],
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    "html_handling": "none",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": [
+      "/api/*",
+      "/mcp",
+      "/mcp/*",
+      "/.well-known/*",
+      "/health",
+      "/auth/*"
+    ]
+  },
+  "vars": {
+    "ORIGIN": "https://cf.acornary.protium.top",
+    "ENVIRONMENT": "preview",
+    "RELEASE_VERSION": "development",
+    "RELEASE_COMMIT": "development",
+    "TERMINAL_CLIENT_ID": "acornary-cf-preview-android-v1"
+  },
+  "triggers": {
+    "crons": [
+      "17 19 * * *"
+    ]
+  },
+  "limits": {
+    "cpu_ms": 300000
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": false
+    },
+    "traces": {
+      "enabled": false
+    }
+  }
+}

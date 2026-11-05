@@ -1,3 +1,4 @@
+import { consumeJobs, reconcileAccounts } from './jobs.js';
 import { createHash } from 'node:crypto';
 import { createAuth, type Auth } from './auth.js';
 import { handleAuth } from './auth-handler.js';
@@ -293,6 +294,12 @@ async function route(request: Request, env: Env): Promise<Response> {
   return env.ASSETS.fetch(request);
 }
 export default {
+  queue(batch: MessageBatch<unknown>, env: Env) {
+    return consumeJobs(batch, env);
+  },
+  scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(reconcileAccounts(env));
+  },
   fetch(request: Request, env: Env, execution: ExecutionContext) {
     const trace = newTrace();
     trace.server_origin = env.ORIGIN;
@@ -344,3 +351,4 @@ export default {
 };
 // Named service entrypoint is not routed by the public Fetch handler.
 export { MigrationEntrypoint } from './migration-entrypoint.js';
+export { BackupEntrypoint } from './backup-entrypoint.js';

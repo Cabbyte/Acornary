@@ -189,11 +189,7 @@ export function debugRead(ctx: Context, raw: unknown) {
       }
     }
     const source =
-      table === 'installations'
-        ? '(SELECT household_id,container_catalog_id FROM household_settings)'
-        : table === 'migrations'
-          ? '(SELECT version AS id,version FROM cf_inventory_schema)'
-          : table;
+      table === 'migrations' ? '(SELECT version AS id,version FROM cf_inventory_schema)' : table;
     const count = Number(
       query(c, `SELECT count(*) AS count FROM ${source} t WHERE ${where}`, params).rows[0].count,
     );
@@ -204,7 +200,7 @@ export function debugRead(ctx: Context, raw: unknown) {
     ).rows.map((r) => redactInspectorRecord(table, r));
     const columns = query(
       c,
-      `PRAGMA table_info(${table === 'installations' ? 'household_settings' : table === 'migrations' ? 'cf_inventory_schema' : table})`,
+      `PRAGMA table_info(${table === 'migrations' ? 'cf_inventory_schema' : table})`,
     ).rows.map((r) => ({
       name: r.name,
       data_type: r.type,

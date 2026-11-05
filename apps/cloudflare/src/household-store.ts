@@ -1,3 +1,5 @@
+import { HouseholdBackup } from './household-backup.js';
+import { nextMaintenance, maintenancePlan, acknowledgeCleanup } from './household-maintenance.js';
 import { HouseholdImporter } from './household-import.js';
 import { traces, newTrace, traceMetadata } from './inventory/telemetry.js';
 import { debugRead } from './inventory/debug.js';
@@ -40,12 +42,81 @@ export type HouseholdIdentity = Pick<
 >;
 // RPC-only: callers obtain this capability from the Worker binding after authenticating the D1 principal.
 // Public HTTP requests never supply user/actor IDs to these methods.
-export class HouseholdStore extends DurableObject<{}> {
+export class HouseholdStore extends DurableObject<{ JOBS?: Queue }> {
   protected readonly db: NativeDatabase;
-  constructor(ctx: DurableObjectState, env: {}) {
+  constructor(ctx: DurableObjectState, env: { JOBS?: Queue }) {
     super(ctx, env);
     this.db = new NativeDatabase(ctx.storage);
     this.db.initialize();
+  }
+  private async armMaintenance(delay = 5000) {
+    if (!this.env.JOBS) return;
+    const next = nextMaintenance(this.db, delay),
+      prior = await this.ctx.storage.getAlarm();
+    if (next !== null && (prior === null || prior > next)) await this.ctx.storage.setAlarm(next);
+  }
+  private notifyMaintenance() {
+    this.ctx.waitUntil(this.armMaintenance());
+  }
+  async alarm() {
+    const next = nextMaintenance(this.db);
+    if (next === null) return;
+    if (!this.env.JOBS) throw new Error('Maintenance queue is unavailable');
+    const hh = this.db.query('SELECT household_id FROM cf_store_state WHERE singleton=1').rows[0]
+      .household_id;
+    await this.env.JOBS.send({ kind: 'HOUSEHOLD_MAINTENANCE', household_id: hh });
+    await this.ctx.storage.setAlarm(next);
+  }
+  maintenancePlan() {
+    return maintenancePlan(this.db);
+  }
+  acknowledgeCleanup(id: string) {
+    acknowledgeCleanup(this.db, id);
+  }
+  accountReceipt(id: string, userId: string): AccountResult | null {
+    const row = this.db.query(
+      'SELECT response FROM cf_account_receipts WHERE id=?1 AND user_id=?2',
+      [id, userId],
+    ).rows[0];
+    if (row) return JSON.parse(row.response);
+    const created = this.db.query(
+      "SELECT payload FROM cf_outbox WHERE id=?1 AND kind='DIRECTORY_CREATE'",
+      [id],
+    ).rows[0];
+    if (!created) return null;
+    const p = JSON.parse(created.payload);
+    return p.user_id === userId ? { household_id: p.household_id } : null;
+  }
+  freezeBackup(id: string) {
+    return new HouseholdBackup(this.db).freeze(id);
+  }
+  backupPage(id: string, ordinal: number) {
+    return new HouseholdBackup(this.db).page(id, ordinal);
+  }
+  releaseBackup(id: string) {
+    return new HouseholdBackup(this.db).release(id);
+  }
+  beginRestore(input: unknown) {
+    return new HouseholdBackup(this.db).beginRestore(input);
+  }
+  restorePart(id: string, ordinal: number, body: string) {
+    return new HouseholdBackup(this.db).restorePart(id, ordinal, body);
+  }
+  finishRestore(id: string) {
+    return new HouseholdBackup(this.db).finishRestore(id);
+  }
+  frozenBackupBlobs(id: string, after: string) {
+    return new HouseholdBackup(this.db).frozenBlobs(id, after);
+  }
+  backupBlobPage(after: string) {
+    return new HouseholdBackup(this.db).blobPage(after);
+  }
+  confirmRestoredBlob(key: string, bytes: number, digest: string) {
+    return new HouseholdBackup(this.db).confirmBlob(key, bytes, digest);
+  }
+  activateRestore(id: string) {
+    new HouseholdBackup(this.db).activate(id);
+    this.notifyMaintenance();
   }
   beginImport(descriptor: unknown) {
     return new HouseholdImporter(this.db).begin(descriptor);
@@ -222,7 +293,9 @@ export class HouseholdStore extends DurableObject<{}> {
     | { value: AccountResult; error?: never }
     | { error: { code: string; message: string }; value?: never } {
     try {
-      return { value: householdTask(this.db, input) };
+      const value = householdTask(this.db, input);
+      this.notifyMaintenance();
+      return { value };
     } catch (error) {
       if (error instanceof DomainError)
         return { error: { code: error.code, message: error.message } };
@@ -306,7 +379,11 @@ export class HouseholdStore extends DurableObject<{}> {
     size: number,
     sha256: string,
   ) {
-    return this.authorized(identity, true, (ctx) => beginUpload(ctx, id, ticket, size, sha256));
+    const result = this.authorized(identity, true, (ctx) =>
+      beginUpload(ctx, id, ticket, size, sha256),
+    );
+    this.notifyMaintenance();
+    return result;
   }
   confirmUpload(identity: HouseholdIdentity, id: string, lease: string, meta: UploadedMetadata) {
     return this.authorized(identity, true, (ctx) => confirmUpload(ctx, id, lease, meta));
@@ -329,7 +406,7 @@ export class HouseholdStore extends DurableObject<{}> {
     timezone: string;
     operation_id: string;
   }) {
-    return this.db.transaction(() => {
+    const result = this.db.transaction(() => {
       const prior = this.db.query('SELECT * FROM cf_store_state WHERE singleton=1').rows[0];
       if (prior) {
         const task = this.db.query('SELECT payload FROM cf_outbox WHERE id=?1', [
@@ -401,5 +478,7 @@ export class HouseholdStore extends DurableObject<{}> {
       directoryEvent(this.db, input.operation_id + ':directory', hh);
       return { household_id: hh, actor_id: actor };
     });
+    this.notifyMaintenance();
+    return result;
   }
 }

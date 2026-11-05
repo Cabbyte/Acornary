@@ -62,6 +62,17 @@ export default {
       const stub = env.HOUSEHOLDS.getByName(route);
       if (
         ![
+          'freezeBackup',
+          'backupPage',
+          'releaseBackup',
+          'beginRestore',
+          'restorePart',
+          'finishRestore',
+          'backupBlobPage',
+          'confirmRestoredBlob',
+          'activateRestore',
+          'maintenancePlan',
+          'acknowledgeCleanup',
           'create',
           'command',
           'review',

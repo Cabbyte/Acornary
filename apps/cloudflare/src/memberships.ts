@@ -109,8 +109,26 @@ export class Memberships {
   private async apply(task: { id: string; payload: string; kind: string; user_id: string }) {
     const p = JSON.parse(task.payload),
       stub = household(this.env, p.household_id);
-    const outcome =
-      task.kind === 'create' ? { value: await stub.create(p) } : await stub.accountTask(p);
+    const committed = await stub.accountReceipt(task.id, task.user_id);
+    if (!committed) {
+      const principal = await this.accounts.principal(task.user_id);
+      if (!principal || principal.auth_version !== p.auth_version) {
+        await this.env.AUTH_DB.prepare(
+          "UPDATE cf_account_tasks SET status='FAILED',result=? WHERE id=?",
+        )
+          .bind(
+            JSON.stringify({ code: 'FORBIDDEN', message: 'Account authorization changed.' }),
+            task.id,
+          )
+          .run();
+        throw new APIError('FORBIDDEN');
+      }
+    }
+    const outcome = committed
+      ? { value: committed }
+      : task.kind === 'create'
+        ? { value: await stub.create(p) }
+        : await stub.accountTask(p);
     if ('error' in outcome && outcome.error) {
       await this.env.AUTH_DB.prepare(
         "UPDATE cf_account_tasks SET status='FAILED',result=? WHERE id=?",
@@ -197,6 +215,7 @@ export class Memberships {
       id,
       operation_id: id,
       user_id: user.id,
+      auth_version: user.auth_version,
       actor_name: user.name,
       action: b.action,
       household_id: hh,
@@ -214,6 +233,7 @@ export class Memberships {
     )
       .bind(id, user.id, b.action, JSON.stringify(payload), new Date().toISOString())
       .run();
+    await this.env.JOBS?.send({ kind: 'ACCOUNT_RECOVER', user_id: user.id });
     return this.apply({ id, user_id: user.id, kind: b.action, payload: JSON.stringify(payload) });
   }
 }

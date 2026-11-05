@@ -18,7 +18,7 @@ Branch: `codex/cloudflare-native`. Preview target: `https://cf.acornary.protium.
 - R2 immutable blob importer verifies source bytes and stored bytes, preserves the 25 MiB attachment limit, resumes matching objects and rejects collisions without overwriting. Live Cloudflare R2 upload/read-back/retry checks passed; the temporary bucket was deleted.
 - PostgreSQL-to-workerd D1 integration tests cover snapshot consistency, corruption, credential isolation, rollback, concurrent retries and resumption. The live Cloudflare D1 import check passed on the APAC primary; its disposable database was deleted. See [snapshot migration](snapshot-migration.md).
 
-- Native household schema and synchronous domain engine now implement all 54 baseline operations. Fifteen workerd tests run real commands, approvals, decimal splits, trees, history, notes, date projections, frozen exports, sync cursors, revocation and rollback; the suite asserts every baseline operation has executed successfully.
+- Native household schema and synchronous domain engine now implement all 54 baseline operations. Seventeen workerd tests run real commands, approvals, decimal splits, trees, history, notes, date projections, frozen exports, sync cursors, revocation and rollback; the suite asserts every baseline operation has executed successfully.
 - Runtime R2 transport uses DO reservation/attempt leases, immutable R2 objects, read-back SHA-256 and DO confirmation. A 25 MiB upload/download, duplicate retry, checksum rejection and sensitive/cross-account denial pass in workerd/R2.
 - D1 credential commands use conditional guards and atomic batches rather than callback transactions. Four D1 tests cover concurrent password changes, last-credential retention, one-use passkey ceremonies, disabled accounts and concurrent rate limits. Browser Passkey ceremonies remain a separate acceptance gate.
 - Native Fetch entrypoint implements REST, sync, inspector, attachments, MCP SDK tools/resources and Android routes over the same household DO. Six HTTP integration tests run real Better Auth D1 login, consent, PKCE, MCP scope enforcement, refresh rotation, Android audience restrictions, native inventory writes and account disable. All 54 MCP input schemas and read-only annotations match the frozen baseline.
@@ -27,16 +27,20 @@ Branch: `codex/cloudflare-native`. Preview target: `https://cf.acornary.protium.
 - Household importer and operator CLI now preserve 26 household fact tables, IDs, revisions, raw JSON and chunked receipts. Real PostgreSQL-to-DO tests verify resume/Merkle proofs, every persisted cell, bigint cursors, generation reset and equivalent Decimal command results. A private service binding gates activation on the completed D1 import and actual R2 byte verification. No production snapshot has been obtained.
 - CIMD Worker transport validates public HTTPS hosts, rejects redirects and limits time/bytes. The required real Cloudflare private-network/DNS/same-zone gate has not yet run.
 
+- Native queue consumers and household alarms recover directory projections and account tasks. Expired upload cleanup first terminates the DO lease, then deletes R2 bytes and acknowledges the outbox; tests prove late confirmation cannot resurrect a cleaned object.
+- Daily resumable D1/DO/R2 backups now have immutable manifests, 30-day retention, pins and shared-object deletion leases. Empty-environment restore verifies source hashes and actual attachment bytes before activation, restores credentials/business receipts and resets sync generation. Local joint restore and corruption/retention tests pass; see [backup runbook](backups.md).
+- Actual WebUI and MCP UI assets build with a visible preview label. The application preview Wrangler config passes dry-run, preserves API/health/discovery routing ahead of the SPA and includes explicit isolated bindings. It has not been deployed yet.
+
 ## Not implemented / not accepted yet
 
-The complete native business and HTTP transport now run locally. This is **not yet a deployed migration release**: remote household import/activation, background recovery/backup and real Cloudflare acceptance remain in progress. No application Worker has been deployed.
+The complete native business and HTTP transport now run locally. This is **not yet a deployed migration release**: remote household import/activation, real Cloudflare background recovery/backup acceptance remains in progress. No application Worker has been deployed.
 
 - Complete differential comparison against the source runtime, household import and real-client acceptance.
 - Static Assets deployment and real browser UI acceptance.
 - CIMD public-network transport and real Cloudflare network security tests.
-- R2 orphan cleanup consumer, backup retention coordination and real Cloudflare attachment transport acceptance.
+- Real Cloudflare attachment transport acceptance. Local orphan cleanup, upload fencing and backup retention coordination pass.
 - Remote household import, migration operator acceptance and real production snapshot rehearsal. The native household importer is locally tested; no production data has been imported yet.
-- Queues, alarms, backups, restore rehearsal and observability.
+- Real Cloudflare queue/alarm/backup acceptance and remote restore timing; local native backup and empty-environment recovery now pass.
 - Production resource provisioning, release workflow, domain binding and application deployment. Preview D1/R2/Queue resources are provisioned; no Worker is deployed.
 - Real Web, ChatGPT, Codex, Android and hardware acceptance; seven-day preview.
 
@@ -45,7 +49,6 @@ Do not delete the old runtime or deploy a static placeholder as the migrated pro
 ## External prerequisites observed
 
 Initial read-only SSH attempts to the production alias `ali` (`47.77.197.236:22`) timed out during banner exchange; the latest attempt was immediately closed by the remote endpoint. A connection/restored route is pending from the user for the consistent production snapshot; coding and isolated acceptance continue. No source production writes were attempted.
-
 
 On 2026-11-05, Wrangler OAuth login was verified after the user completed login. D1, R2 and Queues read/create operations succeeded. The API MCP is still not exposed to this chat, but Wrangler is usable and authentication is no longer a blocker.
 

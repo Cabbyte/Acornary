@@ -489,6 +489,9 @@ CREATE INDEX native_sync_changes_64 ON sync_changes(household_id,length(change_i
 CREATE INDEX native_date_facts_65 ON date_facts(household_id,due_on);
 CREATE INDEX native_item_splits_66 ON item_splits(household_id,source_item_id);
 CREATE INDEX native_item_splits_67 ON item_splits(household_id,child_item_id);
+CREATE TABLE cf_backup_sets(id TEXT PRIMARY KEY,descriptor TEXT NOT NULL,mode TEXT NOT NULL CHECK(mode IN ('SNAPSHOT','RESTORE','VALIDATED','RESTORED')),next_chunk INTEGER NOT NULL,root TEXT NOT NULL);
+CREATE TABLE cf_backup_blobs(backup_id TEXT NOT NULL,storage_key TEXT NOT NULL,file_size INTEGER,sha256 TEXT,PRIMARY KEY(backup_id,storage_key));
+CREATE TABLE cf_backup_chunks(backup_id TEXT NOT NULL,ordinal INTEGER NOT NULL,body TEXT NOT NULL,digest TEXT NOT NULL,PRIMARY KEY(backup_id,ordinal));
 CREATE TABLE cf_upload_attempts(lease_id TEXT PRIMARY KEY,upload_id TEXT NOT NULL REFERENCES upload_sessions(id),source_sha256 TEXT NOT NULL,storage_key TEXT NOT NULL UNIQUE,lease_expires_at TEXT NOT NULL,state TEXT NOT NULL CHECK(state IN ('WRITING','CONFIRMED','CLEANED')));CREATE INDEX cf_upload_attempts_upload ON cf_upload_attempts(upload_id,state);
 CREATE TABLE cf_store_state (singleton INTEGER PRIMARY KEY CHECK(singleton=1), household_id TEXT NOT NULL, schema_version INTEGER NOT NULL, status TEXT NOT NULL CHECK(status IN ('IMPORTING','ACTIVE','FROZEN')), manifest_hash TEXT, next_chunk INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE cf_outbox (id TEXT PRIMARY KEY, kind TEXT NOT NULL, payload TEXT NOT NULL CHECK(json_valid(payload)), created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f000Z','now')), delivered_at TEXT);

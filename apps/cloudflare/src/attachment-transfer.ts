@@ -98,9 +98,18 @@ export async function downloadAttachment(
   requireFact(object, 'NOT_FOUND', 'Attachment bytes are unavailable.');
   if (!variant && object.size !== Number(meta.file_size))
     throw new Error('Attachment length mismatch');
+  let mime = meta.mime_type;
+  if (variant === 'thumb') {
+    const prefix = await bucket.get(objectKey(meta.storage_key), {
+      range: { offset: 0, length: 12 },
+    });
+    requireFact(prefix, 'NOT_FOUND', 'Thumbnail bytes are unavailable.');
+    mime = sniffMime(Buffer.from(await prefix.arrayBuffer()));
+    requireFact(mime.startsWith('image/'), 'ATTACHMENT_TYPE_UNSUPPORTED', 'Invalid thumbnail.');
+  }
   return new Response(object.body, {
     headers: {
-      'Content-Type': meta.mime_type,
+      'Content-Type': mime,
       'Content-Length': String(object.size),
       'Content-Disposition': 'attachment',
       'X-Content-Type-Options': 'nosniff',

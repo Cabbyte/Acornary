@@ -24,3 +24,4 @@ jobs:
       - run: pnpm cf:test:auth
       - run: pnpm cf:test:http
       - run: pnpm cf:test:snapshot
+      - run: pnpm cf:test:backup

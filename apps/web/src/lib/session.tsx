@@ -1,3 +1,4 @@
+import { PreviewNotice } from '../ui/preview-notice';
 import { Button, Input } from 'antd';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -326,6 +327,7 @@ export function SessionGate({
   if (!session)
     return (
       <main className="login">
+        <PreviewNotice />
         <h1>松仓</h1>
         {error ? (
           <>
@@ -345,6 +347,7 @@ export function SessionGate({
   if (!session.authenticated || (view === 'auth' && (expired || forceLogin)))
     return (
       <main className="login">
+        <PreviewNotice />
         <img src="/app-icon.png" width="76" height="76" alt="松仓" />
         <h1>欢迎回到松仓</h1>
         <p>家里的每一件，都有迹可循。</p>

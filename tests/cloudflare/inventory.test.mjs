@@ -400,6 +400,88 @@ test('R2 attachment upload verifies full 25 MiB bytes, replays confirmation, and
   assert.equal((await download(true)).status, 400);
 });
 
+test('orphan cleanup fences late confirmations and retries deletion without touching confirmed blobs', async () => {
+  const h = await household(),
+    {
+      items: [item],
+    } = await fixture(h);
+  const bytes = Buffer.from('%PDF-1.7\ninterrupted transfer');
+  const sha = Buffer.from(await crypto.subtle.digest('SHA-256', bytes)).toString('hex');
+  const reserve = () =>
+    h.write('create_attachment_upload', {
+      filename: 'interrupted.pdf',
+      mime_type: 'application/pdf',
+      target: { kind: 'ITEM', id: item },
+      file_size: bytes.length,
+      sha256: sha,
+    });
+  const a = await reserve();
+  const lease = await h.invoke(
+    'beginUpload',
+    h.ctx,
+    a.upload_id,
+    a.headers['X-Acornary-Upload-Ticket'],
+    bytes.length,
+    sha,
+  );
+  const bucket = await mf.getR2Bucket('BLOBS');
+  const key = `blobs/${lease.storage_key}.blob`;
+  await bucket.put(key, bytes);
+  assert.deepEqual((await h.invoke('maintenancePlan')).objects, []);
+  await h.invoke(
+    'inspect',
+    "UPDATE cf_upload_attempts SET lease_expires_at='2000-01-01T00:00:00.000Z' WHERE lease_id=?1",
+    [lease.lease_id],
+  );
+  await h.invoke(
+    'inspect',
+    "UPDATE cf_outbox SET payload=json_set(payload,'$.not_before','2000-01-01T00:00:00.000Z') WHERE id=?1",
+    [lease.lease_id],
+  );
+  const plan = await h.invoke('maintenancePlan');
+  assert.deepEqual(plan.objects, [{ id: lease.lease_id, storage_key: lease.storage_key }]);
+  assert.deepEqual(await h.invoke('maintenancePlan'), plan);
+  // Even extending the old lease cannot resurrect an object selected for deletion.
+  await h.invoke(
+    'inspect',
+    "UPDATE cf_upload_attempts SET lease_expires_at='2099-01-01T00:00:00.000Z' WHERE lease_id=?1",
+    [lease.lease_id],
+  );
+  await assert.rejects(
+    h.invoke('confirmUpload', h.ctx, a.upload_id, lease.lease_id, {
+      mime_type: 'application/pdf',
+      file_size: bytes.length,
+      sha256: sha,
+      width: null,
+      height: null,
+      exif_stripped: false,
+    }),
+    /lease expired/i,
+  );
+  await bucket.delete(key);
+  await h.invoke('acknowledgeCleanup', lease.lease_id);
+  await h.invoke('acknowledgeCleanup', lease.lease_id);
+  assert.equal(await bucket.get(key), null);
+  assert.deepEqual((await h.invoke('maintenancePlan')).objects, []);
+  const b = await reserve();
+  const response = await mf.dispatchFetch('https://test.invalid/upload', {
+    method: 'PUT',
+    headers: {
+      'x-test-identity': JSON.stringify(h.ctx),
+      'x-test-upload': b.upload_id,
+      'x-test-ticket': b.headers['X-Acornary-Upload-Ticket'],
+    },
+    body: bytes,
+  });
+  assert.equal(response.status, 200, await response.text());
+  await h.invoke(
+    'inspect',
+    "UPDATE cf_outbox SET payload=json_set(payload,'$.not_before','2000-01-01T00:00:00.000Z') WHERE kind='UPLOAD_RECONCILE'",
+  );
+  assert.deepEqual((await h.invoke('maintenancePlan')).objects, []);
+  assert.equal((await h.invoke('inspect', 'SELECT count(*) AS n FROM attachment_blobs'))[0].n, 1);
+});
+
 test('upload checksum failures remain unconfirmed and cannot be attached', async () => {
   const h = await household(),
     {
@@ -750,4 +832,91 @@ test('native inspector exposes SQLite metadata with sensitive documents redacted
       throw e;
     }
   }
+});
+
+test('frozen native backup restores an empty DO with exact cursors, receipts and binary chunks', async () => {
+  const h = await household(),
+    {
+      items: [item],
+    } = await fixture(h, 1, [attr('contents', { remaining: { value: '10', unit: 'mL' } })]);
+  const operation = {
+    item_id: item,
+    amount: { value: '1', unit: 'mL' },
+    expected_revisions: { [item]: 1 },
+    idempotency_key: crypto.randomUUID(),
+  };
+  const receipt = await h.run('consume_item_content', operation);
+  await h.invoke(
+    'inspect',
+    "UPDATE household_sync_state SET last_committed_change_id='9007199254740993123'",
+  );
+  await h.invoke('inspect', "INSERT INTO cf_payloads VALUES('backup-fixture',4,1)");
+  await h.invoke('inspect', "INSERT INTO cf_payload_chunks VALUES('backup-fixture',0,X'00FFFE42')");
+  const before = await h.invoke('snapshot', h.ctx),
+    beforeSync = await h.invoke('synchronize', h.ctx, 'state', {});
+  const descriptor = await h.invoke('freezeBackup', crypto.randomUUID());
+  assert.deepEqual(await h.invoke('freezeBackup', descriptor.id), descriptor);
+  await h.write('consume_item_content', {
+    item_id: item,
+    amount: { value: '1', unit: 'mL' },
+    expected_revisions: { [item]: 2 },
+  });
+  const chunks = [];
+  while (chunks.length < descriptor.chunks)
+    chunks.push(...(await h.invoke('backupPage', descriptor.id, chunks.length)));
+  function destination() {
+    const route = id('household');
+    return async (method, ...args) => {
+      const response = await mf.dispatchFetch('https://test.invalid/', {
+        method: 'POST',
+        body: JSON.stringify({ route, method, args }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+      return data;
+    };
+  }
+  const bad = destination();
+  await bad('beginRestore', descriptor);
+  for (const chunk of chunks)
+    await bad(
+      'restorePart',
+      descriptor.id,
+      chunk.ordinal,
+      chunk.ordinal === 0 ? chunk.body + ' ' : chunk.body,
+    );
+  await assert.rejects(bad('finishRestore', descriptor.id), /corrupt/);
+  assert.equal((await bad('inspect', 'SELECT count(*) AS n FROM households'))[0].n, 0);
+  const restore = destination();
+  await restore('beginRestore', descriptor);
+  await assert.rejects(restore('restorePart', descriptor.id, 1, chunks[1].body), /order/);
+  for (const chunk of chunks) {
+    await restore('restorePart', descriptor.id, chunk.ordinal, chunk.body);
+    await restore('restorePart', descriptor.id, chunk.ordinal, chunk.body);
+  }
+  await restore('finishRestore', descriptor.id);
+  await assert.rejects(restore('snapshot', h.ctx), /migration is incomplete/);
+  await restore('activateRestore', descriptor.id);
+  const after = await restore('snapshot', h.ctx);
+  const facts = ({ server_time, cached_at, ...value }) => value;
+  assert.deepEqual(facts(after), facts(before));
+  assert.deepEqual(await restore('command', h.ctx, 'consume_item_content', operation), receipt);
+  const afterSync = await restore('synchronize', h.ctx, 'state', {});
+  assert.equal(afterSync.last_change_id, beforeSync.last_change_id);
+  assert.notEqual(afterSync.generation, beforeSync.generation);
+  assert.equal(
+    (
+      await restore(
+        'inspect',
+        "SELECT hex(data) AS raw FROM cf_payload_chunks WHERE payload_id='backup-fixture'",
+      )
+    )[0].raw,
+    '00FFFE42',
+  );
+  await assert.rejects(
+    restore('beginRestore', { ...descriptor, id: crypto.randomUUID() }),
+    /empty household/,
+  );
+  await h.invoke('releaseBackup', descriptor.id);
+  assert.deepEqual(await h.invoke('backupPage', descriptor.id, 0), []);
 });
