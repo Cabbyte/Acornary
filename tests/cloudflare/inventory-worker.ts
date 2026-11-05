@@ -70,6 +70,13 @@ export default {
           'synchronize',
           'inspect',
           'debug',
+          'beginImport',
+          'importPart',
+          'finishImport',
+          'activateImport',
+          'importStatus',
+          'importBlobPage',
+          'confirmImportedBlob',
           'beginUpload',
           'confirmUpload',
           'downloadMetadata',
@@ -86,3 +93,4 @@ export default {
     }
   },
 };
+export { MigrationEntrypoint } from '../../apps/cloudflare/src/migration-entrypoint.js';

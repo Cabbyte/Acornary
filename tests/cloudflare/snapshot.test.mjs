@@ -1,3 +1,4 @@
+import { prepareHouseholdImports } from '../../scripts/cloudflare/migration/prepare-households.ts';
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -16,7 +17,7 @@ import { AuthDirectory } from '../../apps/cloudflare/src/auth-directory.ts';
 import { chunkDigest } from '../../apps/cloudflare/src/auth-import-model.ts';
 import { BlobSnapshotImporter, blobObjectKey } from '../../apps/cloudflare/src/blob-import.ts';
 const container = 'acornary-cf-snapshot-test-' + randomUUID();
-let pool, root, blobs, hh;
+let pool, root, blobs, hh, sourcePool, sourceExecute, sourceApproved, sourceContext;
 const commit = '18f7e0496ecb4fb960a6619f12f57c68b3898410';
 const key = 'a'.repeat(64),
   bytes = Buffer.from('%PDF-1.7\nSnapshot attachment\n');
@@ -71,6 +72,11 @@ before(
     assert.equal(init.status, 0, init.stderr);
     const initialized = JSON.parse(init.stdout.trim());
     hh = initialized.household_id;
+    process.env.DATABASE_URL = url.href;
+    sourcePool = (await import('../../apps/server/src/db.ts')).pool;
+    sourceExecute = (await import('../../apps/server/src/service.ts')).execute;
+    sourceApproved = (await import('../catalog-helpers.ts')).approvedExecute;
+    sourceContext = { ...initialized, source: 'TEST' };
     await pool.query(
       `INSERT INTO "user"(id,name,email,"emailVerified") VALUES('user','Snapshot user','snapshot@example.invalid',true)`,
     );
@@ -104,6 +110,7 @@ before(
   { timeout: 120000 },
 );
 after(async () => {
+  await sourcePool?.end();
   await pool?.end();
   spawnSync('docker', ['rm', '-f', container], { stdio: 'ignore' });
   if (root) await rm(root, { recursive: true, force: true });
@@ -448,4 +455,238 @@ test('R2 migration preserves the full 25 MiB attachment limit', async () => {
       /Invalid attachment descriptor/,
     );
   });
+});
+
+test('real PostgreSQL household facts import into native DO with Merkle validation, resumption and lossless receipts', async () => {
+  const actor = (await pool.query("SELECT actor_id FROM household_members WHERE user_id='user'"))
+    .rows[0].actor_id;
+  const operation = 'operation_' + randomUUID(),
+    large = '迁移'.repeat(680000);
+  await pool.query(
+    'INSERT INTO operations(household_id,actor_id,idempotency_key,fingerprint,result) VALUES($1,$2,$3,$4,$5::jsonb)',
+    [
+      hh,
+      actor,
+      'large-migration-receipt',
+      'original-source-fingerprint',
+      JSON.stringify({ operation_id: operation, preserved: large, opaque: 'raw-literal' }).replace(
+        '"raw-literal"',
+        '900719925474099312345',
+      ),
+    ],
+  );
+  await pool.query("SELECT setval(pg_get_serial_sequence('sync_changes','change_id'),$1::bigint)", [
+    '9007199254740993',
+  ]);
+  const catalog = await sourceApproved(sourceContext, 'create_catalog_node', {
+    idempotency_key: randomUUID(),
+    kind: 'SKU',
+    name: '迁移牛奶',
+    profile: 'CONSUMABLE',
+  });
+  const created = await sourceExecute(sourceContext, 'create_items', {
+    idempotency_key: randomUUID(),
+    catalog_node_id: catalog.affected_objects[0].id,
+    count: 1,
+    initial_attributes: [
+      {
+        template_id: 'contents',
+        template_version: 1,
+        values: { remaining: { value: '1000', unit: 'mL' } },
+      },
+    ],
+  });
+  const itemId = created.affected_objects[0].id;
+  await sourceExecute(sourceContext, 'add_note', {
+    idempotency_key: randomUUID(),
+    target: { kind: 'ITEM', id: itemId },
+    title: '迁移笔记',
+    body: '保留备注',
+    expected_revisions: { [itemId]: 1 },
+  });
+  const cursor = (
+    await pool.query(
+      'SELECT last_committed_change_id::text AS cursor FROM household_sync_state WHERE household_id=$1',
+      [hh],
+    )
+  ).rows[0].cursor;
+  const { output, result } = await snapshot('production');
+  const plans = await prepareHouseholdImports(output, result.manifest_sha256);
+  assert.equal(plans.length, 1);
+  const { descriptor, chunks } = plans[0];
+  assert.ok(chunks.length > 25);
+  const mf = new Miniflare(
+    convertV4MiniflareOptions({
+      modules: true,
+      scriptPath: 'output/cloudflare-inventory/inventory-worker.js',
+      compatibilityDate: '2026-11-05',
+      compatibilityFlags: ['nodejs_compat'],
+      durableObjects: { HOUSEHOLDS: { className: 'TestInventory', useSQLite: true } },
+    }),
+  );
+  const invoke = async (method, ...args) => {
+    const r = await mf.dispatchFetch('https://test.invalid/', {
+      method: 'POST',
+      body: JSON.stringify({ route: hh, method, args }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.message);
+    return data;
+  };
+  try {
+    assert.equal((await invoke('beginImport', descriptor)).next_chunk, 0);
+    await assert.rejects(invoke('finishImport', descriptor.manifest_hash), /incomplete/);
+    await assert.rejects(
+      invoke('importPart', descriptor.manifest_hash, 1, chunks[1].body, chunks[1].proof),
+      /sequential/,
+    );
+    await assert.rejects(
+      invoke('importPart', descriptor.manifest_hash, 0, chunks[0].body + ' ', chunks[0].proof),
+      /anchored/,
+    );
+    await invoke('importPart', descriptor.manifest_hash, 0, chunks[0].body, chunks[0].proof);
+    await invoke('importPart', descriptor.manifest_hash, 0, chunks[0].body, chunks[0].proof);
+    assert.equal((await invoke('beginImport', descriptor)).next_chunk, 1);
+    const ctx = { household_id: hh, user_id: 'user', actor_id: actor, source: 'TEST' };
+    await assert.rejects(invoke('command', ctx, 'query_items', {}), /incomplete/);
+    for (const chunk of chunks.slice(1))
+      await invoke('importPart', descriptor.manifest_hash, chunk.ordinal, chunk.body, chunk.proof);
+    assert.equal((await invoke('finishImport', descriptor.manifest_hash)).status, 'VALIDATED');
+    const originalGeneration = (
+      await pool.query('SELECT sync_generation FROM household_sync_state WHERE household_id=$1', [
+        hh,
+      ])
+    ).rows[0].sync_generation;
+    await assert.rejects(invoke('command', ctx, 'query_items', {}), /incomplete/);
+    await assert.rejects(invoke('activateImport', descriptor.manifest_hash), /attachment bytes/);
+    await invoke('confirmImportedBlob', descriptor.manifest_hash, key, bytes.length, sha);
+    assert.equal((await invoke('activateImport', descriptor.manifest_hash)).status, 'ACTIVE');
+    const state = await invoke('synchronize', ctx, 'state', {});
+    assert.equal(state.last_change_id, cursor);
+    assert.notEqual(state.generation, originalGeneration);
+    const stored = (
+      await invoke(
+        'inspect',
+        'SELECT result,result_payload,operation_id FROM operations WHERE idempotency_key=?1',
+        ['large-migration-receipt'],
+      )
+    )[0];
+    assert.equal(stored.operation_id, operation);
+    assert.equal(stored.result.preserved, large);
+    assert.ok(stored.result_payload);
+    // Inspect payload bytes through hexadecimal SQL chunks, never through JSON number parsing.
+    const parts = await invoke(
+      'inspect',
+      'SELECT hex(data) AS bytes FROM cf_payload_chunks WHERE payload_id=?1 ORDER BY ordinal',
+      [stored.result_payload],
+    );
+    const raw = Buffer.concat(parts.map((p) => Buffer.from(p.bytes, 'hex'))).toString();
+    assert.match(raw, /900719925474099312345/);
+    assert.equal((await invoke('activateImport', descriptor.manifest_hash)).status, 'ACTIVE');
+    assert.equal((await invoke('synchronize', ctx, 'state', {})).generation, state.generation);
+    const input = {
+      idempotency_key: randomUUID(),
+      item_id: itemId,
+      amount: { value: '0.1', unit: 'mL' },
+      expected_revisions: { [itemId]: 2 },
+    };
+    const before = await sourceExecute(sourceContext, 'consume_item_content', input),
+      after = await invoke('command', ctx, 'consume_item_content', input);
+    assert.deepEqual(after.affected_objects, before.affected_objects);
+    assert.deepEqual(await invoke('command', ctx, 'consume_item_content', input), after);
+    const item = await invoke('command', ctx, 'get_item', { item_id: itemId });
+    assert.equal(
+      item.attributes.find((a) => a.template_id === 'contents').values.remaining.value,
+      '999.9',
+    );
+    await assert.rejects(
+      invoke('beginImport', { ...descriptor, manifest_hash: '0'.repeat(64) }),
+      /another import/,
+    );
+  } finally {
+    await mf.dispose();
+  }
+});
+test('internal migration service activates only after matching D1 identities and actual R2 byte verification', async () => {
+  const { output, result } = await snapshot('production'),
+    hash = result.manifest_sha256;
+  const { descriptor, chunks } = await prepareAuthImport(output, hash),
+    plans = await prepareHouseholdImports(output, hash);
+  const mf = new Miniflare(
+    convertV4MiniflareOptions({
+      name: 'migration-service-test',
+      modules: true,
+      scriptPath: 'output/cloudflare-inventory/inventory-worker.js',
+      compatibilityDate: '2026-11-05',
+      compatibilityFlags: ['nodejs_compat'],
+      durableObjects: { HOUSEHOLDS: { className: 'TestInventory', useSQLite: true } },
+      d1Databases: { AUTH_DB: 'migration-service-auth' },
+      r2Buckets: { BLOBS: 'migration-service-blobs', BACKUPS: 'migration-service-backups' },
+      bindings: { ENVIRONMENT: 'production', ORIGIN: 'https://migration-test.invalid' },
+      serviceBindings: {
+        MIGRATION: { name: 'migration-service-test', entrypoint: 'MigrationEntrypoint' },
+      },
+    }),
+  );
+  try {
+    const db = await mf.getD1Database('AUTH_DB'),
+      bucket = await mf.getR2Bucket('BLOBS'),
+      backups = await mf.getR2Bucket('BACKUPS'),
+      service = (await mf.getBindings()).MIGRATION;
+    for (const name of [
+      '0001_better_auth.sql',
+      '0002_directory.sql',
+      '0003_snapshot_import.sql',
+      '0004_account_commands.sql',
+    ])
+      for (const stmt of (await readFile('apps/cloudflare/migrations/auth/' + name, 'utf8'))
+        .split(';')
+        .filter((s) => s.trim()))
+        await db.prepare(stmt).run();
+    const call = async (path, body = {}) => {
+      const r = await service.fetch('https://migration.internal' + path, {
+        method: 'POST',
+        body: JSON.stringify({ manifest_hash: hash, household_id: hh, ...body }),
+      });
+      return { status: r.status, data: await r.json() };
+    };
+    assert.equal((await call('/begin', { descriptor: plans[0].descriptor })).status, 409);
+    const auth = new AuthSnapshotImporter(db);
+    await auth.start(descriptor);
+    for (let i = 0; i < chunks.length; i++) await auth.append(hash, i, chunks[i]);
+    await auth.finish(hash);
+    assert.equal((await call('/begin', { descriptor: plans[0].descriptor })).status, 200);
+    for (const chunk of plans[0].chunks) {
+      const r = await call('/part', chunk);
+      assert.equal(r.status, 200, JSON.stringify(r));
+    }
+    assert.equal((await call('/finish')).status, 200);
+    assert.equal((await call('/activate')).status, 409);
+    assert.equal((await call('/verify-blobs')).status, 409);
+    await backups.put(
+      `migrations/${hash}/manifest.json`,
+      await readFile(join(output, 'manifest.json')),
+    );
+    await bucket.put(blobObjectKey(key), 'corrupt');
+    assert.equal((await call('/verify-blobs')).status, 409);
+    await bucket.delete(blobObjectKey(key));
+    await new BlobSnapshotImporter(bucket).put(key, Uint8Array.from(bytes).buffer, {
+      bytes: bytes.length,
+      sha256: sha,
+    });
+    const verified = await call('/verify-blobs');
+    assert.equal(verified.status, 200, JSON.stringify(verified));
+    assert.equal(verified.data.data.verified, 1);
+    const active = await call('/activate');
+    assert.equal(active.status, 200, JSON.stringify(active));
+    assert.equal(active.data.data.status, 'ACTIVE');
+    assert.equal(
+      (await db.prepare('SELECT state FROM household_directory WHERE id=?').bind(hh).first()).state,
+      'ACTIVE',
+    );
+    assert.equal(await new AuthDirectory(db).principal('user'), null);
+    assert.equal((await call('/activate')).status, 200);
+  } finally {
+    await mf.dispose();
+  }
 });

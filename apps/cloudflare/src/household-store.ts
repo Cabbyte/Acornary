@@ -1,3 +1,4 @@
+import { HouseholdImporter } from './household-import.js';
 import { traces, newTrace, traceMetadata } from './inventory/telemetry.js';
 import { debugRead } from './inventory/debug.js';
 import { terminalCommand, type TerminalCommand } from '../../../packages/contracts/src/terminal.js';
@@ -45,6 +46,27 @@ export class HouseholdStore extends DurableObject<{}> {
     super(ctx, env);
     this.db = new NativeDatabase(ctx.storage);
     this.db.initialize();
+  }
+  beginImport(descriptor: unknown) {
+    return new HouseholdImporter(this.db).begin(descriptor);
+  }
+  importPart(manifest: string, ordinal: number, body: string, proof: string[]) {
+    return new HouseholdImporter(this.db).part(manifest, ordinal, body, proof);
+  }
+  finishImport(manifest: string) {
+    return new HouseholdImporter(this.db).finish(manifest);
+  }
+  activateImport(manifest: string) {
+    return new HouseholdImporter(this.db).activate(manifest);
+  }
+  importBlobPage(manifest: string, after: string) {
+    return new HouseholdImporter(this.db).blobPage(manifest, after);
+  }
+  confirmImportedBlob(manifest: string, key: string, bytes: number, digest: string) {
+    return new HouseholdImporter(this.db).confirmBlob(manifest, key, bytes, digest);
+  }
+  importStatus() {
+    return new HouseholdImporter(this.db).status();
   }
   resolveMember(
     householdId: string,

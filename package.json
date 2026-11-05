@@ -23,10 +23,11 @@
     "cf:import-blobs": "node --import tsx scripts/cloudflare/import-blobs.mjs",
     "cf:check:auth-remote": "node --import tsx scripts/cloudflare/check-auth-import-remote.mjs",
     "cf:check:blobs-remote": "node --import tsx scripts/cloudflare/check-blobs-remote.mjs",
-    "cf:test:snapshot": "node --import tsx --test tests/cloudflare/snapshot.test.mjs",
+    "cf:test:snapshot": "wrangler deploy --dry-run --config tests/cloudflare/wrangler.inventory.jsonc --outdir ../../output/cloudflare-inventory && node --import tsx --test tests/cloudflare/snapshot.test.mjs",
     "cf:test:inventory": "wrangler deploy --dry-run --config tests/cloudflare/wrangler.inventory.jsonc --outdir ../../output/cloudflare-inventory && node --test tests/cloudflare/inventory.test.mjs",
     "cf:test:auth": "node --import tsx --test tests/cloudflare/auth-commands.test.mjs",
-    "cf:test:http": "wrangler deploy --dry-run --config tests/cloudflare/wrangler.auth.jsonc --outdir ../../output/cloudflare-auth && node --test tests/cloudflare/auth-http.test.mjs"
+    "cf:test:http": "wrangler deploy --dry-run --config tests/cloudflare/wrangler.auth.jsonc --outdir ../../output/cloudflare-auth && node --test tests/cloudflare/auth-http.test.mjs",
+    "cf:import-households": "node --import tsx scripts/cloudflare/import-households.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "6.3.4",

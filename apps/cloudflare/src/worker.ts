@@ -342,3 +342,5 @@ export default {
     });
   },
 };
+// Named service entrypoint is not routed by the public Fetch handler.
+export { MigrationEntrypoint } from './migration-entrypoint.js';

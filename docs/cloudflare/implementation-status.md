@@ -24,17 +24,18 @@ Branch: `codex/cloudflare-native`. Preview target: `https://cf.acornary.protium.
 - Native Fetch entrypoint implements REST, sync, inspector, attachments, MCP SDK tools/resources and Android routes over the same household DO. Six HTTP integration tests run real Better Auth D1 login, consent, PKCE, MCP scope enforcement, refresh rotation, Android audience restrictions, native inventory writes and account disable. All 54 MCP input schemas and read-only annotations match the frozen baseline.
 - Household create, rename, invite, redeem and leave use persistent D1 account tasks plus transactional DO outbox. Injected directory failures recover without duplicate households; revoked membership denies access even while its D1 index is stale.
 - Structured RPC errors preserve domain codes and revisions; ingress logs request/DO timing and idempotent replay without request bodies or credentials.
+- Household importer and operator CLI now preserve 26 household fact tables, IDs, revisions, raw JSON and chunked receipts. Real PostgreSQL-to-DO tests verify resume/Merkle proofs, every persisted cell, bigint cursors, generation reset and equivalent Decimal command results. A private service binding gates activation on the completed D1 import and actual R2 byte verification. No production snapshot has been obtained.
 - CIMD Worker transport validates public HTTPS hosts, rejects redirects and limits time/bytes. The required real Cloudflare private-network/DNS/same-zone gate has not yet run.
 
 ## Not implemented / not accepted yet
 
-The complete native business and HTTP transport now run locally. This is **not yet a deployed migration release**: full household snapshot import/activation, background recovery/backup and real Cloudflare acceptance remain in progress. No application Worker has been deployed.
+The complete native business and HTTP transport now run locally. This is **not yet a deployed migration release**: remote household import/activation, background recovery/backup and real Cloudflare acceptance remain in progress. No application Worker has been deployed.
 
 - Complete differential comparison against the source runtime, household import and real-client acceptance.
 - Static Assets deployment and real browser UI acceptance.
 - CIMD public-network transport and real Cloudflare network security tests.
 - R2 orphan cleanup consumer, backup retention coordination and real Cloudflare attachment transport acceptance.
-- Household inventory DO import, resumable full migration and cross-store verification. Source snapshot export and resumable D1/R2 import now exist; no production data has been imported yet.
+- Remote household import, migration operator acceptance and real production snapshot rehearsal. The native household importer is locally tested; no production data has been imported yet.
 - Queues, alarms, backups, restore rehearsal and observability.
 - Production resource provisioning, release workflow, domain binding and application deployment. Preview D1/R2/Queue resources are provisioned; no Worker is deployed.
 - Real Web, ChatGPT, Codex, Android and hardware acceptance; seven-day preview.

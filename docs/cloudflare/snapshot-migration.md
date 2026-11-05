@@ -90,3 +90,31 @@ The first command runs 12 integration tests using a disposable PostgreSQL 18 con
 The two remote checks create uniquely named temporary D1/R2 resources, test real behavior and remove their resources. D1 checks ordered/concurrent import behavior. R2 uploads and reads back a 25 MiB file, checks retries and rejects different content at the same key. These commands do not use production or preview application data and are not part of automatic CI.
 
 On 2026-11-05 both live checks passed (D1 served by the APAC primary). The temporary database and bucket were deleted. Preview schema migration `0003_snapshot_import.sql` was also applied; no production snapshot has yet been loaded into preview.
+
+## Native household import
+
+`pnpm cf:import-households` follows identity and blob import. Its operator must explicitly select
+`--config`, `--worker-name`, `--mode`, the verified `--snapshot` and `--expected-sha256`, plus
+`--remote` (or a connected local Wrangler service and `--local-state`). Add `--activate` only when
+opening the validated isolated destination. The production source is never written by this tool.
+
+The CLI uses Wrangler's account-authorized remote service binding to the named
+`MigrationEntrypoint`, not a public HTTP route or a bearer migration endpoint. This follows the
+[documented remote service-binding pattern for Durable Objects](https://developers.cloudflare.com/workers/local-development/#using-remote-resources-with-durable-objects-and-workflows).
+A matching completed D1 import is required. Each household plan uses a Merkle root with ordered,
+individually verified 128 KiB row fragments; retries and mid-row interruption resume from durable
+receipts. Catalog and item parents are ordered before children. SQLite `RETURNING` verifies every
+persisted cell against the prepared source representation. Large operation receipts remain in
+transactional payload chunks, preserving their original IDs, fingerprints and JSON numeric literals.
+
+The household remains inaccessible during import and validation. Before activation, the service
+loads the hash-anchored manifest from private R2, reads and hashes every household attachment,
+checks the original blob metadata, then records verified bytes in the household transaction store.
+Activation generates a new synchronization generation and projects directory revision 2 over the
+imported pending revision 1. An interrupted projection is replayable; it does not grant access
+without authoritative DO membership.
+
+Local workerd acceptance covers source-schema import, foreign keys, unchanged Decimal consumption
+against the PostgreSQL reference, bigint cursors, multi-megabyte receipts, proof tampering,
+resumption, private service binding, missing/corrupt R2 bytes, disabled principals and activation.
+A successful local import is not a production snapshot or remote deployment acceptance.

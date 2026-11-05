@@ -495,6 +495,9 @@ CREATE TABLE cf_outbox (id TEXT PRIMARY KEY, kind TEXT NOT NULL, payload TEXT NO
 CREATE TABLE cf_directory_clock(singleton INTEGER PRIMARY KEY CHECK(singleton=1),revision TEXT NOT NULL);
 INSERT INTO cf_directory_clock VALUES(1,'0');
 CREATE TABLE cf_account_receipts(id TEXT PRIMARY KEY,user_id TEXT NOT NULL,fingerprint TEXT NOT NULL,response TEXT NOT NULL CHECK(json_valid(response)));
+CREATE TABLE cf_import_manifest(singleton INTEGER PRIMARY KEY CHECK(singleton=1),fingerprint TEXT NOT NULL,descriptor TEXT NOT NULL,status TEXT NOT NULL CHECK(status IN ('IMPORTING','VALIDATED','ACTIVE')));
+CREATE TABLE cf_import_parts(row_number INTEGER NOT NULL,table_name TEXT NOT NULL,part_count INTEGER NOT NULL,ordinal INTEGER PRIMARY KEY,data TEXT NOT NULL);
+CREATE TABLE cf_import_blob_checks(storage_key TEXT PRIMARY KEY,byte_length INTEGER NOT NULL,sha256 TEXT NOT NULL);
 CREATE TABLE cf_import_chunks (ordinal INTEGER PRIMARY KEY, digest TEXT NOT NULL);
 CREATE TRIGGER immutable_events_update BEFORE UPDATE ON events BEGIN SELECT RAISE(ABORT,'STATE_CONFLICT: Append-only relation'); END;
 CREATE TRIGGER immutable_events_delete BEFORE DELETE ON events BEGIN SELECT RAISE(ABORT,'STATE_CONFLICT: Append-only relation'); END;
