@@ -246,7 +246,12 @@ export function httpAcceptance({ mf, db, origin }) {
         jsonrpc: '2.0',
         id: 1,
         method,
-        params: method === 'tools/call' ? { name, arguments: args, _meta: meta } : { _meta: meta },
+        params:
+          method === 'tools/call'
+            ? { name, arguments: args, _meta: meta }
+            : method === 'resources/read'
+              ? { uri: name, _meta: meta }
+              : { _meta: meta },
       },
       {
         authorization: 'Bearer ' + bearer,

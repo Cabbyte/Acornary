@@ -33,7 +33,8 @@
     "cf:release:check": "node --import tsx scripts/cloudflare/release.mjs",
     "cf:deploy:preview": "node --import tsx scripts/cloudflare/release.mjs --deploy",
     "cf:test:browser": "pnpm cf:build && wrangler deploy --dry-run --config apps/cloudflare/wrangler.preview.json --outdir ../../output/cloudflare-browser && node scripts/cloudflare/browser.mjs",
-    "cf:reference": "node scripts/cloudflare/reference.mjs"
+    "cf:reference": "node scripts/cloudflare/reference.mjs",
+    "cf:test:operators": "node --test tests/cloudflare/operators.test.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "6.3.4",

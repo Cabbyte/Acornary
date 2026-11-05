@@ -29,7 +29,7 @@ Branch: `codex/cloudflare-native`. Preview target: `https://cf.acornary.protium.
 
 - Native queue consumers and household alarms recover directory projections and account tasks. Expired upload cleanup first terminates the DO lease, then deletes R2 bytes and acknowledges the outbox; tests prove late confirmation cannot resurrect a cleaned object.
 - Daily resumable D1/DO/R2 backups now have immutable manifests, 30-day retention, pins and shared-object deletion leases. Empty-environment restore verifies source hashes and actual attachment bytes before activation, restores credentials/business receipts and resets sync generation. Local joint restore and corruption/retention tests pass; see [backup runbook](backups.md).
-- Root build/start and CI now target Cloudflare only. The existing full Web/MCP UI Chromium suite runs against actual workerd/D1/DO/R2: 70 pass, with 3 disabled registration/email-recovery scenarios explicitly skipped. 144 pure tests and all types pass.
+- Root build/start and CI now target Cloudflare only. The existing full Web/MCP UI Chromium suite runs against actual workerd/D1/DO/R2: 70 pass, with 3 disabled registration/email-recovery scenarios explicitly skipped. 144 pure tests and all types pass. The 15-scenario WebKit subset also passes, including restored focus after responsive sheet resizing.
 - Actual WebUI and MCP UI assets build with a visible preview label. The application preview Wrangler config passes dry-run, preserves API/health/discovery routing ahead of the SPA and includes explicit isolated bindings. It has not been deployed yet.
 
 ## Not implemented / not accepted yet

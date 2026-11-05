@@ -1,3 +1,5 @@
+> Cloudflare 原生分支说明：本文保留旧版本的设计或运行记录。当前运行、迁移和发布以 [原生预览手册](cloudflare/preview-release.md) 与 [验收记录](cloudflare/acceptance.md) 为准；旧 PostgreSQL/Fastify/SSH 运行时仅存在于固定基线提交 `18f7e04`。
+
 # 版本标签与自动发布
 
 正式发布链路：合入 `main` → 推送 `v主版本.次版本.修订号` → GitHub Actions 测试 → GHCR 镜像 → 受限 SSH 提交服务器任务 → 停服、按需迁移、启动与核对。

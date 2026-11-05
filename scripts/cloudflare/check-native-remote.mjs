@@ -88,6 +88,15 @@ try {
   const plugin = await helpers.mcp(a, refreshed.data.access_token, 'resources/list');
   assert.equal(plugin.status, 200);
   assert.ok(plugin.data.result.resources.some((r) => r.uri.startsWith('ui://')));
+  const resourceUI = plugin.data.result.resources.find((r) => r.uri.startsWith('ui://'));
+  const contentUI = await helpers.mcp(
+    a,
+    refreshed.data.access_token,
+    'resources/read',
+    resourceUI.uri,
+  );
+  assert.equal(contentUI.status, 200);
+  assert.match(contentUI.data.result.contents[0].text, /<html/);
   passed('MCP UI asset resource');
   const bytes = Buffer.alloc(25 * 1024 * 1024, 65);
   bytes.write('%PDF-1.7\n');

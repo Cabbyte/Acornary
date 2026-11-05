@@ -1,3 +1,5 @@
+> Cloudflare 原生分支说明：本文保留旧版本的设计或运行记录。当前运行、迁移和发布以 [原生预览手册](cloudflare/preview-release.md) 与 [验收记录](cloudflare/acceptance.md) 为准；旧 PostgreSQL/Fastify/SSH 运行时仅存在于固定基线提交 `18f7e04`。
+
 # Stage2 云端运行
 
 目标地址：`https://acornary.protium.top`，MCP：`https://acornary.protium.top/mcp`。美国服务器 `47.77.197.236`。当前正式切换状态以 [验证记录](./stage2-verification.md) 为准，不能把预验收环境当成正式库存。

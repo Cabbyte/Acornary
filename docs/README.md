@@ -1,3 +1,5 @@
+> Cloudflare 原生分支说明：本文保留旧版本的设计或运行记录。当前运行、迁移和发布以 [原生预览手册](cloudflare/preview-release.md) 与 [验收记录](cloudflare/acceptance.md) 为准；旧 PostgreSQL/Fastify/SSH 运行时仅存在于固定基线提交 `18f7e04`。
+
 # Acornary 文档
 
 语音入库扩展：版本必填、错误恢复、请求追踪、原子批量操作及 product v2 见 [语音入库指南](./voice-intake.md)。下文历史阶段中的 v1 限制以该扩展说明为准。

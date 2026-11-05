@@ -28,6 +28,7 @@ jobs:
       - run: pnpm cf:test:http
       - run: pnpm cf:test:snapshot
       - run: pnpm cf:test:backup
+      - run: pnpm cf:test:operators
   deploy-preview:
     needs: native-kernel
     if: github.event_name == 'push' && github.ref == 'refs/heads/codex/cloudflare-native' && vars.CF_PREVIEW_DEPLOY_ENABLED == 'true'
