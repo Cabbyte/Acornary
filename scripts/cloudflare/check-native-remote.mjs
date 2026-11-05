@@ -126,7 +126,15 @@ try {
     headers: uploadHeaders,
     body: bytes,
   });
-  assert.equal(upload.status, 200, await upload.text());
+  const uploadText = await upload.text();
+  if (upload.status !== 200)
+    report.failure = {
+      step: '25 MiB attachment upload',
+      http_status: upload.status,
+      cloudflare_error: uploadText.match(/cf-error-code[^>]*>(\d+)/)?.[1],
+      ray_id: upload.headers.get('cf-ray'),
+    };
+  assert.equal(upload.status, 200, '25 MiB attachment upload failed; inspect report.json');
   const attached = await inv.run('complete_attachment_upload', {
     idempotency_key: crypto.randomUUID(),
     upload_id: reserved.data.upload_id,
@@ -196,8 +204,17 @@ try {
   report.backup = backup;
   passed('live Queue consumer and unified R2 backup manifest');
   report.completed_at = new Date().toISOString();
+  report.status = 'PASS';
   await writeFile(resolve(root, 'report.json'), JSON.stringify(report, null, 2), { mode: 0o600 });
   console.log('Native Cloudflare acceptance passed');
+} catch (error) {
+  report.status = 'FAIL';
+  report.completed_at = new Date().toISOString();
+  // Do not leave a previous PASS receipt in place after a failed rerun, or persist
+  // arbitrary response bodies that could contain account data or credentials.
+  report.failure ??= { step: 'after ' + (report.checks.at(-1)?.name ?? 'setup') };
+  await writeFile(resolve(root, 'report.json'), JSON.stringify(report, null, 2), { mode: 0o600 });
+  throw error;
 } finally {
   await proxy.dispose();
 }

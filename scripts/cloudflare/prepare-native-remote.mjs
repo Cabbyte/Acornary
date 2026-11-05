@@ -16,6 +16,8 @@ try {
   state = { name: 'acornary-cf-accept-' + randomBytes(4).toString('hex') };
   await writeFile(statePath, JSON.stringify(state), { mode: 0o600 });
 }
+if (state.cleaned_at)
+  throw new Error('Archive the completed acceptance state before provisioning again');
 if (!/^acornary-cf-accept-[a-f0-9]{8}$/.test(state.name))
   throw new Error('Unexpected acceptance resource name');
 const base = JSON.parse(await readFile('apps/cloudflare/resources.preview.json', 'utf8'));

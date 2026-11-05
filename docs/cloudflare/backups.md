@@ -28,3 +28,13 @@ pnpm cf:backup --config apps/cloudflare/wrangler.preview.json --remote --action 
 For recovery, create fresh D1/DO/BLOBS resources, expose their private `BackupEntrypoint` and bind the source BACKUPS bucket. Keep the backed-up environment/origin unchanged, and keep public traffic fenced. Then run `pnpm cf:backup --config RESTORE_CONFIG.json --remote --action restore --id BACKUP_UUID --expected-sha256 ROOT_SHA256`. The command verifies the root before importing and reports restore duration. It resumes the identical restore plan after interruption. It cannot restore over an active family or substitute the preview origin for production.
 
 Local Wrangler dev uses `--persist-to PATH`, while the operator's `--local-state` points to `PATH/v3`. An end-to-end local CLI start/restore exercise on 2026-11-05 completed for one browser-created family in 0.229 seconds. This is not the production RTO.
+
+For a completely separate remote preview rehearsal, run:
+
+```sh
+node scripts/cloudflare/check-restore-remote.mjs --backup-id BACKUP_UUID --expected-sha256 ROOT_SHA256
+```
+
+This provisions unrouted disposable resources and copies immutable backup objects into a separate bucket, verifying their SHA-256 values. Four object transfers run at a time; verified-copy receipts survive interruptions, and only transient R2 transport errors receive bounded retries. The source backup and preview inventory are never modified. State and the final report are private under `.local/cf-restore-acceptance/`. Archive a completed and cleaned state directory before beginning another rehearsal.
+
+The 2026-11-05 real Cloudflare rehearsal verified 1085 objects and restored both imported households, with zero restored sessions or OAuth tokens. The import took 187 seconds after staging; provisioning and cross-bucket copying are excluded. The source backup remains pinned. See [acceptance evidence](acceptance.md) for its exact manifest commitment and remaining production-cutover gates.

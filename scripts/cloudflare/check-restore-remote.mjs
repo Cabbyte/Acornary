@@ -28,6 +28,10 @@ try {
   state = { name: 'acornary-cf-restore-' + randomBytes(4).toString('hex') };
 }
 assert.match(state.name, /^acornary-cf-restore-[a-f0-9]{8}$/);
+assert.ok(!state.cleaned_at, 'Archive the completed rehearsal state before creating new resources');
+if (state.backup_id) assert.equal(state.backup_id, v['backup-id']);
+state.backup_id = v['backup-id'];
+state.copied ??= [];
 const save = () =>
   writeFile(resolve(root, 'state.json'), JSON.stringify(state, null, 2), { mode: 0o600 });
 await save();
@@ -155,24 +159,36 @@ try {
     assert.equal(sha(bytes), h.sha256);
     for (const blob of JSON.parse(bytes).blobs) copies.add(`objects/${blob.sha256}`);
   }
-  const objects = [...copies];
+  const objects = [...copies].filter((key) => !state.copied.includes(key));
   for (let offset = 0; offset < objects.length; offset += 4) {
     const copied = await Promise.allSettled(
       objects.slice(offset, offset + 4).map(async (key) => {
-        const o = await proxy.env.SOURCE.get(key);
-        assert.ok(o);
-        assert.ok(o.size <= 25 * 1024 * 1024);
-        const bytes = Buffer.from(await o.arrayBuffer()),
-          digest = sha(bytes);
-        await proxy.env.BACKUPS.put(key, bytes, {
-          onlyIf: { etagDoesNotMatch: '*' },
-          sha256: digest,
-        });
-        const stored = await proxy.env.BACKUPS.get(key);
-        assert.ok(stored);
-        assert.equal(sha(Buffer.from(await stored.arrayBuffer())), digest);
+        for (let attempt = 0; ; attempt++) {
+          try {
+            const o = await proxy.env.SOURCE.get(key);
+            assert.ok(o);
+            assert.ok(o.size <= 25 * 1024 * 1024);
+            const bytes = Buffer.from(await o.arrayBuffer()),
+              digest = sha(bytes);
+            await proxy.env.BACKUPS.put(key, bytes, {
+              onlyIf: { etagDoesNotMatch: '*' },
+              sha256: digest,
+            });
+            const stored = await proxy.env.BACKUPS.get(key);
+            assert.ok(stored);
+            assert.equal(sha(Buffer.from(await stored.arrayBuffer())), digest);
+            state.copied.push(key);
+            return;
+          } catch (error) {
+            if (attempt >= 3 || !/10043|network|fetch failed|socket/i.test(String(error)))
+              throw error;
+            console.log(`Retrying transient R2 transport failure (attempt ${attempt + 1})`);
+            await new Promise((resolve) => setTimeout(resolve, (attempt + 1) * 1000));
+          }
+        }
       }),
     );
+    await save();
     const failed = copied.find((result) => result.status === 'rejected');
     if (failed) throw failed.reason;
     if (offset % 100 === 0)
