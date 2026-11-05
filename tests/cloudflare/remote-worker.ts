@@ -14,7 +14,13 @@ export class NetworkCheck extends WorkerEntrypoint<Env> {
     try {
       const response = await fetchClientMetadataResource(b.url, {
         method: 'GET',
-        headers: { authorization: 'must-not-forward', cookie: 'must-not-forward' },
+        redirect: 'error',
+        signal: new AbortController().signal,
+        headers: {
+          accept: 'application/json',
+          authorization: 'must-not-forward',
+          cookie: 'must-not-forward',
+        },
       });
       return Response.json({
         status: response.status,

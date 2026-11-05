@@ -17,6 +17,21 @@ before(async () => {
       compatibilityDate: '2026-11-05',
       compatibilityFlags: ['nodejs_compat'],
       outboundService: async (req) => {
+        if (req.url === 'https://cimd.example.org/redirect.json')
+          return Response.redirect('https://127.0.0.1/', 302);
+        if (req.url === 'https://cimd.example.org/client.json') {
+          assert.equal(req.headers.get('authorization'), null);
+          assert.equal(req.headers.get('cookie'), null);
+          return Response.json({
+            client_id: req.url,
+            client_name: 'CIMD regression',
+            application_type: 'native',
+            redirect_uris: ['http://127.0.0.1/callback'],
+            token_endpoint_auth_method: 'none',
+            grant_types: ['authorization_code', 'refresh_token'],
+            response_types: ['code'],
+          });
+        }
         if (req.url === origin + '/api/auth/jwks' && jwksForTest)
           return new Response(jwksForTest, { headers: { 'content-type': 'application/json' } });
         throw new Error('Unexpected external request ' + new URL(req.url).origin);
@@ -49,6 +64,35 @@ before(async () => {
 });
 after(async () => {
   await mf?.dispose();
+});
+test('CIMD SDK redirect:error works on workerd while HTTP redirects stay forbidden', async () => {
+  const a = await fixture();
+  for (const [path, allowed] of [
+    ['client.json', true],
+    ['redirect.json', false],
+  ]) {
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: 'https://cimd.example.org/' + path,
+      redirect_uri: 'http://127.0.0.1:45123/callback',
+      resource: origin + '/mcp',
+      scope: 'openid inventory:read',
+      state: 'cimd-test',
+      code_challenge_method: 'S256',
+      code_challenge: createHash('sha256')
+        .update('cimd-test-verifier-'.repeat(4))
+        .digest('base64url'),
+    });
+    const response = await a.request('/oauth2/authorize?' + params, undefined, {
+      accept: 'text/html',
+      'sec-fetch-mode': 'navigate',
+    });
+    if (allowed) assert.ok([200, 302].includes(response.status), JSON.stringify(response.data));
+    else {
+      assert.equal(response.status, 400);
+      assert.equal(response.data.error, 'invalid_client');
+    }
+  }
 });
 async function fixture() {
   const user = crypto.randomUUID(),

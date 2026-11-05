@@ -5,7 +5,9 @@ import type { ClientMetadataResourceFetch } from '@better-auth/oauth-provider';
  * Workers' global_fetch_strictly_public boundary, which must be enabled on every deployment.
  * This transport does not claim to reproduce the former Node DNS-pinning implementation. */
 export const fetchClientMetadataResource: ClientMetadataResourceFetch = async (input, init) => {
-  const request = new Request(input, init),
+  // Workers Request does not implement redirect:'error', which the CIMD SDK supplies.
+  // Use manual mode and enforce the same rejection policy below before exposing any response.
+  const request = new Request(input, { ...init, redirect: 'manual' }),
     url = new URL(request.url);
   if (
     url.protocol !== 'https:' ||
