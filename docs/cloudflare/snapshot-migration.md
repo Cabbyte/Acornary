@@ -1,6 +1,6 @@
 # Snapshot export and D1 account import
 
-These tools implement the source snapshot and D1 account/directory portion of migration. Household inventory import, R2 delivery, activation and the application Worker are still separate unfinished work. `AUTH_IMPORTED` does **not** mean the complete Acornary migration has finished.
+These tools implement source snapshots, D1 account/directory import and verified R2 blob transfer. Household inventory import, activation and the application Worker are still separate unfinished work. `AUTH_IMPORTED` or `BLOBS_VERIFIED` does **not** mean the complete Acornary migration has finished.
 
 ## Export an isolated source package
 
@@ -62,15 +62,31 @@ An empty destination is reserved for one exact plan. Each bounded chunk writes i
 
 Completion checks all expected account/directory row counts and records `AUTH_IMPORTED`. Household directory entries remain `PENDING`. Imported memberships are lookup projections, not authorization. Household DO import, authoritative membership verification, R2 verification and the activation coordinator must finish before traffic can be enabled. This implementation intentionally has no activation command yet.
 
+## Transfer immutable attachments to private R2
+
+```sh
+pnpm cf:import-blobs \
+  --snapshot /private/migration/preview-snapshot \
+  --expected-sha256 SAVED_MANIFEST_SHA256 \
+  --config apps/cloudflare/resources.preview.json \
+  --bucket acornary-cf-preview-blobs \
+  --mode preview --remote
+```
+
+Use `--local-state PATH` instead of `--remote` for local rehearsal. The explicit bucket must match the config's `BLOBS` binding. Storage keys map to `blobs/<original-storage-key>.blob`; originals and thumbnails follow the same rule. Each source file is hashed, uploaded with an R2 SHA-256 checksum and a create-only condition, then read back and hashed again. Existing matching objects are verified and skipped on retry; collisions fail without overwriting. A partial run can be resumed by the identical command. Nothing is deleted by the import command.
+
+This offline importer uses at most one 25 MiB file buffer at a time. It is not the application's authenticated streaming download/upload implementation. R2 objects remain private, and the completed import does not create DO attachment confirmations or grant access to files. Activation still requires the metadata and permission checks planned for the application.
+
 ## Evidence and repeatable checks
 
 ```sh
 pnpm cf:test:snapshot
 pnpm cf:check:auth-remote
+pnpm cf:check:blobs-remote
 ```
 
-The first command creates a disposable PostgreSQL 18 container, runs the real source migrations, exports fixtures and imports into real workerd D1. Docker is required. It checks consistent reads during concurrent source writes, int64 preservation, actual blob corruption, source schema drift, production/preview credential separation, disabled-owner conversion, import replay/resumption, rollback and the persistent local CLI. Containers and temporary files are removed afterward.
+The first command runs 12 integration tests using a disposable PostgreSQL 18 container and real workerd D1/R2. Docker is required. It checks consistent reads during concurrent source writes, int64 preservation, actual blob corruption, source schema drift, production/preview credential separation, disabled-owner conversion, import replay/resumption, rollback, R2 collision handling, the 25 MiB limit and both persistent local CLIs. Containers and temporary files are removed afterward.
 
-The second command is an explicit, authenticated live Cloudflare check. It creates a uniquely named temporary D1 database, applies the real migrations, verifies ordered/concurrent import behavior and deletes that database. It does not use production or the preview application's D1 data. It is not part of automatic CI.
+The two remote checks create uniquely named temporary D1/R2 resources, test real behavior and remove their resources. D1 checks ordered/concurrent import behavior. R2 uploads and reads back a 25 MiB file, checks retries and rejects different content at the same key. These commands do not use production or preview application data and are not part of automatic CI.
 
-On 2026-11-05 the live check passed against the APAC primary. The temporary database was deleted. Preview schema migration `0003_snapshot_import.sql` was also applied; no production snapshot has yet been loaded into preview.
+On 2026-11-05 both live checks passed (D1 served by the APAC primary). The temporary database and bucket were deleted. Preview schema migration `0003_snapshot_import.sql` was also applied; no production snapshot has yet been loaded into preview.

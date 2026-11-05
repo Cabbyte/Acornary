@@ -82,7 +82,10 @@ export const manifestSchema = z.strictObject({
     z.string(),
     z.strictObject({ rows: count, reason: z.enum(['transient', 'preview_credentials']) }),
   ),
-  blobs: z.record(digest, z.strictObject({ bytes: count, sha256: digest })),
+  blobs: z.record(
+    digest,
+    z.strictObject({ bytes: count.positive().max(25 * 1024 * 1024), sha256: digest }),
+  ),
 });
 export type SnapshotManifest = z.infer<typeof manifestSchema>;
 export function validateManifest(raw: unknown): SnapshotManifest {

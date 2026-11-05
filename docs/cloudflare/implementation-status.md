@@ -15,6 +15,7 @@ Branch: `codex/cloudflare-native`. Preview target: `https://cf.acornary.protium.
 - CI checks native kernel/contracts; existing Android CI also builds and lints cfPreview.
 - Consistent read-only PostgreSQL snapshot exporter and byte-level package verifier. All source tables are classified; preview credentials and transient authorization data are excluded. Export preserves decimal/int64 text and rejects absent/corrupt attachments.
 - D1 account/directory importer with fixed-manifest plans, ordered atomic chunks, durable receipts and restart support. Disabled legacy owners stay disabled; imported household directories stay pending. The operator CLI uses an explicitly selected local or authenticated remote D1 binding.
+- R2 immutable blob importer verifies source bytes and stored bytes, preserves the 25 MiB attachment limit, resumes matching objects and rejects collisions without overwriting. Live Cloudflare R2 upload/read-back/retry checks passed; the temporary bucket was deleted.
 - PostgreSQL-to-workerd D1 integration tests cover snapshot consistency, corruption, credential isolation, rollback, concurrent retries and resumption. The live Cloudflare D1 import check passed on the APAC primary; its disposable database was deleted. See [snapshot migration](snapshot-migration.md).
 
 ## Not implemented / not accepted yet
@@ -27,7 +28,7 @@ This is an implementation checkpoint, **not a runnable migration release**. The 
 - Full D1 authentication/account/OAuth request handling and cross-store directory recovery. The SDK-derived auth schema and monotonic directory projection store now exist; they do not constitute a working authentication server.
 - CIMD public-network transport and real Cloudflare network security tests.
 - R2 uploads/downloads, reservations, cleanup leases and byte-verified migration.
-- Household inventory DO and R2 import, resumable full migration and cross-store verification. Source snapshot export and resumable D1 account import now exist; no production data has been imported yet.
+- Household inventory DO import, resumable full migration and cross-store verification. Source snapshot export and resumable D1/R2 import now exist; no production data has been imported yet.
 - Queues, alarms, backups, restore rehearsal and observability.
 - Production resource provisioning, release workflow, domain binding and application deployment. Preview D1/R2/Queue resources are provisioned; no Worker is deployed.
 - Real Web, ChatGPT, Codex, Android and hardware acceptance; seven-day preview.
@@ -48,7 +49,7 @@ The resource config intentionally has no application entrypoint or domain route.
 
 `pnpm cf:auth-schema` regenerates the expected SQL in memory from the locked SDK, checks drift and validates it against SQLite. `--capture` is only for creating a new reviewed baseline, not rewriting an applied migration. Runtime authentication implementation must use the same model configuration (user enabled/auth_version fields, JWT, Passkey, MCP, CIMD, database rate limits).
 
-Android Gradle recognizes `assembleCfPreview` and `lintCfPreview`, but this machine has no configured Android SDK. `assembleCfPreview` could not compile. This build type does not currently generate a unit-test task; existing debug unit tests remain in CI. Its build/lint and real-device checks are still required.
+This machine has no configured Android SDK, so verification was moved to GitHub Actions. At commit `9409c1f`, `assembleCfPreview`, `lintCfPreview` and the existing debug unit tests passed in CI; this build type does not currently generate its own unit-test task. Emulator results and real-device acceptance are tracked separately. A browser test failed while selecting an unfiltered virtualized product list; its selection now filters by the fixture product name before asserting the selected value.
 
 ## Cutover invariant
 

@@ -4,10 +4,8 @@ import { readdir } from 'node:fs/promises';
 import { validateManifest } from './format.js';
 import { directory, fingerprint, lines, regularFile } from './files.js';
 
-export async function verifySnapshot(root: string, expectedManifestHash?: string) {
+export async function readSnapshotManifest(root: string, expectedManifestHash?: string) {
   await directory(root);
-  await directory(join(root, 'tables'));
-  await directory(join(root, 'blobs'));
   const handle = await regularFile(join(root, 'manifest.json'));
   let content: string;
   try {
@@ -20,6 +18,13 @@ export async function verifySnapshot(root: string, expectedManifestHash?: string
   if (expectedManifestHash && expectedManifestHash !== manifestHash)
     throw new Error('Manifest checksum mismatch');
   const manifest = validateManifest(JSON.parse(content));
+  return { manifest, manifestHash };
+}
+
+export async function verifySnapshot(root: string, expectedManifestHash?: string) {
+  const { manifest, manifestHash } = await readSnapshotManifest(root, expectedManifestHash);
+  await directory(join(root, 'tables'));
+  await directory(join(root, 'blobs'));
   if (
     (await readdir(join(root, 'tables'))).sort().join('|') !==
     Object.keys(manifest.tables)

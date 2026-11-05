@@ -20,7 +20,9 @@
     "cf:auth-schema": "tsx scripts/cloudflare/auth-schema.ts",
     "cf:snapshot": "tsx scripts/cloudflare/snapshot.ts",
     "cf:import-auth": "node --import tsx scripts/cloudflare/import-auth.mjs",
+    "cf:import-blobs": "node --import tsx scripts/cloudflare/import-blobs.mjs",
     "cf:check:auth-remote": "node --import tsx scripts/cloudflare/check-auth-import-remote.mjs",
+    "cf:check:blobs-remote": "node --import tsx scripts/cloudflare/check-blobs-remote.mjs",
     "cf:test:snapshot": "node --import tsx --test tests/cloudflare/snapshot.test.mjs"
   },
   "dependencies": {

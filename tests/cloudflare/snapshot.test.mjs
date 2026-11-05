@@ -14,6 +14,7 @@ import { prepareAuthImport } from '../../scripts/cloudflare/migration/prepare-au
 import { AuthSnapshotImporter } from '../../apps/cloudflare/src/auth-import.ts';
 import { AuthDirectory } from '../../apps/cloudflare/src/auth-directory.ts';
 import { chunkDigest } from '../../apps/cloudflare/src/auth-import-model.ts';
+import { BlobSnapshotImporter, blobObjectKey } from '../../apps/cloudflare/src/blob-import.ts';
 const container = 'acornary-cf-snapshot-test-' + randomUUID();
 let pool, root, blobs, hh;
 const commit = '18f7e0496ecb4fb960a6619f12f57c68b3898410';
@@ -215,6 +216,7 @@ async function withD1(run) {
       script: 'export default { fetch() { return new Response("migration test"); } };',
       compatibilityDate: '2026-11-05',
       d1Databases: { AUTH_DB: 'migration' },
+      r2Buckets: { BLOBS: 'migration-blobs' },
     }),
   );
   try {
@@ -225,7 +227,7 @@ async function withD1(run) {
         .filter((s) => s.trim()))
         await db.prepare(statement).run();
     }
-    return await run(db, new AuthSnapshotImporter(db));
+    return await run(db, new AuthSnapshotImporter(db), await mf.getR2Bucket('BLOBS'));
   } finally {
     await mf.dispose();
   }
@@ -313,7 +315,7 @@ test('preview import excludes credentials, rejects plan tampering and cannot ove
   });
 });
 
-test('operator CLI imports and resumes against the explicitly selected persistent local D1', async () => {
+test('operator CLIs import and resume against explicitly selected persistent local D1 and R2', async () => {
   const { output, result } = await snapshot();
   const databaseId = randomUUID(),
     config = join(root, 'local-import.json'),
@@ -326,6 +328,7 @@ test('operator CLI imports and resumes against the explicitly selected persisten
       d1_databases: [
         { binding: 'AUTH_DB', database_name: 'migration-test', database_id: databaseId },
       ],
+      r2_buckets: [{ binding: 'BLOBS', bucket_name: 'migration-blobs' }],
     }),
   );
   const options = {
@@ -366,6 +369,29 @@ test('operator CLI imports and resumes against the explicitly selected persisten
     assert.equal(imported.status, 0, imported.stderr);
     assert.match(imported.stdout, /AUTH_IMPORTED/);
   }
+  const blobArgs = [
+    '--import',
+    'tsx',
+    'scripts/cloudflare/import-blobs.mjs',
+    '--snapshot',
+    output,
+    '--expected-sha256',
+    result.manifest_sha256,
+    '--config',
+    config,
+    '--bucket',
+    'migration-blobs',
+    '--mode',
+    'preview',
+    '--local-state',
+    state,
+  ];
+  for (let i = 0; i < 2; i++) {
+    const imported = spawnSync(process.execPath, blobArgs, { encoding: 'utf8' });
+    assert.equal(imported.status, 0, imported.stderr);
+    assert.match(imported.stdout, /BLOBS_VERIFIED/);
+    assert.match(imported.stdout, new RegExp('"replayed":' + i));
+  }
   proxy = await getPlatformProxy(options);
   try {
     assert.equal((await proxy.env.AUTH_DB.prepare('SELECT count(*) n FROM user').first()).n, 1);
@@ -373,7 +399,53 @@ test('operator CLI imports and resumes against the explicitly selected persisten
       (await proxy.env.AUTH_DB.prepare('SELECT state FROM cf_auth_import').first()).state,
       'AUTH_IMPORTED',
     );
+    assert.deepEqual(
+      Buffer.from(await (await proxy.env.BLOBS.get(blobObjectKey(key))).arrayBuffer()),
+      bytes,
+    );
   } finally {
     await proxy.dispose();
   }
+});
+
+test('R2 migration checks real bytes, handles concurrent replay and never overwrites a different blob', async () => {
+  await withD1(async (_db, _auth, bucket) => {
+    const importer = new BlobSnapshotImporter(bucket),
+      body = Uint8Array.from(bytes).buffer;
+    const expected = { bytes: bytes.length, sha256: sha };
+    const results = await Promise.all(
+      Array.from({ length: 4 }, () => importer.put(key, body, expected)),
+    );
+    assert.equal(results.filter((r) => !r.replayed).length, 1);
+    const other = Uint8Array.from(Buffer.from('different')).buffer;
+    await assert.rejects(importer.put(key, other, expected), /Source attachment checksum/);
+    await assert.rejects(
+      importer.put(key, other, {
+        bytes: other.byteLength,
+        sha256: createHash('sha256').update(new Uint8Array(other)).digest('hex'),
+      }),
+      /R2 attachment/,
+    );
+    assert.deepEqual(
+      Buffer.from(await (await bucket.get(blobObjectKey(key))).arrayBuffer()),
+      bytes,
+    );
+    await bucket.delete(blobObjectKey(key));
+    await assert.rejects(importer.verify(key, expected), /Missing R2/);
+  });
+});
+test('R2 migration preserves the full 25 MiB attachment limit', async () => {
+  await withD1(async (_db, _auth, bucket) => {
+    const importer = new BlobSnapshotImporter(bucket),
+      body = new Uint8Array(25 * 1024 * 1024).fill(42).buffer;
+    const expected = {
+      bytes: body.byteLength,
+      sha256: createHash('sha256').update(new Uint8Array(body)).digest('hex'),
+    };
+    assert.equal((await importer.put('b'.repeat(64), body, expected)).replayed, false);
+    await assert.rejects(
+      importer.put('c'.repeat(64), body, { ...expected, bytes: expected.bytes + 1 }),
+      /Invalid attachment descriptor/,
+    );
+  });
 });
