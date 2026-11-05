@@ -26,3 +26,8 @@ apps/android/local.properties
 apps/android/.idea/
 *.jks
 *.keystore
+
+# Cloudflare local state and credentials
+.wrangler/
+.dev.vars
+.dev.vars.*

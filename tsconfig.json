@@ -11,6 +11,15 @@
     "rootDir": ".",
     "sourceMap": true
   },
-  "include": ["apps/server/src/**/*.ts", "packages/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "apps/server/src/**/*.ts",
+    "packages/**/*.ts",
+    "tests/**/*.ts",
+    "scripts/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "tests/cloudflare"
+  ]
 }

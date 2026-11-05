@@ -21,10 +21,22 @@ android {
         applicationId = "top.protium.acornary"
         minSdk = 31
         targetSdk = 36
+        buildConfigField("String", "ORIGIN", "\"https://acornary.protium.top\"")
+        manifestPlaceholders["authHost"] = "acornary.protium.top"
+        manifestPlaceholders["appLabel"] = "松仓终端"
         versionCode = 5
         versionName = "0.4.0-terminal"
         manifestPlaceholders["appAuthRedirectScheme"] = "top.protium.acornary"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+    buildTypes.create("cfPreview") {
+        initWith(buildTypes.getByName("debug"))
+        applicationIdSuffix = ".cfpreview"
+        versionNameSuffix = "-cf-preview"
+        matchingFallbacks += listOf("debug")
+        buildConfigField("String", "ORIGIN", "\"https://cf.acornary.protium.top\"")
+        manifestPlaceholders["authHost"] = "cf.acornary.protium.top"
+        manifestPlaceholders["appLabel"] = "松仓终端 · CF 测试"
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions {

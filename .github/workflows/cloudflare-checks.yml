@@ -1,0 +1,21 @@
+name: Cloudflare migration checks
+on:
+  push:
+    branches: [codex/cloudflare-native]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  native-kernel:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: corepack enable && corepack prepare pnpm@11.19.0 --activate
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm cf:contracts
+      - run: pnpm cf:typecheck
+      - run: pnpm cf:test:kernel

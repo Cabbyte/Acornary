@@ -13,7 +13,10 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "db:migrate": "tsx apps/server/src/migrate.ts",
-    "initialize": "tsx apps/server/src/initialize.ts"
+    "initialize": "tsx apps/server/src/initialize.ts",
+    "cf:contracts": "tsx scripts/cloudflare/contracts.ts",
+    "cf:test:kernel": "wrangler deploy --dry-run --config tests/cloudflare/wrangler.jsonc --outdir ../../output/cloudflare-test && node --test tests/cloudflare/kernel.test.mjs",
+    "cf:typecheck": "tsc -p apps/cloudflare/tsconfig.json"
   },
   "dependencies": {
     "@ant-design/icons": "6.3.4",
@@ -56,10 +59,12 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
+    "miniflare": "5.20261103.0-beta",
     "prettier": "^3.9.8",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.0",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.1",
+    "wrangler": "4.157.0"
   }
 }

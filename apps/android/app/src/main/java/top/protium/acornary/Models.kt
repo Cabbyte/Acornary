@@ -8,13 +8,14 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 val wire = Json { ignoreUnknownKeys = true; encodeDefaults = true }
-const val ORIGIN = "https://acornary.protium.top"
+const val ORIGIN = BuildConfig.ORIGIN
 const val API = "$ORIGIN/api/terminal/v1"
 const val CALLBACK = "$ORIGIN/android/oauth/callback"
 
 @Serializable data class Household(val id: String, val name: String, val timezone: String)
 @Serializable data class Account(val id: String, val name: String)
 @Serializable data class SessionContext(val account: Account, val household: Household, val commands: List<String> = emptyList()) {
+    // Environment isolation is the application ID / Android sandbox; keep existing pending-operation keys.
     val scope get() = "${account.id}:${household.id}"
 }
 @Serializable data class Amount(val value: String, val unit: String)
