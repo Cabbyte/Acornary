@@ -19,7 +19,7 @@ export default {
           pending.push(...messages.map((m) => m.body));
         },
       },
-    } as Env;
+    } as unknown as Env;
     const path = new URL(request.url).pathname;
     if (!['/backup', '/restore', '/jobs', '/project', '/expire'].includes(path))
       return inventory.fetch(request, env as any);

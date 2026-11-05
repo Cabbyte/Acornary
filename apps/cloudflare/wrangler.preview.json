@@ -78,7 +78,9 @@
       "/mcp/*",
       "/.well-known/*",
       "/health",
-      "/auth/*"
+      "/android/oauth/callback",
+      "/api",
+      "/.well-known"
     ]
   },
   "vars": {
@@ -86,7 +88,8 @@
     "ENVIRONMENT": "preview",
     "RELEASE_VERSION": "development",
     "RELEASE_COMMIT": "development",
-    "TERMINAL_CLIENT_ID": "acornary-cf-preview-android-v1"
+    "TERMINAL_CLIENT_ID": "acornary-cf-preview-android-v1",
+    "TERMINAL_SIGNING_FINGERPRINTS": "DD:FF:D0:88:78:90:C2:82:A9:2E:AC:A0:37:F9:CD:60:CC:66:1D:F4:B4:E3:98:AA:1B:2A:A1:A0:39:E6:4C:EC"
   },
   "triggers": {
     "crons": [

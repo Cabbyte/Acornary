@@ -1,21 +1,18 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "lib": [
-      "ES2023"
-    ],
-    "types": [
-      "node"
-    ],
+    "lib": ["ES2023"],
+    "types": ["node"],
     "noEmit": true
   },
   "include": [
     "src/**/*.ts",
     "../../tests/cloudflare/kernel-worker.ts",
     "../../tests/cloudflare/runtime.d.ts",
-    "../../tests/cloudflare/inventory-worker.ts"
+    "../../tests/cloudflare/inventory-worker.ts",
+    "../../tests/cloudflare/backup-worker.ts",
+    "../../tests/cloudflare/remote-worker.ts",
+    "../../tests/cloudflare/network-worker.ts"
   ],
-  "exclude": [
-    "../../node_modules"
-  ]
+  "exclude": ["../../node_modules"]
 }

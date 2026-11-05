@@ -16,3 +16,15 @@ The default retention is 30 days. Pin cutover/release recovery points before exp
 `BackupEntrypoint` is a named, account-authorized service binding. It has no public HTTP route. It supports `/start`, `/resume`, `/status`, `/pin` and `/restore/{begin,auth,household,finish}`. Operators explicitly provide the backup UUID and root SHA-256. Restore requires an empty D1 database and new household namespace, matching environment and origin. It never overwrites an active family. Restore validates schema, each chunk commitment, counts, foreign keys and actual attachment bytes before activating a household; it creates a new sync generation and rebuilds directory projections. Users log in and authorize clients again.
 
 Run `pnpm cf:test:backup` for an empty-environment workerd/D1/DO/R2 restore exercise. It verifies credentials, household facts, private attachment download, corrupt-byte rejection, resumable chunks, retention pinning and expired object cleanup. `pnpm cf:test:inventory` separately verifies raw binary receipt chunks and cursors larger than JavaScript's safe integer range. Local RTO is test evidence only; remote restore duration must be measured before production cutover.
+
+The private operator CLI accepts an explicit application JSON config and exactly one of `--remote` or `--local-state PATH`:
+
+```sh
+pnpm cf:backup --config apps/cloudflare/wrangler.preview.json --remote --action start --pin --wait
+pnpm cf:backup --config apps/cloudflare/wrangler.preview.json --remote --action status --id BACKUP_UUID
+pnpm cf:backup --config apps/cloudflare/wrangler.preview.json --remote --action resume --id BACKUP_UUID
+```
+
+For recovery, create fresh D1/DO/BLOBS resources, expose their private `BackupEntrypoint` and bind the source BACKUPS bucket. Keep the backed-up environment/origin unchanged, and keep public traffic fenced. Then run `pnpm cf:backup --config RESTORE_CONFIG.json --remote --action restore --id BACKUP_UUID --expected-sha256 ROOT_SHA256`. The command verifies the root before importing and reports restore duration. It resumes the identical restore plan after interruption. It cannot restore over an active family or substitute the preview origin for production.
+
+Local Wrangler dev uses `--persist-to PATH`, while the operator's `--local-state` points to `PATH/v3`. An end-to-end local CLI start/restore exercise on 2026-11-05 completed for one browser-created family in 0.229 seconds. This is not the production RTO.

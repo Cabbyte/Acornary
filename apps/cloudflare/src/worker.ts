@@ -114,8 +114,9 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (path === terminalCallback && request.method === 'GET')
     return new Response(
       '<!doctype html><meta charset="utf-8"><title>返回松仓终端</title><p>请返回松仓终端完成登录。若未自动返回，请检查 Android 的“打开支持的链接”设置。</p>',
-      { headers: { 'content-type': 'text/html; charset=utf-8' } },
+      { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } },
     );
+  if (path === '/api' || path.startsWith('/mcp/')) throw new DomainError('NOT_FOUND', 'Not found.');
   const app = application(env);
   if (path.startsWith('/api/auth/') || path.startsWith('/.well-known/'))
     return handleAuth(request, env, app.auth);

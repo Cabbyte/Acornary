@@ -20,12 +20,12 @@ Branch: `codex/cloudflare-native`. Preview target: `https://cf.acornary.protium.
 
 - Native household schema and synchronous domain engine now implement all 54 baseline operations. Seventeen workerd tests run real commands, approvals, decimal splits, trees, history, notes, date projections, frozen exports, sync cursors, revocation and rollback; the suite asserts every baseline operation has executed successfully.
 - Runtime R2 transport uses DO reservation/attempt leases, immutable R2 objects, read-back SHA-256 and DO confirmation. A 25 MiB upload/download, duplicate retry, checksum rejection and sensitive/cross-account denial pass in workerd/R2.
-- D1 credential commands use conditional guards and atomic batches rather than callback transactions. Four D1 tests cover concurrent password changes, last-credential retention, one-use passkey ceremonies, disabled accounts and concurrent rate limits. Browser Passkey ceremonies remain a separate acceptance gate.
+- D1 credential commands use conditional guards and atomic batches rather than callback transactions. Four D1 tests cover concurrent password changes, last-credential retention, one-use passkey ceremonies, disabled accounts and concurrent rate limits. Local Chrome virtual-authenticator registration and subsequent Passkey login also pass; physical authenticators remain a separate gate.
 - Native Fetch entrypoint implements REST, sync, inspector, attachments, MCP SDK tools/resources and Android routes over the same household DO. Six HTTP integration tests run real Better Auth D1 login, consent, PKCE, MCP scope enforcement, refresh rotation, Android audience restrictions, native inventory writes and account disable. All 54 MCP input schemas and read-only annotations match the frozen baseline.
 - Household create, rename, invite, redeem and leave use persistent D1 account tasks plus transactional DO outbox. Injected directory failures recover without duplicate households; revoked membership denies access even while its D1 index is stale.
 - Structured RPC errors preserve domain codes and revisions; ingress logs request/DO timing and idempotent replay without request bodies or credentials.
 - Household importer and operator CLI now preserve 26 household fact tables, IDs, revisions, raw JSON and chunked receipts. Real PostgreSQL-to-DO tests verify resume/Merkle proofs, every persisted cell, bigint cursors, generation reset and equivalent Decimal command results. A private service binding gates activation on the completed D1 import and actual R2 byte verification. No production snapshot has been obtained.
-- CIMD Worker transport validates public HTTPS hosts, rejects redirects and limits time/bytes. The required real Cloudflare private-network/DNS/same-zone gate has not yet run.
+- CIMD Worker transport validates public HTTPS hosts, rejects redirects and limits time/bytes. The real Cloudflare diagnostic passes public front-door, credential stripping, redirect/size/deadline and fixed private-DNS checks. Controlled dynamic rebinding and the custom-zone check remain open.
 
 - Native queue consumers and household alarms recover directory projections and account tasks. Expired upload cleanup first terminates the DO lease, then deletes R2 bytes and acknowledges the outbox; tests prove late confirmation cannot resurrect a cleaned object.
 - Daily resumable D1/DO/R2 backups now have immutable manifests, 30-day retention, pins and shared-object deletion leases. Empty-environment restore verifies source hashes and actual attachment bytes before activation, restores credentials/business receipts and resets sync generation. Local joint restore and corruption/retention tests pass; see [backup runbook](backups.md).
@@ -36,8 +36,8 @@ Branch: `codex/cloudflare-native`. Preview target: `https://cf.acornary.protium.
 The complete native business and HTTP transport now run locally. This is **not yet a deployed migration release**: remote household import/activation, real Cloudflare background recovery/backup acceptance remains in progress. No application Worker has been deployed.
 
 - Complete differential comparison against the source runtime, household import and real-client acceptance.
-- Static Assets deployment and real browser UI acceptance.
-- CIMD public-network transport and real Cloudflare network security tests.
+- Static Assets deployment and deployed-origin browser acceptance; local real-browser login, approval, inventory and Passkey flows pass.
+- Complete CIMD custom-zone and dynamic DNS rebinding acceptance; fixed private-IP/DNS and public front-door checks now pass remotely.
 - Real Cloudflare attachment transport acceptance. Local orphan cleanup, upload fencing and backup retention coordination pass.
 - Remote household import, migration operator acceptance and real production snapshot rehearsal. The native household importer is locally tested; no production data has been imported yet.
 - Real Cloudflare queue/alarm/backup acceptance and remote restore timing; local native backup and empty-environment recovery now pass.
@@ -56,13 +56,15 @@ Provisioned isolated preview resources (IDs/bindings in `apps/cloudflare/resourc
 
 - D1 `acornary-cf-preview-auth` in APAC; migrations 0001–0003 applied remotely.
 - Private R2 buckets `acornary-cf-preview-blobs` and `acornary-cf-preview-backups`.
-- Queue `acornary-cf-preview-jobs`, currently without consumer or messages.
+- Queues `acornary-cf-preview-jobs` and `acornary-cf-preview-failed`, currently without an application consumer.
 
 The resource config intentionally has no application entrypoint or domain route. It supports resource administration; it must not be deployed as a completed application. Production resources and the existing unrelated R2 bucket were not changed.
 
 `pnpm cf:auth-schema` regenerates the expected SQL in memory from the locked SDK, checks drift and validates it against SQLite. `--capture` is only for creating a new reviewed baseline, not rewriting an applied migration. Runtime authentication implementation must use the same model configuration (user enabled/auth_version fields, JWT, Passkey, MCP, CIMD, database rate limits).
 
 This machine has no configured Android SDK, so verification was moved to GitHub Actions. At commit `9409c1f`, `assembleCfPreview`, `lintCfPreview` and the existing debug unit tests passed in CI; this build type does not currently generate its own unit-test task. Emulator results and real-device acceptance are tracked separately. A browser test failed while selecting an unfiltered virtualized product list; its selection now filters by the fixture product name before asserting the selected value.
+
+The first full application remote deploy was rejected with Cloudflare error `100328`: the account is on Free and CPU limits require the planned Workers Paid subscription. Billing upgrade is a user-only prerequisite. A separate network probe is live; it is not the migrated application. The GitHub `cloudflare-preview` Environment exists, but automatic deployment remains disabled pending its API token and remote acceptance. See [release runbook](preview-release.md) and [acceptance evidence](acceptance.md).
 
 ## Cutover invariant
 

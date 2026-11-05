@@ -29,8 +29,11 @@
     "cf:test:http": "wrangler deploy --dry-run --config tests/cloudflare/wrangler.auth.jsonc --outdir ../../output/cloudflare-auth && node --test tests/cloudflare/auth-http.test.mjs",
     "cf:import-households": "node --import tsx scripts/cloudflare/import-households.mjs",
     "cf:test:backup": "wrangler deploy --dry-run --config tests/cloudflare/wrangler.backup.jsonc --outdir ../../output/cloudflare-backup && node --test tests/cloudflare/backup.test.mjs",
-    "cf:build": "VITE_ACORNARY_ENV=preview vite build --config apps/web/vite.config.ts && VITE_ACORNARY_ENV=preview vite build --config apps/web/vite.plugin.config.ts",
-    "cf:dry-run": "pnpm cf:build && wrangler deploy --dry-run --config apps/cloudflare/wrangler.preview.json --outdir ../../output/cloudflare-preview"
+    "cf:build": "node scripts/cloudflare/build-assets.mjs --environment preview",
+    "cf:dry-run": "pnpm cf:build && wrangler deploy --dry-run --config apps/cloudflare/wrangler.preview.json --outdir ../../output/cloudflare-preview",
+    "cf:backup": "node scripts/cloudflare/backup.mjs",
+    "cf:release:check": "node --import tsx scripts/cloudflare/release.mjs",
+    "cf:deploy:preview": "node --import tsx scripts/cloudflare/release.mjs --deploy"
   },
   "dependencies": {
     "@ant-design/icons": "6.3.4",

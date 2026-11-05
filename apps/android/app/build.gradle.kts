@@ -29,9 +29,19 @@ android {
         manifestPlaceholders["appAuthRedirectScheme"] = "top.protium.acornary"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+    val previewKey = providers.environmentVariable("ACORNARY_CF_ANDROID_KEYSTORE").orNull
+    if (previewKey != null) {
+        signingConfigs.create("cfPreviewSigning") {
+            storeFile = file(previewKey)
+            storePassword = providers.environmentVariable("ACORNARY_CF_ANDROID_KEY_PASSWORD").get()
+            keyAlias = "acornary-cf-preview"
+            keyPassword = storePassword
+        }
+    }
     buildTypes.create("cfPreview") {
         initWith(buildTypes.getByName("debug"))
         applicationIdSuffix = ".cfpreview"
+        if (previewKey != null) signingConfig = signingConfigs.getByName("cfPreviewSigning")
         versionNameSuffix = "-cf-preview"
         matchingFallbacks += listOf("debug")
         buildConfigField("String", "ORIGIN", "\"https://cf.acornary.protium.top\"")
