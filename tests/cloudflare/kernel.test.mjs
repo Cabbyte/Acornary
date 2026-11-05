@@ -1,11 +1,19 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
-let mf;
+import { readFile } from 'node:fs/promises';
+import { AuthDirectory } from '../../apps/cloudflare/src/auth-directory.ts';
+let mf, authDb;
 before(async () => {
   mf = new Miniflare(convertV4MiniflareOptions({ modules: true, scriptPath: 'output/cloudflare-test/kernel-worker.js',
     compatibilityDate: '2026-11-05', compatibilityFlags: ['nodejs_compat'],
+    d1Databases: { AUTH_DB: 'auth-test' },
     durableObjects: { HOUSEHOLDS: { className: 'TestHousehold', useSQLite: true } } }));
+  authDb = await mf.getD1Database('AUTH_DB');
+  for (const file of ['0001_better_auth.sql', '0002_directory.sql']) {
+    const sql = await readFile('apps/cloudflare/migrations/auth/' + file, 'utf8');
+    for (const statement of sql.split(';').filter(s => s.trim())) await authDb.prepare(statement).run();
+  }
 });
 after(async () => { await mf?.dispose(); });
 async function household() {
@@ -45,4 +53,21 @@ test('concurrent distinct writes cannot overdraw inventory', async () => {
   const results = await Promise.allSettled(Array.from({ length: 20 }, (_, i) => stub.consume(id, String(i), 1)));
   assert.equal(results.filter(r => r.status === 'fulfilled').length, 10);
   assert.deepEqual(await stub.inspect(), { amount: 0, receipts: 10, outbox: 10 });
+});
+
+test('D1 directory rejects revoked users and ignores delayed membership projections', async () => {
+  await authDb.prepare('INSERT INTO user(id,name,email,emailVerified,createdAt,updatedAt,enabled,auth_version) VALUES(?,?,?,1,0,0,1,0)')
+    .bind('user', 'Test', 'test@example.invalid').run();
+  const directory = new AuthDirectory(authDb);
+  await directory.projectHousehold({ id: 'home', name: 'Home', state: 'ACTIVE', revision: '1' });
+  const member = { id: 'member', userId: 'user', householdId: 'home', deleted: false, revision: '9007199254740993' };
+  await directory.projectMembership(member);
+  assert.equal((await directory.routeMembership('user', 'member')).household_id, 'home');
+  assert.equal(await directory.routeMembership('other', 'member'), null);
+  await directory.projectMembership({ ...member, deleted: true, revision: '9007199254740994' });
+  await directory.projectMembership(member);
+  assert.equal(await directory.routeMembership('user', 'member'), null);
+  assert.equal((await directory.principal('user')).auth_version, 0);
+  await authDb.prepare('UPDATE user SET enabled=0 WHERE id=?').bind('user').run();
+  assert.equal(await directory.principal('user'), null);
 });

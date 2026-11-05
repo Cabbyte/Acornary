@@ -15,8 +15,9 @@
     "db:migrate": "tsx apps/server/src/migrate.ts",
     "initialize": "tsx apps/server/src/initialize.ts",
     "cf:contracts": "tsx scripts/cloudflare/contracts.ts",
-    "cf:test:kernel": "wrangler deploy --dry-run --config tests/cloudflare/wrangler.jsonc --outdir ../../output/cloudflare-test && node --test tests/cloudflare/kernel.test.mjs",
-    "cf:typecheck": "tsc -p apps/cloudflare/tsconfig.json"
+    "cf:test:kernel": "wrangler deploy --dry-run --config tests/cloudflare/wrangler.jsonc --outdir ../../output/cloudflare-test && node --import tsx --test tests/cloudflare/kernel.test.mjs",
+    "cf:typecheck": "tsc -p apps/cloudflare/tsconfig.json",
+    "cf:auth-schema": "tsx scripts/cloudflare/auth-schema.ts"
   },
   "dependencies": {
     "@ant-design/icons": "6.3.4",

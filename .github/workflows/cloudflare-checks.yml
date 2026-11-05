@@ -17,5 +17,6 @@ jobs:
       - run: corepack enable && corepack prepare pnpm@11.19.0 --activate
       - run: pnpm install --frozen-lockfile
       - run: pnpm cf:contracts
+      - run: pnpm cf:auth-schema
       - run: pnpm cf:typecheck
       - run: pnpm cf:test:kernel
