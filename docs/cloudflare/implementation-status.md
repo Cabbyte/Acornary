@@ -12,6 +12,9 @@ Branch: `codex/cloudflare-native`. Preview target: `https://cf.acornary.protium.
 - `pnpm typecheck`, `pnpm cf:typecheck` and `pnpm cf:test:kernel` pass locally.
 - Android `cfPreview` build type: separate application ID, callback host, app label, content-provider authority, link origin and cache scope. It cannot control the production AOD companion.
 - CI checks native kernel/contracts; existing Android CI also builds and lints cfPreview.
+- Consistent read-only PostgreSQL snapshot exporter and byte-level package verifier. All source tables are classified; preview credentials and transient authorization data are excluded. Export preserves decimal/int64 text and rejects absent/corrupt attachments.
+- D1 account/directory importer with fixed-manifest plans, ordered atomic chunks, durable receipts and restart support. Disabled legacy owners stay disabled; imported household directories stay pending. The operator CLI uses an explicitly selected local or authenticated remote D1 binding.
+- PostgreSQL-to-workerd D1 integration tests cover snapshot consistency, corruption, credential isolation, rollback, concurrent retries and resumption. The live Cloudflare D1 import check passed on the APAC primary; its disposable database was deleted. See [snapshot migration](snapshot-migration.md).
 
 ## Not implemented / not accepted yet
 
@@ -23,7 +26,7 @@ This is an implementation checkpoint, **not a runnable migration release**. The 
 - Full D1 authentication/account/OAuth request handling and cross-store directory recovery. The SDK-derived auth schema and monotonic directory projection store now exist; they do not constitute a working authentication server.
 - CIMD public-network transport and real Cloudflare network security tests.
 - R2 uploads/downloads, reservations, cleanup leases and byte-verified migration.
-- Consistent PG snapshot export/import, resumable migration and verification.
+- Household inventory DO and R2 import, resumable full migration and cross-store verification. Source snapshot export and resumable D1 account import now exist; no production data has been imported yet.
 - Queues, alarms, backups, restore rehearsal and observability.
 - Production resource provisioning, release workflow, domain binding and application deployment. Preview D1/R2/Queue resources are provisioned; no Worker is deployed.
 - Real Web, ChatGPT, Codex, Android and hardware acceptance; seven-day preview.
@@ -36,7 +39,7 @@ On 2026-11-05, Wrangler OAuth login was verified after the user completed login.
 
 Provisioned isolated preview resources (IDs/bindings in `apps/cloudflare/resources.preview.json`):
 
-- D1 `acornary-cf-preview-auth` in APAC; migrations 0001 and 0002 applied remotely.
+- D1 `acornary-cf-preview-auth` in APAC; migrations 0001–0003 applied remotely.
 - Private R2 buckets `acornary-cf-preview-blobs` and `acornary-cf-preview-backups`.
 - Queue `acornary-cf-preview-jobs`, currently without consumer or messages.
 

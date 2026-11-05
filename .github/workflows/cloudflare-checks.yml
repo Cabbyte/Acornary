@@ -20,3 +20,4 @@ jobs:
       - run: pnpm cf:auth-schema
       - run: pnpm cf:typecheck
       - run: pnpm cf:test:kernel
+      - run: pnpm cf:test:snapshot

@@ -17,7 +17,11 @@
     "cf:contracts": "tsx scripts/cloudflare/contracts.ts",
     "cf:test:kernel": "wrangler deploy --dry-run --config tests/cloudflare/wrangler.jsonc --outdir ../../output/cloudflare-test && node --import tsx --test tests/cloudflare/kernel.test.mjs",
     "cf:typecheck": "tsc -p apps/cloudflare/tsconfig.json",
-    "cf:auth-schema": "tsx scripts/cloudflare/auth-schema.ts"
+    "cf:auth-schema": "tsx scripts/cloudflare/auth-schema.ts",
+    "cf:snapshot": "tsx scripts/cloudflare/snapshot.ts",
+    "cf:import-auth": "node --import tsx scripts/cloudflare/import-auth.mjs",
+    "cf:check:auth-remote": "node --import tsx scripts/cloudflare/check-auth-import-remote.mjs",
+    "cf:test:snapshot": "node --import tsx --test tests/cloudflare/snapshot.test.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "6.3.4",
