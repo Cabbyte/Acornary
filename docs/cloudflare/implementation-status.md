@@ -8,7 +8,8 @@ Branch: `codex/cloudflare-native`. Preview target: `https://cf.acornary.protium.
 - Independent worktree; existing working tree and production remain untouched.
 - Frozen JSON Schema, read/write classification and descriptions for 54 public operations. `pnpm cf:contracts` detects changes. Capture is explicit: `pnpm exec tsx scripts/cloudflare/contracts.ts --capture`.
 - Synchronous household transaction kernel using DO SQLite, membership-before-replay authorization, maintenance fence, idempotency receipts and transactional outbox.
-- Five real workerd/D1 integration tests exercise duplicate concurrent writes, distinct concurrent writes, rollback, identity isolation and membership revocation, including reordered directory messages and revisions above the JavaScript safe integer limit. The test Worker is deliberately test-only; it is not an application entrypoint.
+- Eight real workerd/D1 integration tests exercise duplicate concurrent writes, distinct concurrent writes, rollback, identity isolation, membership revocation, large UTF-8 receipts and schema upgrades, including reordered directory messages and revisions above the JavaScript safe integer limit. The test Worker is deliberately test-only; it is not an application entrypoint.
+- Kernel schema v2 stores large operation receipts in transactional SQLite chunks. The source allows 4 MiB receipts, exceeding the [DO SQLite 2 MB row limit](https://developers.cloudflare.com/durable-objects/platform/limits/); a direct single-row port would lose valid operations. Receipt chunks, inventory changes and outbox entries roll back together.
 - `pnpm typecheck`, `pnpm cf:typecheck` and `pnpm cf:test:kernel` pass locally.
 - Android `cfPreview` build type: separate application ID, callback host, app label, content-provider authority, link origin and cache scope. It cannot control the production AOD companion.
 - CI checks native kernel/contracts; existing Android CI also builds and lints cfPreview.
