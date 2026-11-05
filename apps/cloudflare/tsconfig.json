@@ -12,7 +12,11 @@
     "../../tests/cloudflare/inventory-worker.ts",
     "../../tests/cloudflare/backup-worker.ts",
     "../../tests/cloudflare/remote-worker.ts",
-    "../../tests/cloudflare/network-worker.ts"
+    "../../tests/cloudflare/network-worker.ts",
+    "../../tests/terminal-label-history.test.ts",
+    "../../tests/repair-batch0.test.ts",
+    "../../tests/batch4/registry.test.ts",
+    "../../tests/batch7/media.test.ts"
   ],
   "exclude": ["../../node_modules"]
 }

@@ -53,6 +53,7 @@ export function Button({
   className,
   type = 'button',
   htmlType,
+  onClick,
   ...rest
 }: ButtonProps) {
   return (
@@ -63,6 +64,12 @@ export function Button({
       htmlType={htmlType ?? type}
       loading={loading}
       disabled={disabled}
+      onClick={(event) => {
+        // Safari does not focus buttons on pointer activation. Capture the actual trigger
+        // before a sheet opens so closing it can restore keyboard focus consistently.
+        event.currentTarget.focus({ preventScroll: true });
+        onClick?.(event);
+      }}
       block={block}
       icon={icon}
       className={[styles.button, styles[size], className].filter(Boolean).join(' ')}

@@ -29,6 +29,7 @@ Branch: `codex/cloudflare-native`. Preview target: `https://cf.acornary.protium.
 
 - Native queue consumers and household alarms recover directory projections and account tasks. Expired upload cleanup first terminates the DO lease, then deletes R2 bytes and acknowledges the outbox; tests prove late confirmation cannot resurrect a cleaned object.
 - Daily resumable D1/DO/R2 backups now have immutable manifests, 30-day retention, pins and shared-object deletion leases. Empty-environment restore verifies source hashes and actual attachment bytes before activation, restores credentials/business receipts and resets sync generation. Local joint restore and corruption/retention tests pass; see [backup runbook](backups.md).
+- Root build/start and CI now target Cloudflare only. The existing full Web/MCP UI Chromium suite runs against actual workerd/D1/DO/R2: 70 pass, with 3 disabled registration/email-recovery scenarios explicitly skipped. 144 pure tests and all types pass.
 - Actual WebUI and MCP UI assets build with a visible preview label. The application preview Wrangler config passes dry-run, preserves API/health/discovery routing ahead of the SPA and includes explicit isolated bindings. It has not been deployed yet.
 
 ## Not implemented / not accepted yet
@@ -44,7 +45,7 @@ The complete native business and HTTP transport now run locally. This is **not y
 - Production resource provisioning, release workflow, domain binding and application deployment. Preview D1/R2/Queue resources are provisioned; no Worker is deployed.
 - Real Web, ChatGPT, Codex, Android and hardware acceptance; seven-day preview.
 
-Do not delete the old runtime or deploy a static placeholder as the migrated product. Remove the old runtime only after the native behavior passes the same acceptance contract. Do not treat the toy stock table in the kernel test as a replacement inventory model.
+The default application is now native-only. The PostgreSQL runtime and its container/SSH deployment are removed from this branch; the immutable source baseline is extracted into ignored `output/cloudflare-reference` only for migration comparisons. The native workerd suite, current frontend tests and existing Web/MCP browser scenarios are the application checks. Neither the network probe nor the toy kernel fixture is an application release.
 
 ## External prerequisites observed
 
@@ -64,7 +65,7 @@ The resource config intentionally has no application entrypoint or domain route.
 
 This machine has no configured Android SDK, so verification was moved to GitHub Actions. At commit `9409c1f`, `assembleCfPreview`, `lintCfPreview` and the existing debug unit tests passed in CI; this build type does not currently generate its own unit-test task. Emulator results and real-device acceptance are tracked separately. A browser test failed while selecting an unfiltered virtualized product list; its selection now filters by the fixture product name before asserting the selected value.
 
-The first full application remote deploy was rejected with Cloudflare error `100328`: the account is on Free and CPU limits require the planned Workers Paid subscription. Billing upgrade is a user-only prerequisite. A separate network probe is live; it is not the migrated application. The GitHub `cloudflare-preview` Environment exists, but automatic deployment remains disabled pending its API token and remote acceptance. See [release runbook](preview-release.md) and [acceptance evidence](acceptance.md).
+The first full application remote deploy was rejected with Cloudflare error `100328`: the account is on Free and CPU limits require the planned Workers Paid subscription. Billing upgrade is a user-only prerequisite. The separate network probe was deleted after its evidence was saved; it was never the migrated application. The GitHub `cloudflare-preview` Environment exists, but automatic deployment remains disabled pending its API token and remote acceptance. See [release runbook](preview-release.md) and [acceptance evidence](acceptance.md).
 
 ## Cutover invariant
 

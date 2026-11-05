@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import { terminalLabelTimes, type LabelHistoryEvent } from '../apps/server/src/terminal-label-history.js';
+import { terminalLabelTimes, type LabelHistoryEvent } from '../apps/cloudflare/src/inventory/terminal-label-history.js';
 import type { InventoryData } from '../packages/contracts/src/web.js';
 const created = '2026-10-01T00:00:00.000Z', modified = '2026-10-31T01:00:00.000Z';
 const data = (): InventoryData => ({ household:{id:'h',name:'家'},container_catalog_id:'container',cached_at:modified,notes:[],

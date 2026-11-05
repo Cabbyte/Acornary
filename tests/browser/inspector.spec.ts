@@ -123,7 +123,9 @@ test('database rows, foreign keys, derived paths, APIs, notes and fixed registry
   await ops.getByRole('button', { name: '上一页', exact: true }).click();
   await expect(ops).toContainText('第 1 页');
   await page.locator('nav button').filter({ hasText: '迁移信息' }).click();
-  await expect(page.getByTestId('records-migrations')).toContainText('003_embed_attributes.sql');
+  await expect(page.getByTestId('records-migrations')).toContainText(
+    process.env.ACORNARY_E2E_NATIVE ? 'version' : '003_embed_attributes.sql',
+  );
   await page.screenshot({ path: 'output/playwright/inspector.png', fullPage: true });
   expect(new Set(methods)).toEqual(new Set(['GET', 'POST']));
   expect(errors).toEqual([]);

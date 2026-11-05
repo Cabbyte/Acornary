@@ -1,8 +1,0 @@
-[Unit]
-Description=Acornary optional local database backup
-After=docker.service
-Requires=docker.service
-[Service]
-Type=oneshot
-UMask=0077
-ExecStart=/usr/local/sbin/acornary production backup

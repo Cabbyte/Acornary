@@ -1,4 +1,6 @@
 import { prepareHouseholdImports } from '../../scripts/cloudflare/migration/prepare-households.ts';
+import { prepareReference } from '../../scripts/cloudflare/reference.mjs';
+import { pathToFileURL } from 'node:url';
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -29,6 +31,7 @@ function docker(args, env = process.env) {
 }
 before(
   async () => {
+    const reference = await prepareReference();
     root = await mkdtemp(join(tmpdir(), 'acornary-cf-snapshot-'));
     blobs = join(root, 'source-blobs');
     await mkdir(blobs);
@@ -66,6 +69,7 @@ before(
     }
     assert.ok(ready, 'Disposable PostgreSQL did not start');
     const init = spawnSync(process.execPath, ['--import', 'tsx', 'apps/server/src/initialize.ts'], {
+      cwd: reference,
       encoding: 'utf8',
       env: { ...process.env, DATABASE_URL: url.href },
     });
@@ -73,9 +77,12 @@ before(
     const initialized = JSON.parse(init.stdout.trim());
     hh = initialized.household_id;
     process.env.DATABASE_URL = url.href;
-    sourcePool = (await import('../../apps/server/src/db.ts')).pool;
-    sourceExecute = (await import('../../apps/server/src/service.ts')).execute;
-    sourceApproved = (await import('../catalog-helpers.ts')).approvedExecute;
+    sourcePool = (await import(pathToFileURL(join(reference, 'apps/server/src/db.ts')).href)).pool;
+    sourceExecute = (
+      await import(pathToFileURL(join(reference, 'apps/server/src/service.ts')).href)
+    ).execute;
+    sourceApproved = (await import(pathToFileURL(join(reference, 'tests/catalog-helpers.ts')).href))
+      .approvedExecute;
     sourceContext = { ...initialized, source: 'TEST' };
     await pool.query(
       `INSERT INTO "user"(id,name,email,"emailVerified") VALUES('user','Snapshot user','snapshot@example.invalid',true)`,

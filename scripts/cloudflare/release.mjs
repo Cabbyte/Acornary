@@ -9,15 +9,22 @@ import {
 } from '../../apps/cloudflare/src/inventory/schema.ts';
 import { registry } from '../../packages/contracts/src/index.ts';
 import { z } from 'zod';
-const { values } = parseArgs({ options: { deploy: { type: 'boolean', default: false } } }),
+import { resolve, dirname } from 'node:path';
+const { values } = parseArgs({
+    options: {
+      deploy: { type: 'boolean', default: false },
+      stage: { type: 'boolean', default: false },
+    },
+  }),
   exec = promisify(execFile);
+if (values.deploy && values.stage) throw new Error('Choose --stage or --deploy');
 const git = async (args) => (await exec('git', args)).stdout.trim();
 if (await git(['status', '--porcelain', '--untracked-files=normal']))
   throw new Error('Release requires a clean, committed worktree');
 const commit = await git(['rev-parse', 'HEAD']),
   version = 'build-' + commit.slice(0, 12);
-const config = 'apps/cloudflare/wrangler.preview.json',
-  c = JSON.parse(await readFile(config, 'utf8'));
+let config = 'apps/cloudflare/wrangler.preview.json';
+const c = JSON.parse(await readFile(config, 'utf8'));
 if (
   c.name !== 'acornary-cf-preview' ||
   c.vars.ORIGIN !== 'https://cf.acornary.protium.top' ||
@@ -40,8 +47,24 @@ const manifest = {
   templates_sha256: sha(
     JSON.stringify(registry.map((t) => ({ ...t, schema: z.toJSONSchema(t.schema) }))),
   ),
+  routed: !values.stage,
 };
 await mkdir('output/cloudflare-release', { recursive: true });
+if (values.stage) {
+  // Deploy the complete Worker without a public route so private import bindings are available.
+  const base = dirname(resolve(config)),
+    staged = structuredClone(c);
+  staged.routes = [];
+  staged.triggers = { crons: [] };
+  staged.main = resolve(base, c.main);
+  staged.assets.directory = resolve(base, c.assets.directory);
+  staged.d1_databases = c.d1_databases.map((d) => ({
+    ...d,
+    migrations_dir: resolve(base, d.migrations_dir),
+  }));
+  config = 'output/cloudflare-release/staged.json';
+  await writeFile(config, JSON.stringify(staged, null, 2));
+}
 await writeFile(
   'output/cloudflare-release/manifest.json',
   JSON.stringify(manifest, null, 2) + '\n',
@@ -70,7 +93,7 @@ await run([
   '--var',
   `RELEASE_COMMIT:${commit}`,
 ]);
-if (values.deploy) {
+if (values.deploy || values.stage) {
   await run([
     'exec',
     'wrangler',
@@ -98,7 +121,8 @@ console.log(
   JSON.stringify({
     version,
     commit,
-    deployed: values.deploy,
+    deployed: values.deploy || values.stage,
+    routed: !values.stage,
     manifest: 'output/cloudflare-release/manifest.json',
   }),
 );

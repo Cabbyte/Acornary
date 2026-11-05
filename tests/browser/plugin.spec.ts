@@ -454,8 +454,11 @@ test('narrow shared UI has no overflow and untrusted sibling messages cannot rep
   await expect
     .poll(() => page.evaluate(() => (window as any).host.context?.selection?.id))
     .toBe(f.id);
-  const frame = page.frames().find((f) => f.parentFrame() && f.url() === 'about:srcdoc')!;
-  expect(await frame.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(
+    await view(page)
+      .locator('html')
+      .evaluate((element) => element.scrollWidth <= element.ownerDocument.defaultView!.innerWidth),
+  ).toBe(true);
   await page.screenshot({ path: 'output/playwright/plugin-selected-390.png' });
 });
 
