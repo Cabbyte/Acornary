@@ -18,16 +18,22 @@ Branch: `codex/cloudflare-native`. Preview target: `https://cf.acornary.protium.
 - R2 immutable blob importer verifies source bytes and stored bytes, preserves the 25 MiB attachment limit, resumes matching objects and rejects collisions without overwriting. Live Cloudflare R2 upload/read-back/retry checks passed; the temporary bucket was deleted.
 - PostgreSQL-to-workerd D1 integration tests cover snapshot consistency, corruption, credential isolation, rollback, concurrent retries and resumption. The live Cloudflare D1 import check passed on the APAC primary; its disposable database was deleted. See [snapshot migration](snapshot-migration.md).
 
+- Native household schema and synchronous domain engine now implement all 54 baseline operations. Fifteen workerd tests run real commands, approvals, decimal splits, trees, history, notes, date projections, frozen exports, sync cursors, revocation and rollback; the suite asserts every baseline operation has executed successfully.
+- Runtime R2 transport uses DO reservation/attempt leases, immutable R2 objects, read-back SHA-256 and DO confirmation. A 25 MiB upload/download, duplicate retry, checksum rejection and sensitive/cross-account denial pass in workerd/R2.
+- D1 credential commands use conditional guards and atomic batches rather than callback transactions. Four D1 tests cover concurrent password changes, last-credential retention, one-use passkey ceremonies, disabled accounts and concurrent rate limits. Browser Passkey ceremonies remain a separate acceptance gate.
+- Native Fetch entrypoint implements REST, sync, inspector, attachments, MCP SDK tools/resources and Android routes over the same household DO. Six HTTP integration tests run real Better Auth D1 login, consent, PKCE, MCP scope enforcement, refresh rotation, Android audience restrictions, native inventory writes and account disable. All 54 MCP input schemas and read-only annotations match the frozen baseline.
+- Household create, rename, invite, redeem and leave use persistent D1 account tasks plus transactional DO outbox. Injected directory failures recover without duplicate households; revoked membership denies access even while its D1 index is stale.
+- Structured RPC errors preserve domain codes and revisions; ingress logs request/DO timing and idempotent replay without request bodies or credentials.
+- CIMD Worker transport validates public HTTPS hosts, rejects redirects and limits time/bytes. The required real Cloudflare private-network/DNS/same-zone gate has not yet run.
+
 ## Not implemented / not accepted yet
 
-This is an implementation checkpoint, **not a runnable migration release**. The kernel currently has only coordination tables; it does not implement the inventory commands or their complete business schema.
+The complete native business and HTTP transport now run locally. This is **not yet a deployed migration release**: full household snapshot import/activation, background recovery/backup and real Cloudflare acceptance remain in progress. No application Worker has been deployed.
 
-- Port all inventory/read/query/tree/date/intake/approval/notes/export/sync business behavior to SQLite.
-- Full household schema and versioned import, preserving historical data and IDs.
-- Worker REST/MCP/Static Assets entrypoint and existing UI integration.
-- Full D1 authentication/account/OAuth request handling and cross-store directory recovery. The SDK-derived auth schema and monotonic directory projection store now exist; they do not constitute a working authentication server.
+- Complete differential comparison against the source runtime, household import and real-client acceptance.
+- Static Assets deployment and real browser UI acceptance.
 - CIMD public-network transport and real Cloudflare network security tests.
-- R2 uploads/downloads, reservations, cleanup leases and byte-verified migration.
+- R2 orphan cleanup consumer, backup retention coordination and real Cloudflare attachment transport acceptance.
 - Household inventory DO import, resumable full migration and cross-store verification. Source snapshot export and resumable D1/R2 import now exist; no production data has been imported yet.
 - Queues, alarms, backups, restore rehearsal and observability.
 - Production resource provisioning, release workflow, domain binding and application deployment. Preview D1/R2/Queue resources are provisioned; no Worker is deployed.
@@ -36,6 +42,9 @@ This is an implementation checkpoint, **not a runnable migration release**. The 
 Do not delete the old runtime or deploy a static placeholder as the migrated product. Remove the old runtime only after the native behavior passes the same acceptance contract. Do not treat the toy stock table in the kernel test as a replacement inventory model.
 
 ## External prerequisites observed
+
+Initial read-only SSH attempts to the production alias `ali` (`47.77.197.236:22`) timed out during banner exchange; the latest attempt was immediately closed by the remote endpoint. A connection/restored route is pending from the user for the consistent production snapshot; coding and isolated acceptance continue. No source production writes were attempted.
+
 
 On 2026-11-05, Wrangler OAuth login was verified after the user completed login. D1, R2 and Queues read/create operations succeeded. The API MCP is still not exposed to this chat, but Wrangler is usable and authentication is no longer a blocker.
 

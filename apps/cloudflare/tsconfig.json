@@ -12,7 +12,8 @@
   "include": [
     "src/**/*.ts",
     "../../tests/cloudflare/kernel-worker.ts",
-    "../../tests/cloudflare/runtime.d.ts"
+    "../../tests/cloudflare/runtime.d.ts",
+    "../../tests/cloudflare/inventory-worker.ts"
   ],
   "exclude": [
     "../../node_modules"
