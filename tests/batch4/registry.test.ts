@@ -9,7 +9,7 @@ import {
   resolveCapabilities,
   canUpgrade,
 } from '../../packages/contracts/src/registry.js';
-import { definitionHashes } from '../../apps/server/src/registry.js';
+import { definitionHashes } from '../../apps/cloudflare/src/inventory/registry.js';
 
 const itemId = 'item_11111111-1111-4111-8111-000000000001';
 describe('Batch 4 registry contracts', () => {

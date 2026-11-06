@@ -1,7 +1,13 @@
 import { choose } from './controls.js';
 import { test, expect, type Page } from './legacy.js';
 import { randomUUID } from 'node:crypto';
-test.beforeEach(() => test.skip(!process.env.ACORNARY_E2E_CLOUD, 'Cloud accounts'));
+test.beforeEach(() => {
+  test.skip(!process.env.ACORNARY_E2E_CLOUD, 'Cloud accounts');
+  test.skip(
+    !!process.env.ACORNARY_E2E_NATIVE,
+    'Native preview keeps public registration and email recovery closed',
+  );
+});
 async function verifyEmail(page: Page, email: string) {
   await page.getByLabel('邮箱', { exact: true }).fill(email);
   await page.getByRole('button', { name: '发送验证码', exact: true }).click();

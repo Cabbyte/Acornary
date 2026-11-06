@@ -1,3 +1,4 @@
+import { PreviewNotice } from './ui/preview-notice';
 import { Card } from 'antd';
 import { App, Button, Input, Select } from 'antd';
 import { useEffect, useState } from 'react';
@@ -34,6 +35,7 @@ export function EnrollmentScreen() {
   const enabled = cap && (recovery ? cap.recovery : cap.registration);
   return (
     <main className="login">
+      <PreviewNotice />
       <img src="/app-icon.png" alt="松仓" width="76" height="76" />
       <h1>{recovery ? '找回松仓账号' : '创建松仓账号'}</h1>
       {!cap ? (
@@ -244,6 +246,7 @@ export function FamilySetup({ onDone }: { onDone: () => Promise<void> }) {
     [error, setError] = useState('');
   return (
     <main className="login">
+      <PreviewNotice />
       <h1>你的第一个家庭</h1>
       <p>创建家庭，或打开家人分享的邀请链接加入已有家庭。</p>
       <form
@@ -284,6 +287,7 @@ export function JoinScreen() {
   }, [token]);
   return (
     <main className="login">
+      <PreviewNotice />
       <h1>加入家庭</h1>
       {name && (
         <>

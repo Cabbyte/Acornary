@@ -92,11 +92,14 @@ test('intake review, consume, edit, move and notes preserve real command behavio
 
   await page.goto('/items?ui=next');
   await page.getByRole('button', { name: '添加物品', exact: true }).click();
-  await page.getByRole('combobox', { name: '选择商品', exact: true }).click();
+  // Filter before choosing: the full-suite catalog is virtualized, and distant options
+  // can be recycled while Playwright scrolls them into view.
+  await page.getByRole('combobox', { name: '选择商品', exact: true }).fill(f.product.name);
   await page
     .getByRole('option')
     .filter({ has: page.getByText(f.product.name, { exact: true }) })
     .click();
+  await expect(page.getByRole('dialog').getByTitle(f.product.name, {exact:true})).toBeVisible();
   await page.getByRole('button', { name: '核对入库信息', exact: true }).click();
   await expect(page.getByRole('heading', { name: '核对本次入库', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '确认入库', exact: true }).click();

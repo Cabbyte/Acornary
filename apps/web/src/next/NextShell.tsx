@@ -1,3 +1,4 @@
+import { PreviewNotice } from '../ui/preview-notice';
 import { useSession } from '../lib/session';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
@@ -64,6 +65,7 @@ export function NextShell({ section, children }: { section: string; children: Re
         </div>
       </aside>
       <main id="main" className={styles.main}>
+        <PreviewNotice />
         {children}
       </main>
       <nav className={styles.bottomNav} aria-label="底部导航">

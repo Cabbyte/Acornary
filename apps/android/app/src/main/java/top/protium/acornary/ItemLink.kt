@@ -17,7 +17,7 @@ object ItemLink {
     }
     fun parse(raw: String): String? = runCatching {
         val url = URI(raw)
-        require(url.scheme == "https" && url.host == "acornary.protium.top")
+        require(url.scheme == "https" && url.host == URI(ORIGIN).host)
         require(url.port == -1 && url.userInfo == null && url.query == null && url.fragment == null)
         require(url.rawPath == url.path)
         val value = url.path.removePrefix("/i/")

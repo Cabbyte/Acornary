@@ -1,0 +1,26 @@
+{
+  "observed_at": "2026-11-05T09:18:36Z",
+  "environment": "isolated Cloudflare acceptance on Workers Free",
+  "worker": "acornary-cf-accept-392aefd2",
+  "source_commit": "7986f20c0e8431416b06d852c03856c5ac58ec6a",
+  "request": {
+    "method": "PUT",
+    "path": "/api/attachments/upload/:upload_id",
+    "bytes": 26214400,
+    "content": "synthetic PDF"
+  },
+  "response": {
+    "status": 503,
+    "cloudflare_error": 1102,
+    "ray_id": "a55ac511dfd7df08"
+  },
+  "invocation": {
+    "outcome": "exceededCpu",
+    "cpu_time_ms": 1109,
+    "wall_time_ms": 4978,
+    "exception": "Worker exceeded CPU time limit."
+  },
+  "earlier_result": "The same 25 MiB scenario passed earlier; success is not consistent on Free.",
+  "production_affected": false,
+  "paid_upgrade_performed": false
+}

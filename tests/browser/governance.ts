@@ -31,12 +31,25 @@ export async function fixtureCommand(page: Page, operation: string, input: any) 
         reason: 'Synthetic browser fixture',
       },
     });
-    const review = await post('/api/ui/catalog-review', { proposal_id: proposal.proposal_id });
-    const result = await post('/api/ui/catalog-confirm', {
-      proposal_id: proposal.proposal_id,
-      challenge: review.challenge,
-    });
-    data.approval_id = result.approval_id;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const review = await post('/api/ui/catalog-review', { proposal_id: proposal.proposal_id });
+      const response = await page.request.post('/api/ui/catalog-confirm', {
+        headers,
+        data: { proposal_id: proposal.proposal_id, challenge: review.challenge },
+      });
+      const result = await response.json();
+      // The page's pending-review card can load the same synthetic proposal
+      // between these two API fixture calls, correctly superseding this challenge.
+      // Reopen that identical fixture card through the authenticated protocol;
+      // never retry dependency/revision conflicts or bypass confirmation.
+      if (response.status() === 409 && result.error?.code === 'APPROVAL_EXPIRED' && attempt < 2) {
+        console.warn('Synthetic fixture review was superseded; reopening the same card');
+        continue;
+      }
+      expect(response.status(), JSON.stringify(result)).toBe(200);
+      data.approval_id = result.approval_id;
+      break;
+    }
   }
   return post(`/api/write/${operation}`, data);
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SafeMediaProcessor } from '../../apps/server/src/attachments.js';
+import { SafeMediaProcessor } from '../../apps/cloudflare/src/inventory/attachments.js';
 
 const chunk = (type: string, data: Buffer) => {
   const out = Buffer.alloc(12 + data.length);

@@ -5,7 +5,7 @@ import cases from './batch0/cases.json' with { type: 'json' };
 import { auditSnapshot, digest, validateAuditUrl } from '../scripts/batch0/audit-model.js';
 import { fixtureId, generateFixture } from '../scripts/batch0/fixture.js';
 import { terminalLabelTimes as oracle } from './batch0/label-oracle.js';
-import { terminalLabelTimes as current } from '../apps/server/src/terminal-label-history.js';
+import { terminalLabelTimes as current } from '../apps/cloudflare/src/inventory/terminal-label-history.js';
 
 describe('Batch 0 audit tooling (not repair acceptance)', () => {
   it('generates deterministic multi-household fixtures with deep trees', () => {

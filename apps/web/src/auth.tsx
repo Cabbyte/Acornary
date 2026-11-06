@@ -1,3 +1,4 @@
+import { PreviewNotice } from './ui/preview-notice';
 import { Button, Select } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { authPost, Redirect, safeReturnTo, serverRedirect } from './lib/auth';
@@ -43,6 +44,7 @@ export function AuthScreen() {
   if (choosing && oauthQuery)
     return (
       <main className="login stack">
+        <PreviewNotice />
         <h1>选择授权的家庭</h1>
         <FormField label="家庭">
           <Select
@@ -78,6 +80,7 @@ export function AuthScreen() {
   };
   return (
     <main className="login auth-consent">
+      <PreviewNotice />
       <img src="/app-icon.png" width="76" height="76" alt="松仓" />
       <h1>{consent ? '授权访问松仓' : '继续连接松仓'}</h1>
       <p>{session.email}</p>

@@ -5,8 +5,8 @@ import org.junit.Test
 
 class ItemLinkTest {
     @Test fun validLabelPreservesIdentity() {
-        assertEquals("item_11111111-1111-4111-8111-000000000001", ItemLink.parse("https://acornary.protium.top/i/ERERERERQRGBEQAAAAAAAQ"))
-        assertEquals("https://acornary.protium.top/i/ERERERERQRGBEQAAAAAAAQ", ItemLink.encode("item_11111111-1111-4111-8111-000000000001"))
+        assertEquals("item_11111111-1111-4111-8111-000000000001", ItemLink.parse("$ORIGIN/i/ERERERERQRGBEQAAAAAAAQ"))
+        assertEquals("$ORIGIN/i/ERERERERQRGBEQAAAAAAAQ", ItemLink.encode("item_11111111-1111-4111-8111-000000000001"))
     }
     @Test fun newLabelsRoundTripDistinctIdentities() {
         val ids = (1..50).map { "item_${java.util.UUID.randomUUID()}" }
@@ -17,11 +17,11 @@ class ItemLinkTest {
     @Test fun rejectsAmbiguousAndForeignLinks() {
         listOf(
             "http://acornary.protium.top/i/ERERERERQRGBEQAAAAAAAQ",
-            "https://acornary.protium.top.evil.test/i/ERERERERQRGBEQAAAAAAAQ",
+            "$ORIGIN.evil.test/i/ERERERERQRGBEQAAAAAAAQ",
             "https://user@acornary.protium.top/i/ERERERERQRGBEQAAAAAAAQ",
-            "https://acornary.protium.top/i/ERERERERQRGBEQAAAAAAAR",
-            "https://acornary.protium.top/i/ERERERERQRGBEQAAAAAAAQ?command=consume",
-            "https://acornary.protium.top/i/AAAAAAAAAAAAAAAAAAAAAA"
+            "$ORIGIN/i/ERERERERQRGBEQAAAAAAAR",
+            "$ORIGIN/i/ERERERERQRGBEQAAAAAAAQ?command=consume",
+            "$ORIGIN/i/AAAAAAAAAAAAAAAAAAAAAA"
         ).forEach { assertNull(it, ItemLink.parse(it)) }
     }
 }

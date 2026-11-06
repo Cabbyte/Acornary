@@ -102,6 +102,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
 }
 object TerminalMaintenance {
     fun apply(context: Context, enabled: Boolean): String = runCatching {
+        if (BuildConfig.BUILD_TYPE == "cfPreview") return "CF 测试版不控制正式待机组件"
         context.contentResolver.call(Uri.parse("content://top.protium.acornary.aod.settings"), if (enabled) "enable" else "pause", null, null)?.getString("status") ?: "AOD 伴随组件尚未安装"
     }.getOrDefault("终端待机设置未授权，请通过电脑部署脚本修复")
 }

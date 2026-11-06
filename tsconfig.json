@@ -11,6 +11,18 @@
     "rootDir": ".",
     "sourceMap": true
   },
-  "include": ["apps/server/src/**/*.ts", "packages/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "packages/**/*.ts",
+    "tests/**/*.ts",
+    "scripts/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "tests/cloudflare",
+    "tests/terminal-label-history.test.ts",
+    "tests/repair-batch0.test.ts",
+    "tests/batch4/registry.test.ts",
+    "tests/batch7/media.test.ts"
+  ]
 }

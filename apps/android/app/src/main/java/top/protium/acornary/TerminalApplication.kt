@@ -12,7 +12,7 @@ import androidx.room.Room
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
-val ambientUri: Uri = Uri.parse("content://top.protium.acornary.ambient/snapshot")
+val ambientUri: Uri = Uri.parse("content://${BuildConfig.APPLICATION_ID}.ambient/snapshot")
 class TerminalApplication : Application() {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     lateinit var repository: TerminalRepository

@@ -1,0 +1,30 @@
+{
+  "runtime_commit": "30f0ea54939f5ebfb98a4990abf53cce56ad800d",
+  "worker_version": "7c72dee0-3c43-4729-9227-10a288abbce3",
+  "origin": "https://cf.acornary.protium.top",
+  "plan_change": "none",
+  "scheduled_replay": {
+    "scheduled_time": "2026-11-05T19:17:00.000Z",
+    "started_at": "2026-11-06T04:35:03.805Z",
+    "status": "PASS",
+    "id": "6ad5f860-f5f9-808f-aaab-fcd7487d38ac",
+    "backup": {
+      "id": "6ad5f860-f5f9-808f-aaab-fcd7487d38ac",
+      "started_at": "2026-11-06T04:35:05.378Z",
+      "completed_at": "2026-11-06T04:40:03.457Z",
+      "status": "COMPLETE",
+      "manifest_sha256": "44cd6c47f91b52cb77636255b82427146145db575660f507708cbbcf2cc4f081"
+    },
+    "completed_at": "2026-11-06T04:40:04.304Z"
+  },
+  "households": 3,
+  "blobs": {
+    "blob_references": 6,
+    "bytes": 132120540
+  },
+  "observed_outcomes": {
+    "ok": 461
+  },
+  "observed_runtime_failures": [],
+  "boundary": "Operator replay exercises the actual scheduled backup function and Queue; the next unattended Cron delivery still requires observation."
+}

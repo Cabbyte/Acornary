@@ -6,32 +6,45 @@
 
 它希望可靠地回答：物品是什么、具体拥有哪几件、在哪里、剩余多少、现在怎样、经历过什么，以及用户为它记录的文字、图片与故事。
 
-## 当前状态
+## Cloudflare 原生分支
 
-正式地址为 [acornary.protium.top](https://acornary.protium.top)，MCP 为 `https://acornary.protium.top/mcp`。云端 PostgreSQL 是唯一正式库存，原本地库存保持停写；本地开发使用独立库。
+此分支将运行时完全迁移到 Cloudflare Workers：Static Assets 托管 WebUI 与 MCP UI，每家庭一个 SQLite Durable Object 保存库存与权限事实，D1 保存账号、OAuth 和家庭目录，私有 R2 保存附件与备份，Queues / Alarms / Cron 处理可恢复任务。
 
-响应式工作台与 MCP Apps 共用界面已合入 `main`，随 [v0.4.2](https://github.com/Cabbyte/Acornary/releases/tag/v0.4.2) 正式发布。当前发布状态、核对日期和验收边界集中记录于 [项目进度](./docs/progress.md)；后续版本以 [Releases](https://github.com/Cabbyte/Acornary/releases) 和线上 `/health` 为准。普通 main push 只运行 CI，正式 `vX.Y.Z` 标签才自动部署，有新增 migration 时先备份，见 [发布手册](./docs/releases.md)。
+预览已部署到 [cf.acornary.protium.top](https://cf.acornary.protium.top)，使用生产数据的隔离副本，REST 与 MCP 只替换 origin，保持 54 个操作的 schema、错误和业务语义。预览先使用 Workers Free，保留完整业务功能；原先 25 MiB 上传触发的 CPU 限制已通过独立上传 DO 与原生哈希处理优化，完整原生远端测试已通过，继续在免费套餐上验证；当前未升级，长期容量与真实客户端验收仍需观察。发布与数据迁移进度见 [验收记录](docs/cloudflare/acceptance.md)。既有 [正式站](https://acornary.protium.top) 继续承载正式库存，预览写入不会回灌。
 
-账号支持邮箱、Passkey、可选密码和多家庭成员关系，Web 与 MCP 按当前授权家庭隔离。公开注册与邮箱找回默认关闭，真实 SMTP 配置和收信验收后分别开启，见 [账号系统](./docs/accounts.md)。图片附件、模板升级、自动选取／FEFO 和后台提醒仍未实现；日常定时备份默认关闭。
+- [验收证据与剩余门槛](docs/cloudflare/acceptance.md)
+- [预览发布、CI 与 Android](docs/cloudflare/preview-release.md)
+- [一致快照迁移](docs/cloudflare/snapshot-migration.md)
+- [原生备份与空环境恢复](docs/cloudflare/backups.md)
 
-运行栈为 TypeScript、Node 24、Fastify、MCP TypeScript SDK v2、PostgreSQL 18、Drizzle、Zod、React / Vite 与 Better Auth。精确版本由锁文件记录；云端使用共享 Caddy HTTPS 入口和 OAuth，本地 MCP 使用回环地址及个人凭证，见 [架构](./docs/architecture.md)。
+新应用没有 PostgreSQL、Fastify、Caddy、服务器附件目录或 owner token 兼容运行模式。`nodejs_compat` 仅提供 Workers 支持的 Node API。公开注册与邮箱恢复保持关闭；密码和 Passkey、OAuth PKCE、多家庭权限继续可用。
 
-## Web 与 MCP Apps
+## 本地开发与验收
 
-桌面三栏和手机工作台共用页面、数据与领域命令，支持搜索、筛选、排序、按 UUID 多选、原子批量移动和物品／备注编辑。详细资料、入库、消耗、纠错、笔记和历史入口继续可用。离线只读缓存，修改需联网；草稿、同键重试及 revision 冲突处理保留。
-
-`/inspect` 是独立按需加载的只读检查器，从设置进入并共用账号会话。Web 与插件共用 `Workspace`，各自通过同源 HTTP 或 MCP Apps 宿主桥访问后端。当前设计、接口、复现方式与验收边界见 [Web UI](./docs/webui.md)、[响应式工作台](./docs/responsive-workbench.md) 和 [插件实现](./docs/plugin.md)。
-
-## 本地启动
-
-以下用于独立本地开发环境。已迁移工作区保留停写标记，禁止重新启动原正式库存；日常使用请连接云端 MCP。
+使用 Node 24 和锁定的 pnpm。应用开发运行在 workerd，本地绑定独立保存于 `.local/cloudflare-dev`。
 
 ```sh
-node scripts/local.mjs init
-node scripts/local.mjs codex
+pnpm install --frozen-lockfile
+pnpm build
+pnpm start
 ```
 
-Web：<http://127.0.0.1:3210>。Docker 内使用 Node 24，无需切换宿主机 Node。
+本地地址为 `https://localhost:3210`。启动脚本创建独立随机凭据并显示其本地文件位置，不读取生产 `.env`。首次登录后创建测试家庭。开发证书需本机信任；远端验收必须验证真实 TLS。
+
+```sh
+pnpm typecheck
+pnpm test
+pnpm cf:contracts
+pnpm cf:test:inventory
+pnpm cf:test:http
+pnpm cf:test:backup
+pnpm cf:test:snapshot
+pnpm cf:test:browser
+```
+
+快照测试需 Docker，只启动一次性 PostgreSQL。浏览器验收需安装 Playwright Chromium；它使用实际 workerd、D1、DO、R2、构建后的 Web/MCP UI 和真实 OAuth 流程。模拟 MCP 宿主不等于 ChatGPT/Codex 实际客户端验收。
+
+旧服务仅通过 `pnpm cf:reference` 从固定提交 `18f7e0496ecb4fb960a6619f12f57c68b3898410` 提取到忽略目录 `output/cloudflare-reference`，供迁移比较。它不进入本分支的构建和部署；原有 PostgreSQL 测试、迁移历史与 SSH 部署实现仍可在该固定提交查阅。
 
 ## 核心模型
 

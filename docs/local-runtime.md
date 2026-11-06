@@ -1,3 +1,5 @@
+> Cloudflare 原生分支说明：本文保留旧版本的设计或运行记录。当前运行、迁移和发布以 [原生预览手册](cloudflare/preview-release.md) 与 [验收记录](cloudflare/acceptance.md) 为准；旧 PostgreSQL/Fastify/SSH 运行时仅存在于固定基线提交 `18f7e04`。
+
 # 本地开发运行
 
 本文用于独立本地开发环境。云端是唯一正式库存；已迁移工作区的 `SOURCE_STOPPED` 标记禁止重新启动原本地库存。历史 Stage1 验收见 [验证记录](./stage1-verification.md)，当前产品与接口见 [Web UI](./webui.md)、[领域模型](./domain-model.md) 和 [架构](./architecture.md)。

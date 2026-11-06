@@ -17,21 +17,22 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
-      - name: Deployment controller tests
-        run: python3 -m unittest discover -s tests/deploy -v
-      - name: Build isolated test runtime
-        run: docker build --target browser-test -t acornary-ci .
-      - name: Types, PostgreSQL, OAuth, build and browser tests
-        run: node scripts/ci.mjs
-      - name: Build release recovery fixture
-        run: docker build --target runtime -t acornary-release-fixture:base --build-arg VERSION=v9.0.0 --build-arg COMMIT=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa .
-      - name: Real PostgreSQL migration and application recovery
-        run: python3 tests/deploy/real_containers.py
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - run: corepack enable && corepack prepare pnpm@11.19.0 --activate
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm exec playwright install --with-deps chromium webkit
+      - name: Native workerd Web and OAuth MCP UI acceptance
+        run: pnpm cf:test:browser
+      - name: WebKit responsive and offline acceptance
+        run: node scripts/cloudflare/browser.mjs --grep 'Ant Design|Impeccable|six distinct items|Chinese composition Enter' --output output/playwright/webkit-results
+        env:
+          ACORNARY_E2E_BROWSER: webkit
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: ci-browser-results
-          path: output/ci/
+          name: native-browser-results
+          path: output/playwright/
           retention-days: 7
           if-no-files-found: ignore
   android:
@@ -51,9 +52,36 @@ jobs:
           cmdline-tools-version: '12266719'
           log-accepted-android-sdk-licenses: false
           packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+      - name: Install independent preview signing key
+        env:
+          PREVIEW_KEYSTORE: ${{ secrets.CF_PREVIEW_ANDROID_KEYSTORE }}
+          PREVIEW_PASSWORD: ${{ secrets.CF_PREVIEW_ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$PREVIEW_KEYSTORE" ]; then
+            umask 077
+            printf '%s' "$PREVIEW_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/cf-preview.jks"
+            printf 'ACORNARY_CF_ANDROID_KEYSTORE=%s\n' "$RUNNER_TEMP/cf-preview.jks" >> "$GITHUB_ENV"
+            printf 'ACORNARY_CF_ANDROID_KEY_PASSWORD=%s\n' "$PREVIEW_PASSWORD" >> "$GITHUB_ENV"
+          fi
       - name: Build, lint and unit tests
         working-directory: apps/android
-        run: ./gradlew :app:assembleDebug :aod:assembleDebug :overlay:assembleDebug :app:lintDebug :aod:lintDebug :app:testDebugUnitTest :aod:testDebugUnitTest
+        run: ./gradlew :app:assembleDebug :app:assembleCfPreview :app:lintCfPreview :aod:assembleDebug :overlay:assembleDebug :app:lintDebug :aod:lintDebug :app:testDebugUnitTest :aod:testDebugUnitTest
+      - name: Verify preview APK signature
+        run: |
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs apps/android/app/build/outputs/apk/cfPreview/app-cfPreview.apk > apps/android/app/build/outputs/apk/cfPreview/signature.txt
+          if [ -n "$ACORNARY_CF_ANDROID_KEYSTORE" ]; then
+            python3 - <<'PY'
+          from pathlib import Path
+          report = Path('apps/android/app/build/outputs/apk/cfPreview/signature.txt').read_text().lower()
+          expected = 'ddffd0887890c282a92eaca037f9cd60cc661df4b4e398aa1b2aa1a039e64cec'
+          assert 'signer #1 certificate sha-256 digest: ' + expected in report
+          PY
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: acornary-cf-preview-apk
+          path: apps/android/app/build/outputs/apk/cfPreview/
+          retention-days: 30
       - name: Enable emulator acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
