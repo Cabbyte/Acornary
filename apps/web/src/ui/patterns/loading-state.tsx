@@ -55,7 +55,7 @@ export function LoadingState({
           title={text}
           action={recoveryAction}
         >
-          {context || '尚未取得可用结果；不会将未知情况显示为零库存。'}
+          {context || '尚未取得可用结果，库存数量未知。'}
         </InlineNotice>
       )}
     </div>

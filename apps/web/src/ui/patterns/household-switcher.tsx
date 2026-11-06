@@ -63,9 +63,7 @@ export function HouseholdSwitcher({
       error={error}
       hint={
         blockedReason ||
-        (options.length === 0 && !loading
-          ? '暂无可用家庭，当前范围尚未建立。'
-          : '切换家庭会改变物品与任务的范围。')
+        (options.length === 0 && !loading ? '暂无可用家庭，当前范围尚未建立。' : undefined)
       }
       className={cn('vn-household-switcher', className)}
     />

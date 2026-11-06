@@ -49,37 +49,39 @@ export function PageHeader({
           {context && <div className="vn-list-meta">{context}</div>}
         </div>
       </div>
-      <div className="vn-page-header-actions">
-        {secondaryActions.map((action) => (
-          <div key={action.id} className="vn-list-action">
-            <Button
-              variant="secondary"
-              busy={action.busy}
-              disabled={action.availability.kind !== 'available'}
-              onClick={action.onAction}
-            >
-              {action.label}
-            </Button>
-            {action.availability.kind !== 'available' && (
-              <span className="vn-list-meta">{action.availability.reason}</span>
-            )}
-          </div>
-        ))}
-        {primaryAction && (
-          <div className="vn-list-action">
-            <Button
-              busy={primaryAction.busy}
-              disabled={primaryAction.availability.kind !== 'available'}
-              onClick={primaryAction.onAction}
-            >
-              {primaryAction.label}
-            </Button>
-            {primaryAction.availability.kind !== 'available' && (
-              <span className="vn-list-meta">{primaryAction.availability.reason}</span>
-            )}
-          </div>
-        )}
-      </div>
+      {(primaryAction || secondaryActions.length > 0) && (
+        <div className="vn-page-header-actions">
+          {secondaryActions.map((action) => (
+            <div key={action.id} className="vn-list-action">
+              <Button
+                variant="secondary"
+                busy={action.busy}
+                disabled={action.availability.kind !== 'available'}
+                onClick={action.onAction}
+              >
+                {action.label}
+              </Button>
+              {action.availability.kind !== 'available' && (
+                <span className="vn-list-meta">{action.availability.reason}</span>
+              )}
+            </div>
+          ))}
+          {primaryAction && (
+            <div className="vn-list-action">
+              <Button
+                busy={primaryAction.busy}
+                disabled={primaryAction.availability.kind !== 'available'}
+                onClick={primaryAction.onAction}
+              >
+                {primaryAction.label}
+              </Button>
+              {primaryAction.availability.kind !== 'available' && (
+                <span className="vn-list-meta">{primaryAction.availability.reason}</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </header>
   );
 }

@@ -53,6 +53,9 @@ export function CatalogPicker({
         : !allowedKinds.includes(candidate.kind)
           ? `当前仅允许${allowedKinds.map((kind) => (kind === 'GROUP' ? '分类' : '商品')).join('、')}。`
           : undefined);
+  const selectedCandidate = value
+    ? candidates.find((candidate) => candidate.id === value.id)
+    : undefined;
   return (
     <div className={cn('vn-domain-field', className)}>
       <Combobox
@@ -78,40 +81,44 @@ export function CatalogPicker({
         options={candidates.map((candidate) => ({
           value: candidate.id,
           label: candidate.name,
-          description: `${candidate.kind === 'GROUP' ? '分类 GROUP' : '商品 SKU'} · ${candidate.path.join(' / ') || '目录路径未提供'}${candidate.ruleSummary ? ` · ${candidate.ruleSummary}` : ''}${unavailableReason(candidate) ? ` · ${unavailableReason(candidate)}` : ''}`,
+          description: `${candidate.kind === 'GROUP' ? '分类' : '商品'} · ${candidate.path.join(' / ') || '目录路径未提供'}${candidate.ruleSummary ? ` · ${candidate.ruleSummary}` : ''}${unavailableReason(candidate) ? ` · ${unavailableReason(candidate)}` : ''}`,
           disabled: Boolean(unavailableReason(candidate)),
         }))}
         loading={loading}
         error={error}
         disabled={disabled}
         readOnly={readOnly}
-        hint="同名条目请核对完整分类路径；分类不表示存放位置。"
+        placeholder="选择分类或商品"
         emptyMessage="当前候选页没有匹配的分类或商品"
       />
-      <div className="vn-fields-selection" aria-live="polite">
-        {value ? (
-          <>
-            <Badge variant="accent">{value.kind === 'GROUP' ? '分类' : '商品 SKU'}</Badge>
-            <span>{value.path.join(' / ') || value.name}</span>
-          </>
-        ) : (
-          <span className="vn-muted">尚未选择目录节点</span>
-        )}
-      </div>
-      {onRequestCreate && (
-        <div className="vn-row">
-          {allowedKinds.map((kind) => (
+      {value && (
+        <div className="vn-fields-selection" aria-live="polite">
+          <Badge variant="accent">{value.kind === 'GROUP' ? '分类' : '商品'}</Badge>
+          <span>{value.path.join(' / ') || value.name}</span>
+        </div>
+      )}
+      <div className="vn-fields-actions">
+        <details className="vn-field-details">
+          <summary>选择说明</summary>
+          <div className="vn-field-details__content">
+            <p className="vn-muted">同名条目请核对完整分类路径；分类不表示存放位置。</p>
+            {selectedCandidate?.ruleSummary && (
+              <p className="vn-muted">{selectedCandidate.ruleSummary}</p>
+            )}
+          </div>
+        </details>
+        {onRequestCreate &&
+          allowedKinds.map((kind) => (
             <Button
               key={kind}
               variant="quiet"
               disabled={disabled || readOnly || loading || Boolean(createUnavailableReason)}
               onClick={() => onRequestCreate(kind, query)}
             >
-              申请新建{kind === 'GROUP' ? '分类' : '商品'}
+              新建{kind === 'GROUP' ? '分类' : '商品'}
             </Button>
           ))}
-        </div>
-      )}
+      </div>
       {createUnavailableReason && <span className="vn-muted">{createUnavailableReason}</span>}
     </div>
   );

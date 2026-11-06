@@ -1,6 +1,7 @@
 import { Palette, Plus } from 'lucide-react';
 import { useId, useState, type ReactNode } from 'react';
 import { Button } from '../components/ui/button';
+import { IconButton } from '../components/ui/icon-button';
 import { Popover } from '../components/ui/popover';
 import { cn } from '../components/utils';
 import type { AppearancePreset, UIMode } from '../theme/provider';
@@ -117,10 +118,9 @@ export function AppShell({
               align="end"
               disabled={disabled}
               trigger={
-                <Button variant="quiet">
+                <IconButton label="选择配色" variant="quiet">
                   <Palette size={18} aria-hidden="true" />
-                  配色
-                </Button>
+                </IconButton>
               }
             >
               <AppearancePicker

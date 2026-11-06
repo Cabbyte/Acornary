@@ -150,9 +150,10 @@ export function Calendar({
           },
         }}
       />
-      <span className="vn-muted">
-        {value ? `当前日期：${value}` : '日期未选择'}。方向键移动日期，Page Up / Down 切换月份。
-      </span>
+      <details className="vn-field-details">
+        <summary>键盘操作</summary>
+        <p className="vn-muted">方向键移动日期，Page Up / Down 切换月份。</p>
+      </details>
     </div>
   );
 }

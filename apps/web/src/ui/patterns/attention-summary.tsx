@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { InlineNotice } from '../components/ui/inline-notice';
 import { LoadingState } from './loading-state';
 import { EmptyState } from './empty-state';
+import { FactDetails } from './fact-details';
 import { cn } from '../components/utils';
 import './lists.css';
 
@@ -42,7 +43,12 @@ export function AttentionSummary({
       className={cn('vn-attention-summary vn-list-panel', className)}
       aria-labelledby={headingId}
     >
-      <h2 id={headingId}>需要关注</h2>
+      <div className="vn-list-heading">
+        <h2 id={headingId}>需要关注</h2>
+        {categories.every((category) => category.coverage === 'live') && (
+          <Badge variant="neutral">当前范围</Badge>
+        )}
+      </div>
       {stale && (
         <InlineNotice tone="warning" title="数据可能已变化" announce={false}>
           请以刷新后的事实为准。
@@ -53,14 +59,14 @@ export function AttentionSummary({
           <li key={category.kind}>
             <div>
               <h3>{category.label}</h3>
-              <p className="vn-list-meta">{category.description}</p>
-              <Badge variant={category.coverage === 'live' ? 'neutral' : 'warning'}>
-                {category.coverage === 'live'
-                  ? '当前读取范围'
-                  : category.coverage === 'cached-subset'
-                    ? '缓存子集'
-                    : '范围未知'}
-              </Badge>
+              {category.description && (
+                <FactDetails label="说明">{category.description}</FactDetails>
+              )}
+              {category.coverage !== 'live' && (
+                <Badge variant="warning">
+                  {category.coverage === 'cached-subset' ? '缓存子集' : '范围未知'}
+                </Badge>
+              )}
             </div>
             <span className="vn-attention-count">
               {category.count === null ? '未知' : category.count}
@@ -69,13 +75,13 @@ export function AttentionSummary({
               variant="secondary"
               disabled={disabled}
               onClick={() => onOpenCategory(category.kind)}
+              aria-label={`查看${category.label}`}
             >
-              查看{category.label}
+              查看
             </Button>
           </li>
         ))}
       </ul>
-      <p className="vn-list-meta">不同类别可能包含同一物品，未提供跨类别去重总数。</p>
     </section>
   );
 }

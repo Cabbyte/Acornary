@@ -34,7 +34,7 @@ try {
   const primitiveIds = expectedIds.slice(0, 28);
   const catalog = entries.map(({ component, ...entry }) => ({
     ...entry,
-    version: 'RC1',
+    version: 'RC2',
     status: entry.status ?? '待审阅',
     review: reviewStatus.entries[entry.id],
     source:
@@ -48,7 +48,7 @@ try {
     if (!existsSync(entry.source)) throw Error(`Missing source: ${entry.source}`);
   const result =
     JSON.stringify(
-      { version: 'Component Library RC1', components: 70, compositions: 5, entries: catalog },
+      { version: 'Component Library RC2', components: 70, compositions: 5, entries: catalog },
       null,
       2,
     ) + '\n';

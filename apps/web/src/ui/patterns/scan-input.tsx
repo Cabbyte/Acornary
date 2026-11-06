@@ -1,3 +1,4 @@
+import { Camera } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { FormField } from '../components/ui/form-field';
 import { Input } from '../components/ui/input';
@@ -68,42 +69,42 @@ export function ScanInput({
   );
   const effectiveCamera: ActionAvailability =
     cameraAvailability.kind === 'available' && !onRequestCamera
-      ? { kind: 'missingContract', reason: '当前未接入相机入口，可手动输入或粘贴编码。' }
+      ? { kind: 'missingContract', reason: '请手动输入或粘贴编码。' }
       : cameraAvailability;
   return (
     <section className="vn-operation-card vn-stack" aria-label="扫码或手动输入">
-      <FormField
-        label="二维码或条码内容"
-        hint="可以粘贴完整编码；识别后请核对具体物品。"
-        disabled={disabled}
-      >
-        <Input
-          value={rawText}
-          readOnly={readOnly}
-          onChange={(event) => onRawTextChange(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !disabled && !readOnly && !busy && rawText.trim()) {
-              event.preventDefault();
-              onResolve(rawText);
-            }
-          }}
-        />
-      </FormField>
-      <div className="vn-operation-actions">
-        <Button
-          disabled={disabled || readOnly || !rawText.trim()}
-          busy={busy}
-          onClick={() => onResolve(rawText)}
-        >
-          识别输入
-        </Button>
-        <Button
-          variant="secondary"
-          disabled={disabled || readOnly || busy || effectiveCamera.kind !== 'available'}
-          onClick={onRequestCamera}
-        >
-          使用相机
-        </Button>
+      <div className="vn-scan-entry">
+        <FormField label="二维码或条码" disabled={disabled}>
+          <Input
+            value={rawText}
+            placeholder="输入或粘贴完整编码"
+            readOnly={readOnly}
+            onChange={(event) => onRawTextChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !disabled && !readOnly && !busy && rawText.trim()) {
+                event.preventDefault();
+                onResolve(rawText);
+              }
+            }}
+          />
+        </FormField>
+        <div className="vn-operation-actions">
+          <Button
+            disabled={disabled || readOnly || !rawText.trim()}
+            busy={busy}
+            onClick={() => onResolve(rawText)}
+          >
+            识别
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={disabled || readOnly || busy || effectiveCamera.kind !== 'available'}
+            onClick={onRequestCamera}
+          >
+            <Camera size={16} aria-hidden="true" />
+            相机
+          </Button>
+        </div>
       </div>
       {effectiveCamera.kind !== 'available' && (
         <CapabilityNotice capabilityLabel="相机扫码" availability={effectiveCamera} />
@@ -111,7 +112,7 @@ export function ScanInput({
       {busy && <LoadingState layout="compact" label="正在识别编码" />}
       {stale ? (
         <InlineNotice tone="warning" title="输入已改变">
-          请重新识别后选择物品，旧候选不会用于本次输入。
+          请重新识别并选择物品。
         </InlineNotice>
       ) : result.kind === 'unknown' || result.kind === 'forbidden' || result.kind === 'error' ? (
         <InlineNotice
@@ -128,18 +129,18 @@ export function ScanInput({
         </InlineNotice>
       ) : result.kind === 'barcode' ? (
         <InlineNotice tone="info" title="识别到商品条码">
-          条码不等于一件实物。请从当前返回的候选中明确选择，不能自动推定某件物品。
+          同一条码可能对应多件物品，请选择具体一件。
         </InlineNotice>
       ) : result.kind === 'ambiguous' ? (
         <InlineNotice tone="warning" title="此编码存在多个候选">
           {result.reason}
         </InlineNotice>
       ) : result.kind === 'ItemQR' ? (
-        <p className="vn-muted">识别到物品二维码，请核对完整身份后选择。</p>
+        <p className="vn-operation-reference">已识别物品二维码，请核对后选择。</p>
       ) : null}
       {candidates.length > 0 && (
         <RadioGroup
-          label="明确选择一件物品"
+          label="选择物品"
           value={selected?.id ?? null}
           onValueChange={onSelectItem}
           disabled={disabled || busy}
@@ -150,8 +151,8 @@ export function ScanInput({
             disabled: !!candidate.unavailableReason,
             description: (
               <>
-                <code className="vn-operation-id">{candidate.id}</code>
                 <span>{candidate.locationLabel}</span>
+                <code className="vn-operation-id">{candidate.id}</code>
                 {candidate.unavailableReason && <span> · {candidate.unavailableReason}</span>}
               </>
             ),
@@ -159,8 +160,8 @@ export function ScanInput({
         />
       )}
       {!stale && result.kind === 'barcode' && !candidates.length && (
-        <InlineNotice tone="info" title="当前没有返回可选物品">
-          这不证明完整库存中不存在对应商品。
+        <InlineNotice tone="info" title="当前未找到可选物品">
+          不代表完整库存中没有对应商品。
         </InlineNotice>
       )}
       {!stale && result.kind === 'barcode' && result.hasMore && (
@@ -170,7 +171,7 @@ export function ScanInput({
             disabled={!onLoadMoreCandidates || disabled || busy}
             onClick={onLoadMoreCandidates}
           >
-            读取更多候选
+            更多候选
           </Button>
         </div>
       )}
@@ -181,7 +182,7 @@ export function ScanInput({
             if (selected) onContinue(selected.id);
           }}
         >
-          使用明确选择的物品
+          确认物品
         </Button>
       </div>
     </section>

@@ -42,12 +42,7 @@ export function DateInput({
   };
   return (
     <div className={cn('vn-date-input', className)}>
-      <FormField
-        label={label}
-        required={required}
-        error={validation}
-        hint={hint ?? '按 YYYY-MM-DD 直接输入，或打开日历选择；空值表示未记录。'}
-      >
+      <FormField label={label} required={required} error={validation} hint={hint}>
         {(props) => (
           <div className="vn-field-inline">
             <Input

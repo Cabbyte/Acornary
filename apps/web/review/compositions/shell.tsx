@@ -9,6 +9,7 @@ import { InlineNotice } from '../../src/ui/components/ui/inline-notice';
 import type { AppearancePreset, UIMode } from '../../src/ui/theme/provider';
 import { useReviewAppearance } from '../appearance-context';
 import { items, householdId } from '../fixtures';
+import { ReviewNote } from '../review-frame';
 import type { ReviewDemoProps } from '../types';
 const secondHousehold = 'household_00000000-0000-4000-8000-000000000002';
 export function ShellComposition({ scenario }: ReviewDemoProps) {
@@ -42,10 +43,7 @@ export function ShellComposition({ scenario }: ReviewDemoProps) {
         ];
   return (
     <div className="review-composition--wide">
-      <p className="vn-muted">
-        测试数据 · 只展示 Shell
-        组合，导航不会打开正式页面。输入草稿后切换配色、模式或宽度检查连续性。
-      </p>
+      <ReviewNote>输入后切换配色、模式或宽度，检查草稿连续性。导航只更新当前示例。</ReviewNote>
       <AppShell
         mode={mode}
         preset={preset}
@@ -98,8 +96,8 @@ export function ShellComposition({ scenario }: ReviewDemoProps) {
         }
       >
         <div className="review-shell-body">
-          <h2 className="vn-section-title">日常的一点记忆</h2>
-          <FormField label="本次示例草稿" hint="仅保留在本页。两种模式使用同一份输入。">
+          <h2 className="vn-section-title">物品速记</h2>
+          <FormField label="本次示例草稿">
             <Input
               value={drafts[household] ?? ''}
               onChange={(e) => setDrafts({ ...drafts, [household]: e.target.value })}

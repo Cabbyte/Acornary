@@ -132,13 +132,56 @@
 [data-acornary-ui='vnext'] .vn-textarea {
   resize: vertical;
   padding-block: var(--vn-space-8);
-  min-height: 100px;
+  min-height: var(--vn-target-touch);
 }
 [data-acornary-ui='vnext'] .vn-form-field {
   display: flex;
   flex-direction: column;
   gap: var(--vn-space-8);
   min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-field-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vn-space-8);
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-field-heading--hidden,
+[data-acornary-ui='vnext'] .vn-field-label--hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+[data-acornary-ui='vnext'] .vn-field-help-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vn-space-4);
+  min-width: var(--vn-target-touch);
+  min-height: var(--vn-target-touch);
+  margin-block: calc(var(--vn-space-8) * -1);
+  padding: var(--vn-space-8);
+  border: 0;
+  border-radius: var(--vn-radius-control);
+  background: transparent;
+  color: var(--vn-muted-foreground);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+[data-acornary-ui='vnext'] .vn-field-help-toggle:hover,
+[data-acornary-ui='vnext'] .vn-field-help-toggle[aria-expanded='true'] {
+  background: var(--vn-selection);
+  color: var(--vn-selection-foreground);
+}
+[data-acornary-ui='vnext'] .vn-field-hint[hidden] {
+  display: none;
 }
 [data-acornary-ui='vnext'] .vn-field-label {
   font-size: var(--vn-body-size);

@@ -1,3 +1,4 @@
+import { ReviewNote, ReviewFeedback } from '../review-frame';
 import { useEffect, useState } from 'react';
 import { ArrowRight, Eye, MoveRight, Trash2 } from 'lucide-react';
 import type { ReviewDemoProps, ReviewEntry, ReviewScenario } from '../types';
@@ -113,9 +114,7 @@ function ModalDemo({ scenario, kind }: ReviewDemoProps & { kind: 'dialog' | 'she
     );
   return (
     <div className="vn-stack">
-      <p className="vn-muted">
-        本地交互演示。Tab 切换焦点；Escape 或关闭按钮请求关闭。主题切换保留草稿。
-      </p>
+      <ReviewNote>Tab切换焦点，Escape关闭后恢复焦点。切换外观保留输入。</ReviewNote>
       <Component
         open={open}
         onOpenChange={(next) => {
@@ -168,14 +167,10 @@ function ModalDemo({ scenario, kind }: ReviewDemoProps & { kind: 'dialog' | 'she
         }
       >
         {content}
-        <p className="vn-overlays-demo-log" role="status">
-          {message}
-        </p>
+        <ReviewFeedback>{message}</ReviewFeedback>
       </Component>
       <p className="vn-overlays-demo-log">保留的草稿：{draft}</p>
-      <p className="vn-overlays-demo-log" role="status">
-        {message}
-      </p>
+      <ReviewFeedback>{message}</ReviewFeedback>
     </div>
   );
 }
@@ -291,9 +286,7 @@ export function TooltipDemo({ scenario }: ReviewDemoProps) {
       {scenario === 'disabled' && (
         <p className="vn-muted">当前示例没有可查看的条目，按钮已禁用。</p>
       )}
-      <p className="vn-overlays-demo-log" role="status">
-        {message}
-      </p>
+      <ReviewFeedback>{message}</ReviewFeedback>
     </div>
   );
 }
@@ -358,9 +351,7 @@ export function DropdownMenuDemo({ scenario }: ReviewDemoProps) {
         />
       </div>
       <p className="vn-muted">方向键切换，Enter 选择，Escape 返回触发按钮。禁用项附带原因。</p>
-      <p className="vn-overlays-demo-log" role="status">
-        {message}
-      </p>
+      <ReviewFeedback>{message}</ReviewFeedback>
     </div>
   );
 }
@@ -435,9 +426,7 @@ export function ToastDemo({ scenario }: ReviewDemoProps) {
           </button>
         }
       />
-      <p className="vn-overlays-demo-log" role="status">
-        {message}
-      </p>
+      <ReviewFeedback>{message}</ReviewFeedback>
     </div>
   );
 }
@@ -518,9 +507,7 @@ export function InlineNoticeDemo({ scenario }: ReviewDemoProps) {
           重新显示提示
         </button>
       )}
-      <p className="vn-overlays-demo-log" role="status">
-        {message}
-      </p>
+      <ReviewFeedback>{message}</ReviewFeedback>
     </div>
   );
 }
@@ -599,9 +586,7 @@ export function EmptyStateDemo({ scenario }: ReviewDemoProps) {
           </button>
         }
       />
-      <p className="vn-overlays-demo-log" role="status">
-        {message}
-      </p>
+      <ReviewFeedback>{message}</ReviewFeedback>
     </div>
   );
 }

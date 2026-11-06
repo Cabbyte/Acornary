@@ -1,3 +1,4 @@
+import { ReviewNote, ReviewFeedback } from '../review-frame';
 import { useEffect, useState } from 'react';
 import { Button as BaseButton } from '@base-ui/react/button';
 import {
@@ -325,17 +326,17 @@ export function SeparatorDemo({ scenario }: ReviewDemoProps) {
       <BaseButton type="button" className="vn-fact-button" onClick={() => setVertical(!vertical)}>
         切换为{vertical ? '水平' : '垂直'}分隔
       </BaseButton>
-      <p className="vn-fact-meta">
+      <ReviewNote>
         {scenario === 'decorative'
           ? '此分隔仅装饰，对辅助技术隐藏。'
           : '此分隔具有 separator 语义。'}
-      </p>
+      </ReviewNote>
     </div>
   );
 }
 
 export function ItemIdentityDemo({ scenario }: ReviewDemoProps) {
-  const [event, setEvent] = useState('打开和复制均由宿主通过回调处理。');
+  const [event, setEvent] = useState('');
   const item = {
     ...itemFixture,
     name:
@@ -357,9 +358,7 @@ export function ItemIdentityDemo({ scenario }: ReviewDemoProps) {
         onOpen={(id) => setEvent(`收到打开意图：${id}`)}
         onCopyId={(id) => setEvent(`收到复制意图，尚未调用剪贴板：${id}`)}
       />
-      <p className="vn-fact-meta" role="status">
-        {event}
-      </p>
+      <ReviewFeedback>{event}</ReviewFeedback>
     </div>
   );
 }
@@ -488,7 +487,7 @@ export function DateFactValueDemo({ scenario }: ReviewDemoProps) {
 }
 
 export function LocationPathDemo({ scenario }: ReviewDemoProps) {
-  const [event, setEvent] = useState('仅末级位置具有可验证的完整 Item ID，祖先标签不虚构链接。');
+  const [event, setEvent] = useState('');
   const location =
     scenario === 'unknown' || scenario === 'root'
       ? null
@@ -522,9 +521,7 @@ export function LocationPathDemo({ scenario }: ReviewDemoProps) {
         loading={scenario === 'loading'}
         onOpen={(id) => setEvent(`收到打开位置意图：${id}`)}
       />
-      <p className="vn-fact-meta" role="status">
-        {event}
-      </p>
+      <ReviewFeedback>{event}</ReviewFeedback>
     </div>
   );
 }
@@ -563,9 +560,7 @@ export function FactSourceDemo({ scenario }: ReviewDemoProps) {
           )
         }
       />
-      <p className="vn-fact-meta" role="status">
-        {event}
-      </p>
+      <ReviewFeedback>{event}</ReviewFeedback>
       {scenario === 'old-version' && (
         <p className="vn-fact-meta">事实仍指向原版本，不自动改用最新版。</p>
       )}

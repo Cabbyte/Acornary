@@ -34,7 +34,7 @@ export function PendingOperationBanner({
         busy
           ? '正在核对原请求'
           : state === 'retained'
-            ? '有保留的待确认任务'
+            ? '任务已保留，结果待确认'
             : '结果待确认，可能已经保存'
       }
     >
@@ -42,16 +42,11 @@ export function PendingOperationBanner({
         <p className="vn-operation-summary">
           {title} · {scopeLabel}
         </p>
-        <p className="vn-operation-reference">
-          任务引用：<code>{taskId}</code>
-        </p>
-        <p className="vn-operation-summary">
-          继续核对同一次请求，不编辑已发送内容，也不将离开视作取消。
-        </p>
+        <p className="vn-operation-summary">核对原请求后再继续；离开不会取消已发送的请求。</p>
         {blocked && (
           <p>
             {!originalAttemptAvailable
-              ? '原请求资料不可用，不能重构或发送替代请求。'
+              ? '原请求资料不可用，暂不能核对或重试。'
               : recoveryAvailability.kind !== 'available'
                 ? recoveryAvailability.reason
                 : null}
@@ -64,7 +59,7 @@ export function PendingOperationBanner({
             disabled={blocked}
             onClick={() => onInspectOriginal(taskId)}
           >
-            核对原请求结果
+            核对原请求
           </Button>
           {onRetryOriginal && (
             <Button
@@ -72,13 +67,19 @@ export function PendingOperationBanner({
               disabled={blocked || busy}
               onClick={() => onRetryOriginal(taskId)}
             >
-              重试同一次请求
+              重试原请求
             </Button>
           )}
           <Button variant="quiet" disabled={busy} onClick={() => onRetainAndLeave(taskId)}>
-            保留任务并离开
+            保留并离开
           </Button>
         </div>
+        <details className="vn-operation-details">
+          <summary>任务详情</summary>
+          <p className="vn-operation-reference">
+            任务引用：<code>{taskId}</code>
+          </p>
+        </details>
       </div>
     </InlineNotice>
   );

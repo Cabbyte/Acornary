@@ -1,4 +1,6 @@
 import type { DateFact } from '../../../../../packages/contracts/src/read-v2';
+/** Presentation only; summary never changes the underlying fact or operation identity. */
+export type FactPresentation = 'summary' | 'detail';
 export type {
   ItemView,
   GroupView,

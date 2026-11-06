@@ -1,4 +1,5 @@
-import type { DateFactPresentation } from './types';
+import type { DateFactPresentation, FactPresentation } from './types';
+import { FactDetails } from './fact-details';
 import { cn } from '../components/utils';
 import './facts.css';
 
@@ -6,6 +7,7 @@ export interface DateFactValueProps {
   fact: DateFactPresentation;
   redacted?: boolean;
   loading?: boolean;
+  presentation?: FactPresentation;
   className?: string;
 }
 
@@ -46,6 +48,7 @@ export function DateFactValue({
   fact,
   redacted = false,
   loading = false,
+  presentation = 'summary',
   className,
 }: DateFactValueProps) {
   const kindLabel = kindLabels[fact.kind];
@@ -58,11 +61,32 @@ export function DateFactValue({
         : fact.state === 'COMPLETED'
           ? 'success'
           : 'muted';
+  const metadata = (
+    <>
+      <span className="vn-fact-meta">日期用途：{kindLabel}</span>
+      <span className="vn-fact-meta">依据：{fact.basis || '未记录'}</span>
+      <span className="vn-fact-meta">
+        来源：
+        {fact.source === 'LIFECYCLE'
+          ? '生命周期事实'
+          : fact.source === 'DEADLINE'
+            ? '期限记录'
+            : '未记录'}
+      </span>
+      {fact.state === 'COMPLETED' && fact.completedOn && isCalendarDate(fact.completedOn) && (
+        <span className="vn-fact-meta">
+          完成日期：<time dateTime={fact.completedOn}>{fact.completedOn}</time>
+        </span>
+      )}
+    </>
+  );
   return (
-    <div className={cn('vn-date-fact', className)}>
+    <div className={cn('vn-date-fact', className)} data-presentation={presentation}>
       <span className="vn-fact-label">
-        {kindLabel}
-        {dateLabel && <span className="vn-fact-meta"> · {dateLabel}</span>}
+        {presentation === 'summary' ? dateLabel || kindLabel : kindLabel}
+        {presentation === 'detail' && dateLabel && (
+          <span className="vn-fact-meta"> · {dateLabel}</span>
+        )}
       </span>
       {loading ? (
         <span role="status" className="vn-fact-meta">
@@ -72,36 +96,27 @@ export function DateFactValue({
         <span className="vn-fact-meta">日期不可见</span>
       ) : (
         <>
-          <span className="vn-date-fact-main">
-            {fact.dueOn === null || fact.dueOn === '' ? (
-              <span className="vn-fact-meta">日期未记录</span>
-            ) : isCalendarDate(fact.dueOn) ? (
-              <time dateTime={fact.dueOn}>{fact.dueOn}</time>
-            ) : (
-              <span className="vn-fact-error">日期格式有误</span>
-            )}
-            <span className="vn-fact-badge" data-tone={tone}>
-              {stateLabels[fact.state]}
+          <div className="vn-date-fact-value-row">
+            <span className="vn-date-fact-main">
+              {fact.dueOn === null || fact.dueOn === '' ? (
+                <span className="vn-fact-meta">日期未记录</span>
+              ) : isCalendarDate(fact.dueOn) ? (
+                <time dateTime={fact.dueOn}>{fact.dueOn}</time>
+              ) : (
+                <span className="vn-fact-error">日期格式有误</span>
+              )}
+              <span className="vn-fact-badge" data-tone={tone}>
+                {stateLabels[fact.state]}
+              </span>
             </span>
-          </span>
+            {presentation === 'summary' && <FactDetails label="依据与来源">{metadata}</FactDetails>}
+          </div>
           {fact.label && fact.label !== kindLabel && fact.label !== dateLabel && (
             <span className="vn-fact-meta">{fact.label}</span>
           )}
-          {fact.basis && <span className="vn-fact-meta">依据：{fact.basis}</span>}
-          {fact.source && (
-            <span className="vn-fact-meta">
-              来源：{fact.source === 'LIFECYCLE' ? '生命周期事实' : '期限记录'}
-            </span>
-          )}
-          {fact.state === 'COMPLETED' && fact.completedOn && (
-            <span className="vn-fact-meta">
-              完成日期：
-              {isCalendarDate(fact.completedOn) ? (
-                <time dateTime={fact.completedOn}>{fact.completedOn}</time>
-              ) : (
-                '日期格式有误'
-              )}
-            </span>
+          {presentation === 'detail' && metadata}
+          {fact.state === 'COMPLETED' && fact.completedOn && !isCalendarDate(fact.completedOn) && (
+            <span className="vn-fact-error">完成日期格式有误</span>
           )}
         </>
       )}

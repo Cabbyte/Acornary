@@ -1,3 +1,4 @@
+import { ReviewNote, ReviewFeedback } from '../review-frame';
 import { useEffect, useState, type ReactNode } from 'react';
 import type { WriteResultV2 } from '../../../../packages/contracts/src/read-v2';
 import type { ReviewDemoProps, ReviewEntry, ReviewScenario } from '../types';
@@ -50,19 +51,10 @@ export const receiptFixture: WriteResultV2 = {
   summary: '移动一件物品到客厅侧柜。',
 };
 function PreviewNote({ children }: { children?: ReactNode }) {
-  return (
-    <InlineNotice tone="info" title="组件预览 · 仅本地演示" announce={false}>
-      {children ||
-        '数据来自固定 fixture。按钮只改变演示状态或记录意图，不连接真实账户、服务或设备。'}
-    </InlineNotice>
-  );
+  return <ReviewNote>{children}</ReviewNote>;
 }
 function DemoLog({ children }: { children: ReactNode }) {
-  return (
-    <p className="vn-operation-demo-log" role="status">
-      {children}
-    </p>
-  );
+  return <ReviewFeedback>{children}</ReviewFeedback>;
 }
 function useDemoLog(scenario: string) {
   const [message, setMessage] = useState('尚未触发操作。');

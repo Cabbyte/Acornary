@@ -82,7 +82,7 @@ export function AttachmentList({
           action={
             onRetry && (
               <Button variant="secondary" onClick={onRetry}>
-                重新读取
+                刷新列表
               </Button>
             )
           }
@@ -91,7 +91,7 @@ export function AttachmentList({
           {attachments.length > 0 && '下方保留已取得的附件。'}
         </InlineNotice>
       )}
-      {readOnly && <p className="vn-content-meta">附件列表为只读，可查看已提供的内容。</p>}
+      {readOnly && <p className="vn-content-meta">附件只读</p>}
       {onRemove && !readOnly && removal.kind !== 'available' && (
         <CapabilityNotice capabilityLabel="移除附件" availability={removal} />
       )}
@@ -119,27 +119,34 @@ export function AttachmentList({
                   <div className="vn-attachment-copy">
                     <div className="vn-row">
                       <span className="vn-field-label">{name}</span>
-                      <Badge
-                        variant={itemState === 'failed' ? 'danger' : ready ? 'neutral' : 'warning'}
-                      >
-                        {attachmentStates[itemState]}
-                      </Badge>
+                      {!ready && (
+                        <Badge variant={itemState === 'failed' ? 'danger' : 'warning'}>
+                          {attachmentStates[itemState]}
+                        </Badge>
+                      )}
                     </div>
                     {!restricted && attachment.caption && attachment.caption !== name && (
                       <p className="vn-content-value">{attachment.caption}</p>
                     )}
                     {!restricted && (
                       <p className="vn-content-meta">
-                        {attachment.mimeType || '文件类型未知'} · {sizeLabel(attachment.fileSize)}
+                        {attachment.mimeType === 'application/pdf'
+                          ? 'PDF'
+                          : attachment.mimeType === 'image/jpeg'
+                            ? 'JPEG'
+                            : attachment.mimeType === 'image/png'
+                              ? 'PNG'
+                              : attachment.mimeType === 'image/webp'
+                                ? 'WebP'
+                                : attachment.mimeType || '文件类型未知'}{' '}
+                        · {sizeLabel(attachment.fileSize)}
                         {attachment.sensitivity !== 'NORMAL' && ' · 受保护内容'}
                       </p>
                     )}
                     {presentation?.reason && (
                       <p className="vn-content-meta">{presentation.reason}</p>
                     )}
-                    {ready && !onOpen && (
-                      <p className="vn-content-meta">当前入口未提供查看能力。</p>
-                    )}
+                    {ready && !onOpen && <p className="vn-content-meta">当前无法打开附件。</p>}
                   </div>
                   <div className="vn-row vn-attachment-actions">
                     {onOpen && !restricted && (

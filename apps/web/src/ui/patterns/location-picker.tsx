@@ -60,6 +60,10 @@ export function LocationPicker({
         : candidate.eligibility.kind !== 'validContainer'
           ? candidate.eligibility.reason
           : undefined;
+  const selectedCandidate =
+    value.kind === 'item'
+      ? candidates.find((candidate) => candidate.itemId === value.itemId)
+      : undefined;
   return (
     <div className={cn('vn-domain-field', className)}>
       <Combobox
@@ -82,14 +86,14 @@ export function LocationPicker({
         options={candidates.map((candidate) => ({
           value: candidate.itemId,
           label: candidate.name,
-          description: `位置物品 · ${candidate.path.join(' / ') || '完整路径未提供'} · 来源：${candidate.source}${unavailableReason(candidate) ? ` · 不可选：${unavailableReason(candidate)}` : ' · 可容纳物品'}`,
+          description: `${candidate.path.join(' / ') || '完整路径未提供'}${candidate.source ? ` · 来源：${candidate.source}` : ''}${unavailableReason(candidate) ? ` · 不可选：${unavailableReason(candidate)}` : ' · 可容纳物品'}`,
           disabled: Boolean(unavailableReason(candidate)),
         }))}
         loading={loading}
         error={error}
         disabled={disabled}
         readOnly={readOnly}
-        hint="仅可选择可容纳物品的位置；请核对完整存放路径。"
+        placeholder="选择位置或容器"
         emptyMessage="当前候选页没有可匹配的位置物品"
       />
       <div className="vn-fields-selection" aria-live="polite">
@@ -102,7 +106,7 @@ export function LocationPicker({
           state={value.kind === 'item' ? 'known' : value.kind}
         />
       </div>
-      <div className="vn-row">
+      <div className="vn-fields-actions">
         <Button
           variant="secondary"
           disabled={disabled || readOnly || loading || !rootPolicy.allowed}
@@ -111,7 +115,7 @@ export function LocationPicker({
             onQueryChange('');
           }}
         >
-          放在家庭根位置
+          家庭根位置
         </Button>
         <Button
           variant="quiet"
@@ -121,8 +125,18 @@ export function LocationPicker({
             onQueryChange('');
           }}
         >
-          标记位置未知
+          设为未知
         </Button>
+        <details className="vn-field-details">
+          <summary>位置说明</summary>
+          <div className="vn-field-details__content">
+            <p className="vn-muted">仅可选择可容纳物品的位置；同名位置请核对完整存放路径。</p>
+            <p className="vn-muted">家庭根位置表示未放入其他容器；未知表示尚未确认存放位置。</p>
+            {selectedCandidate?.source && (
+              <p className="vn-muted">来源：{selectedCandidate.source}</p>
+            )}
+          </div>
+        </details>
       </div>
       {!rootPolicy.allowed && (
         <span className="vn-muted">

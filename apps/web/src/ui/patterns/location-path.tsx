@@ -1,5 +1,6 @@
 import { Button as BaseButton } from '@base-ui/react/button';
-import type { ItemView } from './types';
+import { ChevronRight } from 'lucide-react';
+import type { FactPresentation, ItemView } from './types';
 import { cn } from '../components/utils';
 import './facts.css';
 
@@ -12,6 +13,7 @@ export interface LocationPathProps {
   disabled?: boolean;
   readOnly?: boolean;
   loading?: boolean;
+  presentation?: FactPresentation;
   className?: string;
 }
 
@@ -22,6 +24,7 @@ export function LocationPath({
   disabled = false,
   readOnly = false,
   loading = false,
+  presentation = 'summary',
   className,
 }: LocationPathProps) {
   const segments = location?.path.length ? location.path : location?.label ? [location.label] : [];
@@ -33,8 +36,8 @@ export function LocationPath({
         ? '家庭根位置（未放入容器）'
         : '位置未记录';
   return (
-    <div className={cn('vn-location-path', className)}>
-      <span className="vn-fact-label">存放位置</span>
+    <div className={cn('vn-location-path', className)} data-presentation={presentation}>
+      {presentation === 'detail' && <span className="vn-fact-label">存放位置</span>}
       {loading || state !== 'known' || !segments.length ? (
         <span className="vn-fact-meta" role={loading ? 'status' : undefined}>
           {unavailableLabel}
@@ -44,9 +47,7 @@ export function LocationPath({
           {segments.map((segment, depth) => (
             <li key={JSON.stringify(segments.slice(0, depth + 1))}>
               {depth > 0 && (
-                <span className="vn-location-divider" aria-hidden="true">
-                  ›
-                </span>
+                <ChevronRight className="vn-location-divider" size={14} aria-hidden="true" />
               )}
               {depth === segments.length - 1 && location?.id && onOpen && !readOnly ? (
                 <BaseButton

@@ -15,14 +15,14 @@ export interface EmptyStateProps {
   className?: string;
 }
 const states = {
-  empty: { title: '这里还没有记录', detail: '当前读取范围内没有记录。', icon: Inbox },
+  empty: { title: '当前范围暂无记录', detail: '', icon: Inbox },
   'no-match': { title: '没有找到匹配项', detail: '可以调整关键词或筛选条件。', icon: Search },
   permission: {
     title: '无法查看此范围',
     detail: '当前权限不允许读取这些记录，数量未知。',
     icon: ShieldAlert,
   },
-  error: { title: '暂时无法读取记录', detail: '读取未完成，不能判断是否有库存。', icon: Unplug },
+  error: { title: '暂时无法读取记录', detail: '读取未完成，库存数量未知。', icon: Unplug },
   unknown: { title: '当前记录情况未知', detail: '尚未取得可用的读取结果。', icon: CircleHelp },
   offline: {
     title: '连接已断开',
@@ -46,7 +46,9 @@ export function EmptyState({ reason, title, context, recoveryAction, className }
       <h3 className="vn-state-title" id={headingId}>
         {title || presentation.title}
       </h3>
-      <div className="vn-state-context">{context || presentation.detail}</div>
+      {(context || presentation.detail) && (
+        <div className="vn-state-context">{context || presentation.detail}</div>
+      )}
       {recoveryAction && <div className="vn-state-actions">{recoveryAction}</div>}
     </section>
   );

@@ -49,7 +49,7 @@ export function ModeSwitcher({
         setOpen(false);
       }}
       label="使用模式"
-      description={blockedReason || '切换展示方式，保留正在编辑的内容。'}
+      description={blockedReason}
       disabled={disabled || Boolean(blockedReason)}
       readOnly={readOnly}
       orientation={layout === 'inline' ? 'horizontal' : 'vertical'}
@@ -78,8 +78,7 @@ export function ModeSwitcher({
             open={isOpen}
             onOpenChange={setOpen}
             disabled={disabled}
-            title="切换使用模式"
-            description={`当前为${modeLabels[value]}模式`}
+            title="切换模式"
             trigger={
               <Button
                 variant="secondary"

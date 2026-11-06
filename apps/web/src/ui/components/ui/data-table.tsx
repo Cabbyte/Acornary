@@ -1,5 +1,5 @@
-import { useId, useMemo, type ReactNode } from 'react';
-import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
+import { useId, useMemo, useState, type ReactNode } from 'react';
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown } from 'lucide-react';
 import {
   useTable,
   tableFeatures,
@@ -53,6 +53,12 @@ export interface DataTableProps<T extends { id: string }> {
   getSelectionAvailability?: (row: T) => ActionAvailability;
   getRowLabel: (row: T) => string;
   onOpen: (id: string) => void;
+  /** Hide when the primary cell already provides the same open action. */
+  showOpenAction?: boolean;
+  /** Let a composed batch bar own the only selection summary. */
+  showSelectionSummary?: boolean;
+  /** Secondary record facts stay accessible without expanding every table cell. */
+  renderRowDetails?: (row: T) => ReactNode;
   pagination: Omit<
     PaginationControlsProps,
     'loadedCount' | 'onPageChange' | 'loading' | 'disabled' | 'className'
@@ -85,6 +91,9 @@ export function DataTable<T extends { id: string }>({
   getSelectionAvailability,
   getRowLabel,
   onOpen,
+  showOpenAction = true,
+  showSelectionSummary = true,
+  renderRowDetails,
   pagination,
   onPageChange,
   expandedIds = [],
@@ -97,6 +106,8 @@ export function DataTable<T extends { id: string }>({
   className,
 }: DataTableProps<T>) {
   const filterId = useId();
+  // Uncontrolled rows keep the original all-fields-visible default, including new pages.
+  const [collapsedIds, setCollapsedIds] = useState<readonly string[]>([]);
   const busy = state === 'loading';
   const definitions = useMemo<ColumnDef<typeof features, T>[]>(
     () =>
@@ -225,13 +236,13 @@ export function DataTable<T extends { id: string }>({
           <TableCaption>{caption}</TableCaption>
           <TableHeader role="rowgroup">
             <TableRow role="row">
-              <TableHead role="columnheader">
+              <TableHead role="columnheader" className="vn-data-selection">
                 <span className="vn-data-narrow-heading">选择</span>
                 <Checkbox
                   checked={allLoaded ? true : selectedLoaded > 0 ? 'indeterminate' : false}
                   onCheckedChange={selectLoaded}
                   disabled={eligibleIds.length === 0}
-                  label="选择本页"
+                  label={<span className="vn-list-sr-only">选择本页</span>}
                 />
               </TableHead>
               {columns.map((column) => {
@@ -269,13 +280,13 @@ export function DataTable<T extends { id: string }>({
                   </TableHead>
                 );
               })}
-              <TableHead role="columnheader">操作</TableHead>
+              {showOpenAction && <TableHead role="columnheader">操作</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody role="rowgroup">
             {currentRows.length === 0 ? (
               <TableRow role="row">
-                <TableCell colSpan={columns.length + 2} role="cell">
+                <TableCell colSpan={columns.length + (showOpenAction ? 2 : 1)} role="cell">
                   {state === 'ready' ? (
                     <EmptyState reason={filterValue ? 'no-match' : 'empty'} />
                   ) : (
@@ -285,8 +296,29 @@ export function DataTable<T extends { id: string }>({
               </TableRow>
             ) : (
               currentRows.map((row) => {
-                const expanded = !onExpandedChange || expandedIds.includes(row.id);
+                const expanded = onExpandedChange
+                  ? expandedIds.includes(row.id)
+                  : !collapsedIds.includes(row.id);
                 const availability = getSelectionAvailability?.(row.original);
+                const cells = row.getAllCells();
+                const detailsId = `${filterId}-${row.id}-details`;
+                const controlledIds = [
+                  ...cells.slice(1).map((cell) => `${filterId}-${cell.id}`),
+                  ...(renderRowDetails ? [detailsId] : []),
+                ].join(' ');
+                const toggleExpanded = () => {
+                  if (onExpandedChange) {
+                    onExpandedChange(
+                      expanded
+                        ? expandedIds.filter((id) => id !== row.id)
+                        : [...expandedIds, row.id],
+                    );
+                  } else {
+                    setCollapsedIds((current) =>
+                      expanded ? [...current, row.id] : current.filter((id) => id !== row.id),
+                    );
+                  }
+                };
                 return (
                   <TableRow
                     key={row.id}
@@ -312,43 +344,58 @@ export function DataTable<T extends { id: string }>({
                         }
                       />
                     </TableCell>
-                    {row.getAllCells().map((cell, index) => (
+                    {cells.map((cell, index) => (
                       <TableCell
                         key={cell.id}
+                        id={index > 0 ? `${filterId}-${cell.id}` : undefined}
                         role="cell"
                         className={index === 0 ? 'vn-data-primary' : 'vn-data-secondary'}
                       >
                         <span className="vn-data-cell-label" aria-hidden="true">
                           {columns[index]?.label}
                         </span>
-                        <table.FlexRender cell={cell} />
-                        {index === 0 && onExpandedChange && (
-                          <Button
-                            className="vn-data-expand"
-                            variant="quiet"
-                            aria-expanded={expanded}
-                            onClick={() =>
-                              onExpandedChange(
-                                expanded
-                                  ? expandedIds.filter((id) => id !== row.id)
-                                  : [...expandedIds, row.id],
-                              )
-                            }
-                          >
-                            {expanded ? '收起事实' : '展开事实'}
-                          </Button>
+                        {index === 0 ? (
+                          <>
+                            <div className="vn-data-primary-layout">
+                              <div className="vn-data-primary-value">
+                                <table.FlexRender cell={cell} />
+                              </div>
+                              {(columns.length > 1 || renderRowDetails) && (
+                                <Button
+                                  className="vn-data-expand"
+                                  variant="quiet"
+                                  data-has-details={Boolean(renderRowDetails)}
+                                  aria-expanded={expanded}
+                                  aria-controls={controlledIds || undefined}
+                                  aria-label={`${expanded ? '收起' : '展开'}${getRowLabel(row.original)}的事实与记录详情`}
+                                  onClick={toggleExpanded}
+                                >
+                                  <ChevronDown size={18} aria-hidden="true" />
+                                </Button>
+                              )}
+                            </div>
+                            {renderRowDetails && expanded && (
+                              <div id={detailsId} className="vn-data-row-details">
+                                {renderRowDetails(row.original)}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <table.FlexRender cell={cell} />
                         )}
                       </TableCell>
                     ))}
-                    <TableCell role="cell" className="vn-data-actions">
-                      <Button
-                        variant="secondary"
-                        disabled={disabled || busy}
-                        onClick={() => onOpen(row.id)}
-                      >
-                        打开
-                      </Button>
-                    </TableCell>
+                    {showOpenAction && (
+                      <TableCell role="cell" className="vn-data-actions">
+                        <Button
+                          variant="secondary"
+                          disabled={disabled || busy}
+                          onClick={() => onOpen(row.id)}
+                        >
+                          打开
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })
@@ -363,11 +410,12 @@ export function DataTable<T extends { id: string }>({
         loading={busy}
         disabled={disabled}
       />
-      <p className="vn-list-meta">
-        已选 {selectedIds.length} 件，其中{' '}
-        {selectedIds.filter((id) => !rows.some((row) => row.id === id)).length}{' '}
-        件不在本页。选择本页仅作用于已加载且可选的具体物品。
-      </p>
+      {showSelectionSummary && selectedIds.length > 0 && (
+        <p className="vn-list-meta" role="status">
+          已选 {selectedIds.length} 件 · 本页之外{' '}
+          {selectedIds.filter((id) => !rows.some((row) => row.id === id)).length} 件
+        </p>
+      )}
     </section>
   );
 }

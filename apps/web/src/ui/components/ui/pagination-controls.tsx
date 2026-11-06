@@ -31,11 +31,13 @@ export function PaginationControls({
   className,
 }: PaginationControlsProps) {
   return (
-    <nav aria-label="列表分页" className={cn('vn-pagination', className)}>
+    <nav
+      aria-label={`列表分页，每页最多 ${pageSize} 条`}
+      className={cn('vn-pagination', className)}
+    >
       <p className="vn-list-meta" role="status">
-        第 {pageIndex + 1} 页 · 本页已加载 {loadedCount} 条 ·{' '}
-        {knownTotal === null ? '总数未知' : `当前范围共 ${knownTotal} 条`}
-        <span>每页最多 {pageSize} 条</span>
+        第 {pageIndex + 1} 页 · 本页 {loadedCount} 条 ·{' '}
+        {knownTotal === null ? '总数未知' : `共 ${knownTotal} 条`}
       </p>
       <div className="vn-row">
         <Button

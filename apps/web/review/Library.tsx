@@ -9,6 +9,7 @@ import { entries } from './registry';
 import type { ReviewEntry } from './types';
 import './library.css';
 import { ReviewAppearanceProvider } from './appearance-context';
+import { ReviewFrame } from './review-frame';
 const presets = Object.keys(source.presets) as AppearancePreset[];
 const widths = [360, 390, 768, 1024, 1440, 1920];
 const initial = new URLSearchParams(location.search);
@@ -126,7 +127,9 @@ export function Library() {
               },
             }}
           >
-            <Demo scenario={activeScenario} />
+            <ReviewFrame>
+              <Demo scenario={activeScenario} />
+            </ReviewFrame>
           </ReviewAppearanceProvider>
         </div>
       </AcornaryThemeProvider>
@@ -148,7 +151,7 @@ export function Library() {
             <span>组件设计审阅</span>
           </div>
           <span className="library-meta">
-            RC1 · {entries.filter((e) => e.kind !== 'composition').length} 个组件 ·{' '}
+            RC2 · {entries.filter((e) => e.kind !== 'composition').length} 个组件 ·{' '}
             {entries.filter((e) => e.kind === 'composition').length} 个组合场景 · 待审阅
           </span>
         </header>
@@ -289,7 +292,7 @@ export function Library() {
                 反馈时注明组件名称、配色、模式和场景。演示操作只改变隔离预览，不连接家庭、库存或设备。切换配色和模式保留当前输入。
               </p>
               <p>{entry.limitations || '尚未完成业务接线、完整回归及真实 MCP/设备验收。'}</p>
-              <code>{entry.id} · RC1</code>
+              <code>{entry.id} · RC2</code>
             </details>
           </main>
         </div>

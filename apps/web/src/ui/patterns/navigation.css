@@ -166,7 +166,7 @@
   display: grid;
   grid-template-columns: var(--vn-layout-sidebar-width) minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
-  height: var(--vn-shell-height, 640px);
+  height: var(--vn-shell-height, auto);
   min-height: 360px;
 }
 [data-acornary-ui='vnext'] .vn-app-shell__sidebar {
@@ -305,7 +305,7 @@
 [data-acornary-ui='vnext'] .vn-navigation-demo__draft p {
   margin: 0;
 }
-@container vn-shell (max-width: 767px) {
+@container vn-shell (max-width: 1023px) {
   [data-acornary-ui='vnext'] .vn-app-shell__layout {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr) auto;

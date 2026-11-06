@@ -13,6 +13,7 @@ import { PageHeader } from '../../src/ui/patterns/page-header';
 import type { OperationState } from '../../src/ui/patterns/types';
 import type { WriteResultV2 } from '../../../../packages/contracts/src/read-v2';
 import type { ReviewDemoProps } from '../types';
+import { ReviewNote } from '../review-frame';
 import { items } from '../fixtures';
 const taskId = 'preview-operation-stable-01';
 const receipt: WriteResultV2 = {
@@ -47,13 +48,8 @@ export function OperationComposition({ scenario }: ReviewDemoProps) {
   const feedback = (text: string) => setMessage(`${text}（隔离预览，未发送请求）`);
   return (
     <div className="vn-stack review-composition">
-      <PageHeader
-        title="操作与恢复面板"
-        context="测试数据 · 同一任务引用贯穿核对、冲突和未知结果"
-      />
-      <p className="vn-muted">
-        当前示例：{state}。提交中与校验中会锁定关闭 5 秒，再展示结果不确定。此计时只属于预览。
-      </p>
+      <PageHeader title="操作与恢复" />
+      <ReviewNote>当前状态：{state}。提交或校验中会锁定关闭5秒，再切换至结果未知。</ReviewNote>
       <Button onClick={() => setOpen(true)}>打开操作面板</Button>
       {(retained || state === 'networkUnknown') && (
         <PendingOperationBanner
@@ -82,6 +78,18 @@ export function OperationComposition({ scenario }: ReviewDemoProps) {
       )}
       <OperationSheet
         open={open}
+        recoveryContent={
+          state === 'offline' ? (
+            <OfflineBanner
+              online={false}
+              scopeLabel="示例家庭"
+              coverage="cached-subset"
+              cachedAtLabel="2026-11-06 14:32（亚洲/上海）"
+              asOfChangeId="change_00000000-0000-4000-8000-000000000001"
+              onReconnect={() => feedback('请求重新连接')}
+            />
+          ) : undefined
+        }
         operation={{
           taskId,
           state,
@@ -153,20 +161,12 @@ export function OperationComposition({ scenario }: ReviewDemoProps) {
         ) : state === 'success' ? (
           <OperationReceipt
             result={receipt}
+            objectLabels={{ [items[0].id]: items[0].name }}
             replay={false}
             refreshState="fresh"
             onOpenAffected={(id) => feedback(`查看 ${id}`)}
             onRefreshReads={() => feedback('只刷新读取结果')}
             onDone={() => setOpen(false)}
-          />
-        ) : state === 'offline' ? (
-          <OfflineBanner
-            online={false}
-            scopeLabel="示例家庭"
-            coverage="cached-subset"
-            cachedAtLabel="2026-11-06 14:32（亚洲/上海）"
-            asOfChangeId="change_00000000-0000-4000-8000-000000000001"
-            onReconnect={() => feedback('请求重新连接')}
           />
         ) : (
           <FormField

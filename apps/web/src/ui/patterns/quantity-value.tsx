@@ -1,4 +1,4 @@
-import type { QuantityPresentation } from './types';
+import type { FactPresentation, QuantityPresentation } from './types';
 import { cn } from '../components/utils';
 import './facts.css';
 
@@ -7,6 +7,7 @@ export interface QuantityValueProps {
   label?: string;
   redacted?: boolean;
   loading?: boolean;
+  presentation?: FactPresentation;
   className?: string;
 }
 
@@ -16,6 +17,7 @@ export function QuantityValue({
   label = '数量',
   redacted = false,
   loading = false,
+  presentation = 'summary',
   className,
 }: QuantityValueProps) {
   const unknown = quantity.value === null || quantity.value === '';
@@ -33,10 +35,11 @@ export function QuantityValue({
     <span
       className={cn('vn-quantity-value', className)}
       data-state={state}
+      data-presentation={presentation}
       aria-label={label}
-      role={loading ? 'status' : undefined}
+      role={loading ? 'status' : 'group'}
     >
-      <span className="vn-fact-label">{label}</span>
+      {presentation === 'detail' && <span className="vn-fact-label">{label}</span>}
       {loading ? (
         <span className="vn-fact-meta">正在加载…</span>
       ) : redacted ? (

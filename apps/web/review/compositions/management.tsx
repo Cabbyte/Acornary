@@ -1,3 +1,4 @@
+import { ChevronDown, ChevronUp, FolderTree } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '../../src/ui/components/ui/button';
 import { TreeView } from '../../src/ui/components/ui/tree-view';
@@ -20,6 +21,7 @@ const selectionIds = Array.from(
   (_, i) => `item_00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`,
 );
 export function ManagementComposition({ scenario }: ReviewDemoProps) {
+  const [treeOpen, setTreeOpen] = useState(false);
   const [category, setCategory] = useState<string | null>(null);
   const [expandedTree, setExpandedTree] = useState<readonly string[]>([foodId]);
   const [page, setPage] = useState(0);
@@ -43,7 +45,7 @@ export function ManagementComposition({ scenario }: ReviewDemoProps) {
   );
   const loaded = sorted.slice(page * 2, page * 2 + 2);
   const snapshot: SelectionSnapshot = {
-    scope: `示例家庭 ${householdId}`,
+    scope: householdId,
     ids: selected,
     visibleIds: loaded.map((i) => i.id),
     revisions: Object.fromEntries(
@@ -52,7 +54,14 @@ export function ManagementComposition({ scenario }: ReviewDemoProps) {
     limit: 100,
   };
   const columns: DataTableColumn<ItemView>[] = [
-    { id: 'name', label: '物品', sortable: true, cell: (item) => <ItemIdentity item={item} /> },
+    {
+      id: 'name',
+      label: '物品',
+      sortable: true,
+      cell: (item) => (
+        <ItemIdentity item={item} showId="label" onOpen={(id) => setMessage(`查看物品：${id}`)} />
+      ),
+    },
     {
       id: 'location',
       label: '位置',
@@ -60,41 +69,62 @@ export function ManagementComposition({ scenario }: ReviewDemoProps) {
         <LocationPath location={item.location} state={item.location.id ? 'known' : 'unknown'} />
       ),
     },
-    { id: 'revision', label: '版本', cell: (item) => item.revision },
   ];
   return (
     <div className="vn-stack review-composition review-composition--wide">
-      <PageHeader
-        title="管理选择场景"
-        context="测试数据 · 分类树、逐件选择与已加载页面是不同范围"
-      />
+      <PageHeader title="物品管理" />
       <div className="review-management-layout">
-        <section aria-label="商品分类">
+        <section aria-label="商品分类" className="review-management-tree" data-expanded={treeOpen}>
           <Button
-            variant="quiet"
-            onClick={() => {
-              setCategory(null);
-              setPage(0);
-            }}
+            className="review-management-tree-trigger"
+            variant="secondary"
+            aria-expanded={treeOpen}
+            aria-controls="management-catalog"
+            onClick={() => setTreeOpen(!treeOpen)}
           >
-            所有分类
+            <FolderTree size={16} aria-hidden="true" />
+            分类
+            {treeOpen ? (
+              <ChevronUp size={16} aria-hidden="true" />
+            ) : (
+              <ChevronDown size={16} aria-hidden="true" />
+            )}
           </Button>
-          <TreeView
-            label="商品目录"
-            nodes={[{ id: foodId, label: '食品', children: [{ id: skuId, label: '燕麦饮' }] }]}
-            selectedId={category}
-            onSelectionChange={(id) => {
-              setCategory(id);
-              setPage(0);
-            }}
-            expandedIds={expandedTree}
-            onExpandedChange={setExpandedTree}
-          />
+          <div id="management-catalog" className="review-management-tree-content">
+            <Button
+              variant="quiet"
+              onClick={() => {
+                setCategory(null);
+                setPage(0);
+              }}
+            >
+              所有分类
+            </Button>
+            <TreeView
+              label="商品目录"
+              nodes={[{ id: foodId, label: '食品', children: [{ id: skuId, label: '燕麦饮' }] }]}
+              selectedId={category}
+              onSelectionChange={(id) => {
+                setCategory(id);
+                setPage(0);
+              }}
+              expandedIds={expandedTree}
+              onExpandedChange={setExpandedTree}
+            />
+          </div>
         </section>
         <DataTable
           rows={loaded}
           columns={columns}
-          caption="具体物品 · 隔离示例"
+          caption="物品"
+          showOpenAction={false}
+          showSelectionSummary={false}
+          renderRowDetails={(item) => (
+            <div className="vn-stack">
+              <ItemIdentity item={item} presentation="detail" />
+              <span className="vn-muted">版本 {item.revision}</span>
+            </div>
+          )}
           getRowLabel={(i) => i.name}
           sorting={sort}
           onSortingChange={(next) => {
@@ -123,6 +153,7 @@ export function ManagementComposition({ scenario }: ReviewDemoProps) {
       </div>
       <BatchSelectionBar
         selection={snapshot}
+        scopeLabel="示例家庭"
         expanded={showIds}
         onExpandedChange={setShowIds}
         onRemove={(id) => setSelected(selected.filter((value) => value !== id))}
@@ -131,7 +162,7 @@ export function ManagementComposition({ scenario }: ReviewDemoProps) {
           setShowIds(true);
           setMessage('身份清单已展开。请核对隐藏选择和版本。');
         }}
-        actionLabel="预览移动范围"
+        actionLabel="移动"
         onStartAction={(selection) => {
           setShowIds(true);
           setMessage(`已核对 ${selection.ids.length} 个明确 Item UUID。仅展示范围，没有执行移动。`);

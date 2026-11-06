@@ -1,4 +1,5 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
+import { MoreHorizontal } from 'lucide-react';
 import type {
   ActionAvailability,
   DateFactPresentation,
@@ -7,6 +8,7 @@ import type {
 } from './types';
 import { Button } from '../components/ui/button';
 import { Checkbox } from '../components/ui/checkbox';
+import { DropdownMenu } from '../components/ui/dropdown-menu';
 import { ItemIdentity } from './item-identity';
 import { ItemStatus } from './item-status';
 import { QuantityValue } from './quantity-value';
@@ -60,8 +62,17 @@ export function ItemRow({
   className,
 }: ItemRowProps) {
   const headingId = useId();
+  const [moreOpen, setMoreOpen] = useState(false);
   const nameHidden = item.redactedPaths.some((path) => path === 'display_name' || path === 'name');
   const locationUnknown = item.location.id === null && item.location.path.length === 0;
+  const [primaryAction, ...moreActions] = actions;
+  const actionsDisabled = disabled || loading || readOnly || !onAction;
+  const blockedActions = actions.filter((action) => action.availability.kind !== 'available');
+  const extraFacts = item.facts.filter(
+    (fact) =>
+      !(quantity && fact.kind === 'remaining') &&
+      !(date && fact.kind === 'expiry' && date.kind === 'EXPIRY'),
+  );
   return (
     <article
       className={cn('vn-item-row', className)}
@@ -69,96 +80,139 @@ export function ItemRow({
       aria-labelledby={headingId}
       aria-busy={loading || undefined}
     >
-      {onSelect && (
-        <div className="vn-item-row-selection">
-          <Checkbox
-            checked={selected}
-            onCheckedChange={(value) => onSelect(item.id, value)}
-            label={
-              <span className="vn-list-sr-only">
-                选择{nameHidden ? '此物品' : item.name}，{item.id}
-              </span>
-            }
-            readOnly={readOnly}
-            disabled={disabled || loading || selectionAvailability.kind !== 'available'}
-            description={
-              selectionAvailability.kind !== 'available' ? selectionAvailability.reason : undefined
-            }
-          />
-        </div>
-      )}
-      <div className="vn-item-row-content">
-        <div id={headingId}>
-          <ItemIdentity
-            item={item}
-            onOpen={onOpen}
-            disabled={disabled || loading}
-            redacted={nameHidden}
-          />
-        </div>
-        <ItemStatus status={item.status} recordState={item.recordState} />
-        {loading ? (
-          <LoadingState layout="compact" label="正在刷新物品事实" />
-        ) : (
-          <>
-            <LocationPath
-              location={item.location}
-              state={locationUnknown ? 'unknown' : 'known'}
-              onOpen={onOpenLocation}
-              disabled={disabled}
+      <div className="vn-item-row-content" data-selectable={Boolean(onSelect)}>
+        {onSelect && (
+          <div className="vn-item-row-selection">
+            <Checkbox
+              checked={selected}
+              onCheckedChange={(value) => onSelect(item.id, value)}
+              label={
+                <span className="vn-list-sr-only">
+                  选择{nameHidden ? '此物品' : item.name}，{item.id}
+                </span>
+              }
+              readOnly={readOnly}
+              disabled={disabled || loading || selectionAvailability.kind !== 'available'}
+              description={
+                selectionAvailability.kind !== 'available'
+                  ? selectionAvailability.reason
+                  : undefined
+              }
             />
-            {quantity && <QuantityValue quantity={quantity} />}
-            {date && <DateFactValue fact={date} />}
-            {item.facts
-              .filter(
-                (fact) =>
-                  !(quantity && fact.kind === 'remaining') &&
-                  !(date && fact.kind === 'expiry' && date.kind === 'EXPIRY'),
-              )
-              .map((fact) => (
-                <div
-                  className="vn-item-extra-fact"
-                  key={`${fact.kind}:${fact.label}:${fact.source?.path ?? ''}`}
-                >
-                  <span className="vn-list-meta">{fact.label}</span>
-                  <span>{fact.value}</span>
-                  {fact.source && <FactSource source={fact.source} />}
-                </div>
-              ))}
+          </div>
+        )}
+        <div className="vn-item-row-identity">
+          <div id={headingId}>
+            <ItemIdentity
+              item={item}
+              onOpen={onOpen}
+              disabled={disabled || loading}
+              redacted={nameHidden}
+              status={<ItemStatus status={item.status} recordState={item.recordState} />}
+            />
+          </div>
+        </div>
+        {!loading && (
+          <>
+            <div className="vn-item-row-location">
+              <LocationPath
+                location={item.location}
+                state={locationUnknown ? 'unknown' : 'known'}
+                onOpen={onOpenLocation}
+                disabled={disabled}
+              />
+            </div>
+            {quantity && (
+              <div className="vn-item-row-quantity">
+                <QuantityValue quantity={quantity} />
+              </div>
+            )}
+            {date && (
+              <div className="vn-item-row-date">
+                <DateFactValue fact={date} />
+              </div>
+            )}
+            {extraFacts.length > 0 && (
+              <div className="vn-item-row-extra">
+                {extraFacts.map((fact) => (
+                  <div
+                    className="vn-item-extra-fact"
+                    data-tone={fact.tone}
+                    key={`${fact.kind}:${fact.label}:${fact.source?.path ?? ''}`}
+                  >
+                    <span className="vn-list-meta">{fact.label}</span>
+                    <span>{fact.value}</span>
+                    {fact.source && <FactSource source={fact.source} />}
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
-        {error && (
-          <InlineNotice tone="warning" title="物品事实刷新失败">
-            {error}
-          </InlineNotice>
-        )}
-        {readOnly && <p className="vn-list-meta">只读：可查看事实，不能选择或发起变更。</p>}
-        {actions.length > 0 && !onAction && <p className="vn-list-meta">当前无法发起物品操作。</p>}
-      </div>
-      {actions.length > 0 && (
-        <div className="vn-item-row-actions">
-          {actions.map((action) => (
-            <div key={action.kind} className="vn-list-action">
-              <Button
-                variant={action.destructive ? 'danger' : 'secondary'}
-                disabled={
-                  disabled ||
-                  loading ||
-                  readOnly ||
-                  !onAction ||
-                  action.availability.kind !== 'available'
+        {primaryAction && (
+          <div className="vn-item-row-actions">
+            <Button
+              variant={primaryAction.destructive ? 'danger' : 'secondary'}
+              disabled={actionsDisabled || primaryAction.availability.kind !== 'available'}
+              onClick={() => onAction?.(primaryAction.kind, item.id)}
+            >
+              {primaryAction.label}
+            </Button>
+            {moreActions.length > 0 && (
+              <DropdownMenu
+                open={moreOpen}
+                onOpenChange={setMoreOpen}
+                trigger={
+                  <Button
+                    variant="quiet"
+                    aria-label={`${nameHidden ? '此物品' : item.name}的更多操作`}
+                  >
+                    <MoreHorizontal size={18} aria-hidden="true" />
+                  </Button>
                 }
-                onClick={() => onAction?.(action.kind, item.id)}
-              >
-                {action.label}
-              </Button>
-              {action.availability.kind !== 'available' && (
-                <span className="vn-list-meta">{action.availability.reason}</span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+                disabled={disabled || loading}
+                items={moreActions.map((action) => ({
+                  id: action.kind,
+                  label: action.label,
+                  tone: action.destructive ? 'danger' : 'default',
+                  disabled: actionsDisabled,
+                  disabledReason:
+                    action.availability.kind !== 'available'
+                      ? action.availability.reason
+                      : undefined,
+                }))}
+                onSelect={(kind) => onAction?.(kind, item.id)}
+              />
+            )}
+          </div>
+        )}
+        {(loading ||
+          error ||
+          readOnly ||
+          blockedActions.length > 0 ||
+          (actions.length > 0 && !onAction)) && (
+          <div className="vn-item-row-feedback">
+            {loading && <LoadingState layout="compact" label="正在刷新物品事实" />}
+            {error && (
+              <InlineNotice tone="warning" title="物品事实刷新失败">
+                {error}
+              </InlineNotice>
+            )}
+            {readOnly && <p className="vn-list-meta">只读，无法选择或修改。</p>}
+            {actions.length > 0 && !onAction && (
+              <p className="vn-list-meta">当前无法发起物品操作。</p>
+            )}
+            {blockedActions.map(
+              (action) =>
+                action.availability.kind !== 'available' && (
+                  <p className="vn-list-meta" key={action.kind}>
+                    {action.label}：{action.availability.reason}
+                  </p>
+                ),
+            )}
+          </div>
+        )}
+      </div>
     </article>
   );
 }

@@ -5,6 +5,7 @@
   border-radius: var(--vn-radius-panel);
   background: var(--vn-surface);
   color: var(--vn-foreground);
+  container-type: inline-size;
 }
 [data-acornary-ui='vnext'] .vn-content-header {
   display: flex;
@@ -54,6 +55,7 @@
 [data-acornary-ui='vnext'] .vn-content-details {
   min-width: 0;
   color: var(--vn-muted-foreground);
+  font-size: var(--vn-type-metadata);
 }
 [data-acornary-ui='vnext'] .vn-content-details > summary {
   cursor: pointer;
@@ -65,6 +67,9 @@
 [data-acornary-ui='vnext'] .vn-content-details > summary:focus-visible {
   outline: var(--vn-focus-width) solid var(--vn-focus);
   outline-offset: var(--vn-focus-offset);
+}
+[data-acornary-ui='vnext'] .vn-content-details > summary:hover {
+  color: var(--vn-foreground);
 }
 [data-acornary-ui='vnext'] .vn-content-details[open] > summary {
   margin-bottom: var(--vn-space-8);
@@ -93,23 +98,24 @@
   margin: 0;
   padding: 0;
   min-width: 0;
+  container-type: inline-size;
 }
 [data-acornary-ui='vnext'] .vn-attachment-row {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
   gap: var(--vn-space-12);
-  padding: var(--vn-space-12);
-  border: 1px solid var(--vn-border);
-  border-radius: var(--vn-radius-control);
-  background: var(--vn-surface);
+  padding-block: var(--vn-space-12);
+  border-block-start: 1px solid var(--vn-border);
   min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-attachment-row--pending {
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 [data-acornary-ui='vnext'] .vn-content-file-icon {
   display: inline-flex;
-  padding: var(--vn-space-8);
+  padding-top: var(--vn-space-4);
   color: var(--vn-accent-text);
-  background: var(--vn-background);
-  border-radius: var(--vn-radius-control);
 }
 [data-acornary-ui='vnext'] .vn-attachment-copy {
   display: flex;
@@ -121,17 +127,37 @@
 }
 [data-acornary-ui='vnext'] .vn-attachment-actions {
   flex-shrink: 0;
+  gap: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-history-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vn-space-8) var(--vn-space-12);
+  margin-block-end: var(--vn-space-4);
+}
+[data-acornary-ui='vnext'] .vn-history-target {
+  font-weight: 600;
+  color: var(--vn-foreground);
+  overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-history-entry > .vn-content-header > div {
+  flex: 1;
+}
+[data-acornary-ui='vnext'] .vn-history-toggle[aria-expanded='true'] > svg {
+  transform: rotate(180deg);
 }
 [data-acornary-ui='vnext'] .vn-history-change {
   display: flex;
   flex-direction: column;
   gap: var(--vn-space-12);
   border-top: 1px solid var(--vn-border);
-  padding-block: var(--vn-space-16);
+  padding-block: var(--vn-space-12);
+  min-width: 0;
 }
 [data-acornary-ui='vnext'] .vn-history-comparison {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--vn-space-12);
 }
 [data-acornary-ui='vnext'] .vn-history-before,
@@ -140,13 +166,18 @@
   flex-direction: column;
   gap: var(--vn-space-8);
   padding: var(--vn-space-12);
-  border: 1px solid var(--vn-border);
-  border-radius: var(--vn-radius-control);
   background: var(--vn-background);
+  min-width: 0;
 }
 [data-acornary-ui='vnext'] .vn-history-after {
   background: var(--vn-selection);
   color: var(--vn-selection-foreground);
+}
+[data-acornary-ui='vnext'] .vn-history-after :is(.vn-content-meta, .vn-content-details) {
+  color: var(--vn-selection-foreground);
+}
+[data-acornary-ui='vnext'] .vn-history-value-details .vn-content-value {
+  font-family: inherit;
 }
 [data-acornary-ui='vnext'] .vn-content-metadata {
   display: grid;
@@ -166,16 +197,26 @@
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
-@container (max-width: 767px) {
+@container (min-width: 520px) {
   [data-acornary-ui='vnext'] .vn-history-comparison {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (max-width: 479px) {
+  [data-acornary-ui='vnext'] .vn-attachment-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  [data-acornary-ui='vnext'] .vn-attachment-row--pending {
     grid-template-columns: minmax(0, 1fr);
   }
-  [data-acornary-ui='vnext'] .vn-attachment-row {
-    flex-wrap: wrap;
-  }
   [data-acornary-ui='vnext'] .vn-attachment-actions {
-    width: 100%;
+    grid-column: 2;
   }
+  [data-acornary-ui='vnext'] .vn-attachment-row--pending .vn-attachment-actions {
+    grid-column: 1;
+  }
+}
+@media (max-width: 767px) {
   [data-acornary-ui='vnext'] .vn-content-details > summary {
     min-height: var(--vn-target-touch);
   }

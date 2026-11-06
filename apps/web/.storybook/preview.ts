@@ -2,6 +2,7 @@ import type { Preview } from '@storybook/react-vite';
 import { createElement } from 'react';
 import { useGlobals } from 'storybook/preview-api';
 import { ReviewAppearanceProvider } from '../review/appearance-context';
+import { ReviewFrame } from '../review/review-frame';
 import {
   AcornaryThemeProvider,
   type AppearancePreset,
@@ -49,7 +50,7 @@ const preview: Preview = {
             onPresetChange: (next) => updateGlobals({ preset: next }),
             onModeChange: (next) => updateGlobals({ mode: next }),
           },
-          children: createElement(Story),
+          children: createElement(ReviewFrame, { children: createElement(Story) }),
         }),
       });
     },

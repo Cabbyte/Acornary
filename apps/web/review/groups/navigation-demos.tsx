@@ -1,3 +1,4 @@
+import { ReviewNote, ReviewFeedback } from '../review-frame';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { Button } from '../../src/ui/components/ui/button';
 import { FormField } from '../../src/ui/components/ui/form-field';
@@ -49,11 +50,7 @@ function useDemoAppearance() {
   return review ?? { mode, preset, onModeChange: setMode, onPresetChange: setPreset };
 }
 function DemoMessage({ children }: { children: ReactNode }) {
-  return (
-    <p className="vn-muted" role="status">
-      {children}
-    </p>
-  );
+  return <ReviewFeedback>{children}</ReviewFeedback>;
 }
 function linksForScenario(scenario: string): readonly NavigationLink[] {
   if (scenario === 'empty') return [];
@@ -131,7 +128,7 @@ export const appShellScenarios: readonly ReviewScenario[] = [
 
 export function ModeSwitcherDemo({ scenario }: ReviewDemoProps) {
   const appearance = useDemoAppearance();
-  const [message, setMessage] = useState('模式切换会更新当前预览，配色选择保持不变。');
+  const [message, setMessage] = useState('');
   return (
     <div className="vn-stack vn-navigation-demo">
       <ModeSwitcher
@@ -153,7 +150,7 @@ export function ModeSwitcherDemo({ scenario }: ReviewDemoProps) {
 
 export function AppearancePickerDemo({ scenario }: ReviewDemoProps) {
   const appearance = useDemoAppearance();
-  const [message, setMessage] = useState('色块直接读取中央配色 Token。');
+  const [message, setMessage] = useState('');
   return (
     <div className="vn-stack vn-navigation-demo">
       <AppearancePicker
@@ -175,7 +172,7 @@ export function AppearancePickerDemo({ scenario }: ReviewDemoProps) {
 export function DesktopNavigationDemo({ scenario }: ReviewDemoProps) {
   const appearance = useDemoAppearance();
   const [activePath, setActivePath] = useState(navigationLinks[0].href);
-  const [message, setMessage] = useState('选择入口会更新当前项；添加按钮只发出任务意图。');
+  const [message, setMessage] = useState('');
   return (
     <div className="vn-stack vn-navigation-demo">
       <div className="vn-navigation-demo__sidebar">
@@ -207,7 +204,7 @@ export function DesktopNavigationDemo({ scenario }: ReviewDemoProps) {
 export function MobileNavigationDemo({ scenario }: ReviewDemoProps) {
   const appearance = useDemoAppearance();
   const [activePath, setActivePath] = useState(navigationLinks[0].href);
-  const [message, setMessage] = useState('窄屏保留文字与图标；添加是单独的任务入口。');
+  const [message, setMessage] = useState('');
   return (
     <div className="vn-stack vn-navigation-demo">
       <div className="vn-navigation-demo__mobile">
@@ -241,7 +238,7 @@ export function MobileNavigationDemo({ scenario }: ReviewDemoProps) {
 
 export function HouseholdSwitcherDemo({ scenario }: ReviewDemoProps) {
   const [household, setHousehold] = useState(householdOptions[0].id);
-  const [message, setMessage] = useState('只切换示例范围，不改变登录账号或远程数据。');
+  const [message, setMessage] = useState('');
   return (
     <div className="vn-stack vn-navigation-demo">
       <HouseholdSwitcher
@@ -298,9 +295,7 @@ export function AppShellDemo({ scenario }: ReviewDemoProps) {
   const [narrow, setNarrow] = useState(scenario === 'narrow');
   const [activePath, setActivePath] = useState(navigationLinks[0].href);
   const [household, setHousehold] = useState(householdOptions[0].id);
-  const [message, setMessage] = useState(
-    '当前为 fixture 预览。模式、配色与容器宽度不会重建主体草稿。',
-  );
+  const [message, setMessage] = useState('');
   useEffect(() => {
     setNarrow(scenario === 'narrow');
   }, [scenario]);

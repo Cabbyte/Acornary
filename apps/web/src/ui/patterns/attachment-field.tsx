@@ -64,21 +64,18 @@ export function AttachmentField({
       aria-label="添加附件"
       aria-busy={busy || pending.some((file) => file.state === 'uploading') || undefined}
     >
-      <div>
-        <h3 className="vn-section-title">添加附件</h3>
-        <p className="vn-content-meta">先选择文件，再确认添加。处理结果会保留在列表中。</p>
-      </div>
+      <h3 className="vn-section-title">添加附件</h3>
       {capability.kind !== 'available' && (
         <CapabilityNotice capabilityLabel="添加附件" availability={capability} />
       )}
-      {readOnly && <p className="vn-content-meta">当前为只读，待处理文件保持原样。</p>}
+      {readOnly && <p className="vn-content-meta">只读 · 待处理文件已保留</p>}
       {error && (
         <InlineNotice tone="danger" title="附件尚未添加">
           {error}
         </InlineNotice>
       )}
       {allowLocalSelection && onFilesSelected && capability.kind === 'available' ? (
-        <FormField label="选择文件" hint="选择文件不会自动上传。支持的类型由当前入口提供。">
+        <FormField label="选择文件" hint="选择文件不会自动上传。">
           <Input
             type="file"
             accept={accept}
@@ -97,17 +94,15 @@ export function AttachmentField({
             capabilityLabel="选择本机文件"
             availability={{
               kind: 'unsupportedHost',
-              reason: '当前入口不能选择本机文件，请在支持附件的应用入口继续。',
+              reason: '无法选择本机文件，请在支持附件的应用中继续。',
             }}
           />
         )
       )}
-      {!pending.length ? (
-        <p className="vn-content-meta">尚未选择待添加的文件。</p>
-      ) : (
+      {pending.length > 0 && (
         <ul className="vn-attachment-list">
           {pending.map((file) => (
-            <li className="vn-attachment-row" key={file.id}>
+            <li className="vn-attachment-row vn-attachment-row--pending" key={file.id}>
               <div className="vn-attachment-copy">
                 <div className="vn-row">
                   <span className="vn-field-label">{file.name}</span>
@@ -131,15 +126,13 @@ export function AttachmentField({
                 </p>
                 {file.reason && <p className="vn-content-meta">{file.reason}</p>}
                 {file.state === 'unknown' && (
-                  <p className="vn-content-meta">
-                    请先核对处理结果，再决定是否重试；此文件仍保留。
-                  </p>
+                  <p className="vn-content-meta">文件已保留，请先核对结果，勿重复添加。</p>
                 )}
               </div>
               <div className="vn-row vn-attachment-actions">
                 {file.state === 'failed' && onRetry && (
                   <Button variant="secondary" disabled={!enabled} onClick={() => onRetry(file.id)}>
-                    重试
+                    重试添加
                   </Button>
                 )}
                 {(file.state === 'selected' || file.state === 'failed') && onRemove && (
@@ -161,7 +154,7 @@ export function AttachmentField({
               if (enabled && selected.length) onUploadIntent(selected.map((file) => file.id));
             }}
           >
-            添加所选文件{selected.length > 0 ? `（${selected.length}）` : ''}
+            添加{selected.length > 0 ? `（${selected.length}）` : ''}
           </Button>
         </div>
       )}

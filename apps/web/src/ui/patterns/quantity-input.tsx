@@ -3,7 +3,6 @@ import { Input } from '../components/ui/input';
 import { FormField } from '../components/ui/form-field';
 import { Select, type SelectOption } from '../components/ui/select';
 import { Button } from '../components/ui/button';
-import { QuantityValue } from './quantity-value';
 import type { QuantityPresentation } from './types';
 import { cn } from '../components/utils';
 import './fields.css';
@@ -60,14 +59,13 @@ export function QuantityInput({
   const validation = error || validateQuantityDraft(value, minimum, maximum);
   const unavailable = disabled || loading;
   return (
-    <div className={cn('vn-domain-field', className)} aria-busy={loading || undefined}>
+    <div
+      className={cn('vn-domain-field vn-quantity-input', className)}
+      aria-busy={loading || undefined}
+    >
       {mixed && <p className="vn-fields-notice">所选物品数量不同。请填写要使用的数量。</p>}
-      <div className="vn-fields-columns">
-        <FormField
-          label={label}
-          error={validation}
-          hint={mixed ? '数量不同，请明确填写。' : '小数位按输入保留；未记录与 0 不同。'}
-        >
+      <div className="vn-quantity-input__controls">
+        <FormField label={label} error={validation}>
           <Input
             type="text"
             inputMode="decimal"
@@ -90,6 +88,7 @@ export function QuantityInput({
         />
         <Select
           label="数量依据"
+          className="vn-quantity-input__accuracy"
           value={value.accuracy}
           options={[
             { value: 'measured', label: '已测量' },
@@ -104,30 +103,32 @@ export function QuantityInput({
           readOnly={readOnly}
         />
       </div>
-      <div className="vn-row">
+      <div className="vn-fields-actions">
         <Button
           variant="quiet"
           disabled={unavailable || readOnly}
           onClick={() => onChange({ ...value, value: null, accuracy: 'unknown' }, 'unknown')}
         >
-          标记数量未记录
+          设为未记录
         </Button>
+        <details className="vn-field-details">
+          <summary>数量说明</summary>
+          <p className="vn-muted">小数位按输入保留。未记录表示数量未知，0 表示数量为零。</p>
+        </details>
         {onCommit && (
           <Button
             variant="secondary"
             disabled={unavailable || readOnly || Boolean(validation) || mixed}
             onClick={() => onCommit({ ...value, value: value.value || null })}
           >
-            应用数量草稿
+            应用数量
           </Button>
         )}
       </div>
-      {loading ? (
+      {loading && (
         <span className="vn-muted" role="status">
-          正在读取数量事实…
+          正在读取数量…
         </span>
-      ) : (
-        <QuantityValue quantity={value} label="草稿预览" />
       )}
     </div>
   );

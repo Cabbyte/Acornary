@@ -7,6 +7,8 @@ import './lists.css';
 
 export interface BatchSelectionBarProps {
   selection: SelectionSnapshot;
+  /** Human-readable scope; selection.scope remains the full operation identity. */
+  scopeLabel?: string;
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
   onRemove: (id: string) => void;
@@ -22,6 +24,7 @@ export interface BatchSelectionBarProps {
 
 export function BatchSelectionBar({
   selection,
+  scopeLabel,
   expanded,
   onExpandedChange,
   onRemove,
@@ -55,6 +58,8 @@ export function BatchSelectionBar({
     readOnly ||
     busy ||
     availability.kind !== 'available';
+  // No selection means no batch task; the table still provides selection controls.
+  if (ids.length === 0) return null;
   return (
     <section
       className={cn('vn-batch-selection vn-list-panel', className)}
@@ -62,12 +67,11 @@ export function BatchSelectionBar({
     >
       <div className="vn-list-heading">
         <div>
-          <strong>
-            已选 {ids.length} 件 / 上限 {limit} 件
-          </strong>
+          <strong>已选 {ids.length} 件</strong>
           <p className="vn-list-meta">
-            范围：{selection.scope} · 当前可见 {ids.length - hiddenCount} 件 · 隐藏 {hiddenCount} 件
-            · 不可用 {unavailableCount} 件
+            {scopeLabel && `${scopeLabel} · `}
+            {hiddenCount > 0 ? `其中 ${hiddenCount} 件不在当前视图` : '均在当前视图'}
+            {unavailableCount > 0 && ` · ${unavailableCount} 件不可用`}
           </p>
         </div>
         <Button
@@ -76,7 +80,7 @@ export function BatchSelectionBar({
           aria-expanded={expanded}
           aria-controls={listId}
         >
-          {expanded ? '收起身份清单' : '展开身份清单'}
+          {expanded ? '收起清单' : '查看清单'}
         </Button>
       </div>
       {exceeded && (
@@ -102,6 +106,9 @@ export function BatchSelectionBar({
       {availability.kind !== 'available' && <p className="vn-list-meta">{availability.reason}</p>}
       {readOnly && <p className="vn-list-meta">当前为只读，无法修改选择或发起批量操作。</p>}
       <div id={listId} hidden={!expanded}>
+        <p className="vn-list-meta">
+          {scopeLabel ? '范围 ID' : '范围'}：{selection.scope} · 单次上限 {limit} 件
+        </p>
         {ids.length > 0 ? (
           <ul className="vn-batch-ids">
             {ids.map((id) => (

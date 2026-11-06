@@ -18,7 +18,7 @@ import {
 
 const meta = {
   id: 'rc1-controls',
-  title: 'RC1/基础控件',
+  title: 'RC2/基础控件',
   parameters: { layout: 'padded' },
 } satisfies Meta<ReviewDemoProps>;
 export default meta;

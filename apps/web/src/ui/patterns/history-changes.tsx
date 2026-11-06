@@ -40,6 +40,29 @@ function valueLabel(
   if (typeof value === 'string') return value;
   return JSON.stringify(value, null, 2) ?? '值未知';
 }
+function ChangeValue({
+  present,
+  value,
+  presentation,
+}: {
+  present: boolean;
+  value: unknown;
+  presentation?: HistoryValuePresentation;
+}) {
+  const structured = present && !presentation && value !== null && typeof value === 'object';
+  if (structured) {
+    const count = Array.isArray(value) ? value.length : Object.keys(value).length;
+    return (
+      <details className="vn-content-details vn-history-value-details">
+        <summary>
+          {Array.isArray(value) ? `列表内容（${count} 项）` : `详细内容（${count} 个字段）`}
+        </summary>
+        <pre className="vn-content-value">{valueLabel(present, value)}</pre>
+      </details>
+    );
+  }
+  return <div className="vn-content-value">{valueLabel(present, value, presentation)}</div>;
+}
 /** Presence comes from HistoryEventV2. Redaction is an explicit, separate presentation input. */
 export function HistoryChanges({
   changes,
@@ -65,7 +88,7 @@ export function HistoryChanges({
       <EmptyState
         reason="empty"
         title="没有字段变更"
-        context="此事件没有提供字段前后值。"
+        context="此事件未列出前后值。"
         className={className}
       />
     );
@@ -87,27 +110,32 @@ export function HistoryChanges({
             <div className="vn-history-comparison">
               <div className="vn-history-before">
                 <span className="vn-content-meta">变更前</span>
-                <div className="vn-content-value">
-                  {valueLabel(change.before_present, change.before, presentation?.before)}
-                </div>
+                <ChangeValue
+                  present={change.before_present}
+                  value={change.before}
+                  presentation={presentation?.before}
+                />
                 {presentation?.before?.reason && (
                   <p className="vn-content-meta">{presentation.before.reason}</p>
                 )}
               </div>
               <div className="vn-history-after">
                 <span className="vn-content-meta">变更后</span>
-                <div className="vn-content-value">
-                  {valueLabel(change.after_present, change.after, presentation?.after)}
-                </div>
+                <ChangeValue
+                  present={change.after_present}
+                  value={change.after}
+                  presentation={presentation?.after}
+                />
                 {presentation?.after?.reason && (
                   <p className="vn-content-meta">{presentation.after.reason}</p>
                 )}
               </div>
             </div>
             <details className="vn-content-details">
-              <summary>查看字段来源</summary>
+              <summary>字段来源</summary>
               {change.template_id && change.template_version !== undefined ? (
                 <FactSource
+                  presentation="detail"
                   source={{
                     templateId: change.template_id,
                     version: change.template_version,

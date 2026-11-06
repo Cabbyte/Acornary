@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { ChevronDown } from 'lucide-react';
 import type { HistoryEventV2 } from '../../../../../packages/contracts/src/read-v2';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -69,12 +70,16 @@ export function HistoryEntry({
     );
   return (
     <article
-      className={cn('vn-content-panel vn-stack', className)}
+      className={cn('vn-content-panel vn-history-entry vn-stack', className)}
       aria-label={`${operationLabel}历史记录`}
     >
       <div className="vn-content-header">
         <div>
-          <h3 className="vn-section-title">{operationLabel}</h3>
+          <div className="vn-history-heading">
+            <h3 className="vn-section-title">{operationLabel}</h3>
+            <span className="vn-history-target">{objectLabel || event.target_id}</span>
+            <Badge>{event.target_kind === 'ITEM' ? '物品' : '商品目录'}</Badge>
+          </div>
           <p className="vn-content-meta">
             {actorLabel || '操作人未知'} ·{' '}
             <time dateTime={event.occurred_at}>
@@ -82,33 +87,28 @@ export function HistoryEntry({
             </time>
           </p>
         </div>
-        <Badge>{event.target_kind === 'ITEM' ? '物品记录' : '商品目录记录'}</Badge>
-      </div>
-      <div className="vn-stack">
-        <div className="vn-row">
-          <span className="vn-field-label">{objectLabel || '对象名称未提供'}</span>
-          {onOpenTarget && (
-            <Button
-              variant="quiet"
-              onClick={() => onOpenTarget({ kind: event.target_kind, id: event.target_id })}
-            >
-              查看对象
-            </Button>
-          )}
-        </div>
-        <p className="vn-content-meta">完整 ID：{event.target_id}</p>
+        {onOpenTarget && (
+          <Button
+            variant="quiet"
+            onClick={() => onOpenTarget({ kind: event.target_kind, id: event.target_id })}
+          >
+            查看对象
+          </Button>
+        )}
       </div>
       {event.reason !== null && (
         <p className="vn-content-value">{event.reason || '原因已记录为空。'}</p>
       )}
       <div className="vn-row">
         <Button
-          variant="secondary"
+          variant="quiet"
+          className="vn-history-toggle"
           aria-expanded={expanded}
           aria-controls={detailsId}
           onClick={() => onExpandedChange(!expanded)}
         >
-          {expanded ? '收起变更' : `查看变更（${event.changes.length}）`}
+          <ChevronDown size={16} aria-hidden="true" />
+          变更（{event.changes.length}）
         </Button>
         {onCorrectionIntent && correctionAvailability?.kind === 'available' && (
           <Button variant="quiet" onClick={() => onCorrectionIntent(event)}>
@@ -123,8 +123,10 @@ export function HistoryEntry({
         <HistoryChanges changes={event.changes} presentations={changesPresentation} />
       </div>
       <details className="vn-content-details">
-        <summary>查看记录详情</summary>
+        <summary>记录详情</summary>
         <dl className="vn-content-metadata">
+          <dt>对象 ID</dt>
+          <dd>{event.target_id}</dd>
           <dt>事件 ID</dt>
           <dd>{event.id}</dd>
           <dt>操作 ID</dt>

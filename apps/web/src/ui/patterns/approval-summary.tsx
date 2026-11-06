@@ -45,7 +45,7 @@ export function ApprovalSummary({
       aria-busy={busy || undefined}
     >
       <div className="vn-operation-heading">
-        <h3 className="vn-section-title">核对批准范围</h3>
+        <h3 className="vn-section-title">批准范围</h3>
         <Badge variant={proposal.status === 'approved' ? 'success' : 'warning'}>
           {proposal.status === 'approved' ? '已批准' : '待确认'}
         </Badge>
@@ -61,18 +61,8 @@ export function ApprovalSummary({
           <dd>{proposal.scope === 'LONG_TERM_RULE' ? '长期规则' : '仅本次操作'}</dd>
         </div>
         <div>
-          <dt>规则版本</dt>
-          <dd>{proposal.policyRevision ?? '未知，需重新核对'}</dd>
-        </div>
-        <div>
           <dt>确认有效期</dt>
-          <dd>{proposal.expiresAtLabel ?? '服务端未提供明确时间'}</dd>
-        </div>
-        <div>
-          <dt>提案 ID</dt>
-          <dd>
-            <code>{proposal.proposalId}</code>
-          </dd>
+          <dd>{proposal.expiresAtLabel ?? '未提供'}</dd>
         </div>
       </dl>
       {proposal.impact.length ? (
@@ -91,7 +81,12 @@ export function ApprovalSummary({
           tone="warning"
           title={proposal.validity === 'expired' ? '本次确认已过期' : '确认有效性未知'}
         >
-          需要在当前会话重新查看提案，不能直接继续确认。
+          请重新核对提案后确认。
+        </InlineNotice>
+      )}
+      {proposal.policyRevision === null && (
+        <InlineNotice tone="warning" title="规则版本未知">
+          请重新核对后确认。
         </InlineNotice>
       )}
       {unavailable && (
@@ -101,9 +96,24 @@ export function ApprovalSummary({
       )}
       {proposal.status === 'approved' && (
         <InlineNotice tone="info" title="此范围已批准">
-          后续业务操作是否完成，请查看对应的操作回执。
+          操作是否完成，以操作回执为准。
         </InlineNotice>
       )}
+      <details className="vn-operation-details">
+        <summary>审批详情</summary>
+        <dl className="vn-operation-facts">
+          <div>
+            <dt>规则版本</dt>
+            <dd>{proposal.policyRevision ?? '未知'}</dd>
+          </div>
+          <div>
+            <dt>提案 ID</dt>
+            <dd>
+              <code>{proposal.proposalId}</code>
+            </dd>
+          </div>
+        </dl>
+      </details>
       <div className="vn-operation-actions">
         <Button
           variant="secondary"

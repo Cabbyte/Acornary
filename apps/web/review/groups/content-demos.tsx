@@ -1,3 +1,4 @@
+import { ReviewNote, ReviewFeedback } from '../review-frame';
 import { useEffect, useState, type ReactNode } from 'react';
 import type {
   AttributeBindingV2,
@@ -37,15 +38,8 @@ const available: ActionAvailability = { kind: 'available' };
 function Preview({ children, message }: { children: ReactNode; message?: string }) {
   return (
     <div className="vn-stack">
-      <InlineNotice title="组件预览 · 本地示例" tone="info" announce={false}>
-        所有记录均为演示数据，操作只更新当前示例或显示意图。
-      </InlineNotice>
       {children}
-      {message && (
-        <p role="status" className="vn-content-demo-log">
-          {message}
-        </p>
-      )}
+      {message && <ReviewFeedback>{message}</ReviewFeedback>}
     </div>
   );
 }

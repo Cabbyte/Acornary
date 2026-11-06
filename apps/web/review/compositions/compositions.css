@@ -1,29 +1,83 @@
 [data-acornary-ui='vnext'] .review-composition {
+  width: 100%;
   max-width: 720px;
   margin-inline: auto;
+  container: review-composition / inline-size;
 }
 [data-acornary-ui='vnext'] .review-composition--wide {
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+}
+[data-acornary-ui='vnext'] .review-composition--form {
   max-width: 1120px;
 }
 [data-acornary-ui='vnext'] .review-composition p {
   overflow-wrap: anywhere;
 }
+[data-acornary-ui='vnext'] .review-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--vn-space-24) var(--vn-space-32);
+}
+[data-acornary-ui='vnext'] .review-form-grid > * {
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .review-form-actions {
+  border-top: 1px solid var(--vn-border);
+  padding-top: var(--vn-space-16);
+  margin-top: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .review-search-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--vn-space-8) var(--vn-space-16);
+  align-items: start;
+}
 [data-acornary-ui='vnext'] .review-management-layout {
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
-  gap: var(--vn-space-24);
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--vn-space-16);
+}
+[data-acornary-ui='vnext'] .review-management-tree-trigger {
+  justify-content: flex-start;
+}
+[data-acornary-ui='vnext'] .review-management-tree-content {
+  display: none;
+  padding-block: var(--vn-space-8);
+}
+[data-acornary-ui='vnext']
+  .review-management-tree[data-expanded='true']
+  > .review-management-tree-content {
+  display: block;
 }
 [data-acornary-ui='vnext'] .review-shell-body {
-  padding: var(--vn-space-24);
   display: flex;
   flex-direction: column;
   gap: var(--vn-space-16);
 }
-@container (max-width:767px) {
-  [data-acornary-ui='vnext'] .review-management-layout {
-    grid-template-columns: 1fr;
+[data-acornary-ui='vnext'] .review-shell-body > h2 {
+  margin: 0;
+}
+@container review-composition (min-width: 820px) {
+  [data-acornary-ui='vnext'] .review-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  [data-acornary-ui='vnext'] .review-shell-body {
-    padding: var(--vn-space-16);
+}
+@container review-composition (min-width: 800px) {
+  [data-acornary-ui='vnext'] .review-search-tools {
+    grid-template-columns: minmax(0, 1fr) 180px;
+  }
+}
+@container review-composition (min-width: 960px) {
+  [data-acornary-ui='vnext'] .review-management-layout {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+  [data-acornary-ui='vnext'] .review-management-tree-content {
+    display: block;
+  }
+  [data-acornary-ui='vnext'] .review-management-tree-trigger {
+    display: none;
   }
 }

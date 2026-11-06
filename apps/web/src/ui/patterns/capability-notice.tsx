@@ -13,7 +13,7 @@ const reasonLabels = {
   offline: '当前离线',
   missingFacts: '所需信息不完整',
   unsupportedHost: '当前环境不支持',
-  missingContract: '当前接口尚未提供',
+  missingContract: '暂不可用',
   blockedState: '当前状态不可执行',
   forbidden: '当前权限不允许',
 } as const;
@@ -44,9 +44,7 @@ export function CapabilityNotice({
         )
       }
     >
-      {availability.kind === 'available'
-        ? '仅表示当前入口具备能力；操作是否完成以实际反馈为准。'
-        : availability.reason}
+      {availability.kind !== 'available' ? availability.reason : null}
     </InlineNotice>
   );
 }

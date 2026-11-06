@@ -1,3 +1,4 @@
+import { ReviewNote, ReviewFeedback } from '../review-frame';
 import { useEffect, useMemo, useState } from 'react';
 import {
   DataTable,
@@ -32,7 +33,17 @@ const hiddenItemId = fixtureId(900);
 const pantryId = fixtureId(901);
 type DemoItem = ItemView & { quantity: QuantityPresentation };
 const tableItems: DemoItem[] = Array.from({ length: 12 }, (_, seed) => ({
-  ...[items[0], items[2], {...items[0], skuId:'catalog_node_00000000-0000-4000-8000-000000000003', subtitle:'中烘焙 · 250 g', status:{label:'未开封',tone:'neutral' as const}, facts:[]}][seed % 3],
+  ...[
+    items[0],
+    items[2],
+    {
+      ...items[0],
+      skuId: 'catalog_node_00000000-0000-4000-8000-000000000003',
+      subtitle: '中烘焙 · 250 g',
+      status: { label: '未开封', tone: 'neutral' as const },
+      facts: [],
+    },
+  ][seed % 3],
   id: fixtureId(seed + 1),
   name: `${['燕麦饮', '玻璃保鲜盒', '咖啡豆'][seed % 3]} ${String(seed + 1).padStart(2, '0')}`,
   quantity:
@@ -55,11 +66,7 @@ const knownQuantity: QuantityPresentation = { value: '310.00', unit: 'mL', accur
 const available: ActionAvailability = { kind: 'available' };
 
 function DemoMessage({ children }: { children: string }) {
-  return (
-    <p className="vn-list-meta vn-lists-demo-message" role="status">
-      {children}
-    </p>
-  );
+  return <ReviewFeedback>{children}</ReviewFeedback>;
 }
 
 export const dataTableScenarios: readonly ReviewScenario[] = [
@@ -158,7 +165,7 @@ export function DataTableDemo({ scenario }: ReviewDemoProps) {
   const [pageIndex, setPageIndex] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
-  const [message, setMessage] = useState('可操作列头、筛选、逐件选择与分页。');
+  const [message, setMessage] = useState('');
   useEffect(() => {
     setSorting([]);
     setQuery('');
@@ -235,10 +242,10 @@ export function DataTableDemo({ scenario }: ReviewDemoProps) {
           : 'ready';
   return (
     <div className="vn-stack">
-      <p className="vn-list-meta">
+      <ReviewNote>
         独立演示数据集：12 条
         fixture。排序、筛选与分页由此演示控制器处理，生产组件只展示传入的已加载页。
-      </p>
+      </ReviewNote>
       <DataTable
         rows={rows}
         columns={columns}
@@ -310,13 +317,13 @@ export function PaginationControlsDemo({ scenario }: ReviewDemoProps) {
         loading={scenario === 'loading'}
         disabled={scenario === 'disabled'}
       />
-      <DemoMessage>{`演示当前页索引：${pageIndex}。上一页 / 下一页来自提供的可用性；未知总数不显示末页或猜测总页数。`}</DemoMessage>
+      <ReviewNote>{`演示当前页索引：${pageIndex}。上一页 / 下一页来自提供的可用性；未知总数不显示末页或猜测总页数。`}</ReviewNote>
     </div>
   );
 }
 
 export function ItemStatusDemo({ scenario }: ReviewDemoProps) {
-  const [message, setMessage] = useState('状态由已提供的事实决定，未记录的维度保持未知。');
+  const [message, setMessage] = useState('');
   const facts: ItemStatusFact[] = [
     { kind: 'lifecycle', label: '生命周期', value: scenario === 'unknown' ? null : '持有中' },
     { kind: 'opening', label: '开封', value: scenario === 'unknown' ? null : '已开封' },
@@ -357,7 +364,7 @@ export function ItemStatusDemo({ scenario }: ReviewDemoProps) {
 }
 
 export function PageHeaderDemo({ scenario }: ReviewDemoProps) {
-  const [message, setMessage] = useState('页面标题仅发出返回和操作意图。');
+  const [message, setMessage] = useState('');
   const minimal = scenario === 'minimal';
   return (
     <div className="vn-stack">
@@ -366,7 +373,7 @@ export function PageHeaderDemo({ scenario }: ReviewDemoProps) {
           scenario === 'long-text' ? '家庭共享储藏空间中待核对的独立物品与完整记录' : '家庭物品'
         }
         headingLevel={2}
-        context={minimal ? undefined : '示例家庭 · 当前筛选范围'}
+        context={scenario === 'long-text' ? '示例家庭 · 当前筛选范围' : undefined}
         onBack={minimal ? undefined : () => setMessage('收到返回物品列表意图。')}
         backLabel="物品列表"
         secondaryActions={
@@ -405,7 +412,7 @@ export function PageHeaderDemo({ scenario }: ReviewDemoProps) {
 }
 
 export function ProductSummaryDemo({ scenario }: ReviewDemoProps) {
-  const [message, setMessage] = useState('商品汇总不直接授权批量操作；请查看具体物品后逐件选择。');
+  const [message, setMessage] = useState('');
   const current =
     scenario === 'unknown'
       ? null
@@ -465,7 +472,7 @@ export function ProductSummaryDemo({ scenario }: ReviewDemoProps) {
 
 function ItemPresentationDemo({ scenario, card }: ReviewDemoProps & { card: boolean }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [message, setMessage] = useState('打开、选择与操作使用完整具体物品身份。');
+  const [message, setMessage] = useState('');
   useEffect(() => {
     setSelectedIds(scenario === 'selected' ? [items[0].id] : []);
   }, [scenario]);
@@ -622,7 +629,7 @@ function selectionIdsFor(scenario: string): string[] {
 export function BatchSelectionBarDemo({ scenario }: ReviewDemoProps) {
   const [ids, setIds] = useState(() => selectionIdsFor(scenario));
   const [expanded, setExpanded] = useState(false);
-  const [message, setMessage] = useState('核对具体身份后才可发出批量处理意图。');
+  const [message, setMessage] = useState('');
   useEffect(() => {
     setIds(selectionIdsFor(scenario));
     setExpanded(

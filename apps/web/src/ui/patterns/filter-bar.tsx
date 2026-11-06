@@ -40,8 +40,8 @@ export function FilterBar({
       aria-busy={loading || undefined}
       className={cn('vn-filter-bar', className)}
     >
-      {scopeLabel && <span className="vn-muted">范围：{scopeLabel}</span>}
-      <div className="vn-row">
+      <div className="vn-filter-controls">
+        {scopeLabel && <span className="vn-filter-scope vn-muted">范围：{scopeLabel}</span>}
         {onOpenFilters && (
           <Button
             variant="secondary"
@@ -49,12 +49,10 @@ export function FilterBar({
             onClick={onOpenFilters}
           >
             <ListFilter size={16} aria-hidden="true" />
-            筛选
+            筛选{filters.length > 0 ? `（${filters.length}）` : ''}
           </Button>
         )}
-        {filters.length === 0 ? (
-          <span className="vn-muted">未设置筛选条件</span>
-        ) : (
+        {filters.length > 0 && (
           <ul className="vn-filter-list">
             {filters.map((filter) => (
               <li key={filter.id}>
@@ -81,14 +79,19 @@ export function FilterBar({
           </ul>
         )}
         {removable && (
-          <Button variant="quiet" disabled={disabled || readOnly || loading} onClick={onClear}>
-            清除可移除条件
+          <Button
+            variant="quiet"
+            disabled={disabled || readOnly || loading}
+            onClick={onClear}
+            aria-label="清除可移除的筛选条件"
+          >
+            清除筛选
           </Button>
         )}
       </div>
       {loading && (
         <span className="vn-muted" role="status">
-          正在按当前条件读取结果…
+          正在筛选…
         </span>
       )}
       {error && (

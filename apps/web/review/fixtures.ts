@@ -44,7 +44,7 @@ export const items: ItemView[] = [
     id: 'item_00000000-0000-4000-8000-000000000003',
     skuId: 'catalog_node_00000000-0000-4000-8000-000000000002',
     name: '玻璃保鲜盒',
-    subtitle: '长名称示例 · 方形耐热玻璃容器与可替换密封盖',
+    subtitle: '方形 · 耐热玻璃',
     location: { id: fridgeId, path: ['厨房', '冰箱'], label: '冰箱' },
     profile: 'DURABLE',
     status: { label: '使用中', tone: 'neutral' },
@@ -112,4 +112,32 @@ export const catalog: CatalogView[] = [
 export const locations: LocationView[] = [
   { id: 'item_00000000-0000-4000-8000-000000000011', parentId: null, name: '厨房' },
   { id: fridgeId, parentId: 'item_00000000-0000-4000-8000-000000000011', name: '冰箱', count: 3 },
+];
+
+// Larger, deterministic review-only list. These are explicit fixtures, not inferred inventory.
+export const searchItems: ItemView[] = [
+  ...items,
+  ...[
+    ['咖啡豆', '中度烘焙 · 250 g', 'CONSUMABLE', '厨房', '食品柜'],
+    ['洗衣液', '补充装 · 1 kg', 'CONSUMABLE', '阳台', '清洁柜'],
+    ['折叠雨伞', '深蓝色', 'DURABLE', '玄关', '边柜'],
+    ['保温杯', '500 mL · 银色', 'DURABLE', '书房', '桌面'],
+    ['燕麦片', '原味 · 500 g', 'CONSUMABLE', '厨房', '食品柜'],
+    ['毛巾', '米白色 · 棉质', 'DURABLE', '浴室', '收纳架'],
+  ].map(([name, subtitle, profile, room, place], index): ItemView => ({
+    ...items[2],
+    id: `item_00000000-0000-4000-8000-${String(index + 101).padStart(12, '0')}`,
+    skuId: `catalog_node_00000000-0000-4000-8000-${String(index + 101).padStart(12, '0')}`,
+    name,
+    subtitle,
+    profile: profile as ItemView['profile'],
+    location: {
+      id: `item_00000000-0000-4000-8000-${String(index + 201).padStart(12, '0')}`,
+      label: place,
+      path: [room, place],
+    },
+    status: { label: profile === 'CONSUMABLE' ? '开封状态未记录' : '使用中', tone: 'neutral' },
+    facts: [],
+    revision: 1,
+  })),
 ];

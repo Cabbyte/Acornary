@@ -1,7 +1,7 @@
 import { RadioGroup } from '../components/ui/radio-group';
 import { cn } from '../components/utils';
 import tokenSource from '../tokens/source.json';
-import { useAcornaryTheme, type AppearancePreset, type UIMode } from '../theme/provider';
+import { type AppearancePreset, type UIMode } from '../theme/provider';
 import './navigation.css';
 
 export interface AppearancePickerProps {
@@ -22,8 +22,6 @@ export function AppearancePicker({
   readOnly,
   className,
 }: AppearancePickerProps) {
-  const theme = useAcornaryTheme();
-  const currentMode = mode ?? theme.mode;
   return (
     <RadioGroup
       value={value}
@@ -33,7 +31,6 @@ export function AppearancePicker({
         }
       }}
       label="界面配色"
-      description="每组包含日常与管理两种配色；选择配色不会切换使用模式。"
       disabled={disabled}
       readOnly={readOnly}
       className={cn('vn-appearance-picker', className)}
@@ -56,10 +53,6 @@ export function AppearancePicker({
             <span>{preset.name}</span>
           </span>
         ),
-        description:
-          id === value
-            ? `已选 · 当前${currentMode === 'daily' ? '日常' : '管理'}模式`
-            : '日常 / 管理',
       }))}
     />
   );

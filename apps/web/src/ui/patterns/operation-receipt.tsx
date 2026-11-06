@@ -12,6 +12,8 @@ export interface OperationReceiptProps {
   replay: boolean | null;
   refreshState: 'not-requested' | 'loading' | 'fresh' | 'error';
   unavailableReason?: string;
+  /** Human-readable labels for known targets; IDs remain the action identity. */
+  objectLabels?: Readonly<Record<string, string>>;
   onOpenAffected: (id: string, kind: WriteResultV2['affected_objects'][number]['kind']) => void;
   onRefreshReads: () => void;
   onDone?: () => void;
@@ -22,6 +24,7 @@ export function OperationReceipt({
   replay,
   refreshState,
   unavailableReason,
+  objectLabels,
   onOpenAffected,
   onRefreshReads,
   onDone,
@@ -33,42 +36,50 @@ export function OperationReceipt({
         {unavailableReason || '结果未知，请从原任务核对结果。当前不能确认已保存。'}
       </InlineNotice>
     );
+  const labelCounts = new Map<string, number>();
+  result.affected_objects.forEach((object) => {
+    const label = objectLabels?.[object.id];
+    if (label) labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
+  });
   return (
     <section className="vn-operation-card vn-stack" aria-label="操作回执">
       <div className="vn-operation-heading">
         <h3 className="vn-section-title">操作回执</h3>
         <Badge variant={result.changed ? 'success' : 'info'}>
-          {result.changed ? '有已确认变更' : '无新增变更'}
+          {result.changed ? '变更已确认' : '无新增变更'}
         </Badge>
       </div>
       <p className="vn-operation-summary">{result.summary}</p>
-      <dl className="vn-operation-facts">
-        <div>
-          <dt>操作 ID</dt>
-          <dd>
-            <code>{result.operation_id}</code>
-          </dd>
-        </div>
-        <div>
-          <dt>回放情况</dt>
-          <dd>{replay === null ? '未提供' : replay ? '原结果重放' : '非重放结果'}</dd>
-        </div>
-        <div>
-          <dt>受影响对象</dt>
-          <dd>{result.affected_objects.length} 个（回执所列）</dd>
-        </div>
-      </dl>
+      <p className="vn-operation-reference">
+        回执列出 {result.affected_objects.length} 个受影响对象
+      </p>
       {result.affected_objects.length > 0 && (
         <ul className="vn-operation-object-list">
           {result.affected_objects.map((object) => (
             <li key={`${object.kind}:${object.id}`}>
               <div>
-                <Badge>{object.kind === 'ITEM' ? '物品' : '目录'}</Badge>
-                <code>{object.id}</code>
-                <span className="vn-muted">
-                  {object.before_revision === 0 ? '新建' : `版本 ${object.before_revision}`} → 版本{' '}
-                  {object.after_revision}
-                </span>
+                <div className="vn-operation-object-heading">
+                  <Badge>{object.kind === 'ITEM' ? '物品' : '目录'}</Badge>
+                  {objectLabels?.[object.id] ? (
+                    <span className="vn-operation-object-name">{objectLabels[object.id]}</span>
+                  ) : (
+                    <code>{object.id}</code>
+                  )}
+                </div>
+                {objectLabels?.[object.id] &&
+                  (labelCounts.get(objectLabels[object.id]) ?? 0) > 1 && (
+                    <code className="vn-operation-id">{object.id}</code>
+                  )}
+                <details className="vn-operation-details">
+                  <summary>对象详情</summary>
+                  {objectLabels?.[object.id] && (
+                    <code className="vn-operation-id">{object.id}</code>
+                  )}
+                  <p className="vn-operation-reference">
+                    {object.before_revision === 0 ? '新建' : `版本 ${object.before_revision}`} →
+                    版本 {object.after_revision}
+                  </p>
+                </details>
               </div>
               <Button variant="quiet" onClick={() => onOpenAffected(object.id, object.kind)}>
                 查看对象
@@ -77,23 +88,9 @@ export function OperationReceipt({
           ))}
         </ul>
       )}
-      <div>
-        <h4 className="vn-operation-subtitle">关联事件</h4>
-        {result.event_ids.length ? (
-          <ul className="vn-operation-list">
-            {result.event_ids.map((id) => (
-              <li key={id}>
-                <code>{id}</code>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="vn-muted">回执未列出关联事件。</p>
-        )}
-      </div>
       {refreshState === 'error' ? (
         <InlineNotice tone="warning" title="回执已取得，列表刷新失败">
-          可以重新读取列表；这不会重新发送业务操作。
+          请刷新列表，原操作不会重新发送。
         </InlineNotice>
       ) : (
         <p className="vn-muted" role="status">
@@ -106,10 +103,41 @@ export function OperationReceipt({
       )}
       <div className="vn-operation-actions">
         <Button variant="secondary" busy={refreshState === 'loading'} onClick={onRefreshReads}>
-          刷新读取结果
+          刷新列表
         </Button>
         {onDone && <Button onClick={onDone}>完成</Button>}
       </div>
+      <details className="vn-operation-details">
+        <summary>回执详情</summary>
+        <dl className="vn-operation-facts">
+          <div>
+            <dt>操作 ID</dt>
+            <dd>
+              <code>{result.operation_id}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>回放情况</dt>
+            <dd>{replay === null ? '未提供' : replay ? '原结果重放' : '非重放结果'}</dd>
+          </div>
+          <div>
+            <dt>关联事件</dt>
+            <dd>
+              {result.event_ids.length ? (
+                <ul className="vn-operation-list">
+                  {result.event_ids.map((id) => (
+                    <li key={id}>
+                      <code>{id}</code>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                '未列出'
+              )}
+            </dd>
+          </div>
+        </dl>
+      </details>
     </section>
   );
 }

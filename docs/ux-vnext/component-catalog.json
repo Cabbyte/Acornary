@@ -1,5 +1,5 @@
 {
-  "version": "Component Library RC1",
+  "version": "Component Library RC2",
   "components": 70,
   "compositions": 5,
   "entries": [
@@ -28,14 +28,21 @@
       ],
       "storyId": "rc1-controls--button",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/button.tsx",
@@ -67,14 +74,21 @@
       ],
       "storyId": "rc1-controls--icon-button",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/icon-button.tsx",
@@ -118,14 +132,21 @@
       ],
       "storyId": "rc1-controls--input",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "input"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/input.tsx",
@@ -169,12 +190,19 @@
       ],
       "storyId": "rc1-controls--textarea",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/textarea.tsx",
@@ -210,12 +238,19 @@
       ],
       "storyId": "rc1-controls--form-field",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/form-field.tsx",
@@ -243,12 +278,19 @@
       ],
       "storyId": "rc1-controls--badge",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/badge.tsx",
@@ -292,14 +334,21 @@
       ],
       "storyId": "rc1-controls--checkbox",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "checkbox"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/checkbox.tsx",
@@ -339,14 +388,21 @@
       ],
       "storyId": "rc1-controls--radio-group",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "radio-group"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/radio-group.tsx",
@@ -382,14 +438,21 @@
       ],
       "storyId": "rc1-controls--switch",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "switch"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/switch.tsx",
@@ -441,14 +504,21 @@
       ],
       "storyId": "rc1-controls--select",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "select"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/select.tsx",
@@ -501,15 +571,22 @@
       "storyId": "rc1-controls--combobox",
       "limitations": "候选检索由调用者提供；此处只演示本地候选页。",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "combobox",
           "select"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/combobox.tsx",
@@ -553,14 +630,21 @@
       ],
       "storyId": "rc1-controls--tabs",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "tabs"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/tabs.tsx",
@@ -612,14 +696,21 @@
       ],
       "storyId": "rc1-overlays--dialog",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "dialog"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/dialog.tsx",
@@ -671,14 +762,21 @@
       ],
       "storyId": "rc1-overlays--sheet",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "dialog"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/sheet.tsx",
@@ -718,14 +816,21 @@
       ],
       "storyId": "rc1-overlays--popover",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "popover"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/popover.tsx",
@@ -757,14 +862,21 @@
       ],
       "storyId": "rc1-overlays--tooltip",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "tooltip"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/tooltip.tsx",
@@ -804,12 +916,19 @@
       ],
       "storyId": "rc1-overlays--dropdown-menu",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/dropdown-menu.tsx",
@@ -861,14 +980,21 @@
       ],
       "storyId": "rc1-overlays--alert-dialog",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "alert-dialog"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/alert-dialog.tsx",
@@ -913,12 +1039,19 @@
       "storyId": "rc1-fields--calendar",
       "limitations": "日期展示桥接 DayPicker；业务日期不经过 UTC 转换。",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/calendar.tsx",
@@ -966,9 +1099,9 @@
       ],
       "storyId": "rc1-fields--date-input",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "calendar",
@@ -977,7 +1110,14 @@
           "input",
           "popover"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/date-input.tsx",
@@ -1017,12 +1157,19 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/table.tsx",
@@ -1091,9 +1238,9 @@
       "storyId": "rc1-lists--data-table",
       "limitations": "仅已加载页；演示控制器独立持有 12 条 fixture，不证明服务端分页集成。",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -1104,7 +1251,14 @@
           "pagination-controls",
           "table"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/data-table.tsx",
@@ -1144,14 +1298,21 @@
       ],
       "storyId": "rc1-lists--pagination-controls",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/pagination-controls.tsx",
@@ -1195,14 +1356,21 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/tree-view.tsx",
@@ -1230,12 +1398,19 @@
       ],
       "storyId": "rc1-overlays--skeleton",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/skeleton.tsx",
@@ -1271,14 +1446,21 @@
       ],
       "storyId": "rc1-overlays--toast",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "toast"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/toast.tsx",
@@ -1322,12 +1504,19 @@
       ],
       "storyId": "rc1-overlays--inline-notice",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/inline-notice.tsx",
@@ -1355,14 +1544,21 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "separator"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/components/ui/separator.tsx",
@@ -1410,14 +1606,21 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/item-identity.tsx",
@@ -1469,12 +1672,19 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/quantity-value.tsx",
@@ -1554,12 +1764,19 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/date-fact-value.tsx",
@@ -1607,14 +1824,21 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/location-path.tsx",
@@ -1658,16 +1882,23 @@
       ],
       "storyId": "rc1-lists--item-status",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "badge",
           "button",
           "loading-state"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/item-status.tsx",
@@ -1715,14 +1946,21 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/fact-source.tsx",
@@ -1770,9 +2008,9 @@
       ],
       "storyId": "rc1-fields--search-bar",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -1780,7 +2018,14 @@
           "icon-button",
           "input"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/search-bar.tsx",
@@ -1828,14 +2073,21 @@
       ],
       "storyId": "rc1-fields--filter-bar",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/filter-bar.tsx",
@@ -1895,9 +2147,9 @@
       ],
       "storyId": "rc1-fields--quantity-input",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -1906,7 +2158,14 @@
           "quantity-value",
           "select"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/quantity-input.tsx",
@@ -1960,6 +2219,10 @@
           "label": "保修用途"
         },
         {
+          "id": "invalid-completion",
+          "label": "完成日期错误"
+        },
+        {
           "id": "missing-capability",
           "label": "家庭时区未设置"
         }
@@ -1967,9 +2230,9 @@
       "storyId": "rc1-fields--date-fact-field",
       "limitations": "编辑日期不派生到期状态；时区和状态由调用方提供。",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "date-fact-value",
@@ -1978,7 +2241,14 @@
           "select",
           "textarea"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/date-fact-field.tsx",
@@ -2035,16 +2305,23 @@
       "storyId": "rc1-fields--catalog-picker",
       "limitations": "仅展示外部候选页；创建只发出意图，不合并同名节点。",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "badge",
           "button",
           "combobox"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/catalog-picker.tsx",
@@ -2101,16 +2378,23 @@
       "storyId": "rc1-fields--location-picker",
       "limitations": "容器有效性必须由调用方确认；不凭名称判断或读取全部物品。",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button",
           "combobox",
           "location-path"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/location-picker.tsx",
@@ -2150,14 +2434,21 @@
       ],
       "storyId": "rc1-lists--page-header",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/page-header.tsx",
@@ -2217,9 +2508,9 @@
       ],
       "storyId": "rc1-lists--product-summary",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -2230,7 +2521,14 @@
           "loading-state",
           "quantity-value"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/product-summary.tsx",
@@ -2290,9 +2588,9 @@
       ],
       "storyId": "rc1-lists--item-row",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -2306,7 +2604,14 @@
           "location-path",
           "quantity-value"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/item-row.tsx",
@@ -2366,14 +2671,21 @@
       ],
       "storyId": "rc1-lists--item-card",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "item-row"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/item-card.tsx",
@@ -2425,9 +2737,9 @@
       ],
       "storyId": "rc1-lists--attention-summary",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -2436,7 +2748,14 @@
           "inline-notice",
           "loading-state"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/attention-summary.tsx",
@@ -2492,15 +2811,22 @@
       ],
       "storyId": "rc1-lists--batch-selection-bar",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button",
           "inline-notice"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/batch-selection-bar.tsx",
@@ -2544,12 +2870,19 @@
       ],
       "storyId": "rc1-overlays--empty-state",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/empty-state.tsx",
@@ -2593,15 +2926,22 @@
       ],
       "storyId": "rc1-overlays--loading-state",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "inline-notice",
           "skeleton"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/loading-state.tsx",
@@ -2649,16 +2989,23 @@
       ],
       "storyId": "rc1-operations--approval-summary",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "badge",
           "button",
           "inline-notice"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/approval-summary.tsx",
@@ -2702,16 +3049,23 @@
       ],
       "storyId": "rc1-operations--conflict-resolution",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button",
           "inline-notice",
           "radio-group"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/conflict-resolution.tsx",
@@ -2759,9 +3113,9 @@
       ],
       "storyId": "rc1-operations--operation-receipt",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -2769,7 +3123,14 @@
           "inline-notice",
           "loading-state"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/operation-receipt.tsx",
@@ -2809,15 +3170,22 @@
       ],
       "storyId": "rc1-operations--pending-operation-banner",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button",
           "inline-notice"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/pending-operation-banner.tsx",
@@ -2861,15 +3229,22 @@
       ],
       "storyId": "rc1-operations--offline-banner",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button",
           "inline-notice"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/offline-banner.tsx",
@@ -2905,16 +3280,23 @@
       ],
       "storyId": "rc1-operations--draft-status",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "badge",
           "button",
           "inline-notice"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/draft-status.tsx",
@@ -2994,9 +3376,9 @@
       ],
       "storyId": "rc1-operations--operation-sheet",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -3004,7 +3386,14 @@
           "inline-notice",
           "sheet"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/operation-sheet.tsx",
@@ -3040,16 +3429,23 @@
       ],
       "storyId": "rc1-navigation--mode-switcher",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button",
           "popover",
           "radio-group"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/mode-switcher.tsx",
@@ -3077,14 +3473,21 @@
       ],
       "storyId": "rc1-navigation--appearance-picker",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "radio-group"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/appearance-picker.tsx",
@@ -3132,15 +3535,22 @@
       ],
       "storyId": "rc1-navigation--desktop-navigation",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button",
           "mode-switcher"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/desktop-navigation.tsx",
@@ -3184,16 +3594,23 @@
       ],
       "storyId": "rc1-navigation--mobile-navigation",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button",
           "desktop-navigation",
           "mode-switcher"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/mobile-navigation.tsx",
@@ -3246,14 +3663,21 @@
       "storyId": "rc1-navigation--household-switcher",
       "limitations": "仅展示调用方提供的家庭，不连接账号、认证或远程范围控制器。",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "select"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/household-switcher.tsx",
@@ -3302,9 +3726,9 @@
       "storyId": "rc1-navigation--app-shell",
       "limitations": "只组装展示区域；路由、主题提供器、权限、家庭切换和任务恢复由外部接线。未做真实客户端验收。",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "appearance-picker",
@@ -3315,7 +3739,14 @@
           "mode-switcher",
           "popover"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/app-shell.tsx",
@@ -3404,9 +3835,9 @@
       "storyId": "rc1-content--attribute-fields",
       "limitations": "值和数量为展示草稿；命令校验、完整模板升级由外部控制器负责。",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -3422,7 +3853,14 @@
           "select",
           "textarea"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/attribute-fields.tsx",
@@ -3483,9 +3921,9 @@
       "storyId": "rc1-content--note-editor",
       "limitations": "保存仅为意图；Markdown 预览不加载图片或打开链接。",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -3497,7 +3935,14 @@
           "tabs",
           "textarea"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/note-editor.tsx",
@@ -3554,9 +3999,9 @@
       "storyId": "rc1-content--attachment-list",
       "limitations": "打开与移除由调用方处理；样例没有真实附件资源。",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -3566,7 +4011,14 @@
           "inline-notice",
           "loading-state"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/attachment-list.tsx",
@@ -3623,9 +4075,9 @@
       "storyId": "rc1-content--attachment-field",
       "limitations": "只传出所选 File 对象，不读取文件、生成资源地址或上传。",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -3635,7 +4087,14 @@
           "inline-notice",
           "input"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/attachment-field.tsx",
@@ -3692,9 +4151,9 @@
       "storyId": "rc1-content--history-entry",
       "limitations": "姓名、操作名称及更正权限由调用方提供，不执行撤销。",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -3704,7 +4163,14 @@
           "inline-notice",
           "loading-state"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/history-entry.tsx",
@@ -3757,9 +4223,9 @@
       "storyId": "rc1-content--history-changes",
       "limitations": "脱敏说明由上层显式传入；不推测缺失的前后值。",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -3768,7 +4234,14 @@
           "inline-notice",
           "loading-state"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/history-changes.tsx",
@@ -3820,15 +4293,22 @@
       ],
       "storyId": "rc1-operations--capability-notice",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button",
           "inline-notice"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/capability-notice.tsx",
@@ -3892,9 +4372,9 @@
       ],
       "storyId": "rc1-operations--scan-input",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -3905,7 +4385,14 @@
           "loading-state",
           "radio-group"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/scan-input.tsx",
@@ -3965,9 +4452,9 @@
       ],
       "storyId": "rc1-operations--label-print-panel",
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -3975,7 +4462,14 @@
           "capability-notice",
           "inline-notice"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/src/ui/patterns/label-print-panel.tsx",
@@ -4008,9 +4502,9 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -4025,7 +4519,14 @@
           "search-bar",
           "tabs"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/review/groups/compositions-demos.tsx",
@@ -4058,9 +4559,9 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -4074,7 +4575,14 @@
           "quantity-input",
           "separator"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/review/groups/compositions-demos.tsx",
@@ -4135,9 +4643,9 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "approval-summary",
@@ -4152,7 +4660,14 @@
           "page-header",
           "pending-operation-banner"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/review/groups/compositions-demos.tsx",
@@ -4185,9 +4700,9 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "batch-selection-bar",
@@ -4199,7 +4714,14 @@
           "page-header",
           "tree-view"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/review/groups/compositions-demos.tsx",
@@ -4232,9 +4754,9 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC1",
+      "version": "RC2",
       "review": {
-        "version": "RC1",
+        "version": "RC2",
         "status": "待审阅",
         "dependencies": [
           "app-shell",
@@ -4245,7 +4767,14 @@
           "item-card",
           "pending-operation-banner"
         ],
-        "feedback": [],
+        "feedback": [
+          {
+            "date": "2026-11-06",
+            "source": "用户全局反馈",
+            "summary": "修正横向空间浪费、物品标题层级和冗余副标题/动作文字；RC2候选待复审。",
+            "reference": "docs/ux-vnext/rc1-density-copy-audit.md"
+          }
+        ],
         "approvalRecords": []
       },
       "source": "apps/web/review/groups/compositions-demos.tsx",

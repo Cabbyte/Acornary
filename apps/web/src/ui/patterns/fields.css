@@ -3,7 +3,85 @@
 [data-acornary-ui='vnext'] .vn-search-bar {
   display: flex;
   flex-direction: column;
+  gap: var(--vn-space-8);
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-domain-field {
+  container: domain-field / inline-size;
+}
+[data-acornary-ui='vnext'] .vn-search-bar {
+  container: search-field / inline-size;
+}
+[data-acornary-ui='vnext'] .vn-filter-bar {
+  container: filter-field / inline-size;
+}
+[data-acornary-ui='vnext'] .vn-domain-field .vn-input,
+[data-acornary-ui='vnext'] .vn-domain-field .vn-select-trigger,
+[data-acornary-ui='vnext'] .vn-search-bar .vn-input {
+  font-size: var(--vn-body-size);
+}
+[data-acornary-ui='vnext'] .vn-filter-controls,
+[data-acornary-ui='vnext'] .vn-fields-actions,
+[data-acornary-ui='vnext'] .vn-fields-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vn-space-4) var(--vn-space-8);
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-filter-scope {
+  overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-field-details {
+  min-width: 0;
+  max-width: 100%;
+  font-size: var(--vn-type-metadata);
+}
+[data-acornary-ui='vnext'] .vn-field-details > summary {
+  min-height: var(--vn-target-touch);
+  width: fit-content;
+  max-width: 100%;
+  padding-inline: var(--vn-space-4);
+  align-content: center;
+  color: var(--vn-accent-text);
+  cursor: pointer;
+  list-style-position: inside;
+  overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-field-details > summary:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+[data-acornary-ui='vnext'] .vn-field-details__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-8);
+  padding-block: var(--vn-space-4) var(--vn-space-8);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-field-details p {
+  margin: 0;
+}
+[data-acornary-ui='vnext'] .vn-fields-actions > .vn-field-details[open] {
+  flex-basis: 100%;
+}
+[data-acornary-ui='vnext'] .vn-quantity-input__controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.2fr);
+  align-items: start;
   gap: var(--vn-space-12);
+}
+[data-acornary-ui='vnext'] .vn-date-fact-field__controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--vn-space-12);
+  align-items: start;
+}
+[data-acornary-ui='vnext'] .vn-date-fact-field__controls[data-expiry='true'] {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+}
+[data-acornary-ui='vnext'] .vn-date-fact-field__controls .vn-date-input {
   min-width: 0;
 }
 [data-acornary-ui='vnext'] .vn-field-inline {
@@ -43,9 +121,8 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--vn-space-8);
-  padding: var(--vn-space-12);
-  border: 1px solid var(--vn-border);
-  border-radius: var(--vn-radius-control);
+  color: var(--vn-muted-foreground);
+  font-size: var(--vn-type-metadata);
   overflow-wrap: anywhere;
 }
 [data-acornary-ui='vnext'] .vn-filter-list {
@@ -191,16 +268,29 @@
   position: relative;
   z-index: 1;
 }
-@container (max-width: 767px) {
-  [data-acornary-ui='vnext'] .vn-fields-columns {
-    grid-template-columns: 1fr;
+@container domain-field (max-width: 439px) {
+  [data-acornary-ui='vnext'] .vn-quantity-input__controls {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   }
+  [data-acornary-ui='vnext'] .vn-quantity-input__accuracy {
+    grid-column: 1 / -1;
+    max-width: 16rem;
+  }
+}
+@container domain-field (max-width: 399px) {
+  [data-acornary-ui='vnext'] .vn-date-fact-field__controls[data-expiry='true'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@container search-field (max-width: 359px) {
   [data-acornary-ui='vnext'] .vn-search-bar .vn-field-inline {
-    flex-wrap: wrap;
+    gap: var(--vn-space-4);
   }
-  [data-acornary-ui='vnext'] .vn-search-bar .vn-field-inline > .vn-input {
-    flex-basis: 50%;
+  [data-acornary-ui='vnext'] .vn-search-bar button[type='submit'] {
+    padding-inline: var(--vn-space-8);
   }
+}
+@container (max-width: 767px) {
   [data-acornary-ui='vnext'] .vn-calendar .rdp-day_button,
   [data-acornary-ui='vnext'] .vn-calendar .rdp-weekday {
     width: var(--vn-target-touch);
@@ -208,6 +298,11 @@
   }
 }
 @media (pointer: coarse) {
+  [data-acornary-ui='vnext'] .vn-domain-field .vn-input,
+  [data-acornary-ui='vnext'] .vn-domain-field .vn-select-trigger,
+  [data-acornary-ui='vnext'] .vn-search-bar .vn-input {
+    font-size: var(--vn-type-input-touch);
+  }
   [data-acornary-ui='vnext'] .vn-calendar .rdp-day_button,
   [data-acornary-ui='vnext'] .vn-calendar .rdp-weekday {
     width: var(--vn-target-touch);

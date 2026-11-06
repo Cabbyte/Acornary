@@ -88,13 +88,12 @@ export function NoteEditor({
           <h3 className="vn-section-title">物品备注</h3>
           <p className="vn-content-meta">仅此物品 · {itemLabel}</p>
         </div>
-        <Badge>
-          {busy ? '正在处理' : readOnly ? '只读' : dirty ? '有未保存修改' : '无未保存修改'}
-        </Badge>
+        {(busy || readOnly || dirty) && (
+          <Badge>{busy ? '正在处理' : readOnly ? '只读' : '有未保存修改'}</Badge>
+        )}
       </div>
-      <p className="vn-content-meta">记录使用心得或补充说明。备注不会改变数量、日期等属性。</p>
       <details className="vn-content-details">
-        <summary>查看备注所属物品</summary>
+        <summary>所属物品</summary>
         <p className="vn-content-meta">物品 ID：{itemId}</p>
       </details>
       {availability.kind !== 'available' && (
@@ -126,7 +125,7 @@ export function NoteEditor({
               label: '编辑',
               content: (
                 <div className="vn-stack">
-                  <FormField label="标题" hint="选填；清空后表示不设标题。">
+                  <FormField label="标题（选填）">
                     <Input
                       value={value.title ?? ''}
                       disabled={busy}
@@ -141,7 +140,7 @@ export function NoteEditor({
                     hint={
                       previewFormat === 'markdown'
                         ? '支持 Markdown 预览；图片和链接只显示文字。'
-                        : '按纯文本预览。'
+                        : undefined
                     }
                   >
                     <Textarea

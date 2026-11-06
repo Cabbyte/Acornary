@@ -143,6 +143,14 @@ export function AttributeFields({
     )?.[1] ??
     fieldStates[path] ??
     Object.entries(fieldStates).find(([parent]) => path.startsWith(`${parent}.`))?.[1];
+  const extraStateLabels = [
+    ...new Set(
+      extraPaths.flatMap((path) => {
+        const state = stateFor(path);
+        return state && state.kind !== 'readOnly' ? [stateLabels[state.kind]] : [];
+      }),
+    ),
+  ];
   const renderField = (field: TemplateFieldV2) => {
     const state = stateFor(field.path);
     const value = atPath(binding.values, field.path);
@@ -194,14 +202,21 @@ export function AttributeFields({
             <span className="vn-field-label">{field.label}</span>
             <Badge>{state ? stateLabels[state.kind] : '保留原值'}</Badge>
           </div>
-          <div className="vn-content-value">{readValue}</div>
+          {value !== null && typeof value === 'object' && (!state || state.kind === 'readOnly') ? (
+            <details className="vn-content-details">
+              <summary>原值详情</summary>
+              <pre className="vn-content-value">{readValue}</pre>
+            </details>
+          ) : (
+            <div className="vn-content-value">{readValue}</div>
+          )}
           <p className="vn-content-meta">
             {state?.reason ||
               (unrecognizedParent
-                ? '原记录的上层内容无法识别，已保留且暂不可编辑。'
+                ? '上层内容无法识别，原值已保留。'
                 : unknownEnum
-                  ? '当前版本没有此选项，原值保留且暂不可编辑。'
-                  : '此字段需要专用编辑入口，原值已保留。')}
+                  ? '此选项不在当前版本中，原值已保留。'
+                  : '此字段需专用编辑入口，原值已保留。')}
           </p>
         </div>
       );
@@ -307,11 +322,12 @@ export function AttributeFields({
         <Badge>版本 {binding.template_version}</Badge>
       </div>
       <details className="vn-content-details">
-        <summary>查看记录范围</summary>
+        <summary>属性详情</summary>
         <p className="vn-content-meta">
           {scope.kind === 'SKU' ? '商品' : '物品'} ID：{scope.id}
         </p>
         <FactSource
+          presentation="detail"
           source={{ templateId: binding.template_id, version: binding.template_version, path: '*' }}
           templateName={template?.name}
         />
@@ -343,33 +359,34 @@ export function AttributeFields({
           )}
           <div className="vn-content-fields">{fields.map(renderField)}</div>
           {extraPaths.length > 0 && (
-            <div className="vn-stack">
-              <h4 className="vn-section-title">保留的其他内容</h4>
-              <p className="vn-content-meta">
-                这些内容未提供可编辑说明。修改其他字段不会移除它们。
-              </p>
-              {extraPaths.map((path) => {
-                const state = stateFor(path);
-                return (
-                  <div className="vn-content-field-read" key={path}>
-                    <span className="vn-field-label">{path}</span>
-                    <div className="vn-content-value">
-                      {state && state.kind !== 'readOnly'
-                        ? stateLabels[state.kind]
-                        : textValue(atPath(binding.values, path))}
-                    </div>
-                    {state?.reason && <span className="vn-content-meta">{state.reason}</span>}
-                  </div>
-                );
-              })}
-            </div>
+            <details className="vn-content-details">
+              <summary>
+                其他保留字段（{extraPaths.length}）
+                {extraStateLabels.length > 0 && ` · ${extraStateLabels.join(' · ')}`}
+              </summary>
+              <div className="vn-stack">
+                <p className="vn-content-meta">暂不可编辑，修改其他字段时会保留。</p>
+                <div className="vn-content-fields">
+                  {extraPaths.map((path) => {
+                    const state = stateFor(path);
+                    return (
+                      <div className="vn-content-field-read" key={path}>
+                        <span className="vn-field-label">{path}</span>
+                        <div className="vn-content-value">
+                          {state && state.kind !== 'readOnly'
+                            ? stateLabels[state.kind]
+                            : textValue(atPath(binding.values, path))}
+                        </div>
+                        {state?.reason && <span className="vn-content-meta">{state.reason}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </details>
           )}
           {!error && !fields.length && !extraPaths.length && (
-            <EmptyState
-              reason="empty"
-              title="暂无属性内容"
-              context="当前记录没有可展示的属性字段。"
-            />
+            <EmptyState reason="empty" title="暂无属性内容" />
           )}
         </>
       )}

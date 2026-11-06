@@ -1,3 +1,4 @@
+import { ReviewNote, ReviewFeedback } from '../review-frame';
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { Calendar } from '../../src/ui/components/ui/calendar';
 import { DateInput } from '../../src/ui/components/ui/date-input';
@@ -108,9 +109,7 @@ export function DateInputDemo({ scenario }: ReviewDemoProps) {
         disabled={scenario === 'disabled'}
         hint={scenario === 'unknown' ? '日期尚未记录；清除不会写入默认日期。' : undefined}
       />
-      <span className="vn-muted" role="status">
-        {log}
-      </span>
+      <ReviewFeedback>{log}</ReviewFeedback>
       <span className="vn-muted">当前原文：{value ?? 'null（未记录）'}</span>
     </div>
   );
@@ -140,9 +139,7 @@ export function SearchBarDemo({ scenario }: ReviewDemoProps) {
         }
         onScan={() => setLog('收到扫描意图；此演示未连接相机。')}
       />
-      <span className="vn-muted" role="status">
-        {log}
-      </span>
+      <ReviewFeedback>{log}</ReviewFeedback>
       <span className="vn-muted">可使用中文输入法；组词时按 Enter 不会提交搜索。</span>
       {loading && (
         <Button
@@ -205,9 +202,7 @@ export function FilterBarDemo({ scenario }: ReviewDemoProps) {
         readOnly={scenario === 'readonly'}
         disabled={scenario === 'disabled'}
       />
-      <span className="vn-muted" role="status">
-        {log}
-      </span>
+      <ReviewFeedback>{log}</ReviewFeedback>
     </div>
   );
 }
@@ -253,10 +248,8 @@ export function QuantityInputDemo({ scenario }: ReviewDemoProps) {
         disabled={scenario === 'disabled'}
         label={scenario === 'long-text' ? '需要保留估计性质和原始小数精度的剩余数量' : '剩余数量'}
       />
-      <span className="vn-muted" role="status">
-        {log}
-      </span>
-      <span className="vn-muted">字符串原文：{value.value ?? 'null'}；0 只会来自明确输入。</span>
+      <ReviewFeedback>{log}</ReviewFeedback>
+      <ReviewNote>字符串原文：{value.value ?? 'null'}；0 只会来自明确输入。</ReviewNote>
     </div>
   );
 }
@@ -279,7 +272,8 @@ export function DateFactFieldDemo({ scenario }: ReviewDemoProps) {
         : scenario === 'unknown'
           ? null
           : '包装原始标注',
-    state: 'UNKNOWN',
+    state: scenario === 'invalid-completion' ? 'COMPLETED' : 'UNKNOWN',
+    completedOn: scenario === 'invalid-completion' ? '2026-02-29' : null,
   };
   const [fact, setFact] = useScenario(scenario, initial);
   const [month, setMonth] = useScenario(scenario, scenario === 'error' ? '2026-02' : '2026-11');
@@ -302,10 +296,8 @@ export function DateFactFieldDemo({ scenario }: ReviewDemoProps) {
         readOnly={scenario === 'readonly'}
         disabled={scenario === 'disabled'}
       />
-      <span className="vn-muted" role="status">
-        {log}
-      </span>
-      <span className="vn-muted">示例不派生到期状态；kind / source / state 由上游事实保留。</span>
+      <ReviewFeedback>{log}</ReviewFeedback>
+      <ReviewNote>示例不派生到期状态；kind / source / state 由上游事实保留。</ReviewNote>
     </div>
   );
 }
@@ -390,10 +382,8 @@ export function CatalogPickerDemo({ scenario }: ReviewDemoProps) {
           载入本地候选页
         </Button>
       )}
-      <span className="vn-muted" role="status">
-        {log}
-      </span>
-      <span className="vn-muted">搜索仅过滤这组演示候选，不代表完整目录。</span>
+      <ReviewFeedback>{log}</ReviewFeedback>
+      <ReviewNote>搜索只过滤当前示例候选。</ReviewNote>
     </div>
   );
 }
@@ -513,9 +503,7 @@ export function LocationPickerDemo({ scenario }: ReviewDemoProps) {
           载入本地候选页
         </Button>
       )}
-      <span className="vn-muted" role="status">
-        {log}
-      </span>
+      <ReviewFeedback>{log}</ReviewFeedback>
       <span className="vn-muted">候选的容器有效性、循环关系及禁用原因由 fixture 明确提供。</span>
     </div>
   );
@@ -594,6 +582,7 @@ export const fieldsEntries: ReviewEntry[] = [
       ...common,
       s('estimated', '估计日期'),
       s('warranty', '保修用途'),
+      s('invalid-completion', '完成日期错误'),
       s('missing-capability', '家庭时区未设置'),
     ],
     storyId: 'rc1-fields--date-fact-field',

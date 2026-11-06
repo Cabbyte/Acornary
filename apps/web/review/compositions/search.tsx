@@ -10,7 +10,7 @@ import { ItemRow } from '../../src/ui/patterns/item-row';
 import { ProductSummary } from '../../src/ui/patterns/product-summary';
 import { EmptyState } from '../../src/ui/patterns/empty-state';
 import { LoadingState } from '../../src/ui/patterns/loading-state';
-import { items, group, fridgeId } from '../fixtures';
+import { items, searchItems, group, fridgeId } from '../fixtures';
 import type { ReviewDemoProps } from '../types';
 export function SearchComposition({ scenario }: ReviewDemoProps) {
   const [query, setQuery] = useState('');
@@ -25,12 +25,13 @@ export function SearchComposition({ scenario }: ReviewDemoProps) {
     setPage(0);
     setMessage('');
   }, [scenario]);
-  const filtered = items.filter(
+  const pageSize = 6;
+  const filtered = searchItems.filter(
     (i) =>
       `${i.name} ${i.subtitle} ${i.location.path.join(' ')}`.includes(applied) &&
       (!located || i.location.id === fridgeId),
   );
-  const pageItems = filtered.slice(page * 2, page * 2 + 2);
+  const pageItems = filtered.slice(page * pageSize, (page + 1) * pageSize);
   const loading = scenario === 'loading';
   const itemList = (
     <div className="vn-stack">
@@ -65,8 +66,8 @@ export function SearchComposition({ scenario }: ReviewDemoProps) {
             onOpenLocation={(id) => setMessage(`查看位置意图：${id}`)}
             actions={[
               {
-                kind: 'consume',
-                label: '记录使用',
+                kind: item.profile === 'CONSUMABLE' ? 'consume' : 'move',
+                label: item.profile === 'CONSUMABLE' ? '使用' : '移动',
                 availability:
                   scenario === 'offline'
                     ? { kind: 'offline', reason: '离线时仅可查看已有缓存。' }
@@ -98,11 +99,11 @@ export function SearchComposition({ scenario }: ReviewDemoProps) {
       )}
       <PaginationControls
         pageIndex={page}
-        pageSize={2}
+        pageSize={pageSize}
         loadedCount={pageItems.length}
         knownTotal={scenario === 'offline' ? null : filtered.length}
         hasPrevious={page > 0}
-        hasNext={(page + 1) * 2 < filtered.length}
+        hasNext={(page + 1) * pageSize < filtered.length}
         onPageChange={setPage}
         loading={loading}
       />
@@ -110,33 +111,37 @@ export function SearchComposition({ scenario }: ReviewDemoProps) {
   );
   return (
     <div className="vn-stack review-composition review-composition--wide">
-      <PageHeader title="搜索与物品列表" context="测试数据 · 名称相同的商品与具体物品分开呈现" />
-      <SearchBar
-        value={query}
-        onChange={setQuery}
-        onSearch={(q) => {
-          setApplied(q);
-          setPage(0);
-        }}
-        loading={loading}
-        scanCapability={{ available: false, reason: '此预览不连接相机。' }}
-      />
-      <FilterBar
-        scopeLabel={scenario === 'offline' ? '已缓存的示例物品' : '当前 3 件示例物品'}
-        filters={located ? [{ id: 'location', label: '位置', valueLabel: '厨房 / 冰箱' }] : []}
-        onRemove={() => {
-          setLocated(false);
-          setPage(0);
-        }}
-        onClear={() => {
-          setLocated(false);
-          setPage(0);
-        }}
-        onOpenFilters={() => {
-          setLocated(!located);
-          setPage(0);
-        }}
-      />
+      <PageHeader title="我的物品" />
+      <div className="review-search-tools">
+        <SearchBar
+          value={query}
+          onChange={setQuery}
+          onSearch={(q) => {
+            setApplied(q);
+            setPage(0);
+          }}
+          loading={loading}
+          scanCapability={{ available: false, reason: '当前预览不支持扫码。' }}
+        />
+        <FilterBar
+          scopeLabel={
+            scenario === 'offline' ? '已缓存的示例物品' : `共 ${searchItems.length} 件物品`
+          }
+          filters={located ? [{ id: 'location', label: '位置', valueLabel: '厨房 / 冰箱' }] : []}
+          onRemove={() => {
+            setLocated(false);
+            setPage(0);
+          }}
+          onClear={() => {
+            setLocated(false);
+            setPage(0);
+          }}
+          onOpenFilters={() => {
+            setLocated(!located);
+            setPage(0);
+          }}
+        />
+      </div>
       {scenario === 'offline' && (
         <InlineNotice tone="warning" title="缓存范围有限">
           这里只显示已提供的缓存示例，总库存数量未知。
@@ -147,7 +152,7 @@ export function SearchComposition({ scenario }: ReviewDemoProps) {
         onValueChange={setTab}
         label="结果种类"
         items={[
-          { value: 'items', label: '具体物品', content: itemList },
+          { value: 'items', label: '物品', content: itemList },
           {
             value: 'products',
             label: '商品摘要',

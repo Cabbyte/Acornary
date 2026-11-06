@@ -65,57 +65,40 @@ export function ConflictResolution({
       aria-label="版本冲突对比"
       aria-busy={busy || undefined}
     >
-      <h3 className="vn-section-title">记录已变化，请逐项核对</h3>
+      <h3 className="vn-section-title">记录已变化</h3>
       <p className="vn-operation-summary">{scopeLabel}</p>
-      <code className="vn-operation-id">{objectId}</code>
-      <p className="vn-muted">
-        原版本 {originalRevision} → 当前版本 {currentRevision ?? '未知'}。你的输入保持不变。
-      </p>
-      <div className="vn-operation-table-wrap">
-        <table className="vn-operation-table">
-          <caption>原值、当前值与本次输入</caption>
-          <thead>
-            <tr>
-              <th scope="col">字段</th>
-              <th scope="col">原值</th>
-              <th scope="col">当前值</th>
-              <th scope="col">我的输入</th>
-            </tr>
-          </thead>
-          <tbody>
-            {fields.map((field) => (
-              <tr key={field.key}>
-                <th scope="row">{field.label}</th>
-                <td>{valueText(field.original)}</td>
-                <td>{valueText(field.current)}</td>
-                <td>{valueText(field.input)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
       {fields.map((field) => (
-        <RadioGroup
-          key={field.key}
-          label={`${field.label}：核对后的选择`}
-          value={choices[field.key] ?? null}
-          onValueChange={(choice) => onChoose(field.key, choice as 'current' | 'input')}
-          disabled={
-            blocked ||
-            field.current.kind === 'unknown' ||
-            field.current.kind === 'redacted' ||
-            field.input.kind === 'redacted' ||
-            field.input.kind === 'unknown'
-          }
-          options={[
-            { value: 'current', label: '采用当前值', description: valueText(field.current) },
-            { value: 'input', label: '保留我的输入', description: valueText(field.input) },
-          ]}
-        />
+        <div key={field.key} className="vn-conflict-field">
+          <RadioGroup
+            className="vn-conflict-choice"
+            label={
+              <span className="vn-conflict-heading">
+                <span>{field.label}</span>
+                <span className="vn-operation-reference">原值：{valueText(field.original)}</span>
+              </span>
+            }
+            value={choices[field.key] ?? null}
+            onValueChange={(choice) => onChoose(field.key, choice as 'current' | 'input')}
+            disabled={
+              blocked ||
+              field.current.kind === 'unknown' ||
+              field.current.kind === 'redacted' ||
+              field.input.kind === 'redacted' ||
+              field.input.kind === 'unknown'
+            }
+            options={[
+              { value: 'current', label: '采用当前值', description: valueText(field.current) },
+              { value: 'input', label: '保留我的输入', description: valueText(field.input) },
+            ]}
+          />
+        </div>
       ))}
       {(!fields.length || currentRevision === null) && (
-        <InlineNotice tone="warning" title="当前对比资料不完整">
-          请重新读取；不会用猜测值替换版本。
+        <InlineNotice
+          tone="warning"
+          title={currentRevision === null ? '当前记录版本未知' : '当前对比资料不完整'}
+        >
+          请刷新记录后核对。
         </InlineNotice>
       )}
       {availability.kind !== 'available' && (
@@ -123,15 +106,21 @@ export function ConflictResolution({
           {availability.reason}
         </InlineNotice>
       )}
+      <details className="vn-operation-details">
+        <summary>版本详情</summary>
+        <code className="vn-operation-id">{objectId}</code>
+        <p className="vn-operation-summary">
+          原版本 {originalRevision} → 当前版本 {currentRevision ?? '未知'}
+        </p>
+      </details>
       <div className="vn-operation-actions">
         <Button variant="secondary" disabled={busy} onClick={onRefresh}>
-          重新读取当前记录
+          刷新记录
         </Button>
         <Button disabled={blocked || !complete || currentRevision === null} onClick={onReconfirm}>
-          重新确认所选意图
+          确认选择
         </Button>
       </div>
-      <p className="vn-muted">选择只表示核对意图，是否提交由后续任务决定。</p>
     </section>
   );
 }

@@ -23,8 +23,12 @@ export interface OperationSheetProps {
   open: boolean;
   operation: OperationPresentation;
   children?: ReactNode;
+  /** Read/reconnect controls outside disabled editing fields; never a write action. */
+  recoveryContent?: ReactNode;
   steps?: readonly OperationSheetStep[];
   actions?: readonly OperationSheetAction[];
+  /** Defaults to wide for approval/conflict, standard for other tasks. */
+  size?: 'default' | 'wide';
   onAction: (actionId: string, taskId: string) => void;
   onClose: (taskId: string) => void;
   /** Parent must retain the task before changing open; this component never drops it. */
@@ -53,8 +57,10 @@ export function OperationSheet({
   open,
   operation,
   children,
+  recoveryContent,
   steps,
   actions = [],
+  size,
   onAction,
   onClose,
   onRetainAndClose,
@@ -85,10 +91,34 @@ export function OperationSheet({
       onOpenChange={(next) => {
         if (!next) requestClose();
       }}
-      title={contextInvalid ? stateLabels[operation.state] : operation.title}
-      description={
-        contextInvalid ? '请重新建立合法上下文，旧任务内容已隐藏。' : operation.description
+      title={
+        contextInvalid ? (
+          stateLabels[operation.state]
+        ) : (
+          <span className="vn-operation-title">
+            <span>{operation.title}</span>
+            <Badge variant={operation.state === 'success' ? 'success' : 'info'}>
+              {stateLabels[operation.state]}
+            </Badge>
+          </span>
+        )
       }
+      description={
+        contextInvalid ? (
+          '请重新核对当前连接，旧任务内容已隐藏。'
+        ) : operation.scopeLabel || operation.description ? (
+          <span className="vn-operation-context">
+            {operation.scopeLabel && <span>{operation.scopeLabel}</span>}
+            {operation.description && <span>{operation.description}</span>}
+          </span>
+        ) : undefined
+      }
+      wide={
+        size === 'wide' ||
+        (size === undefined &&
+          (operation.state === 'approvalRequired' || operation.state === 'revisionConflict'))
+      }
+      className="vn-operation-sheet"
       busy={busy}
       closeBlockedReason={blockedReason}
       onCloseBlocked={onCloseBlocked}
@@ -104,11 +134,11 @@ export function OperationSheet({
             </Button>
           )}
           <Button variant="secondary" disabled={!!blockedReason} onClick={requestClose}>
-            {retain ? '保留任务并收起' : '关闭'}
+            {retain ? '保留并离开' : '关闭'}
           </Button>
           {contextInvalid && (
             <Button disabled={!onReestablishContext} onClick={onReestablishContext}>
-              重新核对当前连接
+              核对当前连接
             </Button>
           )}
           {!contextInvalid &&
@@ -133,29 +163,14 @@ export function OperationSheet({
         </>
       }
     >
-      <div className="vn-operation-heading">
-        <Badge
-          variant={operation.state === 'success' ? 'success' : contextInvalid ? 'danger' : 'info'}
-        >
-          {stateLabels[operation.state]}
-        </Badge>
-        {!contextInvalid && operation.scopeLabel && (
-          <span className="vn-muted">{operation.scopeLabel}</span>
-        )}
-      </div>
-      {!contextInvalid && (
-        <p className="vn-operation-reference">
-          任务引用：<code>{operation.taskId}</code>
-        </p>
-      )}
       {operation.state === 'networkUnknown' && (
         <InlineNotice tone="warning" title="可能已经保存，请核对原请求">
-          收起会保留恢复入口，不会取消已经发送的请求。
+          离开会保留任务，不会取消已发送的请求。
         </InlineNotice>
       )}
       {operation.state === 'offline' && (
         <InlineNotice tone="warning" title="离线期间不能发送">
-          可以查看当前内容和保留草稿，恢复连接后重新核对。
+          可查看内容和保留草稿；恢复连接后请重新核对。
         </InlineNotice>
       )}
       {contextInvalid ? (
@@ -164,7 +179,7 @@ export function OperationSheet({
         </InlineNotice>
       ) : (
         <>
-          {steps && (
+          {steps && steps.length > 0 && (
             <ol className="vn-operation-steps" aria-label="任务步骤">
               {steps.map((step) => (
                 <li
@@ -192,6 +207,13 @@ export function OperationSheet({
           >
             {children}
           </fieldset>
+          {!busy && recoveryContent}
+          <details className="vn-operation-details">
+            <summary>任务详情</summary>
+            <p className="vn-operation-reference">
+              任务引用：<code>{operation.taskId}</code>
+            </p>
+          </details>
         </>
       )}
       {!contextInvalid && actions.some((action) => action.disabledReason) && (
