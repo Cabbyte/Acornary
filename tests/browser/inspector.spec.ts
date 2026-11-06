@@ -143,7 +143,16 @@ test('polling, focus and manual refresh remain read-only', async ({ page }) => {
   await expect.poll(() => seen.length, { timeout: 8000 }).toBeGreaterThan(count);
   await page.waitForLoadState('networkidle');
   const after = seen.length;
-  await page.evaluate(() => window.dispatchEvent(new FocusEvent('focus')));
+  await page.evaluate(() => {
+    // Model leaving and returning to the page. A second focus event while the
+    // query client is already focused is intentionally deduplicated.
+    const prior = Object.getOwnPropertyDescriptor(document, 'visibilityState');
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+    if (prior) Object.defineProperty(document, 'visibilityState', prior);
+    else Reflect.deleteProperty(document, 'visibilityState');
+    window.dispatchEvent(new FocusEvent('focus'));
+  });
   await expect.poll(() => seen.length, { timeout: 2000 }).toBeGreaterThan(after);
   await page.waitForLoadState('networkidle');
   const manual = seen.length;

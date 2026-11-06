@@ -1,7 +1,7 @@
 // Test-only queue driver and fault reporting; never a deployable application.
 import inventory from './inventory-worker.js';
 export { TestInventory } from './inventory-worker.js';
-import { startBackup, expireBackups } from '../../apps/cloudflare/src/backups.js';
+import { startBackup, expireBackups, scheduledBackup } from '../../apps/cloudflare/src/backups.js';
 import { Restore } from '../../apps/cloudflare/src/restore.js';
 import { consumeJobs } from '../../apps/cloudflare/src/jobs.js';
 import { Memberships } from '../../apps/cloudflare/src/memberships.js';
@@ -21,11 +21,12 @@ export default {
       },
     } as unknown as Env;
     const path = new URL(request.url).pathname;
-    if (!['/backup', '/restore', '/jobs', '/project', '/expire'].includes(path))
+    if (!['/backup', '/restore', '/jobs', '/project', '/expire', '/scheduled'].includes(path))
       return inventory.fetch(request, env as any);
     try {
       const b = (await request.json()) as any;
       let data: unknown;
+      if (path === '/scheduled') data = await scheduledBackup(env, b.time);
       if (path === '/expire') data = await expireBackups(env);
       if (path === '/project') data = await new Memberships(env).project(b.household_id);
       if (path === '/backup') data = await startBackup(env, b.id);

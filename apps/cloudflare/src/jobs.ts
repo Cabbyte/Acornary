@@ -50,8 +50,8 @@ export async function consumeJobs(batch: MessageBatch<unknown>, env: Env) {
   }
 }
 /** Daily reconciliation covers a crash between persisting a task and sending its queue notification. */
-export async function reconcileAccounts(env: Env) {
-  await scheduledBackup(env);
+export async function reconcileAccounts(env: Env, scheduledTime = Date.now()) {
+  await scheduledBackup(env, scheduledTime);
   let after = '';
   for (;;) {
     const { results } = await env.AUTH_DB.prepare(

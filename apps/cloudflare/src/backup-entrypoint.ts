@@ -1,6 +1,6 @@
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import type { Env } from './environment.js';
-import { startBackup, enqueueBackup } from './backups.js';
+import { startBackup, enqueueBackup, scheduledBackup } from './backups.js';
 import { Restore } from './restore.js';
 /** Private Wrangler-authenticated service binding only. No public router exposes this capability. */
 export class BackupEntrypoint extends WorkerEntrypoint<Env> {
@@ -14,6 +14,13 @@ export class BackupEntrypoint extends WorkerEntrypoint<Env> {
         restore = new Restore(this.env);
       let result: unknown;
       switch (path) {
+        case '/scheduled':
+          // Explicit past trigger time prevents a catch-up run from consuming a
+          // future UTC day's scheduled slot. This is operator-only, never public.
+          if (!Number.isSafeInteger(b.scheduled_time) || b.scheduled_time > Date.now())
+            throw new Error('A past scheduled trigger time is required');
+          result = { id: await scheduledBackup(this.env, b.scheduled_time) };
+          break;
         case '/pin':
           if (typeof b.pinned !== 'boolean') throw new Error('Explicit retention choice required');
           await this.env.AUTH_DB.prepare(

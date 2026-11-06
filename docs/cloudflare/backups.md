@@ -2,6 +2,8 @@
 
 Daily Cron runs at 19:17 UTC. Queue deliveries checkpoint progress in D1; retries reuse the same immutable R2 objects and the same frozen household snapshot. Unfinished runs are resubmitted by the next Cron. Inspect failed deliveries in `acornary-cf-preview-failed`; do not acknowledge failures as successful backups.
 
+Each scheduled UTC day has a deterministic backup ID derived from the actual Cron trigger time. A manual backup earlier that day does not suppress the scheduled run; otherwise two checkpoints could be almost 48 hours apart. Repeated deliveries of the same day's trigger reuse the same run. The private operator binding supports `POST /scheduled` with an explicit past `scheduled_time` (Unix milliseconds) to replay a missed trigger; use the most recent due 19:17 UTC trigger, not a future day's slot. This capability is not exposed by the public Worker router.
+
 A completed backup contains:
 
 - One D1 atomic snapshot of users, credentials, Passkeys and persistent account commands. Sessions, OAuth tokens/consents and authentication challenges are excluded.

@@ -34,6 +34,28 @@ async function environment() {
   }
   return { mf, db, call };
 }
+test('manual backups do not suppress daily checkpoints and scheduled retries keep one run', async () => {
+  const env = await environment();
+  try {
+    const now = Date.now();
+    await env.call('/backup', { id: crypto.randomUUID() });
+    await env.call('/jobs', {});
+    await env.call('/scheduled', { time: now });
+    await env.call('/scheduled', { time: now });
+    const first = (await env.db.prepare('SELECT id FROM cf_backup_runs').all()).results;
+    assert.equal(first.length, 2, 'manual and daily runs must be independent');
+    await env.call('/jobs', {});
+    await env.call('/scheduled', { time: now });
+    assert.equal((await env.db.prepare('SELECT id FROM cf_backup_runs').all()).results.length, 2);
+    await env.call('/scheduled', { time: now + 86400000 });
+    await env.call('/jobs', {});
+    const runs = (await env.db.prepare('SELECT id,status FROM cf_backup_runs').all()).results;
+    assert.equal(runs.length, 3, 'the next scheduled UTC day must create a checkpoint');
+    assert.ok(runs.every((r) => r.status === 'COMPLETE'));
+  } finally {
+    await env.mf.dispose();
+  }
+});
 test('unified D1/DO/R2 backup restores into empty resources; corruption and missing bytes block activation', async () => {
   const source = await environment(),
     target = await environment();

@@ -300,8 +300,8 @@ export default {
   queue(batch: MessageBatch<unknown>, env: Env) {
     return consumeJobs(batch, env);
   },
-  scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(reconcileAccounts(env));
+  scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(reconcileAccounts(env, controller.scheduledTime));
   },
   fetch(request: Request, env: Env, execution: ExecutionContext) {
     const trace = newTrace();

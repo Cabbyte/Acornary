@@ -281,19 +281,19 @@ export async function finalizeBackup(env: Env, id: string) {
   );
 }
 /** Resume incomplete runs before starting the next daily checkpoint. */
-export async function scheduledBackup(env: Env) {
+export async function scheduledBackup(env: Env, scheduledTime = Date.now()) {
   await expireBackups(env);
   const { results } = await env.AUTH_DB.prepare(
     "SELECT id FROM cf_backup_runs WHERE status='PENDING'",
   ).all<{ id: string }>();
   for (const row of results) await enqueueBackup(env, row.id);
-  const today = new Date().toISOString().slice(0, 10);
-  if (
-    !(await env.AUTH_DB.prepare('SELECT 1 FROM cf_backup_runs WHERE started_at>=?')
-      .bind(today)
-      .first())
-  )
-    await startBackup(env);
+  // A manual checkpoint must not suppress tonight's scheduled checkpoint: doing
+  // so can stretch the gap to almost 48 hours. A deterministic UUIDv8 identifies
+  // this scheduled UTC day, independently of manual backup IDs and delivery retries.
+  const day = new Date(scheduledTime).toISOString().slice(0, 10),
+    digest = sha('acornary-scheduled-backup-v1:' + day),
+    id = `${digest.slice(0, 8)}-${digest.slice(8, 12)}-8${digest.slice(13, 16)}-a${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
+  return startBackup(env, id);
 }
 
 /** Expiry removes only completed, unpinned backup sets. Shared bytes use an atomic deletion lease. */
