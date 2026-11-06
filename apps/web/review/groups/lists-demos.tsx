@@ -71,6 +71,7 @@ function DemoMessage({ children }: { children: string }) {
 
 export const dataTableScenarios: readonly ReviewScenario[] = [
   { id: 'normal', label: '受控排序 / 筛选 / 分页' },
+  { id: 'alignment', label: '跨列详情与摘要锚点' },
   { id: 'selected', label: '逐件选择' },
   { id: 'hidden-selection', label: '跨页隐藏选择' },
   { id: 'unavailable', label: '不可选物品' },
@@ -124,6 +125,7 @@ export const productSummaryScenarios: readonly ReviewScenario[] = [
 ];
 export const itemRowScenarios: readonly ReviewScenario[] = [
   { id: 'normal', label: '事实与操作意图' },
+  { id: 'alignment', label: '混合选择 / 动作 / 未知事实' },
   { id: 'selected', label: '已选具体物品' },
   { id: 'unknown', label: '数量 / 日期 / 位置未知' },
   { id: 'zero', label: '数量为零' },
@@ -210,7 +212,9 @@ export function DataTableDemo({ scenario }: ReviewDemoProps) {
         id: 'name',
         label: '物品',
         sortable: true,
-        cell: (row) => <ItemIdentity item={row} readOnly />,
+        cell: (row) => (
+          <ItemIdentity item={row} readOnly showId={scenario === 'alignment' ? 'label' : true} />
+        ),
       },
       { id: 'quantity', label: '数量', cell: (row) => <QuantityValue quantity={row.quantity} /> },
       {
@@ -230,7 +234,7 @@ export function DataTableDemo({ scenario }: ReviewDemoProps) {
         cell: (row) => <ItemStatus status={row.status} recordState={row.recordState} />,
       },
     ],
-    [],
+    [scenario],
   );
   const state =
     scenario === 'loading'
@@ -267,6 +271,21 @@ export function DataTableDemo({ scenario }: ReviewDemoProps) {
         onSelectionChange={setSelectedIds}
         getRowLabel={(row) => row.name}
         onOpen={(id) => setMessage(`收到打开意图：${id}`)}
+        renderRowDetails={
+          scenario === 'alignment'
+            ? (row) => (
+                <div className="vn-stack">
+                  <p className="vn-list-meta">完整物品 ID：{row.id}</p>
+                  <p className="vn-list-meta">
+                    此物品的补充记录保留原包装批次、存放说明和核对依据。展开时，名称、选择入口、数量、位置和行操作应继续留在原来的摘要位置。
+                  </p>
+                  <p className="vn-list-meta">
+                    长记录示例：物品最初存放在厨房食品柜上层，开封后转移到冷藏区；包装上的日期用途和实际记录的数量依据仍需分别核对，不能把商品规格当作当前剩余数量。
+                  </p>
+                </div>
+              )
+            : undefined
+        }
         pagination={{
           pageIndex,
           pageSize: 3,
@@ -531,24 +550,64 @@ function ItemPresentationDemo({ scenario, card }: ReviewDemoProps & { card: bool
   };
   const Component = card ? ItemCard : ItemRow;
   const displayedItems =
-    scenario === 'multiple-locations'
-      ? [
-          current,
-          {
-            ...current,
-            id: items[1].id,
-            location: { id: pantryId, path: ['厨房', '备用食品柜'], label: '备用食品柜' },
-          },
-        ]
-      : [current];
+    scenario === 'alignment'
+      ? Array.from({ length: 4 }, (_, index): ItemView => ({
+          ...current,
+          id: fixtureId(940 + index),
+          name:
+            index === 2 ? '家庭共享燕麦饮 · 带完整包装规格与购买批次说明的独立物品' : current.name,
+          ...(index === 1
+            ? {
+                location: { id: null, path: [], label: '位置未记录' },
+                facts: [],
+                status: { label: '状态未记录', tone: 'neutral' as const },
+              }
+            : {}),
+        }))
+      : scenario === 'multiple-locations'
+        ? [
+            current,
+            {
+              ...current,
+              id: items[1].id,
+              location: { id: pantryId, path: ['厨房', '备用食品柜'], label: '备用食品柜' },
+            },
+          ]
+        : [current];
   return (
     <div className="vn-stack">
-      <div className={card ? 'vn-lists-demo-card-grid' : 'vn-stack'}>
-        {displayedItems.map((item) => (
+      <div className={card ? 'vn-lists-demo-card-grid' : 'vn-item-list'}>
+        {displayedItems.map((item, index) => (
           <Component
             key={item.id}
             item={item}
             {...common}
+            quantity={
+              scenario === 'alignment' && index === 1
+                ? { value: null, unit: 'mL', accuracy: 'unknown' }
+                : common.quantity
+            }
+            date={
+              scenario === 'alignment' && index === 1
+                ? { ...dateFixture, dueOn: null, state: 'UNKNOWN', basis: null }
+                : common.date
+            }
+            actions={
+              scenario === 'alignment'
+                ? index === 3
+                  ? []
+                  : index === 2
+                    ? [{ kind: 'move', label: '核对并移动到备用食品柜', availability: available }]
+                    : index === 1
+                      ? [{ kind: 'move', label: '移动', availability: available }]
+                      : common.actions
+                : common.actions
+            }
+            onSelect={scenario === 'alignment' && index % 2 === 1 ? undefined : common.onSelect}
+            onOpenLocation={
+              scenario === 'alignment' && index === 3 ? undefined : common.onOpenLocation
+            }
+            readOnly={common.readOnly || (scenario === 'alignment' && index === 3)}
             selected={selectedIds.includes(item.id)}
           />
         ))}

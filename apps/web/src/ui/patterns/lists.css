@@ -80,6 +80,14 @@
 [data-acornary-ui='vnext'] .vn-data-row {
   min-height: var(--vn-row-min);
 }
+[data-acornary-ui='vnext'] .vn-data-row > .vn-table-cell {
+  vertical-align: top;
+}
+[data-acornary-ui='vnext'] .vn-data-sort {
+  justify-content: flex-start;
+  padding-inline: 0;
+  border-inline-width: 0;
+}
 [data-acornary-ui='vnext'] .vn-data-primary {
   min-width: 12rem;
 }
@@ -110,9 +118,9 @@
   min-width: 0;
 }
 [data-acornary-ui='vnext'] .vn-data-expand {
-  flex: 0 0 var(--vn-target-touch);
-  min-width: var(--vn-target-touch);
-  min-height: var(--vn-target-touch);
+  flex: 0 0 var(--vn-control-height);
+  min-width: var(--vn-control-height);
+  min-height: var(--vn-control-height);
   padding: 0;
 }
 [data-acornary-ui='vnext'] .vn-data-expand[data-has-details='true'] {
@@ -126,8 +134,14 @@
   flex-direction: column;
   gap: var(--vn-space-4);
   min-width: 0;
-  margin-top: var(--vn-space-8);
   overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-data-details-row[hidden] {
+  display: none;
+}
+[data-acornary-ui='vnext'] .vn-data-details-row > .vn-table-cell {
+  border-top: 0;
+  padding-top: var(--vn-space-4);
 }
 [data-acornary-ui='vnext'] .vn-item-status {
   display: flex;
@@ -227,8 +241,19 @@
   column-gap: var(--vn-space-12);
   min-width: 0;
 }
-[data-acornary-ui='vnext'] .vn-item-row-content[data-selectable='true'] {
-  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+/* A list reserves a selection track only when one of its direct rows needs it. */
+[data-acornary-ui='vnext'] .vn-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-16);
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-item-row-content[data-selectable='true'],
+[data-acornary-ui='vnext']
+  .vn-item-list:has(> .vn-item-row > .vn-item-row-content[data-selectable='true'])
+  > .vn-item-row
+  > .vn-item-row-content {
+  grid-template-columns: var(--vn-control-height) minmax(0, 1fr) minmax(0, 1fr);
   grid-template-areas: 'selection identity identity' '. location location' '. quantity date' '. actions actions';
 }
 [data-acornary-ui='vnext'] .vn-item-row-content > div {
@@ -262,6 +287,9 @@
   gap: var(--vn-space-4);
   align-items: flex-start;
 }
+[data-acornary-ui='vnext'] .vn-item-row-actions > .vn-button {
+  white-space: normal;
+}
 [data-acornary-ui='vnext'] .vn-item-row-extra,
 [data-acornary-ui='vnext'] .vn-item-row-feedback {
   grid-column: 1 / -1;
@@ -287,16 +315,18 @@
   color: var(--vn-warning);
 }
 @container vn-item-row (min-width: 800px) {
-  [data-acornary-ui='vnext'] .vn-item-row-content {
-    grid-template-columns:
-      minmax(12rem, 1.8fr) minmax(7rem, 1fr) minmax(5rem, 0.7fr) minmax(11rem, 1.3fr)
-      auto;
+  [data-acornary-ui='vnext'] .vn-item-row > .vn-item-row-content {
+    grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 1.3fr) 8rem;
     grid-template-areas: 'identity location quantity date actions';
   }
-  [data-acornary-ui='vnext'] .vn-item-row-content[data-selectable='true'] {
+  [data-acornary-ui='vnext'] .vn-item-row > .vn-item-row-content[data-selectable='true'],
+  [data-acornary-ui='vnext']
+    .vn-item-list:has(> .vn-item-row > .vn-item-row-content[data-selectable='true'])
+    > .vn-item-row
+    > .vn-item-row-content {
     grid-template-columns:
-      auto minmax(12rem, 1.8fr) minmax(7rem, 1fr) minmax(5rem, 0.7fr) minmax(11rem, 1.3fr)
-      auto;
+      var(--vn-control-height) minmax(0, 1.8fr) minmax(0, 1fr) minmax(0, 0.7fr)
+      minmax(0, 1.3fr) 8rem;
     grid-template-areas: 'selection identity location quantity date actions';
   }
 }
@@ -373,7 +403,7 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
   gap: var(--vn-space-16);
 }
-@container (max-width:767px) {
+@container vn-data-table (max-width:767px) {
   [data-acornary-ui='vnext'] .vn-data-mobile-tools {
     display: flex;
     flex-wrap: wrap;
@@ -449,6 +479,16 @@
   [data-acornary-ui='vnext'] .vn-data-expand {
     display: inline-flex;
   }
+  [data-acornary-ui='vnext'] .vn-data-details-row {
+    display: block;
+  }
+  [data-acornary-ui='vnext'] .vn-data-details-row > .vn-table-cell {
+    display: block;
+    width: 100%;
+    padding: var(--vn-space-4) var(--vn-space-16) var(--vn-space-16);
+  }
+}
+@container vn-host (max-width:767px) {
   [data-acornary-ui='vnext'] .vn-item-row {
     padding: var(--vn-space-8) var(--vn-space-12);
   }
@@ -490,5 +530,5 @@
 }
 [data-acornary-ui='vnext'] .vn-item-row-actions > button,
 [data-acornary-ui='vnext'] .vn-item-row-actions > [data-slot='button'] {
-  min-width: var(--vn-target-touch);
+  min-width: var(--vn-control-height);
 }

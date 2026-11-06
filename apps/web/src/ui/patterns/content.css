@@ -59,7 +59,7 @@
 }
 [data-acornary-ui='vnext'] .vn-content-details > summary {
   cursor: pointer;
-  min-height: var(--vn-target-desktop-control);
+  min-height: var(--vn-control-height);
   align-content: center;
   border-radius: var(--vn-radius-control);
   overflow-wrap: anywhere;
@@ -75,13 +75,49 @@
   margin-bottom: var(--vn-space-8);
 }
 [data-acornary-ui='vnext'] .vn-content-prose {
+  display: flow-root;
   overflow-wrap: anywhere;
-  line-height: 1.65;
+  line-height: var(--vn-type-body-line-height);
+}
+/* Reading content owns its rhythm, independently of surrounding layout stacks. */
+[data-acornary-ui='vnext']
+  .vn-content-prose
+  :where(p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre, hr) {
+  margin-block: 0;
+}
+[data-acornary-ui='vnext'] .vn-content-prose > * + * {
+  margin-block-start: var(--vn-space-16);
+}
+[data-acornary-ui='vnext'] .vn-content-prose > :where(h1, h2, h3, h4, h5, h6):not(:first-child) {
+  margin-block-start: var(--vn-space-24);
+}
+[data-acornary-ui='vnext'] .vn-content-prose > :where(h1, h2, h3, h4, h5, h6) + * {
+  margin-block-start: var(--vn-space-8);
 }
 [data-acornary-ui='vnext'] .vn-content-prose :where(h1, h2, h3, h4, h5, h6) {
   font-family: inherit;
   font-size: var(--vn-type-section);
   font-weight: 600;
+  line-height: var(--vn-type-title-line-height);
+}
+[data-acornary-ui='vnext'] .vn-content-prose :where(ul, ol) {
+  padding-inline-start: var(--vn-space-24);
+}
+[data-acornary-ui='vnext'] .vn-content-prose blockquote {
+  margin-inline: 0;
+  padding-inline-start: var(--vn-space-16);
+}
+[data-acornary-ui='vnext'] .vn-content-prose :where(li) + li,
+[data-acornary-ui='vnext'] .vn-content-prose :where(li, blockquote) > * + * {
+  margin-block-start: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-content-prose > :first-child,
+[data-acornary-ui='vnext'] .vn-content-prose :where(li, blockquote) > :first-child {
+  margin-block-start: 0;
+}
+[data-acornary-ui='vnext'] .vn-content-prose > :last-child,
+[data-acornary-ui='vnext'] .vn-content-prose :where(li, blockquote) > :last-child {
+  margin-block-end: 0;
 }
 [data-acornary-ui='vnext'] .vn-content-prose pre {
   white-space: pre-wrap;
@@ -214,15 +250,5 @@
   }
   [data-acornary-ui='vnext'] .vn-attachment-row--pending .vn-attachment-actions {
     grid-column: 1;
-  }
-}
-@media (max-width: 767px) {
-  [data-acornary-ui='vnext'] .vn-content-details > summary {
-    min-height: var(--vn-target-touch);
-  }
-}
-@media (pointer: coarse) {
-  [data-acornary-ui='vnext'] .vn-content-details > summary {
-    min-height: var(--vn-target-touch);
   }
 }

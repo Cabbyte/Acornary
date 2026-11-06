@@ -41,7 +41,6 @@ export function FilterBar({
       className={cn('vn-filter-bar', className)}
     >
       <div className="vn-filter-controls">
-        {scopeLabel && <span className="vn-filter-scope vn-muted">范围：{scopeLabel}</span>}
         {onOpenFilters && (
           <Button
             variant="secondary"
@@ -89,6 +88,7 @@ export function FilterBar({
           </Button>
         )}
       </div>
+      {scopeLabel && <span className="vn-filter-scope vn-muted">范围：{scopeLabel}</span>}
       {loading && (
         <span className="vn-muted" role="status">
           正在筛选…

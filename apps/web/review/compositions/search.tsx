@@ -19,11 +19,13 @@ export function SearchComposition({ scenario }: ReviewDemoProps) {
   const [tab, setTab] = useState('items');
   const [page, setPage] = useState(0);
   const [message, setMessage] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   useEffect(() => {
     setQuery(scenario === 'empty' ? '不存在的物品' : '');
     setApplied(scenario === 'empty' ? '不存在的物品' : '');
     setPage(0);
     setMessage('');
+    setSelectedIds([]);
   }, [scenario]);
   const pageSize = 6;
   const filtered = searchItems.filter(
@@ -34,14 +36,27 @@ export function SearchComposition({ scenario }: ReviewDemoProps) {
   const pageItems = filtered.slice(page * pageSize, (page + 1) * pageSize);
   const loading = scenario === 'loading';
   const itemList = (
-    <div className="vn-stack">
+    <div className="vn-stack vn-item-list">
       {loading ? (
         <LoadingState label="正在查找物品" />
       ) : pageItems.length ? (
-        pageItems.map((item) => (
+        pageItems.map((item, index) => (
           <ItemRow
             key={item.id}
-            item={item}
+            item={
+              scenario === 'alignment' && index === 1
+                ? { ...item, name: '燕麦饮 · 家庭装无添加糖与完整配料说明的长名称示例' }
+                : item
+            }
+            selected={selectedIds.includes(item.id)}
+            onSelect={
+              scenario === 'alignment' && index % 2 === 0
+                ? (id, checked) =>
+                    setSelectedIds((ids) =>
+                      checked ? [...ids, id] : ids.filter((value) => value !== id),
+                    )
+                : undefined
+            }
             quantity={
               item.id === items[0].id
                 ? { value: '310.0', unit: 'mL', accuracy: 'estimated' }
@@ -64,16 +79,34 @@ export function SearchComposition({ scenario }: ReviewDemoProps) {
             }
             onOpen={(id) => setMessage(`已选中物品 ${id}。此组合不进入完整档案页。`)}
             onOpenLocation={(id) => setMessage(`查看位置意图：${id}`)}
-            actions={[
-              {
-                kind: item.profile === 'CONSUMABLE' ? 'consume' : 'move',
-                label: item.profile === 'CONSUMABLE' ? '使用' : '移动',
-                availability:
-                  scenario === 'offline'
-                    ? { kind: 'offline', reason: '离线时仅可查看已有缓存。' }
-                    : { kind: 'available' },
-              },
-            ]}
+            actions={
+              scenario === 'alignment' && index === 2
+                ? []
+                : [
+                    {
+                      kind: item.profile === 'CONSUMABLE' ? 'consume' : 'move',
+                      label:
+                        scenario === 'alignment' && index === 1
+                          ? '记录本次使用数量'
+                          : item.profile === 'CONSUMABLE'
+                            ? '使用'
+                            : '移动',
+                      availability:
+                        scenario === 'offline'
+                          ? { kind: 'offline', reason: '离线时仅可查看已有缓存。' }
+                          : { kind: 'available' },
+                    },
+                    ...(scenario === 'alignment' && index === 0
+                      ? [
+                          {
+                            kind: 'move',
+                            label: '移动',
+                            availability: { kind: 'available' as const },
+                          },
+                        ]
+                      : []),
+                  ]
+            }
             onAction={(kind, id) =>
               setMessage(`已记录 ${kind} 意图，目标为 ${id}；未发送业务请求。`)
             }

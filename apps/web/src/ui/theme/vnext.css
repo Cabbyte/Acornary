@@ -10,6 +10,9 @@
   --color-danger: var(--vn-danger);
 }
 [data-acornary-ui='vnext'] {
+  /* Density aliases reuse the token source; field containers only change layout. */
+  --vn-control-height: var(--vn-target-desktop-control);
+  --vn-input-size: var(--vn-body-size);
   font-family: var(--vn-type-body-family);
   font-size: var(--vn-body-size);
   line-height: var(--vn-type-body-line-height);
@@ -33,7 +36,7 @@
   caret-color: var(--vn-accent);
 }
 .vn-root {
-  container-type: inline-size;
+  container: vn-host / inline-size;
   min-width: 0;
 }
 [data-acornary-ui='vnext'] .vn-stack {
@@ -58,7 +61,7 @@
   margin: 0;
 }
 [data-acornary-ui='vnext'] .vn-control {
-  min-height: var(--vn-target-desktop-control);
+  min-height: var(--vn-control-height);
   font: inherit;
   border-radius: var(--vn-radius-control);
 }
@@ -68,25 +71,19 @@
 [data-acornary-ui='vnext'] select {
   font-family: inherit;
 }
-@container (max-width:767px) {
-  [data-acornary-ui='vnext'] .vn-control {
-    min-height: 44px;
-  }
-  [data-acornary-ui='vnext'] input,
-  [data-acornary-ui='vnext'] textarea,
-  [data-acornary-ui='vnext'] select {
-    font-size: 16px;
+@container vn-host (max-width: 767px) {
+  /* Includes the portal root, so popups keep their host's density. */
+  [data-acornary-ui='vnext'] > * {
+    --vn-control-height: var(--vn-target-touch);
+    --vn-input-size: var(--vn-type-input-touch);
+    --vn-body-size: var(--vn-type-input-touch);
+    font-size: var(--vn-body-size);
   }
 }
 @media (pointer: coarse) {
-  [data-acornary-ui='vnext'] .vn-control {
-    min-height: 44px;
-  }
-}
-@container (max-width:767px) {
-  [data-acornary-ui='vnext'] > * {
-    --vn-body-size: var(--vn-type-input-touch);
-    font-size: var(--vn-body-size);
+  [data-acornary-ui='vnext'] {
+    --vn-control-height: var(--vn-target-touch);
+    --vn-input-size: var(--vn-type-input-touch);
   }
 }
 [data-acornary-ui='vnext'] {

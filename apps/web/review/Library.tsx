@@ -6,6 +6,7 @@ import {
 } from '../src/ui/theme/provider';
 import source from '../src/ui/tokens/source.json';
 import { entries } from './registry';
+import reviewStatus from './review-status.json';
 import type { ReviewEntry } from './types';
 import './library.css';
 import { ReviewAppearanceProvider } from './appearance-context';
@@ -151,8 +152,8 @@ export function Library() {
             <span>组件设计审阅</span>
           </div>
           <span className="library-meta">
-            RC2 · {entries.filter((e) => e.kind !== 'composition').length} 个组件 ·{' '}
-            {entries.filter((e) => e.kind === 'composition').length} 个组合场景 · 待审阅
+            {reviewStatus.version} · {entries.filter((e) => e.kind !== 'composition').length} 个组件
+            · {entries.filter((e) => e.kind === 'composition').length} 个组合场景 · 待审阅
           </span>
         </header>
         <div className="library-layout">
@@ -292,7 +293,9 @@ export function Library() {
                 反馈时注明组件名称、配色、模式和场景。演示操作只改变隔离预览，不连接家庭、库存或设备。切换配色和模式保留当前输入。
               </p>
               <p>{entry.limitations || '尚未完成业务接线、完整回归及真实 MCP/设备验收。'}</p>
-              <code>{entry.id} · RC2</code>
+              <code>
+                {entry.id} · {reviewStatus.version}
+              </code>
             </details>
           </main>
         </div>

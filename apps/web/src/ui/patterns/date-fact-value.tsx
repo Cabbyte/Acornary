@@ -82,35 +82,49 @@ export function DateFactValue({
   );
   return (
     <div className={cn('vn-date-fact', className)} data-presentation={presentation}>
-      <span className="vn-fact-label">
-        {presentation === 'summary' ? dateLabel || kindLabel : kindLabel}
-        {presentation === 'detail' && dateLabel && (
-          <span className="vn-fact-meta"> · {dateLabel}</span>
-        )}
-      </span>
-      {loading ? (
-        <span role="status" className="vn-fact-meta">
-          正在加载日期…
-        </span>
-      ) : redacted ? (
-        <span className="vn-fact-meta">日期不可见</span>
-      ) : (
-        <>
-          <div className="vn-date-fact-value-row">
-            <span className="vn-date-fact-main">
-              {fact.dueOn === null || fact.dueOn === '' ? (
-                <span className="vn-fact-meta">日期未记录</span>
-              ) : isCalendarDate(fact.dueOn) ? (
-                <time dateTime={fact.dueOn}>{fact.dueOn}</time>
-              ) : (
-                <span className="vn-fact-error">日期格式有误</span>
-              )}
-              <span className="vn-fact-badge" data-tone={tone}>
-                {stateLabels[fact.state]}
-              </span>
+      <div className="vn-date-fact-main vn-fact-primary">
+        {loading ? (
+          <span role="status" className="vn-fact-meta">
+            正在加载日期…
+          </span>
+        ) : redacted ? (
+          <span className="vn-fact-meta">日期不可见</span>
+        ) : (
+          <>
+            {fact.dueOn === null || fact.dueOn === '' ? (
+              <span className="vn-fact-meta">日期未记录</span>
+            ) : isCalendarDate(fact.dueOn) ? (
+              <time dateTime={fact.dueOn}>{fact.dueOn}</time>
+            ) : (
+              <span className="vn-fact-error">日期格式有误</span>
+            )}
+            <span className="vn-fact-badge" data-tone={tone}>
+              {stateLabels[fact.state]}
             </span>
-            {presentation === 'summary' && <FactDetails label="依据与来源">{metadata}</FactDetails>}
-          </div>
+          </>
+        )}
+      </div>
+      {presentation === 'summary' && !loading && !redacted ? (
+        <FactDetails
+          label={
+            <span className="vn-date-fact-summary">
+              <span className="vn-fact-label">{dateLabel || kindLabel}</span>
+              <span>依据与来源</span>
+            </span>
+          }
+        >
+          {metadata}
+        </FactDetails>
+      ) : (
+        <span className="vn-fact-label">
+          {presentation === 'summary' ? dateLabel || kindLabel : kindLabel}
+          {presentation === 'detail' && dateLabel && (
+            <span className="vn-fact-meta"> · {dateLabel}</span>
+          )}
+        </span>
+      )}
+      {!loading && !redacted && (
+        <>
           {fact.label && fact.label !== kindLabel && fact.label !== dateLabel && (
             <span className="vn-fact-meta">{fact.label}</span>
           )}

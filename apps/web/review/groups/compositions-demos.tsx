@@ -23,6 +23,7 @@ export const compositionEntries: ReviewEntry[] = [
     storyId: 'rc1-compositions--search',
     scenarios: [
       { id: 'normal', label: '搜索与结果' },
+      { id: 'alignment', label: '混合动作与长名称对齐' },
       { id: 'empty', label: '无匹配' },
       { id: 'loading', label: '读取中' },
       { id: 'offline', label: '缓存子集' },
@@ -38,6 +39,7 @@ export const compositionEntries: ReviewEntry[] = [
     storyId: 'rc1-compositions--form',
     scenarios: [
       { id: 'normal', label: '填写与核对' },
+      { id: 'alignment', label: '有无帮助入口对齐' },
       { id: 'errors', label: '字段错误' },
       { id: 'unknown', label: '未知事实' },
       { id: 'readonly', label: '只读' },

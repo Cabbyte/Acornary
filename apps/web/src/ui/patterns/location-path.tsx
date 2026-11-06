@@ -36,7 +36,10 @@ export function LocationPath({
         ? '家庭根位置（未放入容器）'
         : '位置未记录';
   return (
-    <div className={cn('vn-location-path', className)} data-presentation={presentation}>
+    <div
+      className={cn('vn-location-path vn-fact-primary', className)}
+      data-presentation={presentation}
+    >
       {presentation === 'detail' && <span className="vn-fact-label">存放位置</span>}
       {loading || state !== 'known' || !segments.length ? (
         <span className="vn-fact-meta" role={loading ? 'status' : undefined}>

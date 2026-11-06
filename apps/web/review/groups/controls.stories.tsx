@@ -15,10 +15,11 @@ import {
   ComboboxDemo,
   TabsDemo,
 } from './controls-demos';
+import { DateInputDemo } from './fields-demos';
 
 const meta = {
   id: 'rc1-controls',
-  title: 'RC2/基础控件',
+  title: 'RC3/基础控件',
   parameters: { layout: 'padded' },
 } satisfies Meta<ReviewDemoProps>;
 export default meta;
@@ -65,3 +66,34 @@ export const Switch: Story = { ...settings('switch'), name: '开关', render: Sw
 export const Select: Story = { ...settings('select'), name: '下拉选择', render: SelectDemo };
 export const Combobox: Story = { ...settings('combobox'), name: '搜索选择', render: ComboboxDemo };
 export const Tabs: Story = { ...settings('tabs'), name: '标签页', render: TabsDemo };
+
+/** Local field widths must not switch the density chosen by the theme host. */
+export const DensityAlignment: Story = {
+  name: '控件密度与标签对齐',
+  args: { scenario: 'default' },
+  argTypes: {
+    scenario: {
+      control: 'select',
+      options: ['default', 'error', 'disabled', 'readonly', 'long-text'],
+    },
+  },
+  render: (props) => (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 16rem), 1fr))',
+        alignItems: 'start',
+        gap: 'var(--vn-space-24)',
+      }}
+    >
+      <InputDemo {...props} />
+      <div className="vn-domain-field">
+        <SelectDemo {...props} />
+      </div>
+      <div className="vn-domain-field">
+        <ComboboxDemo {...props} />
+      </div>
+      <DateInputDemo {...props} />
+    </div>
+  ),
+};

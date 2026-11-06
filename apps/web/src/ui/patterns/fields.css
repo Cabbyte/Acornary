@@ -15,11 +15,6 @@
 [data-acornary-ui='vnext'] .vn-filter-bar {
   container: filter-field / inline-size;
 }
-[data-acornary-ui='vnext'] .vn-domain-field .vn-input,
-[data-acornary-ui='vnext'] .vn-domain-field .vn-select-trigger,
-[data-acornary-ui='vnext'] .vn-search-bar .vn-input {
-  font-size: var(--vn-body-size);
-}
 [data-acornary-ui='vnext'] .vn-filter-controls,
 [data-acornary-ui='vnext'] .vn-fields-actions,
 [data-acornary-ui='vnext'] .vn-fields-status {
@@ -38,7 +33,7 @@
   font-size: var(--vn-type-metadata);
 }
 [data-acornary-ui='vnext'] .vn-field-details > summary {
-  min-height: var(--vn-target-touch);
+  min-height: var(--vn-control-height);
   width: fit-content;
   max-width: 100%;
   padding-inline: var(--vn-space-4);
@@ -61,6 +56,10 @@
   overflow-wrap: anywhere;
 }
 [data-acornary-ui='vnext'] .vn-field-details p {
+  margin: 0;
+}
+[data-acornary-ui='vnext'] .vn-calendar > p.vn-muted,
+[data-acornary-ui='vnext'] .vn-calendar > p.vn-field-error {
   margin: 0;
 }
 [data-acornary-ui='vnext'] .vn-fields-actions > .vn-field-details[open] {
@@ -142,7 +141,7 @@
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
-  min-height: var(--vn-target-desktop-control);
+  min-height: var(--vn-control-height);
   padding: var(--vn-space-4) var(--vn-space-12);
   border: 1px solid var(--vn-border);
   border-radius: var(--vn-radius-control);
@@ -183,7 +182,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: var(--vn-target-touch);
+  min-height: var(--vn-control-height);
   padding-inline: var(--vn-space-48);
   font-weight: 500;
 }
@@ -199,8 +198,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--vn-target-touch);
-  height: var(--vn-target-touch);
+  width: var(--vn-control-height);
+  height: var(--vn-control-height);
   border: 1px solid var(--vn-control-border);
   background: var(--vn-surface);
   color: var(--vn-foreground);
@@ -212,8 +211,8 @@
   border-collapse: collapse;
 }
 [data-acornary-ui='vnext'] .vn-calendar .rdp-weekday {
-  width: var(--vn-target-desktop-control);
-  height: var(--vn-target-desktop-control);
+  width: var(--vn-control-height);
+  height: var(--vn-control-height);
   font-size: var(--vn-type-metadata);
   color: var(--vn-muted-foreground);
   font-weight: 400;
@@ -226,8 +225,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--vn-target-desktop-control);
-  height: var(--vn-target-desktop-control);
+  width: var(--vn-control-height);
+  height: var(--vn-control-height);
   padding: 0;
   border: 1px solid transparent;
   border-radius: var(--vn-radius-control);
@@ -274,7 +273,6 @@
   }
   [data-acornary-ui='vnext'] .vn-quantity-input__accuracy {
     grid-column: 1 / -1;
-    max-width: 16rem;
   }
 }
 @container domain-field (max-width: 399px) {
@@ -288,25 +286,6 @@
   }
   [data-acornary-ui='vnext'] .vn-search-bar button[type='submit'] {
     padding-inline: var(--vn-space-8);
-  }
-}
-@container (max-width: 767px) {
-  [data-acornary-ui='vnext'] .vn-calendar .rdp-day_button,
-  [data-acornary-ui='vnext'] .vn-calendar .rdp-weekday {
-    width: var(--vn-target-touch);
-    height: var(--vn-target-touch);
-  }
-}
-@media (pointer: coarse) {
-  [data-acornary-ui='vnext'] .vn-domain-field .vn-input,
-  [data-acornary-ui='vnext'] .vn-domain-field .vn-select-trigger,
-  [data-acornary-ui='vnext'] .vn-search-bar .vn-input {
-    font-size: var(--vn-type-input-touch);
-  }
-  [data-acornary-ui='vnext'] .vn-calendar .rdp-day_button,
-  [data-acornary-ui='vnext'] .vn-calendar .rdp-weekday {
-    width: var(--vn-target-touch);
-    height: var(--vn-target-touch);
   }
 }
 @media (max-width: 359px) {

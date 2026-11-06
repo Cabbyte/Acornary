@@ -33,7 +33,7 @@ export function QuantityValue({
           : quantity.accuracy;
   return (
     <span
-      className={cn('vn-quantity-value', className)}
+      className={cn('vn-quantity-value vn-fact-primary', className)}
       data-state={state}
       data-presentation={presentation}
       aria-label={label}

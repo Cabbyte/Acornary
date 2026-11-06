@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useId, useMemo, useState, type ReactNode } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown } from 'lucide-react';
 import {
   useTable,
@@ -266,6 +266,7 @@ export function DataTable<T extends { id: string }>({
                       <>
                         <span className="vn-data-narrow-heading">{column.label}</span>
                         <Button
+                          className="vn-data-sort"
                           variant="quiet"
                           disabled={disabled || busy}
                           onClick={() => toggleSort(column.id)}
@@ -320,83 +321,94 @@ export function DataTable<T extends { id: string }>({
                   }
                 };
                 return (
-                  <TableRow
-                    key={row.id}
-                    role="row"
-                    className="vn-data-row"
-                    data-state={selected.has(row.id) ? 'selected' : undefined}
-                    data-expanded={expanded}
-                  >
-                    <TableCell role="cell" className="vn-data-selection">
-                      <Checkbox
-                        checked={row.getIsSelected()}
-                        onCheckedChange={(checked) => row.toggleSelected(checked)}
-                        label={
-                          <span className="vn-list-sr-only">
-                            选择{getRowLabel(row.original)}，{row.id}
-                          </span>
-                        }
-                        disabled={!row.getCanSelect()}
-                        description={
-                          availability && availability.kind !== 'available'
-                            ? availability.reason
-                            : undefined
-                        }
-                      />
-                    </TableCell>
-                    {cells.map((cell, index) => (
-                      <TableCell
-                        key={cell.id}
-                        id={index > 0 ? `${filterId}-${cell.id}` : undefined}
-                        role="cell"
-                        className={index === 0 ? 'vn-data-primary' : 'vn-data-secondary'}
-                      >
-                        <span className="vn-data-cell-label" aria-hidden="true">
-                          {columns[index]?.label}
-                        </span>
-                        {index === 0 ? (
-                          <>
-                            <div className="vn-data-primary-layout">
-                              <div className="vn-data-primary-value">
-                                <table.FlexRender cell={cell} />
-                              </div>
-                              {(columns.length > 1 || renderRowDetails) && (
-                                <Button
-                                  className="vn-data-expand"
-                                  variant="quiet"
-                                  data-has-details={Boolean(renderRowDetails)}
-                                  aria-expanded={expanded}
-                                  aria-controls={controlledIds || undefined}
-                                  aria-label={`${expanded ? '收起' : '展开'}${getRowLabel(row.original)}的事实与记录详情`}
-                                  onClick={toggleExpanded}
-                                >
-                                  <ChevronDown size={18} aria-hidden="true" />
-                                </Button>
-                              )}
-                            </div>
-                            {renderRowDetails && expanded && (
-                              <div id={detailsId} className="vn-data-row-details">
-                                {renderRowDetails(row.original)}
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <table.FlexRender cell={cell} />
-                        )}
+                  <Fragment key={row.id}>
+                    <TableRow
+                      role="row"
+                      className="vn-data-row"
+                      data-state={selected.has(row.id) ? 'selected' : undefined}
+                      data-expanded={expanded}
+                    >
+                      <TableCell role="cell" className="vn-data-selection">
+                        <Checkbox
+                          checked={row.getIsSelected()}
+                          onCheckedChange={(checked) => row.toggleSelected(checked)}
+                          label={
+                            <span className="vn-list-sr-only">
+                              选择{getRowLabel(row.original)}，{row.id}
+                            </span>
+                          }
+                          disabled={!row.getCanSelect()}
+                          description={
+                            availability && availability.kind !== 'available'
+                              ? availability.reason
+                              : undefined
+                          }
+                        />
                       </TableCell>
-                    ))}
-                    {showOpenAction && (
-                      <TableCell role="cell" className="vn-data-actions">
-                        <Button
-                          variant="secondary"
-                          disabled={disabled || busy}
-                          onClick={() => onOpen(row.id)}
+                      {cells.map((cell, index) => (
+                        <TableCell
+                          key={cell.id}
+                          id={index > 0 ? `${filterId}-${cell.id}` : undefined}
+                          role="cell"
+                          className={index === 0 ? 'vn-data-primary' : 'vn-data-secondary'}
                         >
-                          打开
-                        </Button>
-                      </TableCell>
+                          <span className="vn-data-cell-label" aria-hidden="true">
+                            {columns[index]?.label}
+                          </span>
+                          {index === 0 ? (
+                            <>
+                              <div className="vn-data-primary-layout">
+                                <div className="vn-data-primary-value">
+                                  <table.FlexRender cell={cell} />
+                                </div>
+                                {(columns.length > 1 || renderRowDetails) && (
+                                  <Button
+                                    className="vn-data-expand"
+                                    variant="quiet"
+                                    data-has-details={Boolean(renderRowDetails)}
+                                    aria-expanded={expanded}
+                                    aria-controls={controlledIds || undefined}
+                                    aria-label={`${expanded ? '收起' : '展开'}${getRowLabel(row.original)}的事实与记录详情`}
+                                    onClick={toggleExpanded}
+                                  >
+                                    <ChevronDown size={18} aria-hidden="true" />
+                                  </Button>
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <table.FlexRender cell={cell} />
+                          )}
+                        </TableCell>
+                      ))}
+                      {showOpenAction && (
+                        <TableCell role="cell" className="vn-data-actions">
+                          <Button
+                            variant="secondary"
+                            disabled={disabled || busy}
+                            onClick={() => onOpen(row.id)}
+                          >
+                            打开
+                          </Button>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                    {renderRowDetails && (
+                      <TableRow
+                        id={detailsId}
+                        role="row"
+                        className="vn-data-details-row"
+                        data-state={selected.has(row.id) ? 'selected' : undefined}
+                        hidden={!expanded}
+                      >
+                        <TableCell role="cell" colSpan={columns.length + (showOpenAction ? 2 : 1)}>
+                          <div className="vn-data-row-details">
+                            {expanded && renderRowDetails(row.original)}
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </TableRow>
+                  </Fragment>
                 );
               })
             )}

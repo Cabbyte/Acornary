@@ -10,7 +10,7 @@
   min-height: var(--vn-target-touch);
 }
 [data-acornary-ui='vnext'] .vn-mode-switcher__trigger {
-  min-height: var(--vn-target-touch);
+  min-height: var(--vn-control-height);
 }
 [data-acornary-ui='vnext'] .vn-navigation-reason {
   margin: var(--vn-space-8) 0 0;
@@ -182,10 +182,10 @@
 [data-acornary-ui='vnext'] .vn-app-shell__header {
   grid-column: 2;
   display: grid;
-  grid-template-areas: 'household actions';
   grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
   align-items: start;
-  gap: var(--vn-space-16);
+  gap: var(--vn-space-8) var(--vn-space-16);
   min-width: 0;
   padding: max(var(--vn-space-16), env(safe-area-inset-top, 0px)) var(--vn-space-24)
     var(--vn-space-16);
@@ -194,11 +194,31 @@
   border-start-end-radius: var(--vn-radius-panel);
 }
 [data-acornary-ui='vnext'] .vn-app-shell__header > .vn-household-switcher {
-  grid-area: household;
+  display: grid;
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  grid-template-rows: subgrid;
+  align-items: start;
   max-width: 320px;
 }
+/* Label, control and optional status share header rows; actions join the control row. */
+[data-acornary-ui='vnext'] .vn-app-shell__header > .vn-household-switcher:has(> .vn-field-hint) {
+  grid-row: 1 / span 3;
+}
+[data-acornary-ui='vnext'] .vn-app-shell__header > .vn-household-switcher > .vn-field-label {
+  grid-row: 1;
+}
+[data-acornary-ui='vnext'] .vn-app-shell__header > .vn-household-switcher > .vn-select-trigger {
+  grid-row: 2;
+  align-self: center;
+}
+[data-acornary-ui='vnext'] .vn-app-shell__header > .vn-household-switcher > .vn-field-hint {
+  grid-row: 3;
+}
 [data-acornary-ui='vnext'] .vn-app-shell__header-actions {
-  grid-area: actions;
+  grid-column: 2;
+  grid-row: 2;
+  align-self: center;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -327,24 +347,28 @@
       max(var(--vn-space-16), env(safe-area-inset-right, 0px));
     border-start-start-radius: var(--vn-radius-panel);
   }
-  [data-acornary-ui='vnext'] .vn-app-shell__header > .vn-household-switcher {
+  [data-acornary-ui='vnext'] .vn-app-shell__header > .vn-household-switcher,
+  [data-acornary-ui='vnext'] .vn-app-shell__header > .vn-household-switcher:has(> .vn-field-hint) {
+    display: flex;
+    grid-area: household;
+    grid-template-rows: none;
+    align-items: stretch;
     max-width: none;
+  }
+  [data-acornary-ui='vnext'] .vn-app-shell__header > .vn-household-switcher > .vn-select-trigger {
+    align-self: stretch;
+  }
+  [data-acornary-ui='vnext'] .vn-app-shell__header-actions {
+    grid-area: actions;
+    align-self: start;
   }
   [data-acornary-ui='vnext'] .vn-app-shell__main {
     grid-column: 1;
     padding: var(--vn-space-16);
-    font-size: var(--vn-type-input-touch);
   }
   [data-acornary-ui='vnext'] .vn-app-shell__mobile-navigation {
     display: block;
     grid-column: 1;
-  }
-  [data-acornary-ui='vnext'] .vn-app-shell .vn-control {
-    min-height: var(--vn-target-touch);
-  }
-  [data-acornary-ui='vnext'] .vn-app-shell input,
-  [data-acornary-ui='vnext'] .vn-app-shell textarea {
-    font-size: var(--vn-type-input-touch);
   }
   [data-acornary-ui='vnext'] .vn-navigation-demo__draft {
     padding: var(--vn-space-16);

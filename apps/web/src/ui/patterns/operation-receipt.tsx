@@ -93,7 +93,7 @@ export function OperationReceipt({
           请刷新列表，原操作不会重新发送。
         </InlineNotice>
       ) : (
-        <p className="vn-muted" role="status">
+        <p className="vn-operation-reference" role="status">
           {refreshState === 'fresh'
             ? '列表已更新。'
             : refreshState === 'loading'

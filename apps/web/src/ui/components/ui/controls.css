@@ -68,9 +68,9 @@
   cursor: progress;
 }
 [data-acornary-ui='vnext'] .vn-icon-button {
-  width: var(--vn-target-close-and-back);
-  min-width: var(--vn-target-close-and-back);
-  min-height: var(--vn-target-close-and-back);
+  width: var(--vn-control-height);
+  min-width: var(--vn-control-height);
+  min-height: var(--vn-control-height);
   padding: var(--vn-space-8);
 }
 [data-acornary-ui='vnext'] .vn-icon-button__glyph {
@@ -105,7 +105,7 @@
   border: 1px solid var(--vn-control-border);
   background: var(--vn-surface);
   color: var(--vn-foreground);
-  font-size: var(--vn-body-size);
+  font-size: var(--vn-input-size);
   line-height: 1.5;
   transition: border-color var(--vn-motion-fast) var(--vn-motion-easing);
 }
@@ -132,7 +132,7 @@
 [data-acornary-ui='vnext'] .vn-textarea {
   resize: vertical;
   padding-block: var(--vn-space-8);
-  min-height: var(--vn-target-touch);
+  min-height: var(--vn-control-height);
 }
 [data-acornary-ui='vnext'] .vn-form-field {
   display: flex;
@@ -140,11 +140,25 @@
   gap: var(--vn-space-8);
   min-width: 0;
 }
+[data-acornary-ui='vnext'] .vn-form-field > .vn-field-hint,
+[data-acornary-ui='vnext'] .vn-form-field > .vn-field-error {
+  margin: 0;
+}
 [data-acornary-ui='vnext'] .vn-field-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--vn-space-8);
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-field-control-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--vn-space-8);
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-field-control-row__control {
+  flex: 1;
   min-width: 0;
 }
 [data-acornary-ui='vnext'] .vn-field-heading--hidden,
@@ -164,9 +178,8 @@
   align-items: center;
   justify-content: center;
   gap: var(--vn-space-4);
-  min-width: var(--vn-target-touch);
-  min-height: var(--vn-target-touch);
-  margin-block: calc(var(--vn-space-8) * -1);
+  min-width: var(--vn-control-height);
+  min-height: var(--vn-control-height);
   padding: var(--vn-space-8);
   border: 0;
   border-radius: var(--vn-radius-control);
@@ -251,7 +264,7 @@
   display: flex;
   align-items: center;
   gap: var(--vn-space-12);
-  min-height: var(--vn-target-desktop-control);
+  min-height: var(--vn-control-height);
   width: fit-content;
   max-width: 100%;
   cursor: pointer;
@@ -356,6 +369,7 @@
   color: var(--vn-foreground);
   cursor: pointer;
   text-align: start;
+  font-size: var(--vn-input-size);
   line-height: 1.5;
 }
 [data-acornary-ui='vnext'] .vn-select-value {
@@ -401,8 +415,8 @@
   display: flex;
   align-items: center;
   gap: var(--vn-space-8);
-  min-height: var(--vn-target-desktop-control);
-  padding: var(--vn-space-8);
+  min-height: var(--vn-control-height);
+  padding: var(--vn-space-4) var(--vn-space-8);
   border-radius: var(--vn-radius-control);
   cursor: default;
   user-select: none;
@@ -443,14 +457,24 @@
   color: var(--vn-muted-foreground);
 }
 [data-acornary-ui='vnext'] .vn-combobox-group {
+  position: relative;
   display: flex;
   align-items: stretch;
-  border: 1px solid var(--vn-control-border);
+  min-height: var(--vn-control-height);
   border-radius: var(--vn-radius-control);
   background: var(--vn-surface);
   min-width: 0;
 }
-[data-acornary-ui='vnext'] .vn-combobox-group[data-invalid] {
+[data-acornary-ui='vnext'] .vn-combobox-group::after {
+  /* The group owns its boundary; each inner target keeps the full control height. */
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--vn-control-border);
+  border-radius: inherit;
+  pointer-events: none;
+}
+[data-acornary-ui='vnext'] .vn-combobox-group[data-invalid]::after {
   border-color: var(--vn-danger);
 }
 [data-acornary-ui='vnext'] .vn-combobox-group[data-disabled] {
@@ -469,7 +493,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 var(--vn-target-desktop-control);
+  flex: 0 0 var(--vn-control-height);
   border: none;
   padding: var(--vn-space-4);
   color: var(--vn-muted-foreground);
@@ -540,32 +564,6 @@
 }
 [data-acornary-ui='vnext'] .vn-tab-panel[hidden] {
   display: none;
-}
-@container (max-width: 767px) {
-  [data-acornary-ui='vnext'] .vn-input,
-  [data-acornary-ui='vnext'] .vn-select-trigger {
-    font-size: var(--vn-type-input-touch);
-  }
-  [data-acornary-ui='vnext'] .vn-choice,
-  [data-acornary-ui='vnext'] .vn-control-option {
-    min-height: var(--vn-target-touch);
-  }
-  [data-acornary-ui='vnext'] .vn-combobox-action {
-    flex-basis: var(--vn-target-touch);
-  }
-}
-@media (pointer: coarse) {
-  [data-acornary-ui='vnext'] .vn-input,
-  [data-acornary-ui='vnext'] .vn-select-trigger {
-    font-size: var(--vn-type-input-touch);
-  }
-  [data-acornary-ui='vnext'] .vn-choice,
-  [data-acornary-ui='vnext'] .vn-control-option {
-    min-height: var(--vn-target-touch);
-  }
-  [data-acornary-ui='vnext'] .vn-combobox-action {
-    flex-basis: var(--vn-target-touch);
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   [data-acornary-ui='vnext'] .vn-control-spinner {

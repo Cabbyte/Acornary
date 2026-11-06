@@ -37,11 +37,18 @@ export function ItemIdentity({
 }: ItemIdentityProps) {
   if (loading)
     return (
-      <span className={cn('vn-item-identity vn-fact-meta', className)} role="status">
+      <span
+        className={cn('vn-item-identity vn-fact-meta vn-fact-primary', className)}
+        role="status"
+      >
         正在加载物品身份…
       </span>
     );
   const name = redacted ? '名称不可见' : item.name || '未命名物品';
+  const subtitle = !redacted && item.subtitle && (
+    <span className="vn-fact-meta">{item.subtitle}</span>
+  );
+  const shortId = <span className="vn-fact-meta">编号 …{item.id.slice(-8)}</span>;
   const identity = (
     <div className="vn-item-identity-id">
       <span className="vn-fact-meta">物品 ID</span>
@@ -61,7 +68,7 @@ export function ItemIdentity({
   );
   return (
     <div className={cn('vn-item-identity', className)} data-presentation={presentation}>
-      <div className="vn-item-identity-heading">
+      <div className="vn-item-identity-heading vn-fact-primary">
         {onOpen && !readOnly ? (
           <BaseButton
             type="button"
@@ -84,15 +91,28 @@ export function ItemIdentity({
       </div>
       {(showId || (!redacted && item.subtitle)) && (
         <div className="vn-item-identity-meta">
-          {!redacted && item.subtitle && <span className="vn-fact-meta">{item.subtitle}</span>}
-          {showId &&
-            (presentation === 'summary' && showId === 'label' ? (
-              <span className="vn-fact-meta">编号 …{item.id.slice(-8)}</span>
-            ) : presentation === 'summary' ? (
-              <FactDetails label={`编号 …${item.id.slice(-8)}`}>{identity}</FactDetails>
-            ) : (
-              identity
-            ))}
+          {presentation === 'summary' && showId === true ? (
+            <FactDetails
+              label={
+                <span className="vn-item-identity-summary">
+                  {subtitle}
+                  {shortId}
+                </span>
+              }
+            >
+              {identity}
+            </FactDetails>
+          ) : (
+            <>
+              {(subtitle || (showId && presentation === 'summary')) && (
+                <div className="vn-item-identity-summary">
+                  {subtitle}
+                  {showId && presentation === 'summary' && shortId}
+                </div>
+              )}
+              {showId && presentation === 'detail' && identity}
+            </>
+          )}
         </div>
       )}
     </div>

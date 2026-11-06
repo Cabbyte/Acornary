@@ -53,9 +53,9 @@ export function NoteEditor({
   const locked =
     readOnly || busy || redacted || value.body === undefined || availability.kind !== 'available';
   const preview = redacted ? (
-    <p>备注内容不可见。</p>
+    <p className="vn-content-value">备注内容不可见。</p>
   ) : value.body === undefined ? (
-    <p>尚未取得备注正文，不能用空白内容覆盖。</p>
+    <p className="vn-content-value">尚未取得备注正文，不能用空白内容覆盖。</p>
   ) : (
     <div className="vn-content-prose">
       {value.title && <h4 className="vn-section-title">{value.title}</h4>}
@@ -73,7 +73,7 @@ export function NoteEditor({
           <p className="vn-content-value">{value.body}</p>
         )
       ) : (
-        <p className="vn-muted">还没有备注内容。</p>
+        <p className="vn-content-meta">还没有备注内容。</p>
       )}
     </div>
   );

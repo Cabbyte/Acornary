@@ -62,6 +62,8 @@ export function FormField({
     required: required ?? childProps?.required,
     disabled: disabled ?? childProps?.disabled,
   };
+  const control = typeof children === 'function' ? children(props) : cloneElement(children, props);
+  const hasHelpToggle = Boolean(hint && hintMode === 'disclosure');
   return (
     <Field.Root
       name={name}
@@ -72,9 +74,7 @@ export function FormField({
       <div
         className={cn(
           'vn-field-heading',
-          labelVisibility === 'sr-only' &&
-            !(hint && hintMode === 'disclosure') &&
-            'vn-field-heading--hidden',
+          labelVisibility === 'sr-only' && 'vn-field-heading--hidden',
         )}
       >
         <Field.Label
@@ -87,10 +87,13 @@ export function FormField({
           {label}
           {required && <span className="vn-field-required">（必填）</span>}
         </Field.Label>
-        {hint && hintMode === 'disclosure' && (
+      </div>
+      {hasHelpToggle ? (
+        <div className="vn-field-control-row">
+          <div className="vn-field-control-row__control">{control}</div>
           <button
             type="button"
-            className="vn-field-help-toggle"
+            className="vn-control vn-field-help-toggle"
             aria-label={typeof label === 'string' ? `${label}说明` : '字段说明'}
             aria-expanded={hintOpen}
             aria-controls={`${controlId}-hint`}
@@ -99,9 +102,10 @@ export function FormField({
             <CircleHelp size={16} aria-hidden="true" />
             {hintLabel}
           </button>
-        )}
-      </div>
-      {typeof children === 'function' ? children(props) : cloneElement(children, props)}
+        </div>
+      ) : (
+        control
+      )}
       {hint && (
         <Field.Description id={`${controlId}-hint`} className="vn-field-hint" hidden={!showHint}>
           {hint}

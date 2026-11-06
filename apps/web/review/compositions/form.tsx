@@ -94,7 +94,16 @@ export function FormComposition({ scenario }: ReviewDemoProps) {
         onSubmit={handleSubmit(() => setMessage('草稿已通过本地校验。没有发送或保存库存记录。'))}
       >
         <div className="review-form-grid">
-          <FormField label="物品名称" required error={errors.name?.message}>
+          <FormField
+            label="物品名称"
+            required
+            error={errors.name?.message}
+            hint={
+              scenario === 'alignment'
+                ? '用于辨认这一件物品；此说明可展开，不改变字段的对齐基准。'
+                : undefined
+            }
+          >
             <Input {...register('name')} readOnly={readonly} />
           </FormField>
           <LocationPicker

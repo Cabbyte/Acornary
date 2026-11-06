@@ -38,7 +38,9 @@
   border-radius: 0;
   background: transparent;
 }
-[data-acornary-ui='vnext'] .vn-operation-summary {
+[data-acornary-ui='vnext'] .vn-operation-summary,
+[data-acornary-ui='vnext'] .vn-operation-reference {
+  /* Layout gaps own status spacing; paragraphs do not add browser margins. */
   margin: 0;
   line-height: var(--vn-type-body-line-height);
   overflow-wrap: anywhere;
@@ -79,7 +81,7 @@
 }
 [data-acornary-ui='vnext'] .vn-operation-details > summary {
   cursor: pointer;
-  min-height: var(--vn-target-desktop-control);
+  min-height: var(--vn-control-height);
   align-content: center;
   border-radius: var(--vn-radius-control);
   overflow-wrap: anywhere;
@@ -184,10 +186,8 @@
   overflow-wrap: anywhere;
 }
 [data-acornary-ui='vnext'] .vn-operation-reference {
-  margin: 0;
   color: var(--vn-muted-foreground);
   font-size: var(--vn-type-metadata);
-  overflow-wrap: anywhere;
 }
 [data-acornary-ui='vnext'] .vn-operation-steps {
   display: flex;
@@ -310,15 +310,5 @@
   [data-acornary-ui='vnext'] .vn-scan-entry {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: end;
-  }
-}
-@media (pointer: coarse) {
-  [data-acornary-ui='vnext'] .vn-operation-details > summary {
-    min-height: var(--vn-target-touch);
-  }
-}
-@media (max-width: 767px) {
-  [data-acornary-ui='vnext'] .vn-operation-details > summary {
-    min-height: var(--vn-target-touch);
   }
 }

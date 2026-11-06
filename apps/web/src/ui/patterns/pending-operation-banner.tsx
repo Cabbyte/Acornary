@@ -44,7 +44,7 @@ export function PendingOperationBanner({
         </p>
         <p className="vn-operation-summary">核对原请求后再继续；离开不会取消已发送的请求。</p>
         {blocked && (
-          <p>
+          <p className="vn-operation-summary">
             {!originalAttemptAvailable
               ? '原请求资料不可用，暂不能核对或重试。'
               : recoveryAvailability.kind !== 'available'

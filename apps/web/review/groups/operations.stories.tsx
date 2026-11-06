@@ -25,7 +25,7 @@ import {
 
 const meta = {
   id: 'rc1-operations',
-  title: 'RC2/操作恢复与能力',
+  title: 'RC3/操作恢复与能力',
   args: { scenario: 'normal' },
 } satisfies Meta<ReviewDemoProps>;
 export default meta;
