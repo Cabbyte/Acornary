@@ -32,7 +32,7 @@ const hiddenItemId = fixtureId(900);
 const pantryId = fixtureId(901);
 type DemoItem = ItemView & { quantity: QuantityPresentation };
 const tableItems: DemoItem[] = Array.from({ length: 12 }, (_, seed) => ({
-  ...items[seed % items.length],
+  ...[items[0], items[2], {...items[0], skuId:'catalog_node_00000000-0000-4000-8000-000000000003', subtitle:'中烘焙 · 250 g', status:{label:'未开封',tone:'neutral' as const}, facts:[]}][seed % 3],
   id: fixtureId(seed + 1),
   name: `${['燕麦饮', '玻璃保鲜盒', '咖啡豆'][seed % 3]} ${String(seed + 1).padStart(2, '0')}`,
   quantity:

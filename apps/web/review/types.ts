@@ -1,3 +1,4 @@
+export type ReviewStatus = '实现中' | '待审阅' | '需修改' | '已批准' | '变更后待复审';
 import type { ComponentType } from 'react';
 export interface ReviewDemoProps {
   scenario: string;
@@ -14,7 +15,7 @@ export interface ReviewEntry {
   description: string;
   component: ComponentType<ReviewDemoProps>;
   scenarios: readonly ReviewScenario[];
-  status?: '待审阅';
+  status?: ReviewStatus;
   limitations?: string;
   storyId?: string;
 }

@@ -25,7 +25,7 @@ import {
 
 const meta = {
   id: 'rc1-operations',
-  title: '组件库 RC1/操作恢复与能力',
+  title: 'RC1/操作恢复与能力',
   args: { scenario: 'normal' },
 } satisfies Meta<ReviewDemoProps>;
 export default meta;

@@ -21,7 +21,8 @@
     "generate:ui-tokens": "node scripts/ui/tokens.mjs",
     "check:ui-tokens": "node scripts/ui/tokens.mjs --check",
     "check:ui-boundaries": "node scripts/ui/boundaries.mjs",
-    "test:e2e:ui": "playwright test --config apps/web/review/playwright.config.ts"
+    "test:e2e:ui": "playwright test --config apps/web/review/playwright.config.ts",
+    "check:ui-catalog": "node scripts/ui/catalog.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "6.3.4",

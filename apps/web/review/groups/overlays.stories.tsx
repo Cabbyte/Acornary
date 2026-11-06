@@ -25,7 +25,7 @@ import {
 
 const meta = {
   id: 'rc1-overlays',
-  title: '组件库 RC1/浮层与反馈',
+  title: 'RC1/浮层与反馈',
   args: { scenario: 'draft' },
 } satisfies Meta<ReviewDemoProps>;
 export default meta;

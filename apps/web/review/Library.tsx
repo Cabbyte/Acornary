@@ -25,12 +25,16 @@ export function Library() {
     widths.includes(Number(initial.get('viewport'))) ? Number(initial.get('viewport')) : 390,
   );
   const [search, setSearch] = useState('');
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const [frameHeight, setFrameHeight] = useState(560);
   const [available, setAvailable] = useState(0);
   const frame = useRef<HTMLIFrameElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const main = useRef<HTMLElement>(null);
-  useEffect(()=>{main.current?.scrollTo({top:0});},[id,scenario]);
+  useEffect(() => {
+    main.current?.scrollTo({ top: 0 });
+    main.current?.focus({ preventScroll: true });
+  }, [id, scenario]);
   const entry = entries.find((e) => e.id === id) || entries[0];
   const activeScenario =
     entry?.scenarios.find((s) => s.id === scenario)?.id || entry?.scenarios[0]?.id || 'normal';
@@ -149,7 +153,19 @@ export function Library() {
           </span>
         </header>
         <div className="library-layout">
-          <aside className="library-sidebar">
+          <aside className="library-sidebar" data-open={catalogOpen || Boolean(search)}>
+            <button
+              type="button"
+              className="library-directory-toggle"
+              aria-expanded={catalogOpen || Boolean(search)}
+              aria-controls="review-directory"
+              onClick={() => {
+                setCatalogOpen(!catalogOpen);
+                if (catalogOpen) setSearch('');
+              }}
+            >
+              {catalogOpen ? '收起组件目录' : `浏览 ${entries.length} 项设计候选`}
+            </button>
             <label className="library-label">
               查找组件
               <input
@@ -158,7 +174,7 @@ export function Library() {
                 placeholder="名称或组件 ID"
               />
             </label>
-            <nav aria-label="组件目录">
+            <nav id="review-directory" aria-label="组件目录">
               {Object.entries(grouped).map(([group, list]) => (
                 <details key={group} open>
                   <summary>{group}</summary>
@@ -169,6 +185,8 @@ export function Library() {
                       aria-current={e.id === entry.id ? 'page' : undefined}
                       onClick={() => {
                         setId(e.id);
+                        setCatalogOpen(false);
+                        setSearch('');
                         setScenario(e.scenarios[0]?.id || 'normal');
                       }}
                     >
@@ -179,13 +197,15 @@ export function Library() {
               ))}
             </nav>
           </aside>
-          <main ref={main} className="library-main">
+          <main ref={main} tabIndex={-1} className="library-main">
             <div className="library-title">
               <div>
                 <h1>{entry.name}</h1>
                 <p>{entry.description}</p>
               </div>
-              <span className="review-badge">待用户审阅</span>
+              <span className="review-badge">
+                {entry.status === '待审阅' ? '待用户审阅' : entry.status}
+              </span>
             </div>
             <div className="library-controls">
               <label>

@@ -14,6 +14,7 @@ try {
       `Expected 70 components + 5 scenarios, received ${components.length} + ${scenes.length}`,
     );
   const ids = new Set();
+  const reviewStatus = JSON.parse(readFileSync('apps/web/review/review-status.json', 'utf8'));
   const storyIndex = JSON.parse(readFileSync('output/storybook/index.json', 'utf8')).entries;
   for (const entry of entries) {
     if (ids.has(entry.id)) throw Error(`Duplicate review ID: ${entry.id}`);
@@ -24,15 +25,18 @@ try {
       throw Error(`Incomplete demo: ${entry.id}`);
     if (!entry.storyId || !storyIndex[entry.storyId])
       throw Error(`Missing Storybook link: ${entry.id} (${entry.storyId})`);
-    if (entry.status && entry.status !== '待审阅')
-      throw Error(`Unapproved review status: ${entry.id}`);
+    const record = reviewStatus.entries[entry.id];
+    if (!record) throw Error(`Missing review ledger: ${entry.id}`);
+    if (record.status === '已批准' && !record.approvalRecords.length)
+      throw Error(`Missing explicit approval evidence: ${entry.id}`);
   }
   for (const id of expectedIds) if (!ids.has(id)) throw Error(`Missing public component: ${id}`);
   const primitiveIds = expectedIds.slice(0, 28);
   const catalog = entries.map(({ component, ...entry }) => ({
     ...entry,
     version: 'RC1',
-    status: '待审阅',
+    status: entry.status ?? '待审阅',
+    review: reviewStatus.entries[entry.id],
     source:
       entry.kind === 'composition'
         ? 'apps/web/review/groups/compositions-demos.tsx'
