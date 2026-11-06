@@ -68,26 +68,57 @@ const luminance = (hex) => {
     .map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
   return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
 };
-for (const [mode, colors] of Object.entries(
-  Object.fromEntries(
-    Object.entries(source.presets ?? {}).flatMap(([p, s]) =>
-      Object.entries(s.modes).map(([m, v]) => [`${p}/${m}`, v]),
-    ),
-  ),
-)) {
-  const pairs = [
-    ['foreground', 'background'],
-    ['mutedForeground', 'background'],
-    ['accentForeground', 'accent'],
-    ['accentForeground', 'accentHover'],
-    ['accentForeground', 'accentActive'],
-    ['selectionForeground', 'selection'],
-  ];
-  for (const [fg, bg] of pairs) {
-    const a = luminance(colors[fg]),
-      b = luminance(colors[bg]);
-    const contrast = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-    if (contrast < 4.5) throw Error(`${mode} ${fg}/${bg}: ${contrast.toFixed(2)} < 4.5`);
+const contrastRows = [];
+const verifyPair = (scope, colors, fg, bg, minimum) => {
+  const a = luminance(colors[fg]),
+    b = luminance(colors[bg]);
+  const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  if (ratio < minimum) throw Error(`${scope} ${fg}/${bg}: ${ratio.toFixed(2)} < ${minimum}`);
+  contrastRows.push(
+    `| ${scope} | ${fg} / ${bg} | ${colors[fg]} / ${colors[bg]} | ${ratio.toFixed(2)}:1 | ${minimum}:1 |`,
+  );
+};
+for (const [preset, spec] of Object.entries(source.presets))
+  for (const [mode, values] of Object.entries(spec.modes)) {
+    const colors = { ...source.semantic, ...values };
+    const pairs = [
+      ['foreground', 'background', 4.5],
+      ['foreground', 'surface', 4.5],
+      ['mutedForeground', 'background', 4.5],
+      ['mutedForeground', 'surface', 4.5],
+      ['accentText', 'background', 4.5],
+      ['accentText', 'surface', 4.5],
+      ['accentForeground', 'accent', 4.5],
+      ['accentForeground', 'accentHover', 4.5],
+      ['accentForeground', 'accentActive', 4.5],
+      ['selectionForeground', 'selection', 4.5],
+      ['controlBorder', 'background', 3],
+      ['controlBorder', 'surface', 3],
+      ['focus', 'background', 3],
+      ['focus', 'surface', 3],
+      ['focus', 'selection', 3],
+    ];
+    for (const [fg, bg, minimum] of pairs) verifyPair(`${preset}/${mode}`, colors, fg, bg, minimum);
   }
-}
-console.log('Text contrast pairs meet 4.5:1 in both modes.');
+for (const semantic of ['danger', 'warning', 'success', 'info'])
+  verifyPair('shared', source.semantic, semantic, `${semantic}Surface`, 4.5);
+verifyPair('shared', source.semantic, 'disabledForeground', 'disabledSurface', 4.5);
+const report = `# RC1 Token 对比度记录
+
+由 scripts/ui/tokens.mjs 从 source.json 派生。四套配色 × 两种模式；Hover/Active 在生成阶段分别混入 12%/24% 黑色。使用未舍入的 sRGB 相对亮度判定，表中保留两位小数。
+
+本次检查 ${contrastRows.length} 组不透明色对，均满足表内阈值。正文 4.5:1，必要边界/焦点 3:1。装饰分隔线不作为唯一控件边界。本记录不涵盖组件透明度合成、图片叠加、真实焦点遮挡，也不等于完整无障碍验收。
+
+| 配色 / 模式 | Token 对 | 颜色 | 计算值 | 阈值 |
+| --- | --- | --- | --- | --- |
+${contrastRows.join('\n')}
+
+复现：pnpm check:ui-tokens。更新：pnpm generate:ui-tokens。视觉与用户批准状态见 component-review.md。
+`;
+const reportPath = 'docs/ux-vnext/token-contrast.md';
+if (process.argv.includes('--check')) {
+  if (readFileSync(reportPath, 'utf8') !== report) throw Error('Stale contrast report');
+} else writeFileSync(reportPath, report);
+console.log(
+  `${contrastRows.length} token contrast pairs meet their thresholds in all eight combinations.`,
+);

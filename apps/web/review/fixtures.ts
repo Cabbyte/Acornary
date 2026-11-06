@@ -69,7 +69,7 @@ export const group: GroupView = {
   sealed: 0,
   unknownOpening: 1,
   unknownLifecycle: 0,
-  locations: 2,
+  locations: 1,
   totals: [{ unit: 'mL', value: '310', estimated: true, unknownAccuracy: false }],
   unknownQuantity: 1,
   nextDate: null,

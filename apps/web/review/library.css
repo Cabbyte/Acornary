@@ -200,3 +200,9 @@ body,
     padding: 16px;
   }
 }
+@media(min-width:768px){
+ .library { height:100dvh; display:flex; flex-direction:column; }
+ .library-header { flex-shrink:0; }
+ .library-layout { flex:1; min-height:0; }
+ .library-sidebar,.library-main { overflow:auto; overscroll-behavior:contain; }
+}

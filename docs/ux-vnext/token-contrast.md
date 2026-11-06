@@ -1,78 +1,135 @@
-# 候选 Token 对比度计算
+# RC1 Token 对比度记录
 
-版本：P1-RC1；计算日期：2026-11-06。值源为 [design-tokens.json](design-tokens.json)。这是不透明 sRGB 色对的数值计算，未执行实际界面/axe/读屏验收。
+由 scripts/ui/tokens.mjs 从 source.json 派生。四套配色 × 两种模式；Hover/Active 在生成阶段分别混入 12%/24% 黑色。使用未舍入的 sRGB 相对亮度判定，表中保留两位小数。
 
-算法：每通道 c=8bit/255；c≤0.04045 时 c/12.92，否则 ((c+0.055)/1.055)^2.4；L=0.2126R+0.7152G+0.0722B；ratio=(L亮+0.05)/(L暗+0.05)。判定使用未舍入数值，展示保留两位。正文4.5:1、必要控件边界和焦点3:1。禁用态本候选也按4.5检查，虽不属于相同规范要求。
+本次检查 125 组不透明色对，均满足表内阈值。正文 4.5:1，必要边界/焦点 3:1。装饰分隔线不作为唯一控件边界。本记录不涵盖组件透明度合成、图片叠加、真实焦点遮挡，也不等于完整无障碍验收。
 
-计算 62 组，低于指定阈值 0 组。border是装饰分隔线，不用于控件唯一识别；controlBorder才是控件边界。focus为偏移2px的外轮廓，比较周围surface而非按钮内部；真实遮挡/对比仍须页面核实。
+| 配色 / 模式 | Token 对 | 颜色 | 计算值 | 阈值 |
+| --- | --- | --- | --- | --- |
+| sage/daily | foreground / background | #272A27 / #FAFBF8 | 13.98:1 | 4.5:1 |
+| sage/daily | foreground / surface | #272A27 / #FFFFFF | 14.52:1 | 4.5:1 |
+| sage/daily | mutedForeground / background | #646A64 / #FAFBF8 | 5.34:1 | 4.5:1 |
+| sage/daily | mutedForeground / surface | #646A64 / #FFFFFF | 5.54:1 | 4.5:1 |
+| sage/daily | accentText / background | #526D5B / #FAFBF8 | 5.47:1 | 4.5:1 |
+| sage/daily | accentText / surface | #526D5B / #FFFFFF | 5.68:1 | 4.5:1 |
+| sage/daily | accentForeground / accent | #FFFFFF / #526D5B | 5.68:1 | 4.5:1 |
+| sage/daily | accentForeground / accentHover | #FFFFFF / #486050 | 6.85:1 | 4.5:1 |
+| sage/daily | accentForeground / accentActive | #FFFFFF / #3E5345 | 8.31:1 | 4.5:1 |
+| sage/daily | selectionForeground / selection | #486050 / #EDF2EC | 6.04:1 | 4.5:1 |
+| sage/daily | controlBorder / background | #8B8077 / #FAFBF8 | 3.71:1 | 3:1 |
+| sage/daily | controlBorder / surface | #8B8077 / #FFFFFF | 3.85:1 | 3:1 |
+| sage/daily | focus / background | #315B7C / #FAFBF8 | 6.93:1 | 3:1 |
+| sage/daily | focus / surface | #315B7C / #FFFFFF | 7.20:1 | 3:1 |
+| sage/daily | focus / selection | #315B7C / #EDF2EC | 6.34:1 | 3:1 |
+| sage/management | foreground / background | #272A27 / #F9FAFB | 13.89:1 | 4.5:1 |
+| sage/management | foreground / surface | #272A27 / #FFFFFF | 14.52:1 | 4.5:1 |
+| sage/management | mutedForeground / background | #646A64 / #F9FAFB | 5.31:1 | 4.5:1 |
+| sage/management | mutedForeground / surface | #646A64 / #FFFFFF | 5.54:1 | 4.5:1 |
+| sage/management | accentText / background | #4B6478 / #F9FAFB | 5.92:1 | 4.5:1 |
+| sage/management | accentText / surface | #4B6478 / #FFFFFF | 6.19:1 | 4.5:1 |
+| sage/management | accentForeground / accent | #FFFFFF / #4B6478 | 6.19:1 | 4.5:1 |
+| sage/management | accentForeground / accentHover | #FFFFFF / #42586A | 7.41:1 | 4.5:1 |
+| sage/management | accentForeground / accentActive | #FFFFFF / #394C5B | 8.90:1 | 4.5:1 |
+| sage/management | selectionForeground / selection | #42586A / #EDF1F5 | 6.52:1 | 4.5:1 |
+| sage/management | controlBorder / background | #768493 / #F9FAFB | 3.66:1 | 3:1 |
+| sage/management | controlBorder / surface | #768493 / #FFFFFF | 3.82:1 | 3:1 |
+| sage/management | focus / background | #315B7C / #F9FAFB | 6.89:1 | 3:1 |
+| sage/management | focus / surface | #315B7C / #FFFFFF | 7.20:1 | 3:1 |
+| sage/management | focus / selection | #315B7C / #EDF1F5 | 6.34:1 | 3:1 |
+| apricot/daily | foreground / background | #272A27 / #FCFBF8 | 14.03:1 | 4.5:1 |
+| apricot/daily | foreground / surface | #272A27 / #FFFFFF | 14.52:1 | 4.5:1 |
+| apricot/daily | mutedForeground / background | #646A64 / #FCFBF8 | 5.36:1 | 4.5:1 |
+| apricot/daily | mutedForeground / surface | #646A64 / #FFFFFF | 5.54:1 | 4.5:1 |
+| apricot/daily | accentText / background | #AC5B32 / #FCFBF8 | 4.72:1 | 4.5:1 |
+| apricot/daily | accentText / surface | #AC5B32 / #FFFFFF | 4.89:1 | 4.5:1 |
+| apricot/daily | accentForeground / accent | #FFFFFF / #AC5B32 | 4.89:1 | 4.5:1 |
+| apricot/daily | accentForeground / accentHover | #FFFFFF / #97502C | 6.00:1 | 4.5:1 |
+| apricot/daily | accentForeground / accentActive | #FFFFFF / #834526 | 7.38:1 | 4.5:1 |
+| apricot/daily | selectionForeground / selection | #97502C / #FAEFE7 | 5.30:1 | 4.5:1 |
+| apricot/daily | controlBorder / background | #8B8077 / #FCFBF8 | 3.72:1 | 3:1 |
+| apricot/daily | controlBorder / surface | #8B8077 / #FFFFFF | 3.85:1 | 3:1 |
+| apricot/daily | focus / background | #315B7C / #FCFBF8 | 6.95:1 | 3:1 |
+| apricot/daily | focus / surface | #315B7C / #FFFFFF | 7.20:1 | 3:1 |
+| apricot/daily | focus / selection | #315B7C / #FAEFE7 | 6.36:1 | 3:1 |
+| apricot/management | foreground / background | #272A27 / #FAFAFC | 13.92:1 | 4.5:1 |
+| apricot/management | foreground / surface | #272A27 / #FFFFFF | 14.52:1 | 4.5:1 |
+| apricot/management | mutedForeground / background | #646A64 / #FAFAFC | 5.32:1 | 4.5:1 |
+| apricot/management | mutedForeground / surface | #646A64 / #FFFFFF | 5.54:1 | 4.5:1 |
+| apricot/management | accentText / background | #5964A0 / #FAFAFC | 5.36:1 | 4.5:1 |
+| apricot/management | accentText / surface | #5964A0 / #FFFFFF | 5.59:1 | 4.5:1 |
+| apricot/management | accentForeground / accent | #FFFFFF / #5964A0 | 5.59:1 | 4.5:1 |
+| apricot/management | accentForeground / accentHover | #FFFFFF / #4E588D | 6.76:1 | 4.5:1 |
+| apricot/management | accentForeground / accentActive | #FFFFFF / #444C7A | 8.20:1 | 4.5:1 |
+| apricot/management | selectionForeground / selection | #4E588D / #EEEFF8 | 5.91:1 | 4.5:1 |
+| apricot/management | controlBorder / background | #768493 / #FAFAFC | 3.67:1 | 3:1 |
+| apricot/management | controlBorder / surface | #768493 / #FFFFFF | 3.82:1 | 3:1 |
+| apricot/management | focus / background | #315B7C / #FAFAFC | 6.90:1 | 3:1 |
+| apricot/management | focus / surface | #315B7C / #FFFFFF | 7.20:1 | 3:1 |
+| apricot/management | focus / selection | #315B7C / #EEEFF8 | 6.28:1 | 3:1 |
+| berry/daily | foreground / background | #272A27 / #FCFAFB | 13.97:1 | 4.5:1 |
+| berry/daily | foreground / surface | #272A27 / #FFFFFF | 14.52:1 | 4.5:1 |
+| berry/daily | mutedForeground / background | #646A64 / #FCFAFB | 5.34:1 | 4.5:1 |
+| berry/daily | mutedForeground / surface | #646A64 / #FFFFFF | 5.54:1 | 4.5:1 |
+| berry/daily | accentText / background | #995F76 / #FCFAFB | 4.75:1 | 4.5:1 |
+| berry/daily | accentText / surface | #995F76 / #FFFFFF | 4.94:1 | 4.5:1 |
+| berry/daily | accentForeground / accent | #FFFFFF / #995F76 | 4.94:1 | 4.5:1 |
+| berry/daily | accentForeground / accentHover | #FFFFFF / #875468 | 6.00:1 | 4.5:1 |
+| berry/daily | accentForeground / accentActive | #FFFFFF / #74485A | 7.45:1 | 4.5:1 |
+| berry/daily | selectionForeground / selection | #875468 / #F6EDF1 | 5.23:1 | 4.5:1 |
+| berry/daily | controlBorder / background | #8B8077 / #FCFAFB | 3.71:1 | 3:1 |
+| berry/daily | controlBorder / surface | #8B8077 / #FFFFFF | 3.85:1 | 3:1 |
+| berry/daily | focus / background | #315B7C / #FCFAFB | 6.92:1 | 3:1 |
+| berry/daily | focus / surface | #315B7C / #FFFFFF | 7.20:1 | 3:1 |
+| berry/daily | focus / selection | #315B7C / #F6EDF1 | 6.27:1 | 3:1 |
+| berry/management | foreground / background | #272A27 / #F9FBFA | 13.97:1 | 4.5:1 |
+| berry/management | foreground / surface | #272A27 / #FFFFFF | 14.52:1 | 4.5:1 |
+| berry/management | mutedForeground / background | #646A64 / #F9FBFA | 5.34:1 | 4.5:1 |
+| berry/management | mutedForeground / surface | #646A64 / #FFFFFF | 5.54:1 | 4.5:1 |
+| berry/management | accentText / background | #376F70 / #F9FBFA | 5.51:1 | 4.5:1 |
+| berry/management | accentText / surface | #376F70 / #FFFFFF | 5.72:1 | 4.5:1 |
+| berry/management | accentForeground / accent | #FFFFFF / #376F70 | 5.72:1 | 4.5:1 |
+| berry/management | accentForeground / accentHover | #FFFFFF / #306263 | 6.88:1 | 4.5:1 |
+| berry/management | accentForeground / accentActive | #FFFFFF / #2A5455 | 8.41:1 | 4.5:1 |
+| berry/management | selectionForeground / selection | #306263 / #EAF2F1 | 6.05:1 | 4.5:1 |
+| berry/management | controlBorder / background | #768493 / #F9FBFA | 3.68:1 | 3:1 |
+| berry/management | controlBorder / surface | #768493 / #FFFFFF | 3.82:1 | 3:1 |
+| berry/management | focus / background | #315B7C / #F9FBFA | 6.92:1 | 3:1 |
+| berry/management | focus / surface | #315B7C / #FFFFFF | 7.20:1 | 3:1 |
+| berry/management | focus / selection | #315B7C / #EAF2F1 | 6.33:1 | 3:1 |
+| terracotta/daily | foreground / background | #272A27 / #FBFBF9 | 14.01:1 | 4.5:1 |
+| terracotta/daily | foreground / surface | #272A27 / #FFFFFF | 14.52:1 | 4.5:1 |
+| terracotta/daily | mutedForeground / background | #646A64 / #FBFBF9 | 5.35:1 | 4.5:1 |
+| terracotta/daily | mutedForeground / surface | #646A64 / #FFFFFF | 5.54:1 | 4.5:1 |
+| terracotta/daily | accentText / background | #AB5F40 / #FBFBF9 | 4.56:1 | 4.5:1 |
+| terracotta/daily | accentText / surface | #AB5F40 / #FFFFFF | 4.73:1 | 4.5:1 |
+| terracotta/daily | accentForeground / accent | #FFFFFF / #AB5F40 | 4.73:1 | 4.5:1 |
+| terracotta/daily | accentForeground / accentHover | #FFFFFF / #965438 | 5.80:1 | 4.5:1 |
+| terracotta/daily | accentForeground / accentActive | #FFFFFF / #824831 | 7.19:1 | 4.5:1 |
+| terracotta/daily | selectionForeground / selection | #965438 / #F7EEE8 | 5.07:1 | 4.5:1 |
+| terracotta/daily | controlBorder / background | #8B8077 / #FBFBF9 | 3.72:1 | 3:1 |
+| terracotta/daily | controlBorder / surface | #8B8077 / #FFFFFF | 3.85:1 | 3:1 |
+| terracotta/daily | focus / background | #315B7C / #FBFBF9 | 6.95:1 | 3:1 |
+| terracotta/daily | focus / surface | #315B7C / #FFFFFF | 7.20:1 | 3:1 |
+| terracotta/daily | focus / selection | #315B7C / #F7EEE8 | 6.29:1 | 3:1 |
+| terracotta/management | foreground / background | #272A27 / #FAFBFC | 14.01:1 | 4.5:1 |
+| terracotta/management | foreground / surface | #272A27 / #FFFFFF | 14.52:1 | 4.5:1 |
+| terracotta/management | mutedForeground / background | #646A64 / #FAFBFC | 5.35:1 | 4.5:1 |
+| terracotta/management | mutedForeground / surface | #646A64 / #FFFFFF | 5.54:1 | 4.5:1 |
+| terracotta/management | accentText / background | #456B8A / #FAFBFC | 5.44:1 | 4.5:1 |
+| terracotta/management | accentText / surface | #456B8A / #FFFFFF | 5.64:1 | 4.5:1 |
+| terracotta/management | accentForeground / accent | #FFFFFF / #456B8A | 5.64:1 | 4.5:1 |
+| terracotta/management | accentForeground / accentHover | #FFFFFF / #3D5E79 | 6.83:1 | 4.5:1 |
+| terracotta/management | accentForeground / accentActive | #FFFFFF / #345169 | 8.31:1 | 4.5:1 |
+| terracotta/management | selectionForeground / selection | #3D5E79 / #ECF1F5 | 6.00:1 | 4.5:1 |
+| terracotta/management | controlBorder / background | #768493 / #FAFBFC | 3.69:1 | 3:1 |
+| terracotta/management | controlBorder / surface | #768493 / #FFFFFF | 3.82:1 | 3:1 |
+| terracotta/management | focus / background | #315B7C / #FAFBFC | 6.95:1 | 3:1 |
+| terracotta/management | focus / surface | #315B7C / #FFFFFF | 7.20:1 | 3:1 |
+| terracotta/management | focus / selection | #315B7C / #ECF1F5 | 6.33:1 | 3:1 |
+| shared | danger / dangerSurface | #A33828 / #F7E2DC | 5.35:1 | 4.5:1 |
+| shared | warning / warningSurface | #875919 / #FFF0D4 | 5.37:1 | 4.5:1 |
+| shared | success / successSurface | #466241 / #E8EFE4 | 5.80:1 | 4.5:1 |
+| shared | info / infoSurface | #365F78 / #E4EDF0 | 5.77:1 | 4.5:1 |
+| shared | disabledForeground / disabledSurface | #59616A / #E5E7E9 | 5.07:1 | 4.5:1 |
 
-| 模式       | 前景 / 背景 Token                    | 颜色              | 对比度  | 阈值  | 结果 |
-| ---------- | ------------------------------------ | ----------------- | ------- | ----- | ---- |
-| daily      | foreground / background              | #2B2420 / #F6F0E6 | 13.46:1 | 4.5:1 | PASS |
-| daily      | foreground / surface                 | #2B2420 / #FFFCF6 | 14.90:1 | 4.5:1 | PASS |
-| daily      | foreground / surfaceRaised           | #2B2420 / #FFFFFF | 15.26:1 | 4.5:1 | PASS |
-| daily      | mutedForeground / background         | #68615C / #F6F0E6 | 5.36:1  | 4.5:1 | PASS |
-| daily      | mutedForeground / surface            | #68615C / #FFFCF6 | 5.94:1  | 4.5:1 | PASS |
-| daily      | mutedForeground / surfaceRaised      | #68615C / #FFFFFF | 6.08:1  | 4.5:1 | PASS |
-| daily      | accentText / background              | #87472F / #F6F0E6 | 6.23:1  | 4.5:1 | PASS |
-| daily      | accentText / surface                 | #87472F / #FFFCF6 | 6.90:1  | 4.5:1 | PASS |
-| daily      | accentText / surfaceRaised           | #87472F / #FFFFFF | 7.06:1  | 4.5:1 | PASS |
-| daily      | accentForeground / accent            | #FFFFFF / #AB5F40 | 4.73:1  | 4.5:1 | PASS |
-| daily      | accentForeground / accentHover       | #FFFFFF / #965136 | 5.95:1  | 4.5:1 | PASS |
-| daily      | accentForeground / accentActive      | #FFFFFF / #7D422C | 7.81:1  | 4.5:1 | PASS |
-| daily      | selectionForeground / selection      | #87472F / #F5E5D8 | 5.75:1  | 4.5:1 | PASS |
-| daily      | controlBorder / background           | #8B8077 / #F6F0E6 | 3.40:1  | 3:1   | PASS |
-| daily      | controlBorder / surface              | #8B8077 / #FFFCF6 | 3.76:1  | 3:1   | PASS |
-| daily      | controlBorder / surfaceRaised        | #8B8077 / #FFFFFF | 3.85:1  | 3:1   | PASS |
-| daily      | focus / background                   | #315B7C / #F6F0E6 | 6.35:1  | 3:1   | PASS |
-| daily      | focus / surface                      | #315B7C / #FFFCF6 | 7.03:1  | 3:1   | PASS |
-| daily      | focus / surfaceRaised                | #315B7C / #FFFFFF | 7.20:1  | 3:1   | PASS |
-| daily      | focus / selection                    | #315B7C / #F5E5D8 | 5.85:1  | 3:1   | PASS |
-| management | foreground / background              | #24313E / #F2F5F7 | 12.11:1 | 4.5:1 | PASS |
-| management | foreground / surface                 | #24313E / #FFFFFF | 13.26:1 | 4.5:1 | PASS |
-| management | foreground / surfaceRaised           | #24313E / #FFFFFF | 13.26:1 | 4.5:1 | PASS |
-| management | mutedForeground / background         | #566574 / #F2F5F7 | 5.47:1  | 4.5:1 | PASS |
-| management | mutedForeground / surface            | #566574 / #FFFFFF | 5.98:1  | 4.5:1 | PASS |
-| management | mutedForeground / surfaceRaised      | #566574 / #FFFFFF | 5.98:1  | 4.5:1 | PASS |
-| management | accentText / background              | #315570 / #F2F5F7 | 7.20:1  | 4.5:1 | PASS |
-| management | accentText / surface                 | #315570 / #FFFFFF | 7.88:1  | 4.5:1 | PASS |
-| management | accentText / surfaceRaised           | #315570 / #FFFFFF | 7.88:1  | 4.5:1 | PASS |
-| management | accentForeground / accent            | #FFFFFF / #456B8A | 5.64:1  | 4.5:1 | PASS |
-| management | accentForeground / accentHover       | #FFFFFF / #365772 | 7.60:1  | 4.5:1 | PASS |
-| management | accentForeground / accentActive      | #FFFFFF / #29445C | 10.12:1 | 4.5:1 | PASS |
-| management | selectionForeground / selection      | #315570 / #E6EEF4 | 6.72:1  | 4.5:1 | PASS |
-| management | controlBorder / background           | #768493 / #F2F5F7 | 3.49:1  | 3:1   | PASS |
-| management | controlBorder / surface              | #768493 / #FFFFFF | 3.82:1  | 3:1   | PASS |
-| management | controlBorder / surfaceRaised        | #768493 / #FFFFFF | 3.82:1  | 3:1   | PASS |
-| management | focus / background                   | #315B7C / #F2F5F7 | 6.57:1  | 3:1   | PASS |
-| management | focus / surface                      | #315B7C / #FFFFFF | 7.20:1  | 3:1   | PASS |
-| management | focus / surfaceRaised                | #315B7C / #FFFFFF | 7.20:1  | 3:1   | PASS |
-| management | focus / selection                    | #315B7C / #E6EEF4 | 6.13:1  | 3:1   | PASS |
-| shared     | danger / dangerSurface               | #A33828 / #F7E2DC | 5.35:1  | 4.5:1 | PASS |
-| daily      | danger / background                  | #A33828 / #F6F0E6 | 5.87:1  | 4.5:1 | PASS |
-| daily      | danger / surface                     | #A33828 / #FFFCF6 | 6.50:1  | 4.5:1 | PASS |
-| management | danger / background                  | #A33828 / #F2F5F7 | 6.08:1  | 4.5:1 | PASS |
-| management | danger / surface                     | #A33828 / #FFFFFF | 6.66:1  | 4.5:1 | PASS |
-| shared     | warning / warningSurface             | #875919 / #FFF0D4 | 5.37:1  | 4.5:1 | PASS |
-| daily      | warning / background                 | #875919 / #F6F0E6 | 5.33:1  | 4.5:1 | PASS |
-| daily      | warning / surface                    | #875919 / #FFFCF6 | 5.90:1  | 4.5:1 | PASS |
-| management | warning / background                 | #875919 / #F2F5F7 | 5.52:1  | 4.5:1 | PASS |
-| management | warning / surface                    | #875919 / #FFFFFF | 6.05:1  | 4.5:1 | PASS |
-| shared     | success / successSurface             | #466241 / #E8EFE4 | 5.80:1  | 4.5:1 | PASS |
-| daily      | success / background                 | #466241 / #F6F0E6 | 6.01:1  | 4.5:1 | PASS |
-| daily      | success / surface                    | #466241 / #FFFCF6 | 6.65:1  | 4.5:1 | PASS |
-| management | success / background                 | #466241 / #F2F5F7 | 6.22:1  | 4.5:1 | PASS |
-| management | success / surface                    | #466241 / #FFFFFF | 6.81:1  | 4.5:1 | PASS |
-| shared     | info / infoSurface                   | #365F78 / #E4EDF0 | 5.77:1  | 4.5:1 | PASS |
-| daily      | info / background                    | #365F78 / #F6F0E6 | 6.04:1  | 4.5:1 | PASS |
-| daily      | info / surface                       | #365F78 / #FFFCF6 | 6.69:1  | 4.5:1 | PASS |
-| management | info / background                    | #365F78 / #F2F5F7 | 6.26:1  | 4.5:1 | PASS |
-| management | info / surface                       | #365F78 / #FFFFFF | 6.85:1  | 4.5:1 | PASS |
-| shared     | disabledForeground / disabledSurface | #59616A / #E5E7E9 | 5.07:1  | 4.5:1 | PASS |
-| shared     | white / danger                       | #FFFFFF / #A33828 | 6.66:1  | 4.5:1 | PASS |
-
-## 复现
-
-在仓库根目录使用 Python 3 标准库读取JSON，按上式重算表内色对；不能以四舍五入后的4.50替代实际值。新增hover、error背景、opacity或图片底后，新增对应实际色对。当前JSON没有半透明Token；若实现加入透明度，必须先与实际底色混合后再算。
-
-文本/非文本阈值依据：[W3C文本对比度](https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum)、[W3C非文本对比度](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast)。这是计算记录，不是WCAG整体认证。
+复现：pnpm check:ui-tokens。更新：pnpm generate:ui-tokens。视觉与用户批准状态见 component-review.md。

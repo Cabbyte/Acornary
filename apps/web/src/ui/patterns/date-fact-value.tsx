@@ -18,7 +18,7 @@ const kindLabels = {
   REORDER_BY: '补货日期',
 } as const;
 const dateKindLabels = {
-  BEST_BEFORE: '最佳赏味期',
+  BEST_BEFORE: '最佳食用期',
   USE_BY: '限用日期',
   ESTIMATED: '估计日期',
 } as const;

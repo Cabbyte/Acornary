@@ -1,0 +1,235 @@
+[data-acornary-ui='vnext'] .vn-operation-card {
+  padding: var(--vn-space-24);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-radius-panel);
+  background: var(--vn-surface);
+  color: var(--vn-foreground);
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-operation-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--vn-space-12);
+}
+[data-acornary-ui='vnext'] .vn-operation-summary {
+  margin: 0;
+  line-height: var(--vn-type-body-line-height);
+  overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-operation-facts {
+  display: grid;
+  gap: var(--vn-space-12);
+  margin: 0;
+}
+[data-acornary-ui='vnext'] .vn-operation-facts > div {
+  display: grid;
+  grid-template-columns: minmax(88px, 1fr) minmax(0, 3fr);
+  gap: var(--vn-space-12);
+}
+[data-acornary-ui='vnext'] .vn-operation-facts dt {
+  color: var(--vn-muted-foreground);
+}
+[data-acornary-ui='vnext'] .vn-operation-facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-operation-card code,
+[data-acornary-ui='vnext'] .vn-operation-facts code,
+[data-acornary-ui='vnext'] .vn-operation-id,
+[data-acornary-ui='vnext'] .vn-operation-reference code {
+  overflow-wrap: anywhere;
+  white-space: normal;
+  font-size: var(--vn-type-metadata);
+}
+[data-acornary-ui='vnext'] .vn-operation-id {
+  display: block;
+}
+[data-acornary-ui='vnext'] .vn-operation-list {
+  margin: 0;
+  padding-inline-start: var(--vn-space-24);
+}
+[data-acornary-ui='vnext'] .vn-operation-list li + li {
+  margin-top: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-operation-list li {
+  overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-operation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vn-space-8);
+  align-items: center;
+}
+[data-acornary-ui='vnext'] .vn-operation-actions .vn-button {
+  white-space: normal;
+  height: auto;
+}
+[data-acornary-ui='vnext'] .vn-operation-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-radius-control);
+}
+[data-acornary-ui='vnext'] .vn-operation-table {
+  width: 100%;
+  min-width: 460px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+[data-acornary-ui='vnext'] .vn-operation-table caption {
+  text-align: start;
+  padding: var(--vn-space-12);
+  color: var(--vn-muted-foreground);
+  font-size: var(--vn-type-metadata);
+}
+[data-acornary-ui='vnext'] .vn-operation-table th,
+[data-acornary-ui='vnext'] .vn-operation-table td {
+  padding: var(--vn-space-12);
+  text-align: start;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  border-top: 1px solid var(--vn-border);
+}
+[data-acornary-ui='vnext'] .vn-operation-table th {
+  font-weight: 500;
+}
+[data-acornary-ui='vnext'] .vn-operation-table thead {
+  background: var(--vn-selection);
+}
+[data-acornary-ui='vnext'] .vn-operation-table td:last-child {
+  background: color-mix(in srgb, var(--vn-selection) 55%, var(--vn-surface));
+}
+[data-acornary-ui='vnext'] .vn-operation-object-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-12);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+[data-acornary-ui='vnext'] .vn-operation-object-list > li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--vn-space-16);
+  padding: var(--vn-space-16);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-radius-control);
+}
+[data-acornary-ui='vnext'] .vn-operation-object-list > li > div:first-child {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--vn-space-8);
+  min-width: 0;
+  flex: 1;
+}
+[data-acornary-ui='vnext'] .vn-operation-subtitle {
+  margin: 0;
+  font-size: var(--vn-body-size);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-operation-reference {
+  margin: 0;
+  color: var(--vn-muted-foreground);
+  font-size: var(--vn-type-metadata);
+  overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-operation-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vn-space-8);
+  padding: 0;
+  list-style: none;
+  margin: 0;
+}
+[data-acornary-ui='vnext'] .vn-operation-steps li {
+  display: flex;
+  flex: 1;
+  min-width: 100px;
+  flex-direction: column;
+  gap: var(--vn-space-4);
+  border-top: var(--vn-space-4) solid var(--vn-border);
+  padding: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-operation-steps li[data-state='current'] {
+  border-top-color: var(--vn-accent);
+  background: var(--vn-selection);
+}
+[data-acornary-ui='vnext'] .vn-operation-steps li[data-state='error'] {
+  border-top-color: var(--vn-danger);
+}
+[data-acornary-ui='vnext'] .vn-operation-steps li[data-state='complete'] {
+  border-top-color: var(--vn-success);
+}
+[data-acornary-ui='vnext'] .vn-operation-fields {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-16);
+}
+[data-acornary-ui='vnext'] .vn-print-previews {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  list-style: none;
+  gap: var(--vn-space-16);
+  padding: 0;
+  margin: 0;
+}
+[data-acornary-ui='vnext'] .vn-print-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-8);
+  border: 1px dashed var(--vn-control-border);
+  border-radius: var(--vn-radius-control);
+  padding: var(--vn-space-16);
+  color: var(--vn-foreground);
+  background: var(--vn-surface);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-print-label p {
+  margin: 0;
+}
+[data-acornary-ui='vnext'] .vn-print-artwork {
+  max-width: 100%;
+  overflow: hidden;
+}
+[data-acornary-ui='vnext'] .vn-print-artwork img,
+[data-acornary-ui='vnext'] .vn-print-artwork svg {
+  max-width: 100%;
+  height: auto;
+}
+[data-acornary-ui='vnext'] .vn-operation-demo-log {
+  padding: var(--vn-space-12);
+  margin: 0;
+  border: 1px dashed var(--vn-control-border);
+  border-radius: var(--vn-radius-control);
+  color: var(--vn-muted-foreground);
+  overflow-wrap: anywhere;
+}
+@container (max-width: 767px) {
+  [data-acornary-ui='vnext'] .vn-operation-card {
+    padding: var(--vn-space-16);
+  }
+  [data-acornary-ui='vnext'] .vn-operation-facts > div {
+    grid-template-columns: minmax(76px, 1fr) minmax(0, 2fr);
+    gap: var(--vn-space-8);
+  }
+  [data-acornary-ui='vnext'] .vn-operation-table {
+    min-width: 0;
+    table-layout: auto;
+  }
+  [data-acornary-ui='vnext'] .vn-operation-table th,
+  [data-acornary-ui='vnext'] .vn-operation-table td {
+    padding: var(--vn-space-8);
+  }
+}

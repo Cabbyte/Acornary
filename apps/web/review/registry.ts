@@ -75,12 +75,20 @@ const order = [
 export const expectedIds = order.map((name) =>
   name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase(),
 );
+const sections: [string, number][] = [
+ ['基础输入与选择',12], ['弹层',6], ['结构与通用反馈',10], ['事实表达',6], ['领域输入',6],
+ ['列表与阅读状态',8], ['操作与恢复',7], ['导航与外观',6], ['其他共享能力',9],
+];
+const taxonomy=new Map<string,string>();
+let offset=0;
+for(const [group,count] of sections){for(const id of expectedIds.slice(offset,offset+count))taxonomy.set(id,group);offset+=count;}
 export const entries: ReviewEntry[] = Object.values(groups)
   .flatMap((module) =>
     Object.entries(module as Record<string, unknown>)
       .filter(([key]) => key.endsWith('Entries'))
       .flatMap(([, value]) => value as ReviewEntry[]),
   )
+  .map(entry=>({...entry,group:taxonomy.get(entry.id)??entry.group}))
   .sort(
     (a, b) =>
       (expectedIds.includes(a.id) ? expectedIds.indexOf(a.id) : 100) -

@@ -1,5 +1,7 @@
 import type { Preview } from '@storybook/react-vite';
 import { createElement } from 'react';
+import { useGlobals } from 'storybook/preview-api';
+import { ReviewAppearanceProvider } from '../review/appearance-context';
 import {
   AcornaryThemeProvider,
   type AppearancePreset,
@@ -33,12 +35,24 @@ const preview: Preview = {
   },
   initialGlobals: { preset: 'sage', mode: 'daily' },
   decorators: [
-    (Story, context) =>
-      createElement(AcornaryThemeProvider, {
-        preset: context.globals.preset as AppearancePreset,
-        mode: context.globals.mode as UIMode,
-        children: createElement(Story),
-      }),
+    (Story) => {
+      const [globals, updateGlobals] = useGlobals();
+      const preset = globals.preset as AppearancePreset;
+      const mode = globals.mode as UIMode;
+      return createElement(AcornaryThemeProvider, {
+        preset,
+        mode,
+        children: createElement(ReviewAppearanceProvider, {
+          value: {
+            preset,
+            mode,
+            onPresetChange: (next) => updateGlobals({ preset: next }),
+            onModeChange: (next) => updateGlobals({ mode: next }),
+          },
+          children: createElement(Story),
+        }),
+      });
+    },
   ],
 };
 export default preview;

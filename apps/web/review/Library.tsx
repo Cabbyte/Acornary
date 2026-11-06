@@ -8,6 +8,7 @@ import source from '../src/ui/tokens/source.json';
 import { entries } from './registry';
 import type { ReviewEntry } from './types';
 import './library.css';
+import { ReviewAppearanceProvider } from './appearance-context';
 const presets = Object.keys(source.presets) as AppearancePreset[];
 const widths = [360, 390, 768, 1024, 1440, 1920];
 const initial = new URLSearchParams(location.search);
@@ -28,6 +29,8 @@ export function Library() {
   const [available, setAvailable] = useState(0);
   const frame = useRef<HTMLIFrameElement>(null);
   const stage = useRef<HTMLDivElement>(null);
+  const main = useRef<HTMLElement>(null);
+  useEffect(()=>{main.current?.scrollTo({top:0});},[id,scenario]);
   const entry = entries.find((e) => e.id === id) || entries[0];
   const activeScenario =
     entry?.scenarios.find((s) => s.id === scenario)?.id || entry?.scenarios[0]?.id || 'normal';
@@ -51,6 +54,13 @@ export function Library() {
     const handler = (event: MessageEvent) => {
       if (event.origin !== location.origin) return;
       if (embedded && event.source === parent && event.data?.kind === 'acornary-review-theme') {
+        setPreset(validPreset(event.data.preset));
+        setMode(event.data.mode === 'management' ? 'management' : 'daily');
+      } else if (
+        !embedded &&
+        event.source === frame.current?.contentWindow &&
+        event.data?.kind === 'acornary-review-appearance-intent'
+      ) {
         setPreset(validPreset(event.data.preset));
         setMode(event.data.mode === 'management' ? 'management' : 'daily');
       } else if (
@@ -90,7 +100,30 @@ export function Library() {
     return (
       <AcornaryThemeProvider preset={preset} mode={mode}>
         <div id="review-embed" className="review-embed">
-          <Demo scenario={activeScenario} />
+          <ReviewAppearanceProvider
+            value={{
+              preset,
+              mode,
+              onPresetChange: (next) => {
+                setPreset(next);
+                if (parent !== window)
+                  parent.postMessage(
+                    { kind: 'acornary-review-appearance-intent', preset: next, mode },
+                    location.origin,
+                  );
+              },
+              onModeChange: (next) => {
+                setMode(next);
+                if (parent !== window)
+                  parent.postMessage(
+                    { kind: 'acornary-review-appearance-intent', preset, mode: next },
+                    location.origin,
+                  );
+              },
+            }}
+          >
+            <Demo scenario={activeScenario} />
+          </ReviewAppearanceProvider>
         </div>
       </AcornaryThemeProvider>
     );
@@ -146,7 +179,7 @@ export function Library() {
               ))}
             </nav>
           </aside>
-          <main className="library-main">
+          <main ref={main} className="library-main">
             <div className="library-title">
               <div>
                 <h1>{entry.name}</h1>
