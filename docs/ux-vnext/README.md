@@ -1,5 +1,7 @@
 # Acornary Frontend vNext — Phase 1 冻结候选
 
+> 2026-11-06 更新：用户已批准 D01–D09、M01–M06 流程和 Phase 2 执行方案。B00 视觉基础现已进入待审阅状态；下文历史 P1-RC1 的“待确认”不代表本次流程尚未批准。见 [组件审阅清单](component-review.md) 与 [B00 报告](b00-report.md)。
+
 版本：P1-RC1 · 2026-11-06（Asia/Shanghai）
 
 状态：**设计交付可审阅；尚未获得用户冻结确认。Phase 2 未开始。**

@@ -1,0 +1,34 @@
+@import 'tailwindcss/theme.css' prefix(vn);
+@import 'tailwindcss/utilities.css' prefix(vn);
+@import './tokens.generated.css';
+@source '../../';
+@theme inline {
+  --color-background: var(--vn-background);
+  --color-foreground: var(--vn-foreground);
+  --color-surface: var(--vn-surface);
+  --color-accent: var(--vn-accent);
+  --color-danger: var(--vn-danger);
+}
+[data-acornary-ui='vnext'] {
+  font-family: var(--vn-type-body-family);
+  font-size: var(--vn-body-size);
+  line-height: var(--vn-type-body-line-height);
+  color: var(--vn-foreground);
+  background: var(--vn-background);
+}
+[data-acornary-ui='vnext'] *,
+[data-acornary-ui='vnext'] *::before,
+[data-acornary-ui='vnext'] *::after {
+  box-sizing: border-box;
+}
+[data-acornary-ui='vnext'] :focus-visible {
+  outline: var(--vn-focus-width) solid var(--vn-focus);
+  outline-offset: var(--vn-focus-offset);
+}
+[data-acornary-ui='vnext'] ::selection {
+  background: var(--vn-selection);
+  color: var(--vn-selection-foreground);
+}
+[data-acornary-ui='vnext'] input {
+  caret-color: var(--vn-accent);
+}

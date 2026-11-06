@@ -1,6 +1,6 @@
 {
-  "version": "P1-RC1",
-  "status": "candidate-not-runtime",
+  "version": "B00-R1",
+  "status": "awaiting-user-review",
   "modes": {
     "daily": {
       "background": "#F6F0E6",
@@ -60,15 +60,47 @@
     "inputTouchPx": 16,
     "bodyLineHeight": 1.5,
     "titleLineHeight": 1.3,
-    "weights": [400, 500, 600],
+    "weights": [
+      400,
+      500,
+      600
+    ],
     "numericVariant": "tabular-nums"
   },
-  "spacingPx": [4, 8, 12, 16, 24, 32, 48],
-  "radiusPx": { "control": 8, "panel": 12 },
-  "targetPx": { "desktopControl": 36, "touch": 44, "closeAndBack": 44 },
-  "rowMinPx": { "daily": 72, "managementDesktop": 56, "managementTouch": 72 },
-  "focus": { "widthPx": 2, "offsetPx": 2, "style": "solid" },
-  "motion": { "fastMs": 120, "baseMs": 180, "reducedMs": 0, "easing": "cubic-bezier(.2,.8,.2,1)" },
+  "spacingPx": [
+    4,
+    8,
+    12,
+    16,
+    24,
+    32,
+    48
+  ],
+  "radiusPx": {
+    "control": 8,
+    "panel": 12
+  },
+  "targetPx": {
+    "desktopControl": 36,
+    "touch": 44,
+    "closeAndBack": 44
+  },
+  "rowMinPx": {
+    "daily": 72,
+    "managementDesktop": 56,
+    "managementTouch": 72
+  },
+  "focus": {
+    "widthPx": 2,
+    "offsetPx": 2,
+    "style": "solid"
+  },
+  "motion": {
+    "fastMs": 120,
+    "baseMs": 180,
+    "reducedMs": 0,
+    "easing": "cubic-bezier(.2,.8,.2,1)"
+  },
   "layoutPx": {
     "compactBelow": 768,
     "sidebarFrom": 1024,

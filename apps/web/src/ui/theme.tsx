@@ -3,6 +3,7 @@ import zhCN from 'antd/locale/zh_CN';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import { useEffect, useState, type ReactNode } from 'react';
+import source from './tokens/source.json';
 import './tokens.css';
 import './layout.css';
 import { trackVisualViewport } from './viewport';
@@ -19,34 +20,7 @@ export function useViewport() {
 }
 export const acornaryTheme: ThemeConfig = {
   algorithm: theme.defaultAlgorithm,
-  token: {
-    colorPrimary: '#AB5F40',
-    colorPrimaryHover: '#965136',
-    colorPrimaryActive: '#7D422C',
-    colorPrimaryText: '#87472F',
-    colorPrimaryTextHover: '#723B29',
-    colorLink: '#8F4C32',
-    colorLinkHover: '#723B29',
-    colorBgLayout: '#F6F0E6',
-    colorBgContainer: '#FFFCF6',
-    colorText: '#2B2420',
-    colorTextSecondary: '#68615C',
-    colorTextDescription: '#68615C',
-    colorTextPlaceholder: '#756D66',
-    borderRadius: 8,
-    borderRadiusLG: 12,
-    fontSize: 14,
-    controlHeight: 36,
-    fontFamily:
-      '-apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif',
-  },
-  components: {
-    Layout: { headerBg: '#F6F0E6', siderBg: '#F6F0E6' },
-    Menu: { itemBg: 'transparent', activeBarBorderWidth: 0, itemSelectedColor: '#87472F' },
-    Tree: { titleHeight: 36, nodeSelectedColor: '#87472F' },
-    Descriptions: { labelColor: '#68615C' },
-    Table: { cellPaddingBlock: 10 },
-  },
+  ...source.legacy.theme,
 };
 export function AcornaryUIProvider({ children }: { children: ReactNode }) {
   useEffect(trackVisualViewport, []);

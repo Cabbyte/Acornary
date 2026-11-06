@@ -1,0 +1,257 @@
+{
+  "version": "B00-R1",
+  "status": "awaiting-user-review",
+  "modes": {
+    "daily": {
+      "background": "#F6F0E6",
+      "foreground": "#2B2420",
+      "surface": "#FFFCF6",
+      "surfaceRaised": "#FFFFFF",
+      "mutedForeground": "#68615C",
+      "border": "#E8DFD2",
+      "controlBorder": "#8B8077",
+      "accent": "#AB5F40",
+      "accentHover": "#965136",
+      "accentActive": "#7D422C",
+      "accentForeground": "#FFFFFF",
+      "accentText": "#87472F",
+      "selection": "#F5E5D8",
+      "selectionForeground": "#87472F"
+    },
+    "management": {
+      "background": "#F2F5F7",
+      "foreground": "#24313E",
+      "surface": "#FFFFFF",
+      "surfaceRaised": "#FFFFFF",
+      "mutedForeground": "#566574",
+      "border": "#DCE3E9",
+      "controlBorder": "#768493",
+      "accent": "#456B8A",
+      "accentHover": "#365772",
+      "accentActive": "#29445C",
+      "accentForeground": "#FFFFFF",
+      "accentText": "#315570",
+      "selection": "#E6EEF4",
+      "selectionForeground": "#315570"
+    }
+  },
+  "semantic": {
+    "danger": "#A33828",
+    "dangerSurface": "#F7E2DC",
+    "warning": "#875919",
+    "warningSurface": "#FFF0D4",
+    "success": "#466241",
+    "successSurface": "#E8EFE4",
+    "info": "#365F78",
+    "infoSurface": "#E4EDF0",
+    "focus": "#315B7C",
+    "disabledForeground": "#59616A",
+    "disabledSurface": "#E5E7E9"
+  },
+  "typography": {
+    "bodyFamily": "-apple-system, BlinkMacSystemFont, PingFang SC, Microsoft YaHei, system-ui, sans-serif",
+    "displayFamily": "Songti SC, STSong, SimSun, serif",
+    "titlePx": 28,
+    "mobileTitlePx": 24,
+    "sectionPx": 20,
+    "dailyBodyPx": 16,
+    "managementBodyPx": 14,
+    "metadataPx": 14,
+    "inputTouchPx": 16,
+    "bodyLineHeight": 1.5,
+    "titleLineHeight": 1.3,
+    "weights": [400, 500, 600],
+    "numericVariant": "tabular-nums"
+  },
+  "spacingPx": [4, 8, 12, 16, 24, 32, 48],
+  "radiusPx": {
+    "control": 8,
+    "panel": 12
+  },
+  "targetPx": {
+    "desktopControl": 36,
+    "touch": 44,
+    "closeAndBack": 44
+  },
+  "rowMinPx": {
+    "daily": 72,
+    "managementDesktop": 56,
+    "managementTouch": 72
+  },
+  "focus": {
+    "widthPx": 2,
+    "offsetPx": 2,
+    "style": "solid"
+  },
+  "motion": {
+    "fastMs": 120,
+    "baseMs": 180,
+    "reducedMs": 0,
+    "easing": "cubic-bezier(.2,.8,.2,1)"
+  },
+  "layoutPx": {
+    "compactBelow": 768,
+    "sidebarFrom": 1024,
+    "sidebarWidth": 216,
+    "treeWidth": 240,
+    "treeContentFrom": 960,
+    "splitDetailContentFrom": 1160,
+    "splitDetailWidth": 360,
+    "dailyMaxWidth": 1120,
+    "managementMaxWidth": 1600,
+    "settingsMaxWidth": 720,
+    "sheet": 560,
+    "sheetWide": 720
+  },
+  "legacy": {
+    "tokens": {
+      "colors": {
+        "paper": "#F6F0E6",
+        "surface": "#FFFCF6",
+        "surfaceRaised": "#FFFFFF",
+        "ink": "#2B2420",
+        "ink2": "#51463D",
+        "muted": "#68615C",
+        "line": "#E8DFD2",
+        "lineStrong": "#D8C9B8",
+        "accent": "#AB5F40",
+        "accentHover": "#965136",
+        "accentSoft": "#F5E5D8",
+        "success": "#5F7358",
+        "successSoft": "#E8EFE4",
+        "warning": "#A9742A",
+        "warningSoft": "#F6EAD6",
+        "danger": "#A33828",
+        "dangerSoft": "#F7E2DC",
+        "info": "#4F6B7A",
+        "infoSoft": "#E4EDF0",
+        "catFood": "#F3E6D5",
+        "catFoodInk": "#7A541F",
+        "catClothing": "#F3E1E1",
+        "catClothingInk": "#8B4A4A",
+        "catDevice": "#E2ECF0",
+        "catDeviceInk": "#3F5F6E",
+        "catCleaning": "#E8EFE4",
+        "catCleaningInk": "#526A4A",
+        "catNeutral": "#EEE7DC",
+        "catNeutralInk": "#6E5A3C"
+      },
+      "fonts": {
+        "sans": "-apple-system, BlinkMacSystemFont, \"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif",
+        "display": "\"Songti SC\", \"STSong\", \"SimSun\", serif"
+      },
+      "spacing": {
+        "1": 4,
+        "2": 8,
+        "3": 12,
+        "4": 16,
+        "5": 24,
+        "6": 32,
+        "7": 48
+      },
+      "controls": {
+        "sm": 28,
+        "md": 36,
+        "touch": 44
+      },
+      "rows": {
+        "desktop": 64,
+        "mobile": 72
+      },
+      "radii": {
+        "control": 8,
+        "panel": 12,
+        "pill": 999
+      },
+      "type": {
+        "display": {
+          "fontSize": 28,
+          "lineHeight": 1.25,
+          "fontWeight": 600
+        },
+        "title": {
+          "fontSize": 20,
+          "lineHeight": 1.3,
+          "fontWeight": 600
+        },
+        "row": {
+          "fontSize": 16,
+          "lineHeight": 1.35,
+          "fontWeight": 600
+        },
+        "body": {
+          "fontSize": 14,
+          "lineHeight": 1.5,
+          "fontWeight": 400
+        },
+        "micro": {
+          "fontSize": 12,
+          "lineHeight": 1.4,
+          "fontWeight": 500
+        },
+        "eyebrow": {
+          "fontSize": 10,
+          "lineHeight": 1.2,
+          "fontWeight": 600
+        }
+      },
+      "motion": {
+        "fast": "120ms",
+        "base": "180ms",
+        "easing": "cubic-bezier(.2,.8,.2,1)"
+      },
+      "widths": {
+        "list": 1120,
+        "detail": 840,
+        "settings": 720
+      },
+      "sheets": {
+        "narrow": 480,
+        "wide": 560
+      }
+    },
+    "theme": {
+      "token": {
+        "colorPrimary": "#AB5F40",
+        "colorPrimaryHover": "#965136",
+        "colorPrimaryActive": "#7D422C",
+        "colorPrimaryText": "#87472F",
+        "colorPrimaryTextHover": "#723B29",
+        "colorLink": "#8F4C32",
+        "colorLinkHover": "#723B29",
+        "colorBgLayout": "#F6F0E6",
+        "colorBgContainer": "#FFFCF6",
+        "colorText": "#2B2420",
+        "colorTextSecondary": "#68615C",
+        "colorTextDescription": "#68615C",
+        "colorTextPlaceholder": "#756D66",
+        "borderRadius": 8,
+        "borderRadiusLG": 12,
+        "fontSize": 14,
+        "controlHeight": 36,
+        "fontFamily": "-apple-system, BlinkMacSystemFont, \"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif"
+      },
+      "components": {
+        "Layout": {
+          "headerBg": "#F6F0E6",
+          "siderBg": "#F6F0E6"
+        },
+        "Menu": {
+          "itemBg": "transparent",
+          "activeBarBorderWidth": 0,
+          "itemSelectedColor": "#87472F"
+        },
+        "Tree": {
+          "titleHeight": 36,
+          "nodeSelectedColor": "#87472F"
+        },
+        "Descriptions": {
+          "labelColor": "#68615C"
+        },
+        "Table": {
+          "cellPaddingBlock": 10
+        }
+      }
+    }
+  }
+}

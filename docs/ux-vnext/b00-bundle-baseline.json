@@ -1,0 +1,79 @@
+{
+  "recordedAt": "2026-11-06T11:45:29.362Z",
+  "node": "v24.22.2",
+  "baseline": "18f7e0496ecb4fb960a6619f12f57c68b3898410",
+  "condition": "Same local Node 24 and installed lockfile; initial HTML JS references, not all lazy routes. No runtime latency measurement.",
+  "baselineWeb": {
+    "files": [
+      {
+        "file": "/assets/index-q90ahkIL.js",
+        "raw": 2955,
+        "gzip": 1436,
+        "brotli": 1284
+      },
+      {
+        "file": "/assets/rolldown-runtime-B0Z9INg1.js",
+        "raw": 901,
+        "gzip": 510,
+        "brotli": 459
+      }
+    ],
+    "total": {
+      "raw": 3856,
+      "gzip": 1946,
+      "brotli": 1743
+    }
+  },
+  "candidateWeb": {
+    "files": [
+      {
+        "file": "/assets/index-DTSy9eD4.js",
+        "raw": 2955,
+        "gzip": 1437,
+        "brotli": 1286
+      },
+      {
+        "file": "/assets/rolldown-runtime-B0Z9INg1.js",
+        "raw": 901,
+        "gzip": 510,
+        "brotli": 459
+      }
+    ],
+    "total": {
+      "raw": 3856,
+      "gzip": 1947,
+      "brotli": 1745
+    }
+  },
+  "baselinePlugin": {
+    "raw": 2252805,
+    "gzip": 848294,
+    "brotli": 736500
+  },
+  "candidatePlugin": {
+    "raw": 2254891,
+    "gzip": 849135,
+    "brotli": 737078
+  },
+  "tokenPreview": {
+    "files": [
+      {
+        "file": "/assets/index-BIjVmect.js",
+        "raw": 230249,
+        "gzip": 72669,
+        "brotli": 61931
+      }
+    ],
+    "total": {
+      "raw": 230249,
+      "gzip": 72669,
+      "brotli": 61931
+    }
+  },
+  "pending": [
+    "11/500/5000 inventory task latency",
+    "30 warm / 10 cold samples",
+    "real MCP host",
+    "physical phone"
+  ]
+}

@@ -21,6 +21,10 @@ jobs:
         run: python3 -m unittest discover -s tests/deploy -v
       - name: Build isolated test runtime
         run: docker build --target browser-test -t acornary-ci .
+      - name: Isolated UI preview and token checks
+        run: >-
+          docker run --rm acornary-ci sh -c
+          'pnpm check:ui-tokens && pnpm build:ui-preview && pnpm build:storybook && pnpm check:ui-boundaries && pnpm test:e2e:ui'
       - name: Types, PostgreSQL, OAuth, build and browser tests
         run: node scripts/ci.mjs
       - name: Build release recovery fixture

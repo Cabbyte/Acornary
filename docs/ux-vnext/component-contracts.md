@@ -65,7 +65,7 @@ Web/MCP TransportAdapter、StorageAdapter、NavigationAdapter、ScanAdapter、Pr
 
 ## Token 冻结候选
 
-[design-tokens.json](design-tokens.json) 是本候选的单一值源，只用于设计交付。Phase 2 将其迁移为应用的 JSON/纯数据Token源，派生 CSS Variables 与 Tailwind v4 的语义映射；原 tokens.ts 和临时 Ant ThemeConfig 从同源派生，过渡结束删 Ant 映射。不让三套值各自编辑。
+B00 起，应用 `apps/web/src/ui/tokens/source.json` 是唯一可编辑值源。[design-tokens.json](design-tokens.json) 与运行时 CSS 是生成快照，通过 `pnpm generate:ui-tokens` 更新，`pnpm check:ui-tokens` 校验。旧 tokens.ts 和临时 Ant ThemeConfig 读取同源 legacy 区，保留旧呈现。候选视觉值未改变，B00 仍待用户批准。
 
 根容器使用 data-acornary-mode=daily / management；overlay root继承同一属性。语义名包括 background、foreground、surface、surfaceRaised、mutedForeground、border、controlBorder、accent、accentHover、accentActive、accentForeground、accentText、selection、selectionForeground、focus、danger/warning/success/info 与对应surface。页面禁止硬编码色值。
 
