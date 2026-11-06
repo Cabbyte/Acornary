@@ -1,0 +1,138 @@
+{
+  "implementation_commit": "bb32658b031a8dfb4e57ef1836a74387bf5cf3f2",
+  "environment": "Disposable full application on unchanged Workers Free account",
+  "status": "PASS",
+  "started_at": "2026-11-06T04:02:17.734Z",
+  "completed_at": "2026-11-06T04:06:37.444Z",
+  "uploads": [
+    {
+      "label": "pdf-1MiB",
+      "bytes": 1048576,
+      "status": 200,
+      "ray": "a56133f53f53dbcf-HKG",
+      "request_id": "f37cee76-ad1b-4640-b282-64ed7eeaeffb",
+      "wall_ms": 4158
+    },
+    {
+      "label": "pdf-25MiB-repeat-1",
+      "bytes": 26214400,
+      "status": 200,
+      "ray": "a561343d68e2dbcf-HKG",
+      "request_id": "c66d77e1-a881-469a-926a-48e69a5f99b7",
+      "wall_ms": 57268
+    },
+    {
+      "label": "pdf-25MiB-repeat-2",
+      "bytes": 26214400,
+      "status": 200,
+      "ray": "a56136188b9fdbcf-HKG",
+      "request_id": "5c758744-d96d-494c-a666-2bb31d356d75",
+      "wall_ms": 11937
+    },
+    {
+      "label": "pdf-25MiB-repeat-3",
+      "bytes": 26214400,
+      "status": 200,
+      "ray": "a56136aa7915dbcf-HKG",
+      "request_id": "27a26c17-23a5-40a3-b6d2-3a7cb4094af3",
+      "wall_ms": 32241
+    },
+    {
+      "label": "pdf-25MiB-parallel-1",
+      "bytes": 26214400,
+      "status": 200,
+      "ray": "a56137bbfd4adbcf-HKG",
+      "request_id": "679fc34c-3df7-495e-81de-06a8c89503d1",
+      "wall_ms": 40993
+    },
+    {
+      "label": "pdf-25MiB-parallel-2",
+      "bytes": 26214400,
+      "status": 200,
+      "ray": "a56137bd08b26e45-HKG",
+      "request_id": "b78bfcc3-2d90-4f79-a6b0-b333af546fb2",
+      "wall_ms": 44999
+    },
+    {
+      "label": "jpeg-25MiB-exif",
+      "bytes": 26214400,
+      "status": 200,
+      "ray": "a56139480f660467-HKG",
+      "request_id": "7a656607-b6ae-4647-8fcc-aa9c562fe4df",
+      "wall_ms": 14390
+    }
+  ],
+  "verified_bytes": 158334976,
+  "replay": "PASS",
+  "download_interruptions": [],
+  "cpu": {
+    "stateless": {
+      "milliseconds": [6, 10, 8, 13, 7, 8, 8, 7],
+      "outcomes": ["ok", "ok", "ok", "ok", "ok", "ok", "ok", "ok"]
+    },
+    "durableObject": {
+      "milliseconds": [46, 627, 592, 669, 735, 548, 1272, 288],
+      "outcomes": ["ok", "ok", "ok", "ok", "ok", "ok", "ok", "ok"]
+    }
+  },
+  "full_native_scenario": {
+    "status": "PASS",
+    "checks": [
+      {
+        "name": "live D1/R2 health",
+        "status": "PASS"
+      },
+      {
+        "name": "Static Assets SPA and API routing",
+        "status": "PASS"
+      },
+      {
+        "name": "OAuth discovery",
+        "status": "PASS"
+      },
+      {
+        "name": "real password login, D1 tasks, DO approvals, REST inventory and idempotency",
+        "status": "PASS"
+      },
+      {
+        "name": "domain error contract across real RPC",
+        "status": "PASS"
+      },
+      {
+        "name": "OAuth PKCE, public JWKS fetch and MCP schema/query",
+        "status": "PASS"
+      },
+      {
+        "name": "refresh rotation",
+        "status": "PASS"
+      },
+      {
+        "name": "MCP UI asset resource",
+        "status": "PASS"
+      },
+      {
+        "name": "25 MiB real R2 upload, confirmation and private download",
+        "status": "PASS"
+      },
+      {
+        "name": "public Worker front door and CIMD credential stripping",
+        "status": "PASS"
+      },
+      {
+        "name": "CIMD redirect, size, deadline, private IP and private DNS defenses",
+        "status": "PASS"
+      },
+      {
+        "name": "live Queue consumer and unified R2 backup manifest",
+        "status": "PASS"
+      }
+    ]
+  },
+  "earlier_network_interruption": "Previous run uploaded all seven files successfully; the client download stream for the JPEG closed with UND_ERR_SOCKET. This clean rerun had no download retries.",
+  "boundaries": [
+    "Synthetic JPEG exercises metadata/container sanitization, not pixel decoding.",
+    "Ingress maximum 13 ms in this rerun exceeds the advertised Free HTTP 10 ms; isolate flexibility is not a capacity guarantee.",
+    "Other successful auth/MCP requests also exceeded 10 ms; sustained observation remains required.",
+    "No production writes, routes, credentials or subscription were changed."
+  ]
+}
