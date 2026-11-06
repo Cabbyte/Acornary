@@ -16,8 +16,8 @@
   --vn-target-desktop-control: 36px;
   --vn-target-touch: 44px;
   --vn-target-close-and-back: 44px;
-  --vn-row-min-daily: 72px;
-  --vn-row-min-management-desktop: 56px;
+  --vn-row-min-daily: 64px;
+  --vn-row-min-management-desktop: 48px;
   --vn-row-min-management-touch: 72px;
   --vn-layout-compact-below: 768px;
   --vn-layout-sidebar-from: 1024px;
@@ -39,13 +39,13 @@
   --vn-space-32: 32px;
   --vn-space-48: 48px;
   --vn-type-body-family: -apple-system, BlinkMacSystemFont, PingFang SC, Microsoft YaHei, system-ui, sans-serif;
-  --vn-type-display-family: Songti SC, STSong, SimSun, serif;
-  --vn-type-title: 28px;
-  --vn-type-mobile-title: 24px;
-  --vn-type-section: 20px;
-  --vn-type-daily-body: 16px;
+  --vn-type-display-family: -apple-system, BlinkMacSystemFont, PingFang SC, Microsoft YaHei, system-ui, sans-serif;
+  --vn-type-title: 22px;
+  --vn-type-mobile-title: 22px;
+  --vn-type-section: 16px;
+  --vn-type-daily-body: 14px;
   --vn-type-management-body: 14px;
-  --vn-type-metadata: 14px;
+  --vn-type-metadata: 13px;
   --vn-type-input-touch: 16px;
   --vn-type-body-line-height: 1.5;
   --vn-type-title-line-height: 1.3;
@@ -58,39 +58,167 @@
   color-scheme: light;
 }
 [data-acornary-mode="daily"] {
-  --vn-background: #F6F0E6;
-  --vn-foreground: #2B2420;
-  --vn-surface: #FFFCF6;
+  --vn-background: #FAFBF8;
+  --vn-foreground: #272A27;
+  --vn-surface: #FFFFFF;
   --vn-surface-raised: #FFFFFF;
-  --vn-muted-foreground: #68615C;
-  --vn-border: #E8DFD2;
+  --vn-muted-foreground: #646A64;
+  --vn-border: #E2E6E1;
   --vn-control-border: #8B8077;
-  --vn-accent: #AB5F40;
-  --vn-accent-hover: #965136;
-  --vn-accent-active: #7D422C;
+  --vn-accent: #526D5B;
   --vn-accent-foreground: #FFFFFF;
-  --vn-accent-text: #87472F;
-  --vn-selection: #F5E5D8;
-  --vn-selection-foreground: #87472F;
+  --vn-accent-text: #526D5B;
+  --vn-selection: #EDF2EC;
+  --vn-accent-hover: #486050;
+  --vn-accent-active: #3E5345;
+  --vn-selection-foreground: #486050;
   --vn-body-size: var(--vn-type-daily-body);
   --vn-row-min: var(--vn-row-min-daily);
 }
 [data-acornary-mode="management"] {
-  --vn-background: #F2F5F7;
-  --vn-foreground: #24313E;
+  --vn-background: #F9FAFB;
+  --vn-foreground: #272A27;
   --vn-surface: #FFFFFF;
   --vn-surface-raised: #FFFFFF;
-  --vn-muted-foreground: #566574;
-  --vn-border: #DCE3E9;
+  --vn-muted-foreground: #646A64;
+  --vn-border: #E2E6E1;
   --vn-control-border: #768493;
-  --vn-accent: #456B8A;
-  --vn-accent-hover: #365772;
-  --vn-accent-active: #29445C;
+  --vn-accent: #4B6478;
   --vn-accent-foreground: #FFFFFF;
-  --vn-accent-text: #315570;
-  --vn-selection: #E6EEF4;
-  --vn-selection-foreground: #315570;
+  --vn-accent-text: #4B6478;
+  --vn-selection: #EDF1F5;
+  --vn-accent-hover: #42586A;
+  --vn-accent-active: #394C5B;
+  --vn-selection-foreground: #42586A;
   --vn-body-size: var(--vn-type-management-body);
   --vn-row-min: var(--vn-row-min-management-desktop);
+}
+[data-acornary-preset="sage"][data-acornary-mode="daily"] {
+  --vn-background: #FAFBF8;
+  --vn-foreground: #272A27;
+  --vn-surface: #FFFFFF;
+  --vn-surface-raised: #FFFFFF;
+  --vn-muted-foreground: #646A64;
+  --vn-border: #E2E6E1;
+  --vn-control-border: #8B8077;
+  --vn-accent: #526D5B;
+  --vn-accent-foreground: #FFFFFF;
+  --vn-accent-text: #526D5B;
+  --vn-selection: #EDF2EC;
+  --vn-accent-hover: #486050;
+  --vn-accent-active: #3E5345;
+  --vn-selection-foreground: #486050;
+}
+[data-acornary-preset="sage"][data-acornary-mode="management"] {
+  --vn-background: #F9FAFB;
+  --vn-foreground: #272A27;
+  --vn-surface: #FFFFFF;
+  --vn-surface-raised: #FFFFFF;
+  --vn-muted-foreground: #646A64;
+  --vn-border: #E2E6E1;
+  --vn-control-border: #768493;
+  --vn-accent: #4B6478;
+  --vn-accent-foreground: #FFFFFF;
+  --vn-accent-text: #4B6478;
+  --vn-selection: #EDF1F5;
+  --vn-accent-hover: #42586A;
+  --vn-accent-active: #394C5B;
+  --vn-selection-foreground: #42586A;
+}
+[data-acornary-preset="apricot"][data-acornary-mode="daily"] {
+  --vn-background: #FCFBF8;
+  --vn-foreground: #272A27;
+  --vn-surface: #FFFFFF;
+  --vn-surface-raised: #FFFFFF;
+  --vn-muted-foreground: #646A64;
+  --vn-border: #E2E6E1;
+  --vn-control-border: #8B8077;
+  --vn-accent: #AC5B32;
+  --vn-accent-foreground: #FFFFFF;
+  --vn-accent-text: #AC5B32;
+  --vn-selection: #FAEFE7;
+  --vn-accent-hover: #97502C;
+  --vn-accent-active: #834526;
+  --vn-selection-foreground: #97502C;
+}
+[data-acornary-preset="apricot"][data-acornary-mode="management"] {
+  --vn-background: #FAFAFC;
+  --vn-foreground: #272A27;
+  --vn-surface: #FFFFFF;
+  --vn-surface-raised: #FFFFFF;
+  --vn-muted-foreground: #646A64;
+  --vn-border: #E2E6E1;
+  --vn-control-border: #768493;
+  --vn-accent: #5964A0;
+  --vn-accent-foreground: #FFFFFF;
+  --vn-accent-text: #5964A0;
+  --vn-selection: #EEEFF8;
+  --vn-accent-hover: #4E588D;
+  --vn-accent-active: #444C7A;
+  --vn-selection-foreground: #4E588D;
+}
+[data-acornary-preset="berry"][data-acornary-mode="daily"] {
+  --vn-background: #FCFAFB;
+  --vn-foreground: #272A27;
+  --vn-surface: #FFFFFF;
+  --vn-surface-raised: #FFFFFF;
+  --vn-muted-foreground: #646A64;
+  --vn-border: #E2E6E1;
+  --vn-control-border: #8B8077;
+  --vn-accent: #995F76;
+  --vn-accent-foreground: #FFFFFF;
+  --vn-accent-text: #995F76;
+  --vn-selection: #F6EDF1;
+  --vn-accent-hover: #875468;
+  --vn-accent-active: #74485A;
+  --vn-selection-foreground: #875468;
+}
+[data-acornary-preset="berry"][data-acornary-mode="management"] {
+  --vn-background: #F9FBFA;
+  --vn-foreground: #272A27;
+  --vn-surface: #FFFFFF;
+  --vn-surface-raised: #FFFFFF;
+  --vn-muted-foreground: #646A64;
+  --vn-border: #E2E6E1;
+  --vn-control-border: #768493;
+  --vn-accent: #376F70;
+  --vn-accent-foreground: #FFFFFF;
+  --vn-accent-text: #376F70;
+  --vn-selection: #EAF2F1;
+  --vn-accent-hover: #306263;
+  --vn-accent-active: #2A5455;
+  --vn-selection-foreground: #306263;
+}
+[data-acornary-preset="terracotta"][data-acornary-mode="daily"] {
+  --vn-background: #FBFBF9;
+  --vn-foreground: #272A27;
+  --vn-surface: #FFFFFF;
+  --vn-surface-raised: #FFFFFF;
+  --vn-muted-foreground: #646A64;
+  --vn-border: #E2E6E1;
+  --vn-control-border: #8B8077;
+  --vn-accent: #AB5F40;
+  --vn-accent-foreground: #FFFFFF;
+  --vn-accent-text: #AB5F40;
+  --vn-selection: #F7EEE8;
+  --vn-accent-hover: #965438;
+  --vn-accent-active: #824831;
+  --vn-selection-foreground: #965438;
+}
+[data-acornary-preset="terracotta"][data-acornary-mode="management"] {
+  --vn-background: #FAFBFC;
+  --vn-foreground: #272A27;
+  --vn-surface: #FFFFFF;
+  --vn-surface-raised: #FFFFFF;
+  --vn-muted-foreground: #646A64;
+  --vn-border: #E2E6E1;
+  --vn-control-border: #768493;
+  --vn-accent: #456B8A;
+  --vn-accent-foreground: #FFFFFF;
+  --vn-accent-text: #456B8A;
+  --vn-selection: #ECF1F5;
+  --vn-accent-hover: #3D5E79;
+  --vn-accent-active: #345169;
+  --vn-selection-foreground: #3D5E79;
 }
 @media (prefers-reduced-motion: reduce) { [data-acornary-mode] { --vn-motion-fast: 0ms; --vn-motion-base: 0ms; } }

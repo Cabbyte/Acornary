@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { resolve, dirname, relative } from 'node:path';
 const root = resolve('.'),
   seen = new Set();
@@ -33,3 +33,36 @@ if (/proxy|serviceWorker|offline-shell/.test(preview))
 console.log(`Static production graph checked: ${seen.size} files; no review/fixture imports.`);
 for (const path of ['output/storybook/sw.js', 'output/ui-preview/sw.js'])
   if (existsSync(path)) throw Error(`Unexpected app service worker: ${path}`);
+
+// Candidate UI must remain pure even before it becomes reachable from main/plugin.
+const candidateRoots = [
+  'apps/web/src/ui/components',
+  'apps/web/src/ui/patterns',
+  'apps/web/src/ui/theme',
+];
+const candidateFiles = [];
+function visitDirectory(dir) {
+  for (const item of readdirSync(dir, { withFileTypes: true })) {
+    const path = resolve(dir, item.name);
+    if (item.isDirectory()) visitDirectory(path);
+    else if (/\.[jt]sx?$/.test(path)) candidateFiles.push(path);
+  }
+}
+for (const dir of candidateRoots) if (existsSync(dir)) visitDirectory(dir);
+for (const file of candidateFiles) {
+  const content = readFileSync(file, 'utf8');
+  if (/from\s+['"](?:antd|@ant-design|@radix-ui)/.test(content))
+    throw Error(`Disallowed UI dependency: ${file}`);
+  if (
+    /\b(?:fetch|XMLHttpRequest|WebSocket)\s*\(|navigator\.(?:mediaDevices|bluetooth)|\b(?:localStorage|sessionStorage)\./.test(
+      content,
+    )
+  )
+    throw Error(`Direct I/O in candidate component: ${file}`);
+  if (/from\s+['"][^'"]*(?:review|fixtures|features\/(?:api|writes))[/\\]/.test(content))
+    throw Error(`Preview/business adapter import in component: ${file}`);
+  walk(file);
+}
+console.log(
+  `Candidate boundary checked: ${candidateFiles.length} UI source files; no direct business/device I/O.`,
+);

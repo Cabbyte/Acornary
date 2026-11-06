@@ -16,7 +16,7 @@ export function TokenReview({ initialMode = 'daily' }: { initialMode?: 'daily' |
         <a href="#review-content" className="brand">
           Acornary <span>设计工作台</span>
         </a>
-        <span className="review-version">B00 · R1 · 待你审阅</span>
+        <span className="review-version">B00 · 历史 Token 样板</span>
       </header>
       <div className="review-intro">
         <h1>让每一件物品，清楚可见。</h1>
@@ -28,7 +28,7 @@ export function TokenReview({ initialMode = 'daily' }: { initialMode?: 'daily' |
           {(['daily', 'management'] as const).map((m) => (
             <label key={m}>
               <input type="radio" name="mode" checked={mode === m} onChange={() => setMode(m)} />
-              {m === 'daily' ? '日常 · 暖陶土' : '管理 · 蓝灰'}
+              {m === 'daily' ? '日常' : '管理'}
             </label>
           ))}
         </fieldset>
@@ -52,7 +52,7 @@ export function TokenReview({ initialMode = 'daily' }: { initialMode?: 'daily' |
           <>
             <p>日常适合轻松浏览，管理适合精确整理。危险、警告、成功与提示在两种模式下保持一致。</p>
             <div className="swatches">
-              {Object.entries(source.modes[mode]).map(([key, value]) => (
+              {Object.entries(source.presets.sage.modes[mode]).map(([key, value]) => (
                 <div className="swatch" key={key}>
                   <div aria-hidden="true" style={{ background: value }} />
                   <strong>{key}</strong>
@@ -78,7 +78,7 @@ export function TokenReview({ initialMode = 'daily' }: { initialMode?: 'daily' |
         )}
         {section === 1 && (
           <>
-            <p>系统字体，正文易读；少量宋体标题带来温度。数字使用等宽字形，未知事实明确写出。</p>
+            <p>系统无衬线字体，正文易读；标题通过字重与间距建立层级。数字使用等宽字形，未知事实明确写出。</p>
             <div className="type-specimen">
               <h1>我的物品</h1>
               <h2>厨房里的日常</h2>
@@ -97,7 +97,7 @@ export function TokenReview({ initialMode = 'daily' }: { initialMode?: 'daily' |
               <span>余量未记录</span>
             </div>
             <p>
-              当前正文 {mode === 'daily' ? '16' : '14'} px。行最小高度：日常 72 px，管理桌面 56
+              当前正文 14 px。行最小高度：日常 64 px，管理桌面 48
               px、手机 72 px。手机输入始终至少 16 px。
             </p>
           </>

@@ -32,3 +32,63 @@
 [data-acornary-ui='vnext'] input {
   caret-color: var(--vn-accent);
 }
+.vn-root {
+  container-type: inline-size;
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-16);
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vn-space-12);
+}
+[data-acornary-ui='vnext'] .vn-muted {
+  color: var(--vn-muted-foreground);
+  font-size: var(--vn-type-metadata);
+}
+[data-acornary-ui='vnext'] .vn-section-title {
+  font-size: var(--vn-type-section);
+  font-weight: 600;
+  margin: 0;
+}
+[data-acornary-ui='vnext'] .vn-control {
+  min-height: var(--vn-target-desktop-control);
+  font: inherit;
+  border-radius: var(--vn-radius-control);
+}
+[data-acornary-ui='vnext'] button,
+[data-acornary-ui='vnext'] input,
+[data-acornary-ui='vnext'] textarea,
+[data-acornary-ui='vnext'] select {
+  font-family: inherit;
+}
+@container (max-width:767px) {
+  [data-acornary-ui='vnext'] .vn-control {
+    min-height: 44px;
+  }
+  [data-acornary-ui='vnext'] input,
+  [data-acornary-ui='vnext'] textarea,
+  [data-acornary-ui='vnext'] select {
+    font-size: 16px;
+  }
+}
+@media (pointer: coarse) {
+  [data-acornary-ui='vnext'] .vn-control {
+    min-height: 44px;
+  }
+}
+@container (max-width:767px) {
+  [data-acornary-ui='vnext'] > * {
+    --vn-body-size: var(--vn-type-input-touch);
+    font-size: var(--vn-body-size);
+  }
+}
+[data-acornary-ui='vnext'] {
+  scrollbar-color: var(--vn-control-border) var(--vn-background);
+}
