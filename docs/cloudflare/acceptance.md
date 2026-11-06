@@ -34,6 +34,22 @@ Implementation `bb32658b031a8dfb4e57ef1836a74387bf5cf3f2` passed the complete na
 
 See the [sanitized report](evidence/2026-11-06-free-upload-coordinator.json). No file limit, checksum, metadata stripping or private-download requirement was relaxed.
 
+## Actual-domain release verification
+
+Release `5cae4b8cfbd7f6df4ca0c79294d2eabfd9586b0f` is deployed at `https://cf.acornary.protium.top` (Worker version `90f83dd6-e830-4cc0-a772-cfb304d174d6`). HTTPS certificate/hostname verification, version and health checks pass. The production endpoint still reports v0.13.0 / `a7252bc`.
+
+A second upload suite completed on the actual domain at `2026-11-06T04:12:44.174Z`: one 1 MiB PDF, two sequential and two parallel 25 MiB PDFs, and one 25 MiB JPEG container. All six uploads (126 MiB input), confirmations, byte hashes, EXIF/dimensions and replay passed with no download retries. Ingress CPU was 8–21 ms and upload DO CPU 30–1158 ms; all seven transfer invocations were `ok`. These ingress values still exceed the documented 10 ms in some samples and remain subject to Free-plan flexibility.
+
+The same release passed actual-domain password login, Android PKCE/snapshot/command/replay/history, MCP OAuth and all 54 tool schemas, plus refresh rotation/replay rejection. Both [native checks](https://github.com/Cabbyte/Acornary/actions/runs/42160674606) and [full browser/Android CI](https://github.com/Cabbyte/Acornary/actions/runs/42160674693) passed. The signed preview APK is unchanged in bytes (SHA-256 `9fc5ee2fe61a376d7369f10ba6b64b78c7c2d5bc5e52d5a665ffa77c53ed0d6d`).
+
+The temporary acceptance Worker, both DO namespaces, D1, R2 buckets and queues were deleted; read-only API checks confirm their absence. Preview resources remain. See the [sanitized release receipt](evidence/2026-11-06-preview-upload-release.json).
+
+## PostgreSQL differential coverage
+
+The real PostgreSQL snapshot suite now compares 13 read operations against the imported workerd DO: item, catalog node/policy, item/catalog/group/stock queries, references, notes, attachments, history and attribute templates. It also runs an ordered consume/rename/open/consume/clear-name sequence in both stores, comparing revisions, labels and attribute facts; verifies each store replays its original receipts; and compares stale-revision and excessive-consumption error codes with no native state mutation. The complete 14-test snapshot suite passes.
+
+Two representation boundaries are explicit: PostgreSQL UTC text timestamps become ISO UTC while retaining fractional microseconds; legacy JSONB item aggregates may decode `projected_through_change_id` through a JavaScript Number and lose precision beyond 2^53. For that fixture the native string is checked against the original SQL bigint text, not the rounded legacy response. No unknown value is filled and no historical instant is recalculated. Other compared fields are strict. These bounded scenarios do not replace differential coverage of every possible command sequence.
+
 ## Snapshot and recovery identity
 
 Private migration packages, credentials and detailed traces remain under ignored `.local/`; no inventory bodies or credentials are committed.
@@ -57,7 +73,7 @@ Private migration packages, credentials and detailed traces remain under ignored
 
 ## Release gates still requiring elapsed time or external clients
 
-The preview is available for comparison; it is not permission to cut production over. ChatGPT host OAuth/UI, physical Android/Passkey/printing, controlled DNS rebinding, broad differential source-runtime sequences and a seven-day latency/error/usage observation remain separate acceptance items. The observation window starts 2026-11-05 and cannot finish before 2026-11-12. No paid-plan upgrade has been made. Continue the preview on Free while measuring CPU errors, latency and quota use; recommend upgrading if the optimized application reaches an actual limit. Some successful non-upload Worker requests still exceed the advertised 10 ms CPU budget under Cloudflare isolate flexibility, so passing these scenarios does not guarantee reliability at higher or sustained load.
+The preview is available for comparison; it is not permission to cut production over. ChatGPT host OAuth/UI, physical Android/Passkey/printing, controlled DNS rebinding, broad differential source-runtime sequences and a seven-day latency/error/usage observation remain separate acceptance items. The preview began observation on 2026-11-05; the upload coordinator release starts its seven-day observation on 2026-11-06 and cannot complete that window before 2026-11-13. No paid-plan upgrade has been made. Continue the preview on Free while measuring CPU errors, latency and quota use; recommend upgrading if the optimized application reaches an actual limit. Some successful non-upload Worker requests still exceed the advertised 10 ms CPU budget under Cloudflare isolate flexibility, so passing these scenarios does not guarantee reliability at higher or sustained load.
 
 GitHub checks run automatically. Automatic preview deployment remains disabled until the `cloudflare-preview` Environment has a dedicated `CLOUDFLARE_API_TOKEN`; current releases use authenticated Wrangler OAuth. Do not store the local OAuth token as a CI secret. See the [release runbook](preview-release.md).
 

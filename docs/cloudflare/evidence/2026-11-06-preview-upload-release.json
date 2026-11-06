@@ -1,0 +1,119 @@
+{
+  "deployed_commit": "5cae4b8cfbd7f6df4ca0c79294d2eabfd9586b0f",
+  "worker_version": "90f83dd6-e830-4cc0-a772-cfb304d174d6",
+  "origin": "https://cf.acornary.protium.top",
+  "status": "PASS",
+  "started_at": "2026-11-06T04:10:28.688Z",
+  "completed_at": "2026-11-06T04:12:44.174Z",
+  "uploads": [
+    {
+      "label": "pdf-1MiB",
+      "bytes": 1048576,
+      "status": 200,
+      "ray": "a5613fac8c70108a-HKG",
+      "request_id": "b5273b18-2c95-466e-a12b-5f044c7656d5",
+      "wall_ms": 3680
+    },
+    {
+      "label": "pdf-25MiB-repeat-1",
+      "bytes": 26214400,
+      "status": 200,
+      "ray": "a5613fe64b55108a-HKG",
+      "request_id": "9ee00072-1e60-4c45-b664-d7a633258cee",
+      "wall_ms": 19266
+    },
+    {
+      "label": "pdf-25MiB-repeat-2",
+      "bytes": 26214400,
+      "status": 200,
+      "ray": "a56140977b6c108a-HKG",
+      "request_id": "775b7fcb-e90c-467e-8a59-7aebae6ed3e6",
+      "wall_ms": 21619
+    },
+    {
+      "label": "pdf-25MiB-parallel-1",
+      "bytes": 26214400,
+      "status": 200,
+      "ray": "a5614152c8cd0463-HKG",
+      "request_id": "bb3db5d6-11a6-439c-9c51-7e2200714e27",
+      "wall_ms": 12900
+    },
+    {
+      "label": "pdf-25MiB-parallel-2",
+      "bytes": 26214400,
+      "status": 200,
+      "ray": "a56141458fc1108a-HKG",
+      "request_id": "bcfe6d09-8f94-4de0-9dfe-0de3f623014e",
+      "wall_ms": 17787
+    },
+    {
+      "label": "jpeg-25MiB-exif",
+      "bytes": 26214400,
+      "status": 200,
+      "ray": "a56142010c32108a-HKG",
+      "request_id": "be8d80a0-c272-4aff-8042-86aeea6a1c2c",
+      "wall_ms": 24970
+    }
+  ],
+  "verified_bytes": 132120576,
+  "replay": "PASS",
+  "download_interruptions": [],
+  "cpu": {
+    "stateless": {
+      "milliseconds": [13, 9, 11, 21, 11, 8, 12],
+      "outcomes": ["ok", "ok", "ok", "ok", "ok", "ok", "ok"]
+    },
+    "durableObject": {
+      "milliseconds": [30, 612, 1158, 610, 969, 652, 265],
+      "outcomes": ["ok", "ok", "ok", "ok", "ok", "ok", "ok"]
+    }
+  },
+  "protocol": {
+    "status": "PASS",
+    "completed_at": "2026-11-06T04:09:50.292Z",
+    "checks": [
+      "actual-domain password login and secure cookie",
+      "existing isolated test family selected",
+      "Android config, real PKCE, snapshot, command, replay, history and operation lookup",
+      "actual-domain MCP OAuth and 54 public tool schemas",
+      "actual-domain refresh rotation and replay rejection"
+    ]
+  },
+  "ci": {
+    "native": "https://github.com/Cabbyte/Acornary/actions/runs/42160674606",
+    "full": "https://github.com/Cabbyte/Acornary/actions/runs/42160674693"
+  },
+  "production": {
+    "version": "v0.13.0",
+    "commit": "a7252bc9a10018984f6b526e1149af3787cf6f1a",
+    "changes": "none"
+  },
+  "android_apk_sha256": "9fc5ee2fe61a376d7369f10ba6b64b78c7c2d5bc5e52d5a665ffa77c53ed0d6d",
+  "cleanup": [
+    {
+      "resource": "workers/durable_objects/namespaces",
+      "status": 200,
+      "remaining": []
+    },
+    {
+      "resource": "workers/scripts",
+      "status": 200,
+      "remaining": []
+    },
+    {
+      "resource": "d1/database",
+      "status": 200,
+      "remaining": []
+    },
+    {
+      "resource": "r2/buckets",
+      "status": 200,
+      "remaining": []
+    },
+    {
+      "resource": "queues",
+      "status": 200,
+      "remaining": []
+    }
+  ]
+}

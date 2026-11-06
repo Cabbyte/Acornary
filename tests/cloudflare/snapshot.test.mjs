@@ -537,7 +537,7 @@ test('real PostgreSQL household facts import into native DO with Merkle validati
       body: JSON.stringify({ route: hh, method, args }),
     });
     const data = await r.json();
-    if (!r.ok) throw new Error(data.message);
+    if (!r.ok) throw Object.assign(new Error(data.message), { code: data.code });
     return data;
   };
   try {
@@ -591,6 +591,62 @@ test('real PostgreSQL household facts import into native DO with Merkle validati
     assert.match(raw, /900719925474099312345/);
     assert.equal((await invoke('activateImport', descriptor.manifest_hash)).status, 'ACTIVE');
     assert.equal((await invoke('synchronize', ctx, 'state', {})).generation, state.generation);
+    // Compare real legacy PostgreSQL responses with the imported workerd SQLite facts.
+    // The source serializes UTC timestamps as PostgreSQL text, while the native API
+    // uses ISO UTC. Normalize that documented representation difference without
+    // parsing through Date (which would silently discard source microseconds).
+    const sourceProjection = new Map(
+      (
+        await pool.query(
+          'SELECT id,projected_through_change_id::text AS cursor FROM items WHERE household_id=$1',
+          [hh],
+        )
+      ).rows.map((r) => [r.id, r.cursor]),
+    );
+    const wire = (value, field = '') => {
+      if (Array.isArray(value)) return value.map((v) => wire(v, field));
+      if (value && typeof value === 'object') {
+        const result = Object.fromEntries(Object.entries(value).map(([k, v]) => [k, wire(v, k)]));
+        // Legacy JSONB aggregates decode this bigint as Number, losing precision
+        // in this >2^53 fixture. Compare the native string with the original SQL
+        // bigint, not with that rounded API value. All other fields remain exact.
+        if (typeof value.projected_through_change_id === 'number') {
+          const exact = sourceProjection.get(value.id);
+          assert.ok(exact, 'Projection cursor must have a source SQL row');
+          assert.equal(value.projected_through_change_id, Number(exact));
+          result.projected_through_change_id = exact;
+        }
+        return result;
+      }
+      if (typeof value === 'string' && field.endsWith('_at')) {
+        const parts = value.match(
+          /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(?:\.(\d+))?(?:Z|\+00(?::00)?)$/,
+        );
+        if (parts) return `${parts[1]}T${parts[2]}.${(parts[3] ?? '').padEnd(6, '0')}Z`;
+      }
+      return value;
+    };
+    for (const [name, args] of [
+      ['get_item', { item_id: itemId }],
+      ['get_catalog_node', { catalog_node_id: catalog.affected_objects[0].id }],
+      ['get_catalog_policy', {}],
+      ['query_items', {}],
+      ['query_catalog_nodes', {}],
+      ['query_inventory_groups', {}],
+      ['query_stock', {}],
+      ['query_references', { target: { kind: 'ITEM', id: itemId } }],
+      ['list_notes', { target: { kind: 'ITEM', id: itemId } }],
+      ['list_attachments', { target: { kind: 'ITEM', id: itemId } }],
+      ['get_history', { target: { kind: 'ITEM', id: itemId } }],
+      ['list_attribute_templates', {}],
+      ['get_attribute_template', { template_id: 'contents', template_version: 1 }],
+    ]) {
+      assert.deepEqual(
+        wire(await invoke('command', ctx, name, args)),
+        wire(await sourceExecute(sourceContext, name, args)),
+        `PostgreSQL/SQLite response parity: ${name}`,
+      );
+    }
     const input = {
       idempotency_key: randomUUID(),
       item_id: itemId,
@@ -606,6 +662,64 @@ test('real PostgreSQL household facts import into native DO with Merkle validati
       item.attributes.find((a) => a.template_id === 'contents').values.remaining.value,
       '999.9',
     );
+    let revision = item.revision;
+    for (const [name, args] of [
+      ['update_item', { display_name: '改名后的迁移牛奶' }],
+      ['open_item', { opened_at: '2026-11-05T00:00:00Z' }],
+      ['consume_item_content', { amount: { value: '0.2', unit: 'mL' } }],
+      ['update_item', { display_name: null }],
+    ]) {
+      const command = {
+        idempotency_key: randomUUID(),
+        item_id: itemId,
+        expected_revisions: { [itemId]: revision },
+        ...args,
+      };
+      const legacy = await sourceExecute(sourceContext, name, command),
+        native = await invoke('command', ctx, name, command);
+      assert.deepEqual(native.affected_objects, legacy.affected_objects, `${name} revisions`);
+      assert.deepEqual(await sourceExecute(sourceContext, name, command), legacy);
+      assert.deepEqual(await invoke('command', ctx, name, command), native);
+      const legacyItem = await sourceExecute(sourceContext, 'get_item', { item_id: itemId }),
+        nativeItem = await invoke('command', ctx, 'get_item', { item_id: itemId });
+      for (const field of ['display_name', 'revision', 'label_hash', 'record_state'])
+        assert.deepEqual(nativeItem[field], legacyItem[field], `${name}: ${field}`);
+      const attributes = (item) =>
+        item.attributes.map((a) => ({
+          template: a.template_id,
+          version: a.template_version,
+          values: a.values,
+        }));
+      assert.deepEqual(wire(attributes(nativeItem)), wire(attributes(legacyItem)), `${name} facts`);
+      revision = nativeItem.revision;
+    }
+    const errorCode = async (fn) => {
+      let error;
+      try {
+        await fn();
+      } catch (caught) {
+        error = caught;
+      }
+      assert.ok(error?.code, 'Expected a domain error');
+      return error.code;
+    };
+    for (const [amount, expected] of [
+      ['0.1', 2],
+      ['10000', revision],
+    ]) {
+      const command = {
+        idempotency_key: randomUUID(),
+        item_id: itemId,
+        expected_revisions: { [itemId]: expected },
+        amount: { value: amount, unit: 'mL' },
+      };
+      const prior = await invoke('command', ctx, 'get_item', { item_id: itemId });
+      assert.equal(
+        await errorCode(() => invoke('command', ctx, 'consume_item_content', command)),
+        await errorCode(() => sourceExecute(sourceContext, 'consume_item_content', command)),
+      );
+      assert.deepEqual(await invoke('command', ctx, 'get_item', { item_id: itemId }), prior);
+    }
     await assert.rejects(
       invoke('beginImport', { ...descriptor, manifest_hash: '0'.repeat(64) }),
       /another import/,
