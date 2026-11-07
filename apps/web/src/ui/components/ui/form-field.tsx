@@ -85,7 +85,11 @@ export function FormField({
           )}
         >
           {label}
-          {required && <span className="vn-field-required">（必填）</span>}
+          {required && (
+            <span className="vn-field-required" aria-label="必填">
+              *
+            </span>
+          )}
         </Field.Label>
       </div>
       {hasHelpToggle ? (

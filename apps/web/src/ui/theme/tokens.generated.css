@@ -91,7 +91,7 @@
   --vn-accent-active: #394C5B;
   --vn-selection-foreground: #42586A;
   --vn-body-size: var(--vn-type-management-body);
-  --vn-row-min: var(--vn-row-min-management-desktop);
+  --vn-row-min: var(--vn-row-min-daily);
 }
 [data-acornary-preset="sage"][data-acornary-mode="daily"] {
   --vn-background: #FAFBF8;

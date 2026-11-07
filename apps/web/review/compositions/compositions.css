@@ -19,7 +19,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: var(--vn-space-24) var(--vn-space-32);
+  gap: var(--vn-space-16) var(--vn-space-24);
 }
 [data-acornary-ui='vnext'] .review-form-grid > * {
   min-width: 0;
@@ -60,7 +60,7 @@
 [data-acornary-ui='vnext'] .review-shell-body > h2 {
   margin: 0;
 }
-@container review-composition (min-width: 820px) {
+@container review-composition (min-width: 680px) {
   [data-acornary-ui='vnext'] .review-form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

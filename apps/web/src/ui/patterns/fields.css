@@ -267,7 +267,7 @@
   position: relative;
   z-index: 1;
 }
-@container domain-field (max-width: 439px) {
+@container domain-field (max-width: 339px) {
   [data-acornary-ui='vnext'] .vn-quantity-input__controls {
     grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   }
@@ -275,7 +275,7 @@
     grid-column: 1 / -1;
   }
 }
-@container domain-field (max-width: 399px) {
+@container domain-field (max-width: 339px) {
   [data-acornary-ui='vnext'] .vn-date-fact-field__controls[data-expiry='true'] {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -291,5 +291,19 @@
 @media (max-width: 359px) {
   [data-acornary-ui='vnext'] .vn-date-popover .vn-overlay-body {
     padding-inline: 0;
+  }
+}
+
+[data-acornary-ui='vnext'] .vn-search-bar input[type='search']::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+@container search-field (max-width: 479px) {
+  [data-acornary-ui='vnext'] .vn-search-submit-label {
+    display: none;
+  }
+  [data-acornary-ui='vnext'] .vn-search-bar button[type='submit'] {
+    min-width: var(--vn-control-height);
+    padding-inline: var(--vn-space-8);
   }
 }

@@ -78,7 +78,7 @@
   padding-block: var(--vn-space-8);
 }
 [data-acornary-ui='vnext'] .vn-data-row {
-  min-height: var(--vn-row-min);
+  min-height: var(--vn-row-min-management-desktop);
 }
 [data-acornary-ui='vnext'] .vn-data-row > .vn-table-cell {
   vertical-align: top;
@@ -195,7 +195,7 @@
   overflow-wrap: anywhere;
 }
 [data-acornary-ui='vnext'] .vn-page-back {
-  min-height: var(--vn-target-close-and-back);
+  min-height: var(--vn-control-height);
   flex-shrink: 0;
 }
 [data-acornary-ui='vnext'] .vn-page-header-actions {
@@ -531,4 +531,48 @@
 [data-acornary-ui='vnext'] .vn-item-row-actions > button,
 [data-acornary-ui='vnext'] .vn-item-row-actions > [data-slot='button'] {
   min-width: var(--vn-control-height);
+}
+
+[data-acornary-ui='vnext'] .vn-page-header h1,
+[data-acornary-ui='vnext'] .vn-page-header h2 {
+  min-height: var(--vn-control-height);
+  display: flex;
+  align-items: center;
+  margin: 0;
+}
+[data-acornary-ui='vnext'] .vn-page-header-title .vn-list-meta {
+  margin-top: var(--vn-space-4);
+}
+
+[data-acornary-ui='vnext'] .vn-product-summary {
+  gap: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-product-summary h2 {
+  font-size: var(--vn-type-title);
+  line-height: var(--vn-type-title-line-height);
+}
+[data-acornary-ui='vnext'] .vn-product-counts-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vn-space-12);
+  margin-top: var(--vn-space-4);
+}
+[data-acornary-ui='vnext'] .vn-product-counts-inline > span {
+  margin: 0;
+}
+[data-acornary-ui='vnext'] .vn-product-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vn-space-16) var(--vn-space-32);
+}
+[data-acornary-ui='vnext'] .vn-product-quantities {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--vn-space-12);
+}
+[data-acornary-ui='vnext'] .vn-product-facts > .vn-date-fact[data-presentation] {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--vn-space-8);
 }

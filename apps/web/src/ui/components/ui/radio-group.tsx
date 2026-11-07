@@ -17,6 +17,7 @@ export interface RadioGroupProps {
   options: readonly RadioOption[];
   label: ReactNode;
   description?: ReactNode;
+  showOptionDescriptions?: boolean;
   disabled?: boolean;
   readOnly?: boolean;
   required?: boolean;
@@ -31,12 +32,13 @@ export function RadioGroup({
   options,
   label,
   description,
+  showOptionDescriptions = false,
   disabled,
   readOnly,
   required,
   invalid,
   name,
-  orientation = 'vertical',
+  orientation = 'horizontal',
   className,
 }: RadioGroupProps) {
   const id = useId();
@@ -44,7 +46,11 @@ export function RadioGroup({
     <div className={cn('vn-form-field', className)}>
       <span id={`${id}-label`} className="vn-field-label">
         {label}
-        {required && <span className="vn-field-required">（必填）</span>}
+        {required && (
+          <span className="vn-field-required" aria-label="必填">
+            *
+          </span>
+        )}
         {readOnly && <span className="vn-choice-state">只读</span>}
       </span>
       <RadioGroupPrimitive
@@ -69,6 +75,11 @@ export function RadioGroup({
           <label
             key={option.value}
             className="vn-choice"
+            title={
+              option.disabled && typeof option.description === 'string'
+                ? option.description
+                : undefined
+            }
             data-disabled={disabled || option.disabled || undefined}
           >
             <Radio.Root value={option.value} disabled={option.disabled} className="vn-radio">
@@ -76,7 +87,11 @@ export function RadioGroup({
             </Radio.Root>
             <span className="vn-choice-copy">
               <span>{option.label}</span>
-              {option.description && <span className="vn-field-hint">{option.description}</span>}
+              {option.description && (
+                <span className={showOptionDescriptions ? 'vn-field-hint' : 'vn-sr-only'}>
+                  {option.description}
+                </span>
+              )}
             </span>
           </label>
         ))}

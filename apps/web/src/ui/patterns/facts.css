@@ -62,7 +62,9 @@
   list-style: none;
 }
 [data-acornary-ui='vnext'] .vn-tree-group {
-  padding-inline-start: var(--vn-space-24);
+  margin-inline-start: calc(var(--vn-space-8) + var(--vn-control-height) / 2);
+  padding-inline-start: var(--vn-space-12);
+  border-inline-start: 1px solid var(--vn-control-border);
 }
 [data-acornary-ui='vnext'] .vn-tree-item {
   border-radius: var(--vn-radius-control);
@@ -307,9 +309,6 @@
   text-decoration: none;
   padding-inline: 0;
 }
-[data-acornary-ui='vnext'][data-acornary-mode='management']
-  .vn-item-identity
-  .vn-item-identity-name,
 [data-acornary-ui='vnext'] .vn-data-table .vn-item-identity .vn-item-identity-name {
   font-size: var(--vn-type-management-body);
 }
@@ -393,4 +392,23 @@
 [data-acornary-ui='vnext'] .vn-location-divider {
   flex-shrink: 0;
   padding: 0;
+}
+
+[data-acornary-ui='vnext'] .vn-table-selection {
+  width: 1%;
+  white-space: nowrap;
+  padding-inline: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-table-selection .vn-choice {
+  min-width: var(--vn-control-height);
+  justify-content: center;
+}
+[data-acornary-ui='vnext'] .vn-table-actions {
+  width: 1%;
+  white-space: nowrap;
+}
+[data-acornary-ui='vnext'] .vn-item-identity-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vn-space-4);
 }

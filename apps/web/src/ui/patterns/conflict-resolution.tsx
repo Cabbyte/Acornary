@@ -70,6 +70,7 @@ export function ConflictResolution({
       {fields.map((field) => (
         <div key={field.key} className="vn-conflict-field">
           <RadioGroup
+            showOptionDescriptions
             className="vn-conflict-choice"
             label={
               <span className="vn-conflict-heading">

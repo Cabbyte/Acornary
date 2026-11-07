@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { IconButton } from '../components/ui/icon-button';
 import { Button } from '../components/ui/button';
 import { cn } from '../components/utils';
 import type { ActionAvailability } from './types';
@@ -39,10 +40,9 @@ export function PageHeader({
     <header className={cn('vn-page-header', className)} aria-labelledby={id}>
       <div className="vn-page-header-title">
         {onBack && (
-          <Button variant="quiet" className="vn-page-back" onClick={onBack}>
+          <IconButton label={backLabel} className="vn-page-back" onClick={onBack}>
             <ArrowLeft size={16} aria-hidden="true" />
-            {backLabel}
-          </Button>
+          </IconButton>
         )}
         <div>
           <Heading id={id}>{title}</Heading>

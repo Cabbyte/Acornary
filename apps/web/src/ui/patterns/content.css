@@ -36,7 +36,7 @@
 }
 [data-acornary-ui='vnext'] .vn-content-fields {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
   gap: var(--vn-space-16);
 }
 [data-acornary-ui='vnext'] .vn-content-field,
@@ -250,5 +250,11 @@
   }
   [data-acornary-ui='vnext'] .vn-attachment-row--pending .vn-attachment-actions {
     grid-column: 1;
+  }
+}
+
+@container vn-host (min-width: 768px) {
+  [data-acornary-ui='vnext'] .vn-content-field[data-wide='true'] {
+    grid-column: span 2;
   }
 }

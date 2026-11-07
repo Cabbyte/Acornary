@@ -100,10 +100,6 @@ export function SearchBar({
                 <X />
               </IconButton>
             )}
-            <Button type="submit" busy={loading} disabled={disabled || readOnly}>
-              <Search size={16} aria-hidden="true" />
-              搜索
-            </Button>
             {scanCapability &&
               (scanReason ? (
                 <Popover
@@ -127,6 +123,10 @@ export function SearchBar({
                   <ScanLine />
                 </IconButton>
               ))}
+            <Button type="submit" aria-label="搜索" busy={loading} disabled={disabled || readOnly}>
+              <Search size={16} aria-hidden="true" />
+              <span className="vn-search-submit-label">搜索</span>
+            </Button>
           </div>
         )}
       </FormField>

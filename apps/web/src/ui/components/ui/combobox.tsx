@@ -62,7 +62,11 @@ export function Combobox({
       >
         <label htmlFor={controlId} className="vn-field-label">
           {label}
-          {required && <span className="vn-field-required">（必填）</span>}
+          {required && (
+            <span className="vn-field-required" aria-label="必填">
+              *
+            </span>
+          )}
           {readOnly && <span className="vn-choice-state">只读</span>}
         </label>
         <ComboboxPrimitive.InputGroup

@@ -71,7 +71,11 @@ export function Select({
       >
         <SelectPrimitive.Label className="vn-field-label">
           {label}
-          {required && <span className="vn-field-required">（必填）</span>}
+          {required && (
+            <span className="vn-field-required" aria-label="必填">
+              *
+            </span>
+          )}
           {readOnly && <span className="vn-choice-state">只读</span>}
         </SelectPrimitive.Label>
         <SelectPrimitive.Trigger
@@ -105,15 +109,14 @@ export function Select({
                       value={option.value}
                       disabled={option.disabled || loading || Boolean(error)}
                       className="vn-control-option"
+                      title={option.disabled ? option.description : undefined}
+                      aria-description={option.disabled ? option.description : undefined}
                     >
                       <SelectPrimitive.ItemIndicator className="vn-option-indicator">
                         <Check size={16} aria-hidden="true" />
                       </SelectPrimitive.ItemIndicator>
                       <span className="vn-option-copy">
                         <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
-                        {option.description && (
-                          <span className="vn-field-hint">{option.description}</span>
-                        )}
                       </span>
                     </SelectPrimitive.Item>
                   ))}

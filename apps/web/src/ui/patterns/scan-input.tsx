@@ -140,6 +140,7 @@ export function ScanInput({
       ) : null}
       {candidates.length > 0 && (
         <RadioGroup
+          showOptionDescriptions
           label="选择物品"
           value={selected?.id ?? null}
           onValueChange={onSelectItem}

@@ -1,3 +1,7 @@
+import { ArrowUpRight } from 'lucide-react';
+import { IconButton } from '../../src/ui/components/ui/icon-button';
+import { Checkbox } from '../../src/ui/components/ui/checkbox';
+import { Select } from '../../src/ui/components/ui/select';
 import { ReviewNote, ReviewFeedback } from '../review-frame';
 import { useEffect, useState } from 'react';
 import { Button as BaseButton } from '@base-ui/react/button';
@@ -40,7 +44,7 @@ const sourceFixture: FactSourceView = {
 const itemFixture: Pick<ItemView, 'id' | 'name' | 'subtitle' | 'recordState'> = {
   id: itemA,
   name: '燕麦饮',
-  subtitle: '无糖 · 1 L 包装',
+  subtitle: '无糖 1 L 包装',
   recordState: 'VALID',
 };
 const knownLocation: ItemView['location'] = {
@@ -195,7 +199,9 @@ export function TableDemo({ scenario }: ReviewDemoProps) {
         <TableCaption>两件独立物品 · 点击列头排序，选择框与打开动作相互独立</TableCaption>
         <TableHeader>
           <TableRow>
-            <TableHead>选择</TableHead>
+            <TableHead className="vn-table-selection">
+              <span className="vn-sr-only">选择</span>
+            </TableHead>
             <TableHead aria-sort={sort}>
               <BaseButton
                 type="button"
@@ -207,7 +213,9 @@ export function TableDemo({ scenario }: ReviewDemoProps) {
               </BaseButton>
             </TableHead>
             <TableHead>数量</TableHead>
-            <TableHead>操作</TableHead>
+            <TableHead className="vn-table-actions">
+              <span className="vn-sr-only">操作</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -223,21 +231,22 @@ export function TableDemo({ scenario }: ReviewDemoProps) {
                 key={row.id}
                 data-state={selectedIds.includes(row.id) ? 'selected' : undefined}
               >
-                <TableCell>
-                  <label className="vn-facts-demo-checkbox">
-                    <input
-                      type="checkbox"
-                      aria-label={`选择${row.name}，ID ${row.id}`}
-                      checked={selectedIds.includes(row.id)}
-                      onChange={(e) =>
-                        setSelectedIds(
-                          e.target.checked
-                            ? [...selectedIds, row.id]
-                            : selectedIds.filter((id) => id !== row.id),
-                        )
-                      }
-                    />
-                  </label>
+                <TableCell className="vn-table-selection">
+                  <Checkbox
+                    label={
+                      <span className="vn-sr-only">
+                        选择{row.name}，ID {row.id}
+                      </span>
+                    }
+                    checked={selectedIds.includes(row.id)}
+                    onCheckedChange={(checked) =>
+                      setSelectedIds(
+                        checked
+                          ? [...selectedIds, row.id]
+                          : selectedIds.filter((id) => id !== row.id),
+                      )
+                    }
+                  />
                 </TableCell>
                 <TableCell>
                   <ItemIdentity item={row} readOnly />
@@ -245,14 +254,13 @@ export function TableDemo({ scenario }: ReviewDemoProps) {
                 <TableCell>
                   <QuantityValue quantity={row.quantity} />
                 </TableCell>
-                <TableCell>
-                  <BaseButton
-                    type="button"
-                    className="vn-fact-button"
+                <TableCell className="vn-table-actions">
+                  <IconButton
+                    label={`打开${row.name}`}
                     onClick={() => setEvent(`收到打开意图：${row.id}`)}
                   >
-                    打开
-                  </BaseButton>
+                    <ArrowUpRight size={16} />
+                  </IconButton>
                 </TableCell>
               </TableRow>
             ))
@@ -356,7 +364,14 @@ export function ItemIdentityDemo({ scenario }: ReviewDemoProps) {
         redacted={scenario === 'redacted'}
         loading={scenario === 'loading'}
         onOpen={(id) => setEvent(`收到打开意图：${id}`)}
-        onCopyId={(id) => setEvent(`收到复制意图，尚未调用剪贴板：${id}`)}
+        onCopyId={async (id) => {
+          try {
+            await navigator.clipboard.writeText(id);
+            setEvent('完整物品 ID 已复制。');
+          } catch {
+            setEvent(`剪贴板不可用，请手动复制完整编号：${id}`);
+          }
+        }}
       />
       <ReviewFeedback>{event}</ReviewFeedback>
     </div>
@@ -386,20 +401,17 @@ export function QuantityValueDemo({ scenario }: ReviewDemoProps) {
         redacted={variant === 'redacted'}
         loading={variant === 'loading'}
       />
-      <label className="vn-row">
-        显示事实
-        <select
-          className="vn-facts-demo-select"
-          value={variant}
-          onChange={(e) => setVariant(e.target.value)}
-        >
-          {quantityValueScenarios.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <Select
+        label="显示事实"
+        value={variant}
+        onValueChange={(v) => {
+          if (v) setVariant(v);
+        }}
+        options={quantityValueScenarios.map((option) => ({
+          value: option.id,
+          label: option.label,
+        }))}
+      />
       <p className="vn-fact-meta">保留原始 decimal 字符串；未知数量和明确为零分别展示。</p>
     </div>
   );
@@ -467,20 +479,17 @@ export function DateFactValueDemo({ scenario }: ReviewDemoProps) {
         redacted={variant === 'redacted'}
         loading={variant === 'loading'}
       />
-      <label className="vn-row">
-        日期事实
-        <select
-          className="vn-facts-demo-select"
-          value={variant}
-          onChange={(e) => setVariant(e.target.value)}
-        >
-          {dateFactValueScenarios.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <Select
+        label="日期事实"
+        value={variant}
+        onValueChange={(v) => {
+          if (v) setVariant(v);
+        }}
+        options={dateFactValueScenarios.map((option) => ({
+          value: option.id,
+          label: option.label,
+        }))}
+      />
       <p className="vn-fact-meta">到期状态由输入提供；YYYY-MM-DD 保留原日期，不转换时区。</p>
     </div>
   );

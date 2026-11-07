@@ -1,3 +1,4 @@
+import { PackageOpen, Package, CircleHelp, CirclePlay, ArchiveX } from 'lucide-react';
 import type { ItemView, ActionAvailability, FactPresentation } from './types';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -32,12 +33,28 @@ export function ItemStatus({
   onExplain,
   className,
 }: ItemStatusProps) {
+  const icon =
+    status?.label === '已开封' ? (
+      <PackageOpen />
+    ) : status?.label === '未开封' ? (
+      <Package />
+    ) : status?.label === '使用中' ? (
+      <CirclePlay />
+    ) : !status || /未记录|未知/.test(status.label) ? (
+      <CircleHelp />
+    ) : undefined;
   if (loading) return <LoadingState layout="compact" label="正在加载状态" />;
   return (
     <div className={cn('vn-item-status', className)} data-presentation={presentation}>
       <div className="vn-row">
-        <Badge variant={status?.tone ?? 'neutral'}>{status?.label || '状态未记录'}</Badge>
-        {recordState === 'VOID' && <Badge variant="neutral">记录已作废</Badge>}
+        <Badge variant={status?.tone ?? 'neutral'} icon={icon}>
+          {status?.label || '状态未记录'}
+        </Badge>
+        {recordState === 'VOID' && (
+          <Badge variant="neutral" icon={<ArchiveX />}>
+            记录已作废
+          </Badge>
+        )}
       </div>
       {facts.length > 0 && (
         <dl className="vn-status-facts">

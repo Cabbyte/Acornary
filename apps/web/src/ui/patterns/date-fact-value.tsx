@@ -8,6 +8,7 @@ export interface DateFactValueProps {
   redacted?: boolean;
   loading?: boolean;
   presentation?: FactPresentation;
+  compact?: boolean;
   className?: string;
 }
 
@@ -50,6 +51,7 @@ export function DateFactValue({
   loading = false,
   presentation = 'summary',
   className,
+  compact = false,
 }: DateFactValueProps) {
   const kindLabel = kindLabels[fact.kind];
   const dateLabel = fact.dateKind ? dateKindLabels[fact.dateKind] : null;
@@ -98,13 +100,17 @@ export function DateFactValue({
             ) : (
               <span className="vn-fact-error">日期格式有误</span>
             )}
-            <span className="vn-fact-badge" data-tone={tone}>
-              {stateLabels[fact.state]}
-            </span>
+            {(!compact || fact.state === 'DUE' || fact.state === 'OVERDUE') && (
+              <span className="vn-fact-badge" data-tone={tone}>
+                {stateLabels[fact.state]}
+              </span>
+            )}
           </>
         )}
       </div>
-      {presentation === 'summary' && !loading && !redacted ? (
+      {compact ? (
+        <span className="vn-fact-label">{dateLabel || kindLabel}</span>
+      ) : presentation === 'summary' && !loading && !redacted ? (
         <FactDetails
           label={
             <span className="vn-date-fact-summary">
@@ -125,7 +131,7 @@ export function DateFactValue({
       )}
       {!loading && !redacted && (
         <>
-          {fact.label && fact.label !== kindLabel && fact.label !== dateLabel && (
+          {!compact && fact.label && fact.label !== kindLabel && fact.label !== dateLabel && (
             <span className="vn-fact-meta">{fact.label}</span>
           )}
           {presentation === 'detail' && metadata}

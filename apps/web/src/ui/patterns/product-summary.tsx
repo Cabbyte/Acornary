@@ -52,79 +52,68 @@ export function ProductSummary({
       <div className="vn-list-heading">
         <div>
           <h2 id={headingId}>{group.name}</h2>
-          <FactDetails label="商品详情">
-            <span className="vn-list-meta">商品 ID：{group.id}</span>
-          </FactDetails>
+          <p className="vn-list-meta vn-product-counts-inline">
+            <span>{count === null ? '件数未知' : `${count} 件物品`}</span>
+            <span>{group.locations} 处位置</span>
+            <span>{group.currentCount} 件有效记录</span>
+          </p>
         </div>
-        <Badge variant={coverage === 'live' ? 'neutral' : 'warning'}>
-          {coverage === 'live'
-            ? '当前范围'
-            : coverage === 'cached-subset'
-              ? '缓存子集'
-              : '范围未知'}
-        </Badge>
+        {coverage !== 'live' && (
+          <Badge variant="warning" compact="never">
+            {coverage === 'cached-subset' ? '缓存子集' : '范围未知'}
+          </Badge>
+        )}
       </div>
-      <dl className="vn-product-counts">
-        <div>
-          <dt>具体物品</dt>
-          <dd>{count === null ? '数量未知' : `${count} 件`}</dd>
-        </div>
-        <div>
-          <dt>存放位置</dt>
-          <dd>{group.locations} 处</dd>
-        </div>
-        <div>
-          <dt>当前有效记录</dt>
-          <dd>{group.currentCount} 件</dd>
-        </div>
-      </dl>
       <div className="vn-product-facts">
         <div className="vn-product-quantities">
-          <h3 className="vn-section-title">已知数量合计</h3>
+          <span className="vn-fact-label">
+            {group.unknownQuantity > 0 ? '已记录合计' : '数量合计'}
+          </span>
           {group.totals.length ? (
             group.totals.map((total) => (
-              <div key={total.unit}>
-                <QuantityValue
-                  label="合计"
-                  quantity={{
-                    value: total.value,
-                    unit: total.unit,
-                    accuracy: total.estimated
-                      ? 'estimated'
-                      : total.unknownAccuracy
-                        ? 'unknown'
-                        : 'measured',
-                  }}
-                />
-                {total.estimated && total.unknownAccuracy && (
-                  <p className="vn-list-meta">此合计还包含精度未记录的数量。</p>
-                )}
-              </div>
+              <QuantityValue
+                key={total.unit}
+                label="已记录数量合计"
+                quantity={{
+                  value: total.value,
+                  unit: total.unit,
+                  accuracy: total.estimated
+                    ? 'estimated'
+                    : total.unknownAccuracy
+                      ? 'unknown'
+                      : 'measured',
+                }}
+              />
             ))
           ) : (
-            <p className="vn-list-meta">没有可展示的已知数量合计</p>
-          )}
-          {group.unknownQuantity > 0 && (
-            <p className="vn-list-meta">
-              另有 {group.unknownQuantity} 件数量未记录，不包含在以上合计中。
-            </p>
+            <p className="vn-list-meta">数量未记录</p>
           )}
         </div>
         {displayedDate ? (
-          <DateFactValue fact={displayedDate} />
+          <DateFactValue fact={displayedDate} compact />
         ) : (
-          <p className="vn-list-meta">下一日期未记录</p>
+          <p className="vn-list-meta">日期未记录</p>
         )}
       </div>
-      <p className="vn-list-meta">
-        已开封 {group.opened} 件 · 未开封 {group.sealed} 件
-        {group.unknownOpening > 0 && ` · ${group.unknownOpening} 件开封状态未记录`}
-        {group.unknownLifecycle > 0 && ` · ${group.unknownLifecycle} 件生命周期未记录`}
-      </p>
-      <p className="vn-list-meta">
-        逾期：{group.overdueCount === null ? '未知' : `${group.overdueCount} 件`} · 低库存：
-        {group.lowStock === null ? '未知' : group.lowStock ? '已达到提醒条件' : '未达到提醒条件'}
-      </p>
+      <FactDetails label="更多资料">
+        <span className="vn-list-meta">商品 ID：{group.id}</span>
+        {group.unknownQuantity > 0 && (
+          <p className="vn-list-meta">{group.unknownQuantity} 件数量未记录，未计入合计。</p>
+        )}
+        {group.totals.some((total) => total.estimated && total.unknownAccuracy) && (
+          <p className="vn-list-meta">合计包含估计值与精度未记录的数量。</p>
+        )}
+        {displayedDate && <DateFactValue fact={displayedDate} presentation="detail" />}
+        <p className="vn-list-meta">
+          已开封 {group.opened} 件 · 未开封 {group.sealed} 件
+          {group.unknownOpening > 0 && ` · ${group.unknownOpening} 件开封状态未记录`}
+          {group.unknownLifecycle > 0 && ` · ${group.unknownLifecycle} 件生命周期未记录`}
+        </p>
+        <p className="vn-list-meta">
+          逾期：{group.overdueCount === null ? '未知' : `${group.overdueCount} 件`} · 低库存：
+          {group.lowStock === null ? '未知' : group.lowStock ? '已达到提醒条件' : '未达到提醒条件'}
+        </p>
+      </FactDetails>
       {coverage !== 'live' && (
         <InlineNotice announce={false} tone="warning" title="汇总范围有限">
           {coverage === 'cached-subset'
@@ -134,14 +123,14 @@ export function ProductSummary({
       )}
       <div className="vn-row">
         <Button variant="secondary" onClick={() => onOpenItems(group.id)}>
-          查看具体物品
+          查看物品
         </Button>
         {onIntake && (
           <Button
             disabled={intakeAvailability.kind !== 'available'}
             onClick={() => onIntake(group.id)}
           >
-            入库此商品
+            入库
           </Button>
         )}
       </div>

@@ -114,17 +114,7 @@ export function ApprovalSummary({
           </div>
         </dl>
       </details>
-      <div className="vn-operation-actions">
-        <Button
-          variant="secondary"
-          disabled={busy || unavailable}
-          onClick={() => onRequestReview(proposal.proposalId)}
-        >
-          重新核对
-        </Button>
-        <Button variant="quiet" disabled={busy} onClick={() => onRevise(proposal.proposalId)}>
-          返回修改
-        </Button>
+      <div className="vn-split-actions">
         <Button
           disabled={!confirmable || !proposal.impact.length}
           busy={busy}
@@ -132,6 +122,18 @@ export function ApprovalSummary({
         >
           确认此范围
         </Button>
+        <div className="vn-split-actions-secondary">
+          <Button
+            variant="secondary"
+            disabled={busy || unavailable}
+            onClick={() => onRequestReview(proposal.proposalId)}
+          >
+            重新核对
+          </Button>
+          <Button variant="quiet" disabled={busy} onClick={() => onRevise(proposal.proposalId)}>
+            返回修改
+          </Button>
+        </div>
       </div>
     </section>
   );

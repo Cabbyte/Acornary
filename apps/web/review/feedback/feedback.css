@@ -54,3 +54,9 @@
   min-height: auto;
   accent-color: var(--vn-accent);
 }
+
+.review-comments-resolution {
+  padding: var(--vn-space-8);
+  background: var(--vn-background);
+  border-radius: var(--vn-radius-control);
+}

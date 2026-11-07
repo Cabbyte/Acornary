@@ -1,4 +1,4 @@
-import { ChevronDown } from 'lucide-react';
+import { ArrowLeftRight, ChevronDown } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Popover } from '../components/ui/popover';
@@ -71,7 +71,26 @@ export function ModeSwitcher({
   return (
     <div className={cn('vn-mode-switcher', className)} data-layout={layout}>
       {layout === 'inline' ? (
-        choices
+        <>
+          <Button
+            variant="quiet"
+            className="vn-mode-switcher__direct"
+            disabled={unavailable}
+            aria-label={`当前${modeLabels[value]}模式，切换到${modeLabels[value === 'daily' ? 'management' : 'daily']}模式`}
+            aria-describedby={blockedReason ? reasonId : undefined}
+            onClick={() => {
+              if (!unavailable) onValueChange(value === 'daily' ? 'management' : 'daily');
+            }}
+          >
+            <ArrowLeftRight size={18} aria-hidden="true" />
+            <span>{modeLabels[value]}模式</span>
+          </Button>
+          {blockedReason && (
+            <p id={reasonId} className="vn-navigation-reason">
+              {blockedReason}
+            </p>
+          )}
+        </>
       ) : (
         <>
           <Popover

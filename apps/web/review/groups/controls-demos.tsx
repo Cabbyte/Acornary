@@ -311,7 +311,9 @@ export function BadgeDemo({ scenario: state }: ReviewDemoProps) {
           切换演示事实状态
         </Button>
       </div>
-      <span className="vn-muted">标签通过文字表达状态；它本身没有点击行为。</span>
+      <span className="vn-muted">
+        宽容器显示图标与名称，窄容器保留图标；悬停或辅助技术可读取完整名称。
+      </span>
     </div>
   );
 }
@@ -363,15 +365,11 @@ export function RadioGroupDemo({ scenario: state }: ReviewDemoProps) {
         name="demo-accuracy"
         value={value}
         onValueChange={setValue}
-        orientation={state === 'horizontal' ? 'horizontal' : 'vertical'}
+        orientation="horizontal"
         disabled={state === 'disabled'}
         readOnly={state === 'readonly'}
         invalid={state === 'error' && value === null}
-        description={
-          state === 'error' && value === null
-            ? '请选择实际记录依据。'
-            : '方向键移动并选择；未知表示没有可用依据。'
-        }
+        description={state === 'error' && value === null ? '请选择实际记录依据。' : undefined}
         options={[
           { value: 'measured', label: '已测量', description: '来自实物计数或测量。' },
           {

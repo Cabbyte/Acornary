@@ -21,7 +21,7 @@ import {
 
 const meta = {
   id: 'rc1-facts',
-  title: 'RC3/事实与结构',
+  title: 'RC4/事实与结构',
   args: { scenario: 'normal' },
 } satisfies Meta<ReviewDemoProps>;
 export default meta;

@@ -1,3 +1,4 @@
+import { Check, ChevronDown, ChevronRight } from 'lucide-react';
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Button as BaseButton } from '@base-ui/react/button';
 import { cn } from '../utils';
@@ -188,12 +189,12 @@ export function TreeView({
                   toggle(node, !isExpanded);
                 }}
               >
-                <span aria-hidden="true">{isExpanded ? '⌄' : '›'}</span>
+                <span aria-hidden="true">
+                  {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                </span>
               </BaseButton>
             ) : (
-              <span className="vn-tree-leaf" aria-hidden="true">
-                ·
-              </span>
+              <span className="vn-tree-leaf" aria-hidden="true" />
             )}
             <span className="vn-tree-text">
               <span id={labelId}>{node.label}</span>
@@ -205,7 +206,7 @@ export function TreeView({
             </span>
             {selectedId === node.id && (
               <span className="vn-tree-selected" aria-hidden="true">
-                ✓
+                <Check size={16} />
               </span>
             )}
           </div>

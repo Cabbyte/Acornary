@@ -1,0 +1,128 @@
+{
+  "6ca3d1fc-f39a-4caa-95e5-66af1572187f": {
+    "component": "attribute-fields",
+    "status": "已修改，待复审",
+    "version": "RC4",
+    "date": "2026-11-07",
+    "summary": "简单字段最小列宽降至 200px，1024 容器下四个字段同排；复杂字段保留足够宽度。"
+  },
+  "22b53977-0786-4b15-a19e-662b3201e486": {
+    "component": "search-bar",
+    "status": "已修改，待复审",
+    "version": "RC4",
+    "date": "2026-11-07",
+    "summary": "隐藏原生重复清除入口；窄栏仅显示搜索图标，扫码移至搜索按钮之前。"
+  },
+  "e36f39aa-6d7a-4130-b891-8cef50a85ee5": {
+    "component": "radio-group",
+    "status": "已修改，待复审",
+    "version": "RC4",
+    "date": "2026-11-07",
+    "summary": "常规单选改为横向排列并自然换行，移除可见副标题；冲突值和扫码身份等必要事实仍展示。"
+  },
+  "799ad7a3-6d54-4ff7-a909-80e818ece217": {
+    "component": "quantity-value",
+    "status": "已修改，待复审",
+    "version": "RC4",
+    "date": "2026-11-07",
+    "summary": "事实展示页中的原生选择框改用正式 Select；日期事实页同步修正。"
+  },
+  "8ecc5cf0-5e45-4a64-95e1-71afaf24cf96": {
+    "component": "tree-view",
+    "status": "已修改，待复审",
+    "version": "RC4",
+    "date": "2026-11-07",
+    "summary": "增加贯穿每层的竖向缩进线，并统一展开与选中图标。"
+  },
+  "a603be02-e621-40f0-be16-4f223cb43ce8": {
+    "component": "form-field",
+    "status": "已修改，待复审",
+    "version": "RC4",
+    "date": "2026-11-07",
+    "summary": "必填文字统一改为强调色星号，保留必填语义。"
+  },
+  "4e595c6a-bb1f-4b2f-a70a-f3d22f46c739": {
+    "component": "page-header",
+    "status": "已修改，待复审",
+    "version": "RC4",
+    "date": "2026-11-07",
+    "summary": "返回改为等高图标入口，标题与操作按钮共享主行基准，说明放在下方。"
+  },
+  "516f3c31-b7a8-474b-af65-974286b86aa2": {
+    "component": "item-identity",
+    "status": "已修改，待复审",
+    "version": "RC4",
+    "date": "2026-11-07",
+    "summary": "移除编号下拉，编号旁直接提供复制图标；预览接入本机剪贴板并显示实际结果。"
+  },
+  "ee6a380c-2749-4a92-b1c2-42923d4250cd": {
+    "component": "badge",
+    "status": "已修改，待复审",
+    "version": "RC4",
+    "date": "2026-11-07",
+    "summary": "增加统一 14px 图标槽；窄容器显示图标，名称仍保留给辅助技术及悬停提示。"
+  },
+  "05b316f6-a2c8-476e-af9b-458c6bdb847d": {
+    "component": "product-summary",
+    "status": "已修改，待复审",
+    "version": "RC4",
+    "date": "2026-11-07",
+    "summary": "名称提升为 22px 主标题，数量合计和真实日期作为副层级；件数与位置降为辅助小字，其余资料收起；缩小卡片垂直间距。"
+  },
+  "b3b60e8b-0fcb-4f14-8894-256e6b513f83": {
+    "component": "table",
+    "status": "已修改，待复审",
+    "version": "RC4",
+    "date": "2026-11-07",
+    "summary": "缩窄选择列，采用正式 Checkbox；打开动作改为图标，示例规格改为空格分隔。"
+  },
+  "98210cb5-96ad-46c3-b0d0-c34c67862c28": {
+    "component": "approval-summary",
+    "status": "已修改，待复审",
+    "version": "RC4",
+    "date": "2026-11-07",
+    "summary": "确认位于左侧，重新核对和返回修改位于右侧，审批与禁用条件保持。"
+  },
+  "720c511c-cce3-4e85-a7e0-14b5c21d231f": {
+    "component": "select",
+    "status": "已修改，待复审",
+    "version": "RC4",
+    "date": "2026-11-07",
+    "summary": "选项仅显示名称与选中标记，禁用原因保留提示。"
+  },
+  "77a7f788-3f48-487b-b87f-654d76a321b5": {
+    "component": "batch-selection-bar",
+    "status": "已修改，待复审",
+    "version": "RC4",
+    "date": "2026-11-07",
+    "summary": "处理已选位于左侧，核对与清空组成右侧操作组，保留选择范围和限制。"
+  },
+  "39b4b62f-55e9-4a7c-9a38-c47172c4e9b4": {
+    "component": "desktop-navigation",
+    "status": "已修改，待复审",
+    "version": "RC4",
+    "date": "2026-11-07",
+    "summary": "设置下方改为显示当前模式的一键切换按钮；窄屏继续使用顶部模式面板。"
+  },
+  "588d7f1f-04c1-4a22-b6ac-d2120d899ecf": {
+    "component": "product-summary",
+    "status": "已修改，待复审",
+    "version": "RC4",
+    "date": "2026-11-07",
+    "summary": "名称提升为 22px 主标题，数量合计和真实日期作为副层级；件数与位置降为辅助小字，其余资料收起；缩小卡片垂直间距。"
+  },
+  "bf9780dd-e932-49ae-87e1-b2dd3ec4fea5": {
+    "component": "composition-shell",
+    "status": "已修改，待复审",
+    "version": "RC4",
+    "date": "2026-11-07",
+    "summary": "删除随模式改变物品名称字号的规则，统一同一组件的行高和内容宽度；管理表格密度由表格自身决定。"
+  },
+  "c9c4f3a1-2563-4888-9fe8-6ea938645f51": {
+    "component": "composition-form",
+    "status": "已修改，待复审",
+    "version": "RC4",
+    "date": "2026-11-07",
+    "summary": "名称和位置同排、数量/单位与日期同排；移除常驻家庭根位置等按钮，特殊位置放入选择器。"
+  }
+}

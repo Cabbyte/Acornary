@@ -138,20 +138,22 @@ export function BatchSelectionBar({
           <p className="vn-list-meta">尚未选择具体物品</p>
         )}
       </div>
-      <div className="vn-row">
-        <Button
-          variant="secondary"
-          disabled={ids.length === 0 || busy}
-          onClick={() => onReview(selection)}
-        >
-          核对选择
-        </Button>
-        <Button variant="quiet" disabled={ids.length === 0 || readOnly || busy} onClick={onClear}>
-          清空
-        </Button>
+      <div className="vn-split-actions">
         <Button disabled={blocked} busy={busy} onClick={() => onStartAction(selection)}>
           {actionLabel}
         </Button>
+        <div className="vn-split-actions-secondary">
+          <Button
+            variant="secondary"
+            disabled={ids.length === 0 || busy}
+            onClick={() => onReview(selection)}
+          >
+            核对选择
+          </Button>
+          <Button variant="quiet" disabled={ids.length === 0 || readOnly || busy} onClick={onClear}>
+            清空
+          </Button>
+        </div>
       </div>
     </section>
   );

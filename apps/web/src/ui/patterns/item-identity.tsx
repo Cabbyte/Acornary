@@ -1,7 +1,8 @@
 import { Button as BaseButton } from '@base-ui/react/button';
 import type { ReactNode } from 'react';
 import type { FactPresentation, ItemView } from './types';
-import { FactDetails } from './fact-details';
+import { Copy } from 'lucide-react';
+import { IconButton } from '../components/ui/icon-button';
 import { cn } from '../components/utils';
 import './facts.css';
 
@@ -46,24 +47,13 @@ export function ItemIdentity({
     );
   const name = redacted ? '名称不可见' : item.name || '未命名物品';
   const subtitle = !redacted && item.subtitle && (
-    <span className="vn-fact-meta">{item.subtitle}</span>
+    <span className="vn-fact-meta">{item.subtitle.replace(/\s+·\s+/g, ' ')}</span>
   );
   const shortId = <span className="vn-fact-meta">编号 …{item.id.slice(-8)}</span>;
   const identity = (
     <div className="vn-item-identity-id">
       <span className="vn-fact-meta">物品 ID</span>
       <code>{item.id}</code>
-      {onCopyId && (
-        <BaseButton
-          type="button"
-          className="vn-fact-button"
-          disabled={disabled}
-          onClick={() => onCopyId(item.id)}
-          aria-label={`复制${name}的完整物品 ID`}
-        >
-          复制 ID
-        </BaseButton>
-      )}
     </div>
   );
   return (
@@ -91,26 +81,35 @@ export function ItemIdentity({
       </div>
       {(showId || (!redacted && item.subtitle)) && (
         <div className="vn-item-identity-meta">
-          {presentation === 'summary' && showId === true ? (
-            <FactDetails
-              label={
-                <span className="vn-item-identity-summary">
-                  {subtitle}
-                  {shortId}
-                </span>
-              }
-            >
-              {identity}
-            </FactDetails>
-          ) : (
+          <div className="vn-item-identity-summary">
+            {subtitle}
+            {showId && presentation === 'summary' && (
+              <span className="vn-item-identity-copy" title={item.id}>
+                {shortId}
+                {onCopyId && (
+                  <IconButton
+                    label={`复制${name}的完整物品 ID`}
+                    disabled={disabled}
+                    onClick={() => onCopyId(item.id)}
+                  >
+                    <Copy size={14} />
+                  </IconButton>
+                )}
+              </span>
+            )}
+          </div>
+          {showId && presentation === 'detail' && (
             <>
-              {(subtitle || (showId && presentation === 'summary')) && (
-                <div className="vn-item-identity-summary">
-                  {subtitle}
-                  {showId && presentation === 'summary' && shortId}
-                </div>
+              {identity}
+              {onCopyId && (
+                <IconButton
+                  label={`复制${name}的完整物品 ID`}
+                  disabled={disabled}
+                  onClick={() => onCopyId(item.id)}
+                >
+                  <Copy size={14} />
+                </IconButton>
               )}
-              {showId && presentation === 'detail' && identity}
             </>
           )}
         </div>

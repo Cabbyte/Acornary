@@ -1,5 +1,4 @@
 import { Combobox } from '../components/ui/combobox';
-import { Button } from '../components/ui/button';
 import { LocationPath } from './location-path';
 import type { ItemView } from './types';
 import { cn } from '../components/utils';
@@ -68,12 +67,24 @@ export function LocationPicker({
     <div className={cn('vn-domain-field', className)}>
       <Combobox
         label="存放位置"
-        value={value.kind === 'item' ? value.itemId : null}
-        selectedLabel={value.kind === 'item' ? value.name : undefined}
+        value={value.kind === 'item' ? value.itemId : value.kind === 'root' ? '__root' : null}
+        selectedLabel={
+          value.kind === 'item' ? value.name : value.kind === 'root' ? '不放入容器' : undefined
+        }
         query={query}
         onQueryChange={onQueryChange}
         clearable={false}
         onValueChange={(id) => {
+          if (id === '__root' && rootPolicy.allowed) {
+            onValueChange({ kind: 'root' });
+            onQueryChange('');
+            return;
+          }
+          if (id === '__unknown' && unknownPolicy.allowed) {
+            onValueChange({ kind: 'unknown' });
+            onQueryChange('');
+            return;
+          }
           const candidate = candidates.find((entry) => entry.itemId === id);
           if (candidate && !unavailableReason(candidate))
             onValueChange({
@@ -83,12 +94,30 @@ export function LocationPicker({
               path: candidate.path,
             });
         }}
-        options={candidates.map((candidate) => ({
-          value: candidate.itemId,
-          label: candidate.name,
-          description: `${candidate.path.join(' / ') || '完整路径未提供'}${candidate.source ? ` · 来源：${candidate.source}` : ''}${unavailableReason(candidate) ? ` · 不可选：${unavailableReason(candidate)}` : ' · 可容纳物品'}`,
-          disabled: Boolean(unavailableReason(candidate)),
-        }))}
+        options={[
+          ...candidates.map((candidate) => ({
+            value: candidate.itemId,
+            label: candidate.name,
+            description: `${candidate.path.join(' / ') || '完整路径未提供'}${candidate.source ? ` · 来源：${candidate.source}` : ''}${unavailableReason(candidate) ? ` · 不可选：${unavailableReason(candidate)}` : ' · 可容纳物品'}`,
+            disabled: Boolean(unavailableReason(candidate)),
+          })),
+          {
+            value: '__root',
+            label: '不放入容器',
+            disabled: !rootPolicy.allowed,
+            description: rootPolicy.allowed
+              ? '明确放在家庭根位置'
+              : rootPolicy.reason || '当前操作不允许此位置',
+          },
+          {
+            value: '__unknown',
+            label: '位置未记录',
+            disabled: !unknownPolicy.allowed,
+            description: unknownPolicy.allowed
+              ? undefined
+              : unknownPolicy.reason || '当前操作要求明确位置',
+          },
+        ]}
         loading={loading}
         error={error}
         disabled={disabled}
@@ -96,37 +125,19 @@ export function LocationPicker({
         placeholder="选择位置或容器"
         emptyMessage="当前候选页没有可匹配的位置物品"
       />
-      <div className="vn-fields-selection" aria-live="polite">
-        <LocationPath
-          location={
-            value.kind === 'item'
-              ? { id: value.itemId, label: value.name, path: [...value.path] }
-              : null
-          }
-          state={value.kind === 'item' ? 'known' : value.kind}
-        />
-      </div>
+      {value.kind !== 'unknown' && (
+        <div className="vn-fields-selection" aria-live="polite">
+          <LocationPath
+            location={
+              value.kind === 'item'
+                ? { id: value.itemId, label: value.name, path: [...value.path] }
+                : null
+            }
+            state={value.kind === 'item' ? 'known' : value.kind}
+          />
+        </div>
+      )}
       <div className="vn-fields-actions">
-        <Button
-          variant="secondary"
-          disabled={disabled || readOnly || loading || !rootPolicy.allowed}
-          onClick={() => {
-            onValueChange({ kind: 'root' });
-            onQueryChange('');
-          }}
-        >
-          家庭根位置
-        </Button>
-        <Button
-          variant="quiet"
-          disabled={disabled || readOnly || loading || !unknownPolicy.allowed}
-          onClick={() => {
-            onValueChange({ kind: 'unknown' });
-            onQueryChange('');
-          }}
-        >
-          设为未知
-        </Button>
         <details className="vn-field-details">
           <summary>位置说明</summary>
           <div className="vn-field-details__content">

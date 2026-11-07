@@ -3,6 +3,9 @@ import { Button } from '../../src/ui/components/ui/button';
 import { Textarea } from '../../src/ui/components/ui/textarea';
 import type { FeedbackContext, FeedbackRecord } from './types';
 import './feedback.css';
+import resolutionData from './resolutions.json';
+const resolutions: Record<string, { status: string; version: string; summary: string }> =
+  resolutionData;
 
 const drafts = new Map<string, string>();
 type Pending = FeedbackContext & { id: string; text: string };
@@ -163,6 +166,14 @@ function FeedbackEditor({ context, draftKey }: { context: FeedbackContext; draft
                   {record.version}
                 </span>
                 <p>{record.text}</p>
+                {resolutions[record.id] && (
+                  <div className="review-comments-resolution">
+                    <strong>
+                      {resolutions[record.id].version} · {resolutions[record.id].status}
+                    </strong>
+                    <p>{resolutions[record.id].summary}</p>
+                  </div>
+                )}
                 <time dateTime={record.createdAt}>
                   {new Date(record.createdAt).toLocaleString('zh-CN')}
                 </time>

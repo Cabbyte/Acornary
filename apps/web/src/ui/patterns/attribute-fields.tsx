@@ -227,7 +227,11 @@ export function AttributeFields({
       hint: field.help,
     };
     return (
-      <div className="vn-content-field" key={field.path}>
+      <div
+        className="vn-content-field"
+        data-wide={field.widget === 'textarea' || field.type === 'measurement' || undefined}
+        key={field.path}
+      >
         {field.type === 'measurement' && quantity ? (
           <QuantityInput
             value={quantity.value}

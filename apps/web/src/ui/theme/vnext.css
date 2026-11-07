@@ -89,3 +89,19 @@
 [data-acornary-ui='vnext'] {
   scrollbar-color: var(--vn-control-border) var(--vn-background);
 }
+
+[data-acornary-ui='vnext'] .vn-split-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--vn-space-12);
+}
+[data-acornary-ui='vnext'] .vn-split-actions-secondary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--vn-space-8);
+  margin-inline-start: auto;
+}

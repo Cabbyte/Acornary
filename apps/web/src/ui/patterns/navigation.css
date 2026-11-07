@@ -247,11 +247,8 @@
 }
 [data-acornary-ui='vnext'] .vn-app-shell__content {
   min-width: 0;
-  max-width: var(--vn-layout-daily-max-width);
-  margin-inline: auto;
-}
-[data-acornary-ui='vnext'][data-acornary-mode='management'] .vn-app-shell__content {
   max-width: var(--vn-layout-management-max-width);
+  margin-inline: auto;
 }
 [data-acornary-ui='vnext'] .vn-app-shell__recovery {
   margin-block-end: var(--vn-space-16);
@@ -378,4 +375,12 @@
   [data-acornary-ui='vnext'] .vn-navigation-link {
     transition: none;
   }
+}
+
+[data-acornary-ui='vnext'] .vn-mode-switcher__direct {
+  width: 100%;
+  justify-content: flex-start;
+  gap: var(--vn-space-12);
+  padding-inline: var(--vn-space-12);
+  min-height: var(--vn-target-touch);
 }
