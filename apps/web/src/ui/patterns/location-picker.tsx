@@ -59,10 +59,6 @@ export function LocationPicker({
         : candidate.eligibility.kind !== 'validContainer'
           ? candidate.eligibility.reason
           : undefined;
-  const selectedCandidate =
-    value.kind === 'item'
-      ? candidates.find((candidate) => candidate.itemId === value.itemId)
-      : undefined;
   return (
     <div className={cn('vn-domain-field', className)}>
       <Combobox
@@ -137,18 +133,6 @@ export function LocationPicker({
           />
         </div>
       )}
-      <div className="vn-fields-actions">
-        <details className="vn-field-details">
-          <summary>位置说明</summary>
-          <div className="vn-field-details__content">
-            <p className="vn-muted">仅可选择可容纳物品的位置；同名位置请核对完整存放路径。</p>
-            <p className="vn-muted">家庭根位置表示未放入其他容器；未知表示尚未确认存放位置。</p>
-            {selectedCandidate?.source && (
-              <p className="vn-muted">来源：{selectedCandidate.source}</p>
-            )}
-          </div>
-        </details>
-      </div>
       {!rootPolicy.allowed && (
         <span className="vn-muted">
           根位置不可选：{rootPolicy.reason || '当前操作不允许根位置。'}

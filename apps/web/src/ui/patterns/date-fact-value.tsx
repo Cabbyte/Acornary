@@ -1,3 +1,7 @@
+import { useState } from 'react';
+import { CalendarDays } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { Popover } from '../components/ui/popover';
 import type { DateFactPresentation, FactPresentation } from './types';
 import { FactDetails } from './fact-details';
 import { cn } from '../components/utils';
@@ -9,6 +13,8 @@ export interface DateFactValueProps {
   loading?: boolean;
   presentation?: FactPresentation;
   compact?: boolean;
+  /** The date opens full metadata without repeating labels in an item row. */
+  dateOnly?: boolean;
   className?: string;
 }
 
@@ -52,7 +58,9 @@ export function DateFactValue({
   presentation = 'summary',
   className,
   compact = false,
+  dateOnly = false,
 }: DateFactValueProps) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const kindLabel = kindLabels[fact.kind];
   const dateLabel = fact.dateKind ? dateKindLabels[fact.dateKind] : null;
   const tone =
@@ -82,6 +90,63 @@ export function DateFactValue({
       )}
     </>
   );
+  const dateContent = (
+    <>
+      {fact.dueOn === null || fact.dueOn === '' ? (
+        <span className="vn-fact-meta">日期未记录</span>
+      ) : isCalendarDate(fact.dueOn) ? (
+        <time dateTime={fact.dueOn}>
+          {dateOnly && fact.dateKind === 'ESTIMATED' ? '约 ' : ''}
+          {fact.dueOn}
+        </time>
+      ) : (
+        <span className="vn-fact-error">日期格式有误</span>
+      )}
+      {(!compact ||
+        fact.state === 'DUE' ||
+        fact.state === 'OVERDUE' ||
+        fact.state === 'COMPLETED') && (
+        <span className="vn-fact-badge" data-tone={tone}>
+          {stateLabels[fact.state]}
+        </span>
+      )}
+    </>
+  );
+  if (dateOnly && presentation === 'summary' && !loading && !redacted) {
+    return (
+      <div className={cn('vn-date-fact', className)} data-presentation={presentation}>
+        <Popover
+          open={detailsOpen}
+          onOpenChange={setDetailsOpen}
+          title={dateLabel || kindLabel}
+          trigger={
+            <Button
+              variant="quiet"
+              className="vn-date-trigger"
+              title={`${dateLabel || kindLabel} · 查看日期资料`}
+              aria-label={`${dateLabel || kindLabel} ${fact.dueOn || '未记录'}，查看日期资料`}
+            >
+              <CalendarDays size={16} aria-hidden="true" />
+              {dateContent}
+            </Button>
+          }
+        >
+          <div className="vn-stack">
+            {fact.label && fact.label !== dateLabel && fact.label !== kindLabel && (
+              <span>{fact.label}</span>
+            )}
+            <span className="vn-fact-meta">日期状态：{stateLabels[fact.state]}</span>
+            {metadata}
+            {fact.state === 'COMPLETED' &&
+              fact.completedOn &&
+              !isCalendarDate(fact.completedOn) && (
+                <span className="vn-fact-error">完成日期格式有误</span>
+              )}
+          </div>
+        </Popover>
+      </div>
+    );
+  }
   return (
     <div className={cn('vn-date-fact', className)} data-presentation={presentation}>
       <div className="vn-date-fact-main vn-fact-primary">
@@ -92,20 +157,7 @@ export function DateFactValue({
         ) : redacted ? (
           <span className="vn-fact-meta">日期不可见</span>
         ) : (
-          <>
-            {fact.dueOn === null || fact.dueOn === '' ? (
-              <span className="vn-fact-meta">日期未记录</span>
-            ) : isCalendarDate(fact.dueOn) ? (
-              <time dateTime={fact.dueOn}>{fact.dueOn}</time>
-            ) : (
-              <span className="vn-fact-error">日期格式有误</span>
-            )}
-            {(!compact || fact.state === 'DUE' || fact.state === 'OVERDUE') && (
-              <span className="vn-fact-badge" data-tone={tone}>
-                {stateLabels[fact.state]}
-              </span>
-            )}
-          </>
+          <>{dateContent}</>
         )}
       </div>
       {compact ? (

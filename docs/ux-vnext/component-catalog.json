@@ -1,5 +1,5 @@
 {
-  "version": "Component Library RC4",
+  "version": "Component Library RC5",
   "components": 70,
   "compositions": 5,
   "entries": [
@@ -28,9 +28,9 @@
       ],
       "storyId": "rc1-controls--button",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button"
@@ -80,9 +80,9 @@
       ],
       "storyId": "rc1-controls--icon-button",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button"
@@ -144,9 +144,9 @@
       ],
       "storyId": "rc1-controls--input",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "input"
@@ -208,9 +208,9 @@
       ],
       "storyId": "rc1-controls--textarea",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [],
         "feedback": [
@@ -262,9 +262,9 @@
       ],
       "storyId": "rc1-controls--form-field",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [],
         "feedback": [
@@ -314,9 +314,9 @@
       ],
       "storyId": "rc1-controls--badge",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [],
         "feedback": [
@@ -382,9 +382,9 @@
       ],
       "storyId": "rc1-controls--checkbox",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "checkbox"
@@ -442,9 +442,9 @@
       ],
       "storyId": "rc1-controls--radio-group",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "radio-group"
@@ -504,9 +504,9 @@
       ],
       "storyId": "rc1-controls--switch",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "switch"
@@ -576,9 +576,9 @@
       ],
       "storyId": "rc1-controls--select",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "select"
@@ -655,9 +655,9 @@
       "storyId": "rc1-controls--combobox",
       "limitations": "候选检索由调用者提供；此处只演示本地候选页。",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "combobox",
@@ -720,9 +720,9 @@
       ],
       "storyId": "rc1-controls--tabs",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "tabs"
@@ -792,9 +792,9 @@
       ],
       "storyId": "rc1-overlays--dialog",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "dialog"
@@ -864,9 +864,9 @@
       ],
       "storyId": "rc1-overlays--sheet",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "dialog"
@@ -924,9 +924,9 @@
       ],
       "storyId": "rc1-overlays--popover",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "popover"
@@ -976,9 +976,9 @@
       ],
       "storyId": "rc1-overlays--tooltip",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "tooltip"
@@ -1036,9 +1036,9 @@
       ],
       "storyId": "rc1-overlays--dropdown-menu",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [],
         "feedback": [
@@ -1106,9 +1106,9 @@
       ],
       "storyId": "rc1-overlays--alert-dialog",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "alert-dialog"
@@ -1171,9 +1171,9 @@
       "storyId": "rc1-fields--calendar",
       "limitations": "日期展示桥接 DayPicker；业务日期不经过 UTC 转换。",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [],
         "feedback": [
@@ -1237,9 +1237,9 @@
       ],
       "storyId": "rc1-fields--date-input",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "calendar",
@@ -1301,9 +1301,9 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [],
         "feedback": [
@@ -1398,9 +1398,9 @@
       "storyId": "rc1-lists--data-table",
       "limitations": "仅已加载页；演示控制器独立持有 12 条 fixture，不证明服务端分页集成。",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -1464,9 +1464,9 @@
       ],
       "storyId": "rc1-lists--pagination-controls",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button"
@@ -1528,9 +1528,9 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button"
@@ -1553,6 +1553,13 @@
             "source": "页面内修改意见",
             "summary": "增加贯穿每层的竖向缩进线，并统一展开与选中图标。",
             "reference": "docs/ux-vnext/rc4-feedback-report.md"
+          },
+          {
+            "date": "2026-11-07",
+            "source": "页面提交意见",
+            "summary": "缩小树的上下间距和缩进：桌面单行 28px、每层约 17px；手机保留 44px 展开目标。",
+            "reference": "docs/ux-vnext/rc5-feedback-report.md",
+            "feedbackId": "09006854-494a-4474-9895-a867630b817a"
           }
         ],
         "approvalRecords": []
@@ -1582,9 +1589,9 @@
       ],
       "storyId": "rc1-overlays--skeleton",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [],
         "feedback": [
@@ -1636,9 +1643,9 @@
       ],
       "storyId": "rc1-overlays--toast",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "toast"
@@ -1700,9 +1707,9 @@
       ],
       "storyId": "rc1-overlays--inline-notice",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [],
         "feedback": [
@@ -1746,9 +1753,9 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "separator"
@@ -1814,9 +1821,9 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button"
@@ -1892,9 +1899,9 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [],
         "feedback": [
@@ -1996,9 +2003,9 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [],
         "feedback": [
@@ -2062,9 +2069,9 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button"
@@ -2126,9 +2133,9 @@
       ],
       "storyId": "rc1-lists--item-status",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -2196,9 +2203,9 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button"
@@ -2264,9 +2271,9 @@
       ],
       "storyId": "rc1-fields--search-bar",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -2341,9 +2348,9 @@
       ],
       "storyId": "rc1-fields--filter-bar",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button"
@@ -2421,9 +2428,9 @@
       ],
       "storyId": "rc1-fields--quantity-input",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -2510,9 +2517,9 @@
       "storyId": "rc1-fields--date-fact-field",
       "limitations": "编辑日期不派生到期状态；时区和状态由调用方提供。",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "date-fact-value",
@@ -2591,9 +2598,9 @@
       "storyId": "rc1-fields--catalog-picker",
       "limitations": "仅展示外部候选页；创建只发出意图，不合并同名节点。",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -2670,9 +2677,9 @@
       "storyId": "rc1-fields--location-picker",
       "limitations": "容器有效性必须由调用方确认；不凭名称判断或读取全部物品。",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -2732,9 +2739,9 @@
       ],
       "storyId": "rc1-lists--page-header",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button"
@@ -2818,9 +2825,9 @@
       ],
       "storyId": "rc1-lists--product-summary",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -2914,9 +2921,9 @@
       ],
       "storyId": "rc1-lists--item-row",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -3007,9 +3014,9 @@
       ],
       "storyId": "rc1-lists--item-card",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "item-row"
@@ -3026,6 +3033,13 @@
             "source": "用户批准排版与对齐修正",
             "summary": "按八类问题统一共享规则，再复查五个组合；修正候选仍待用户审阅，回归继续暂停。",
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
+          },
+          {
+            "date": "2026-11-07",
+            "source": "页面提交意见",
+            "summary": "移除卡片中重复的日期名称、依据与来源及自定义日期标签；默认只显示日期，点击日期查看完整类型和来源。",
+            "reference": "docs/ux-vnext/rc5-feedback-report.md",
+            "feedbackId": "918f2c75-2204-4a9e-b694-7540a6c9a3a5"
           }
         ],
         "approvalRecords": []
@@ -3079,9 +3093,9 @@
       ],
       "storyId": "rc1-lists--attention-summary",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -3159,9 +3173,9 @@
       ],
       "storyId": "rc1-lists--batch-selection-bar",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -3230,9 +3244,9 @@
       ],
       "storyId": "rc1-overlays--empty-state",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [],
         "feedback": [
@@ -3292,9 +3306,9 @@
       ],
       "storyId": "rc1-overlays--loading-state",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "inline-notice",
@@ -3361,9 +3375,9 @@
       ],
       "storyId": "rc1-operations--approval-summary",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -3433,9 +3447,9 @@
       ],
       "storyId": "rc1-operations--conflict-resolution",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -3503,9 +3517,9 @@
       ],
       "storyId": "rc1-operations--operation-receipt",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -3566,9 +3580,9 @@
       ],
       "storyId": "rc1-operations--pending-operation-banner",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -3631,9 +3645,9 @@
       ],
       "storyId": "rc1-operations--offline-banner",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -3688,9 +3702,9 @@
       ],
       "storyId": "rc1-operations--draft-status",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -3790,9 +3804,9 @@
       ],
       "storyId": "rc1-operations--operation-sheet",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -3849,9 +3863,9 @@
       ],
       "storyId": "rc1-navigation--mode-switcher",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -3899,9 +3913,9 @@
       ],
       "storyId": "rc1-navigation--appearance-picker",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "radio-group"
@@ -3967,9 +3981,9 @@
       ],
       "storyId": "rc1-navigation--desktop-navigation",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -4038,9 +4052,9 @@
       ],
       "storyId": "rc1-navigation--mobile-navigation",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -4113,9 +4127,9 @@
       "storyId": "rc1-navigation--household-switcher",
       "limitations": "仅展示调用方提供的家庭，不连接账号、认证或远程范围控制器。",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "select"
@@ -4182,9 +4196,9 @@
       "storyId": "rc1-navigation--app-shell",
       "limitations": "只组装展示区域；路由、主题提供器、权限、家庭切换和任务恢复由外部接线。未做真实客户端验收。",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "appearance-picker",
@@ -4297,9 +4311,9 @@
       "storyId": "rc1-content--attribute-fields",
       "limitations": "值和数量为展示草稿；命令校验、完整模板升级由外部控制器负责。",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -4395,9 +4409,9 @@
       "storyId": "rc1-content--note-editor",
       "limitations": "保存仅为意图；Markdown 预览不加载图片或打开链接。",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -4479,9 +4493,9 @@
       "storyId": "rc1-content--attachment-list",
       "limitations": "打开与移除由调用方处理；样例没有真实附件资源。",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -4561,9 +4575,9 @@
       "storyId": "rc1-content--attachment-field",
       "limitations": "只传出所选 File 对象，不读取文件、生成资源地址或上传。",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -4643,9 +4657,9 @@
       "storyId": "rc1-content--history-entry",
       "limitations": "姓名、操作名称及更正权限由调用方提供，不执行撤销。",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -4721,9 +4735,9 @@
       "storyId": "rc1-content--history-changes",
       "limitations": "脱敏说明由上层显式传入；不推测缺失的前后值。",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -4797,9 +4811,9 @@
       ],
       "storyId": "rc1-operations--capability-notice",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -4882,9 +4896,9 @@
       ],
       "storyId": "rc1-operations--scan-input",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -4968,9 +4982,9 @@
       ],
       "storyId": "rc1-operations--label-print-panel",
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "badge",
@@ -5028,9 +5042,9 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -5057,6 +5071,13 @@
             "source": "用户批准排版与对齐修正",
             "summary": "按八类问题统一共享规则，再复查五个组合；修正候选仍待用户审阅，回归继续暂停。",
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
+          },
+          {
+            "date": "2026-11-07",
+            "source": "页面提交意见",
+            "summary": "物品合并为连续列表，以分隔线区分每件物品，去掉逐行圆角与卡片间隔；分页保留在列表外。",
+            "reference": "docs/ux-vnext/rc5-feedback-report.md",
+            "feedbackId": "4d25070a-266f-4af9-a0c1-93fe28288382"
           }
         ],
         "approvalRecords": []
@@ -5095,9 +5116,9 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "button",
@@ -5129,6 +5150,13 @@
             "source": "页面内修改意见",
             "summary": "名称和位置同排、数量/单位与日期同排；移除常驻家庭根位置等按钮，特殊位置放入选择器。",
             "reference": "docs/ux-vnext/rc4-feedback-report.md"
+          },
+          {
+            "date": "2026-11-07",
+            "source": "页面提交意见",
+            "summary": "移除位置说明、数量说明和此快捷表单的依据与详情入口；需要填写的估计/必填依据和错误仍按条件显示。",
+            "reference": "docs/ux-vnext/rc5-feedback-report.md",
+            "feedbackId": "6d63e129-c4bc-46b2-b449-930e4b5e5f36"
           }
         ],
         "approvalRecords": []
@@ -5191,9 +5219,9 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "approval-summary",
@@ -5254,9 +5282,9 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "batch-selection-bar",
@@ -5314,9 +5342,9 @@
         }
       ],
       "status": "待审阅",
-      "version": "RC4",
+      "version": "RC5",
       "review": {
-        "version": "RC4",
+        "version": "RC5",
         "status": "待审阅",
         "dependencies": [
           "app-shell",

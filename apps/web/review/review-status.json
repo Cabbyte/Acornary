@@ -1,5 +1,5 @@
 {
-  "version": "RC4",
+  "version": "RC5",
   "paletteDecision": {
     "status": "方案已确认",
     "date": "2026-11-06",
@@ -7,7 +7,7 @@
   },
   "entries": {
     "button": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button"],
       "feedback": [
@@ -27,7 +27,7 @@
       "approvalRecords": []
     },
     "icon-button": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button"],
       "feedback": [
@@ -47,7 +47,7 @@
       "approvalRecords": []
     },
     "input": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["input"],
       "feedback": [
@@ -67,7 +67,7 @@
       "approvalRecords": []
     },
     "textarea": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [],
       "feedback": [
@@ -87,7 +87,7 @@
       "approvalRecords": []
     },
     "form-field": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [],
       "feedback": [
@@ -113,7 +113,7 @@
       "approvalRecords": []
     },
     "badge": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [],
       "feedback": [
@@ -139,7 +139,7 @@
       "approvalRecords": []
     },
     "checkbox": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["checkbox"],
       "feedback": [
@@ -159,7 +159,7 @@
       "approvalRecords": []
     },
     "radio-group": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["radio-group"],
       "feedback": [
@@ -185,7 +185,7 @@
       "approvalRecords": []
     },
     "switch": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["switch"],
       "feedback": [
@@ -205,7 +205,7 @@
       "approvalRecords": []
     },
     "select": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["select"],
       "feedback": [
@@ -231,7 +231,7 @@
       "approvalRecords": []
     },
     "combobox": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["combobox", "select"],
       "feedback": [
@@ -251,7 +251,7 @@
       "approvalRecords": []
     },
     "tabs": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["tabs"],
       "feedback": [
@@ -271,7 +271,7 @@
       "approvalRecords": []
     },
     "dialog": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["dialog"],
       "feedback": [
@@ -291,7 +291,7 @@
       "approvalRecords": []
     },
     "sheet": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["dialog"],
       "feedback": [
@@ -311,7 +311,7 @@
       "approvalRecords": []
     },
     "popover": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["popover"],
       "feedback": [
@@ -331,7 +331,7 @@
       "approvalRecords": []
     },
     "tooltip": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["tooltip"],
       "feedback": [
@@ -351,7 +351,7 @@
       "approvalRecords": []
     },
     "dropdown-menu": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [],
       "feedback": [
@@ -371,7 +371,7 @@
       "approvalRecords": []
     },
     "alert-dialog": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["alert-dialog"],
       "feedback": [
@@ -391,7 +391,7 @@
       "approvalRecords": []
     },
     "calendar": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [],
       "feedback": [
@@ -411,7 +411,7 @@
       "approvalRecords": []
     },
     "date-input": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["calendar", "form-field", "icon-button", "input", "popover"],
       "feedback": [
@@ -431,7 +431,7 @@
       "approvalRecords": []
     },
     "table": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [],
       "feedback": [
@@ -457,7 +457,7 @@
       "approvalRecords": []
     },
     "data-table": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [
         "button",
@@ -485,7 +485,7 @@
       "approvalRecords": []
     },
     "pagination-controls": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button"],
       "feedback": [
@@ -505,7 +505,7 @@
       "approvalRecords": []
     },
     "tree-view": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button"],
       "feedback": [
@@ -526,12 +526,19 @@
           "source": "页面内修改意见",
           "summary": "增加贯穿每层的竖向缩进线，并统一展开与选中图标。",
           "reference": "docs/ux-vnext/rc4-feedback-report.md"
+        },
+        {
+          "date": "2026-11-07",
+          "source": "页面提交意见",
+          "summary": "缩小树的上下间距和缩进：桌面单行 28px、每层约 17px；手机保留 44px 展开目标。",
+          "reference": "docs/ux-vnext/rc5-feedback-report.md",
+          "feedbackId": "09006854-494a-4474-9895-a867630b817a"
         }
       ],
       "approvalRecords": []
     },
     "skeleton": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [],
       "feedback": [
@@ -551,7 +558,7 @@
       "approvalRecords": []
     },
     "toast": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["toast"],
       "feedback": [
@@ -571,7 +578,7 @@
       "approvalRecords": []
     },
     "inline-notice": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [],
       "feedback": [
@@ -591,7 +598,7 @@
       "approvalRecords": []
     },
     "separator": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["separator"],
       "feedback": [
@@ -611,7 +618,7 @@
       "approvalRecords": []
     },
     "item-identity": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button"],
       "feedback": [
@@ -637,7 +644,7 @@
       "approvalRecords": []
     },
     "quantity-value": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [],
       "feedback": [
@@ -663,7 +670,7 @@
       "approvalRecords": []
     },
     "date-fact-value": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [],
       "feedback": [
@@ -683,7 +690,7 @@
       "approvalRecords": []
     },
     "location-path": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button"],
       "feedback": [
@@ -703,7 +710,7 @@
       "approvalRecords": []
     },
     "item-status": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["badge", "button", "loading-state"],
       "feedback": [
@@ -723,7 +730,7 @@
       "approvalRecords": []
     },
     "fact-source": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button"],
       "feedback": [
@@ -743,7 +750,7 @@
       "approvalRecords": []
     },
     "search-bar": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button", "form-field", "icon-button", "input"],
       "feedback": [
@@ -769,7 +776,7 @@
       "approvalRecords": []
     },
     "filter-bar": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button"],
       "feedback": [
@@ -789,7 +796,7 @@
       "approvalRecords": []
     },
     "quantity-input": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button", "form-field", "input", "quantity-value", "select"],
       "feedback": [
@@ -809,7 +816,7 @@
       "approvalRecords": []
     },
     "date-fact-field": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["date-fact-value", "date-input", "form-field", "select", "textarea"],
       "feedback": [
@@ -829,7 +836,7 @@
       "approvalRecords": []
     },
     "catalog-picker": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["badge", "button", "combobox"],
       "feedback": [
@@ -849,7 +856,7 @@
       "approvalRecords": []
     },
     "location-picker": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button", "combobox", "location-path"],
       "feedback": [
@@ -869,7 +876,7 @@
       "approvalRecords": []
     },
     "page-header": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button"],
       "feedback": [
@@ -895,7 +902,7 @@
       "approvalRecords": []
     },
     "product-summary": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [
         "badge",
@@ -929,7 +936,7 @@
       "approvalRecords": []
     },
     "item-row": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [
         "button",
@@ -960,7 +967,7 @@
       "approvalRecords": []
     },
     "item-card": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["item-row"],
       "feedback": [
@@ -975,12 +982,19 @@
           "source": "用户批准排版与对齐修正",
           "summary": "按八类问题统一共享规则，再复查五个组合；修正候选仍待用户审阅，回归继续暂停。",
           "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
+        },
+        {
+          "date": "2026-11-07",
+          "source": "页面提交意见",
+          "summary": "移除卡片中重复的日期名称、依据与来源及自定义日期标签；默认只显示日期，点击日期查看完整类型和来源。",
+          "reference": "docs/ux-vnext/rc5-feedback-report.md",
+          "feedbackId": "918f2c75-2204-4a9e-b694-7540a6c9a3a5"
         }
       ],
       "approvalRecords": []
     },
     "attention-summary": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["badge", "button", "empty-state", "inline-notice", "loading-state"],
       "feedback": [
@@ -1000,7 +1014,7 @@
       "approvalRecords": []
     },
     "batch-selection-bar": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button", "inline-notice"],
       "feedback": [
@@ -1026,7 +1040,7 @@
       "approvalRecords": []
     },
     "empty-state": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [],
       "feedback": [
@@ -1046,7 +1060,7 @@
       "approvalRecords": []
     },
     "loading-state": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["inline-notice", "skeleton"],
       "feedback": [
@@ -1066,7 +1080,7 @@
       "approvalRecords": []
     },
     "approval-summary": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["badge", "button", "inline-notice"],
       "feedback": [
@@ -1092,7 +1106,7 @@
       "approvalRecords": []
     },
     "conflict-resolution": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button", "inline-notice", "radio-group"],
       "feedback": [
@@ -1112,7 +1126,7 @@
       "approvalRecords": []
     },
     "operation-receipt": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["badge", "button", "inline-notice", "loading-state"],
       "feedback": [
@@ -1132,7 +1146,7 @@
       "approvalRecords": []
     },
     "pending-operation-banner": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button", "inline-notice"],
       "feedback": [
@@ -1152,7 +1166,7 @@
       "approvalRecords": []
     },
     "offline-banner": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button", "inline-notice"],
       "feedback": [
@@ -1172,7 +1186,7 @@
       "approvalRecords": []
     },
     "draft-status": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["badge", "button", "inline-notice"],
       "feedback": [
@@ -1192,7 +1206,7 @@
       "approvalRecords": []
     },
     "operation-sheet": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["badge", "button", "inline-notice", "sheet"],
       "feedback": [
@@ -1212,7 +1226,7 @@
       "approvalRecords": []
     },
     "mode-switcher": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button", "popover", "radio-group"],
       "feedback": [
@@ -1232,7 +1246,7 @@
       "approvalRecords": []
     },
     "appearance-picker": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["radio-group"],
       "feedback": [
@@ -1252,7 +1266,7 @@
       "approvalRecords": []
     },
     "desktop-navigation": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button", "mode-switcher"],
       "feedback": [
@@ -1278,7 +1292,7 @@
       "approvalRecords": []
     },
     "mobile-navigation": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button", "desktop-navigation", "mode-switcher"],
       "feedback": [
@@ -1298,7 +1312,7 @@
       "approvalRecords": []
     },
     "household-switcher": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["select"],
       "feedback": [
@@ -1318,7 +1332,7 @@
       "approvalRecords": []
     },
     "app-shell": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [
         "appearance-picker",
@@ -1346,7 +1360,7 @@
       "approvalRecords": []
     },
     "attribute-fields": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [
         "badge",
@@ -1385,7 +1399,7 @@
       "approvalRecords": []
     },
     "note-editor": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [
         "badge",
@@ -1414,7 +1428,7 @@
       "approvalRecords": []
     },
     "attachment-list": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [
         "badge",
@@ -1441,7 +1455,7 @@
       "approvalRecords": []
     },
     "attachment-field": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [
         "badge",
@@ -1468,7 +1482,7 @@
       "approvalRecords": []
     },
     "history-entry": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [
         "badge",
@@ -1495,7 +1509,7 @@
       "approvalRecords": []
     },
     "history-changes": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["badge", "empty-state", "fact-source", "inline-notice", "loading-state"],
       "feedback": [
@@ -1515,7 +1529,7 @@
       "approvalRecords": []
     },
     "capability-notice": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["button", "inline-notice"],
       "feedback": [
@@ -1535,7 +1549,7 @@
       "approvalRecords": []
     },
     "scan-input": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [
         "button",
@@ -1563,7 +1577,7 @@
       "approvalRecords": []
     },
     "label-print-panel": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": ["badge", "button", "capability-notice", "inline-notice"],
       "feedback": [
@@ -1583,7 +1597,7 @@
       "approvalRecords": []
     },
     "composition-search": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [
         "button",
@@ -1610,12 +1624,19 @@
           "source": "用户批准排版与对齐修正",
           "summary": "按八类问题统一共享规则，再复查五个组合；修正候选仍待用户审阅，回归继续暂停。",
           "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
+        },
+        {
+          "date": "2026-11-07",
+          "source": "页面提交意见",
+          "summary": "物品合并为连续列表，以分隔线区分每件物品，去掉逐行圆角与卡片间隔；分页保留在列表外。",
+          "reference": "docs/ux-vnext/rc5-feedback-report.md",
+          "feedbackId": "4d25070a-266f-4af9-a0c1-93fe28288382"
         }
       ],
       "approvalRecords": []
     },
     "composition-form": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [
         "button",
@@ -1647,12 +1668,19 @@
           "source": "页面内修改意见",
           "summary": "名称和位置同排、数量/单位与日期同排；移除常驻家庭根位置等按钮，特殊位置放入选择器。",
           "reference": "docs/ux-vnext/rc4-feedback-report.md"
+        },
+        {
+          "date": "2026-11-07",
+          "source": "页面提交意见",
+          "summary": "移除位置说明、数量说明和此快捷表单的依据与详情入口；需要填写的估计/必填依据和错误仍按条件显示。",
+          "reference": "docs/ux-vnext/rc5-feedback-report.md",
+          "feedbackId": "6d63e129-c4bc-46b2-b449-930e4b5e5f36"
         }
       ],
       "approvalRecords": []
     },
     "composition-operation": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [
         "approval-summary",
@@ -1684,7 +1712,7 @@
       "approvalRecords": []
     },
     "composition-management": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [
         "batch-selection-bar",
@@ -1713,7 +1741,7 @@
       "approvalRecords": []
     },
     "composition-shell": {
-      "version": "RC4",
+      "version": "RC5",
       "status": "待审阅",
       "dependencies": [
         "app-shell",

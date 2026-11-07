@@ -53,6 +53,7 @@
   align-self: stretch;
 }
 [data-acornary-ui='vnext'] .vn-tree {
+  --vn-tree-target: var(--vn-space-24);
   min-width: 0;
 }
 [data-acornary-ui='vnext'] .vn-tree-root,
@@ -62,8 +63,8 @@
   list-style: none;
 }
 [data-acornary-ui='vnext'] .vn-tree-group {
-  margin-inline-start: calc(var(--vn-space-8) + var(--vn-control-height) / 2);
-  padding-inline-start: var(--vn-space-12);
+  margin-inline-start: calc(var(--vn-space-4) + var(--vn-tree-target) / 2);
+  padding-inline-start: 0;
   border-inline-start: 1px solid var(--vn-control-border);
 }
 [data-acornary-ui='vnext'] .vn-tree-item {
@@ -72,9 +73,9 @@
 [data-acornary-ui='vnext'] .vn-tree-row {
   display: flex;
   align-items: center;
-  gap: var(--vn-space-8);
-  min-height: var(--vn-control-height);
-  padding: var(--vn-space-4) var(--vn-space-8);
+  gap: var(--vn-space-4);
+  min-height: calc(var(--vn-tree-target) + var(--vn-space-4));
+  padding: 0 var(--vn-space-4);
   border-radius: var(--vn-radius-control);
   cursor: pointer;
 }
@@ -99,8 +100,8 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  min-width: var(--vn-control-height);
-  min-height: var(--vn-control-height);
+  min-width: var(--vn-tree-target);
+  min-height: var(--vn-tree-target);
 }
 [data-acornary-ui='vnext'] .vn-tree-toggle {
   border: 0;
@@ -290,8 +291,8 @@
   font-size: var(--vn-input-size);
 }
 [data-acornary-ui='vnext'] .vn-facts-demo-checkbox {
-  min-width: var(--vn-control-height);
-  min-height: var(--vn-control-height);
+  min-width: var(--vn-tree-target);
+  min-height: var(--vn-tree-target);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -411,4 +412,25 @@
   display: inline-flex;
   align-items: center;
   gap: var(--vn-space-4);
+}
+
+@container vn-host (max-width: 767px) {
+  [data-acornary-ui='vnext'] .vn-tree {
+    --vn-tree-target: var(--vn-target-touch);
+  }
+}
+@media (pointer: coarse) {
+  [data-acornary-ui='vnext'] .vn-tree {
+    --vn-tree-target: var(--vn-target-touch);
+  }
+}
+[data-acornary-ui='vnext'] .vn-date-fact .vn-date-trigger {
+  padding-inline: var(--vn-space-4);
+  color: var(--vn-foreground);
+  gap: var(--vn-space-4);
+  font-weight: 500;
+  white-space: normal;
+}
+[data-acornary-ui='vnext'] .vn-date-trigger > svg {
+  flex-shrink: 0;
 }

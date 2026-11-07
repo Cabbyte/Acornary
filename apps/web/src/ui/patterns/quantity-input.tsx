@@ -111,10 +111,6 @@ export function QuantityInput({
         >
           设为未记录
         </Button>
-        <details className="vn-field-details">
-          <summary>数量说明</summary>
-          <p className="vn-muted">小数位按输入保留。未记录表示数量未知，0 表示数量为零。</p>
-        </details>
         {onCommit && (
           <Button
             variant="secondary"

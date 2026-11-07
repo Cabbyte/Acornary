@@ -20,7 +20,7 @@ RC4 起，每条已处理意见下显示版本、处理状态及具体修改说�
 
 “已修改，待复审”表示实现已修改，仍需用户确认；不会自动将组件标为“已批准”。同一组件可继续补充意见，新意见会作为独立记录保存。全库候选与明确批准记录仍由 `apps/web/review/review-status.json` 管理。
 
-本次 18 条意见的逐项处理和实际检查见 [RC4 报告](rc4-feedback-report.md)。
+首轮 18 条意见见 [RC4 报告](rc4-feedback-report.md)，新增 4 条意见见 [RC5 报告](rc5-feedback-report.md)。
 
 ## 工程边界与验证
 

@@ -245,8 +245,19 @@
 [data-acornary-ui='vnext'] .vn-item-list {
   display: flex;
   flex-direction: column;
-  gap: var(--vn-space-16);
+  gap: 0;
   min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-item-list:has(> .vn-item-row) {
+  background: var(--vn-surface);
+  border-block: 1px solid var(--vn-border);
+}
+[data-acornary-ui='vnext'] .vn-item-list > .vn-item-row {
+  border: 0;
+  border-radius: 0;
+}
+[data-acornary-ui='vnext'] .vn-item-list > .vn-item-row + .vn-item-row {
+  border-top: 1px solid var(--vn-border);
 }
 [data-acornary-ui='vnext'] .vn-item-row-content[data-selectable='true'],
 [data-acornary-ui='vnext']

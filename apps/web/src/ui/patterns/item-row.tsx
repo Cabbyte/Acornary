@@ -129,7 +129,7 @@ export function ItemRow({
             )}
             {date && (
               <div className="vn-item-row-date">
-                <DateFactValue fact={date} />
+                <DateFactValue fact={date} compact dateOnly />
               </div>
             )}
             {extraFacts.length > 0 && (

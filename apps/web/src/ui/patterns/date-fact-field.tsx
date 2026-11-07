@@ -18,6 +18,8 @@ export interface DateFactFieldProps {
   today?: string | null;
   /** Only the caller can require a basis; presentation never infers a blocking rule. */
   basisRequired?: boolean;
+  /** Hide optional metadata in quick forms; required basis remains visible. */
+  showDetails?: boolean;
   disabled?: boolean;
   readOnly?: boolean;
   loading?: boolean;
@@ -49,6 +51,7 @@ export function DateFactField({
   onMonthChange,
   today,
   basisRequired = false,
+  showDetails = true,
   disabled,
   readOnly,
   loading,
@@ -59,7 +62,8 @@ export function DateFactField({
   const [basisInitiallyVisible] = useState(
     () => Boolean(fact.dueOn) && fact.dateKind === 'ESTIMATED' && !fact.basis,
   );
-  const showBasis = basisRequired || basisInitiallyVisible;
+  const showBasis =
+    basisRequired || basisInitiallyVisible || (fact.dateKind === 'ESTIMATED' && !showDetails);
   const invalidCompletion =
     fact.state === 'COMPLETED' && !!fact.completedOn && !isPlainDate(fact.completedOn);
   const basisField = (
@@ -145,26 +149,28 @@ export function DateFactField({
         </p>
       )}
       {showBasis && basisField}
-      <details className="vn-field-details">
-        <summary>{showBasis ? '日期详情' : '依据与详情'}</summary>
-        <div className="vn-field-details__content">
-          {!showBasis && basisField}
-          {fact.label && fact.kind === 'EXPIRY' && (
-            <span className="vn-muted">记录名称：{fact.label}</span>
-          )}
-          {fact.source && (
-            <span className="vn-muted">
-              来源：{fact.source === 'LIFECYCLE' ? '生命周期事实' : '期限记录'}
-            </span>
-          )}
-          {timezone && <span className="vn-muted">家庭时区：{timezone}</span>}
-          {fact.state === 'COMPLETED' && fact.completedOn && (
-            <span className="vn-muted">
-              完成日期：{isPlainDate(fact.completedOn) ? fact.completedOn : '日期格式有误'}
-            </span>
-          )}
-        </div>
-      </details>
+      {showDetails && (
+        <details className="vn-field-details">
+          <summary>{showBasis ? '日期详情' : '依据与详情'}</summary>
+          <div className="vn-field-details__content">
+            {!showBasis && basisField}
+            {fact.label && fact.kind === 'EXPIRY' && (
+              <span className="vn-muted">记录名称：{fact.label}</span>
+            )}
+            {fact.source && (
+              <span className="vn-muted">
+                来源：{fact.source === 'LIFECYCLE' ? '生命周期事实' : '期限记录'}
+              </span>
+            )}
+            {timezone && <span className="vn-muted">家庭时区：{timezone}</span>}
+            {fact.state === 'COMPLETED' && fact.completedOn && (
+              <span className="vn-muted">
+                完成日期：{isPlainDate(fact.completedOn) ? fact.completedOn : '日期格式有误'}
+              </span>
+            )}
+          </div>
+        </details>
+      )}
       {loading && (
         <span className="vn-muted" role="status">
           正在读取日期…

@@ -148,6 +148,7 @@ export function FormComposition({ scenario }: ReviewDemoProps) {
             name="dueOn"
             render={({ field }) => (
               <DateFactField
+                showDetails={false}
                 fact={{ ...date, dueOn: field.value }}
                 onChange={(next) => {
                   setDate(next);

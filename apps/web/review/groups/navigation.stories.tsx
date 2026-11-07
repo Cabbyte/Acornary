@@ -17,7 +17,7 @@ import {
 
 const meta = {
   id: 'rc1-navigation',
-  title: 'RC4/导航与外观',
+  title: 'RC5/导航与外观',
   args: { scenario: 'normal' },
 } satisfies Meta<ReviewDemoProps>;
 export default meta;
