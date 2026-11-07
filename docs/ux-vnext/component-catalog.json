@@ -2,7 +2,292 @@
   "version": "Component Library RC6",
   "components": 70,
   "compositions": 5,
+  "pages": 4,
   "entries": [
+    {
+      "id": "page-daily-home",
+      "kind": "page",
+      "name": "页面 · 我的物品",
+      "group": "完整页面 · P01",
+      "version": "P01-RC1",
+      "description": "日常浏览链路，可连续导航；每页单独审阅。",
+      "source": "apps/web/src/features/daily/pages/daily-home.tsx",
+      "storyId": "pages-daily--home",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常 · 可连续浏览"
+        },
+        {
+          "id": "pagination",
+          "label": "分页样例 · 每页 5 条"
+        },
+        {
+          "id": "loading",
+          "label": "正在读取"
+        },
+        {
+          "id": "empty",
+          "label": "没有记录"
+        },
+        {
+          "id": "error",
+          "label": "读取失败 · 可重试"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "offline",
+          "label": "离线 · 部分缓存"
+        },
+        {
+          "id": "offline-empty",
+          "label": "离线 · 无缓存"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        }
+      ],
+      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "P01-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "search-bar",
+          "filter-bar",
+          "item-row",
+          "product-summary",
+          "pagination-controls",
+          "tabs",
+          "empty-state",
+          "loading-state",
+          "history-entry"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-daily-home&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--home"
+    },
+    {
+      "id": "page-daily-search",
+      "kind": "page",
+      "name": "页面 · 搜索结果",
+      "group": "完整页面 · P01",
+      "version": "P01-RC1",
+      "description": "日常浏览链路，可连续导航；每页单独审阅。",
+      "source": "apps/web/src/features/daily/pages/daily-search.tsx",
+      "storyId": "pages-daily--search",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常 · 可连续浏览"
+        },
+        {
+          "id": "pagination",
+          "label": "分页样例 · 每页 5 条"
+        },
+        {
+          "id": "loading",
+          "label": "正在读取"
+        },
+        {
+          "id": "empty",
+          "label": "没有记录"
+        },
+        {
+          "id": "error",
+          "label": "读取失败 · 可重试"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "offline",
+          "label": "离线 · 部分缓存"
+        },
+        {
+          "id": "offline-empty",
+          "label": "离线 · 无缓存"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        }
+      ],
+      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "P01-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "search-bar",
+          "filter-bar",
+          "item-row",
+          "product-summary",
+          "pagination-controls",
+          "tabs",
+          "empty-state",
+          "loading-state",
+          "history-entry"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-daily-search&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--search"
+    },
+    {
+      "id": "page-daily-product",
+      "kind": "page",
+      "name": "页面 · 商品资料",
+      "group": "完整页面 · P01",
+      "version": "P01-RC1",
+      "description": "日常浏览链路，可连续导航；每页单独审阅。",
+      "source": "apps/web/src/features/daily/pages/daily-product.tsx",
+      "storyId": "pages-daily--product",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常 · 可连续浏览"
+        },
+        {
+          "id": "pagination",
+          "label": "分页样例 · 每页 5 条"
+        },
+        {
+          "id": "loading",
+          "label": "正在读取"
+        },
+        {
+          "id": "empty",
+          "label": "记录不可用"
+        },
+        {
+          "id": "error",
+          "label": "读取失败 · 可重试"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "offline",
+          "label": "离线 · 部分缓存"
+        },
+        {
+          "id": "offline-empty",
+          "label": "离线 · 无缓存"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        }
+      ],
+      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "P01-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "search-bar",
+          "filter-bar",
+          "item-row",
+          "product-summary",
+          "pagination-controls",
+          "tabs",
+          "empty-state",
+          "loading-state",
+          "history-entry"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-daily-product&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--product"
+    },
+    {
+      "id": "page-daily-item",
+      "kind": "page",
+      "name": "页面 · 单件档案",
+      "group": "完整页面 · P01",
+      "version": "P01-RC1",
+      "description": "日常浏览链路，可连续导航；每页单独审阅。",
+      "source": "apps/web/src/features/daily/pages/daily-item-detail.tsx",
+      "storyId": "pages-daily--item",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常 · 可连续浏览"
+        },
+        {
+          "id": "pagination",
+          "label": "分页样例 · 每页 5 条"
+        },
+        {
+          "id": "loading",
+          "label": "正在读取"
+        },
+        {
+          "id": "empty",
+          "label": "记录不可用"
+        },
+        {
+          "id": "error",
+          "label": "读取失败 · 可重试"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "offline",
+          "label": "离线 · 部分缓存"
+        },
+        {
+          "id": "offline-empty",
+          "label": "离线 · 无缓存"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        }
+      ],
+      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "P01-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "search-bar",
+          "filter-bar",
+          "item-row",
+          "product-summary",
+          "pagination-controls",
+          "tabs",
+          "empty-state",
+          "loading-state",
+          "history-entry"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-daily-item&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--item"
+    },
     {
       "id": "button",
       "name": "按钮",
@@ -27,11 +312,11 @@
         }
       ],
       "storyId": "rc1-controls--button",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button"
         ],
@@ -49,7 +334,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/button.tsx",
       "preview": "http://127.0.0.1:6007/?component=button&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -79,11 +372,11 @@
         }
       ],
       "storyId": "rc1-controls--icon-button",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button"
         ],
@@ -101,7 +394,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/icon-button.tsx",
       "preview": "http://127.0.0.1:6007/?component=icon-button&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -143,11 +444,11 @@
         }
       ],
       "storyId": "rc1-controls--input",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "input"
         ],
@@ -165,7 +466,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/input.tsx",
       "preview": "http://127.0.0.1:6007/?component=input&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -207,11 +516,11 @@
         }
       ],
       "storyId": "rc1-controls--textarea",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [],
         "feedback": [
           {
@@ -227,7 +536,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/textarea.tsx",
       "preview": "http://127.0.0.1:6007/?component=textarea&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -261,11 +578,11 @@
         }
       ],
       "storyId": "rc1-controls--form-field",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [],
         "feedback": [
           {
@@ -287,7 +604,15 @@
             "reference": "docs/ux-vnext/rc4-feedback-report.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/form-field.tsx",
       "preview": "http://127.0.0.1:6007/?component=form-field&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -313,11 +638,11 @@
         }
       ],
       "storyId": "rc1-controls--badge",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [],
         "feedback": [
           {
@@ -339,7 +664,15 @@
             "reference": "docs/ux-vnext/rc4-feedback-report.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/badge.tsx",
       "preview": "http://127.0.0.1:6007/?component=badge&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -381,11 +714,11 @@
         }
       ],
       "storyId": "rc1-controls--checkbox",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "checkbox"
         ],
@@ -403,7 +736,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/checkbox.tsx",
       "preview": "http://127.0.0.1:6007/?component=checkbox&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -441,11 +782,11 @@
         }
       ],
       "storyId": "rc1-controls--radio-group",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "radio-group"
         ],
@@ -469,7 +810,15 @@
             "reference": "docs/ux-vnext/rc4-feedback-report.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/radio-group.tsx",
       "preview": "http://127.0.0.1:6007/?component=radio-group&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -503,11 +852,11 @@
         }
       ],
       "storyId": "rc1-controls--switch",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "switch"
         ],
@@ -525,7 +874,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/switch.tsx",
       "preview": "http://127.0.0.1:6007/?component=switch&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -575,11 +932,11 @@
         }
       ],
       "storyId": "rc1-controls--select",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "select"
         ],
@@ -603,7 +960,15 @@
             "reference": "docs/ux-vnext/rc4-feedback-report.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/select.tsx",
       "preview": "http://127.0.0.1:6007/?component=select&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -654,11 +1019,11 @@
       ],
       "storyId": "rc1-controls--combobox",
       "limitations": "候选检索由调用者提供；此处只演示本地候选页。",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "combobox",
           "select"
@@ -677,7 +1042,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/combobox.tsx",
       "preview": "http://127.0.0.1:6007/?component=combobox&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -719,11 +1092,11 @@
         }
       ],
       "storyId": "rc1-controls--tabs",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "tabs"
         ],
@@ -741,7 +1114,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/tabs.tsx",
       "preview": "http://127.0.0.1:6007/?component=tabs&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -791,11 +1172,11 @@
         }
       ],
       "storyId": "rc1-overlays--dialog",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "dialog"
         ],
@@ -813,7 +1194,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/dialog.tsx",
       "preview": "http://127.0.0.1:6007/?component=dialog&preset=sage&mode=daily&viewport=390&scenario=draft",
@@ -863,11 +1252,11 @@
         }
       ],
       "storyId": "rc1-overlays--sheet",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "dialog"
         ],
@@ -885,7 +1274,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/sheet.tsx",
       "preview": "http://127.0.0.1:6007/?component=sheet&preset=sage&mode=daily&viewport=390&scenario=draft",
@@ -923,11 +1320,11 @@
         }
       ],
       "storyId": "rc1-overlays--popover",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "popover"
         ],
@@ -945,7 +1342,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/popover.tsx",
       "preview": "http://127.0.0.1:6007/?component=popover&preset=sage&mode=daily&viewport=390&scenario=keyboard",
@@ -975,11 +1380,11 @@
         }
       ],
       "storyId": "rc1-overlays--tooltip",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "tooltip"
         ],
@@ -997,7 +1402,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/tooltip.tsx",
       "preview": "http://127.0.0.1:6007/?component=tooltip&preset=sage&mode=daily&viewport=390&scenario=keyboard",
@@ -1035,11 +1448,11 @@
         }
       ],
       "storyId": "rc1-overlays--dropdown-menu",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [],
         "feedback": [
           {
@@ -1055,7 +1468,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/dropdown-menu.tsx",
       "preview": "http://127.0.0.1:6007/?component=dropdown-menu&preset=sage&mode=daily&viewport=390&scenario=keyboard",
@@ -1105,11 +1526,11 @@
         }
       ],
       "storyId": "rc1-overlays--alert-dialog",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "alert-dialog"
         ],
@@ -1127,7 +1548,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/alert-dialog.tsx",
       "preview": "http://127.0.0.1:6007/?component=alert-dialog&preset=sage&mode=daily&viewport=390&scenario=draft",
@@ -1170,11 +1599,11 @@
       ],
       "storyId": "rc1-fields--calendar",
       "limitations": "日期展示桥接 DayPicker；业务日期不经过 UTC 转换。",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [],
         "feedback": [
           {
@@ -1190,7 +1619,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/calendar.tsx",
       "preview": "http://127.0.0.1:6007/?component=calendar&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -1236,11 +1673,11 @@
         }
       ],
       "storyId": "rc1-fields--date-input",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "calendar",
           "form-field",
@@ -1262,7 +1699,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/date-input.tsx",
       "preview": "http://127.0.0.1:6007/?component=date-input&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -1300,11 +1745,11 @@
           "label": "长文本"
         }
       ],
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [],
         "feedback": [
           {
@@ -1326,7 +1771,15 @@
             "reference": "docs/ux-vnext/rc4-feedback-report.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/table.tsx",
       "preview": "http://127.0.0.1:6007/?component=table&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -1397,11 +1850,11 @@
       ],
       "storyId": "rc1-lists--data-table",
       "limitations": "仅已加载页；演示控制器独立持有 12 条 fixture，不证明服务端分页集成。",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button",
           "checkbox",
@@ -1425,7 +1878,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/data-table.tsx",
       "preview": "http://127.0.0.1:6007/?component=data-table&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -1463,11 +1924,11 @@
         }
       ],
       "storyId": "rc1-lists--pagination-controls",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button"
         ],
@@ -1485,7 +1946,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/pagination-controls.tsx",
       "preview": "http://127.0.0.1:6007/?component=pagination-controls&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -1527,11 +1996,11 @@
           "label": "长层级名称"
         }
       ],
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button"
         ],
@@ -1562,7 +2031,15 @@
             "feedbackId": "09006854-494a-4474-9895-a867630b817a"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/tree-view.tsx",
       "preview": "http://127.0.0.1:6007/?component=tree-view&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -1588,11 +2065,11 @@
         }
       ],
       "storyId": "rc1-overlays--skeleton",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [],
         "feedback": [
           {
@@ -1608,7 +2085,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/skeleton.tsx",
       "preview": "http://127.0.0.1:6007/?component=skeleton&preset=sage&mode=daily&viewport=390&scenario=text",
@@ -1642,11 +2127,11 @@
         }
       ],
       "storyId": "rc1-overlays--toast",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "toast"
         ],
@@ -1664,7 +2149,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/toast.tsx",
       "preview": "http://127.0.0.1:6007/?component=toast&preset=sage&mode=daily&viewport=390&scenario=info",
@@ -1706,11 +2199,11 @@
         }
       ],
       "storyId": "rc1-overlays--inline-notice",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [],
         "feedback": [
           {
@@ -1726,7 +2219,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/inline-notice.tsx",
       "preview": "http://127.0.0.1:6007/?component=inline-notice&preset=sage&mode=daily&viewport=390&scenario=info",
@@ -1752,11 +2253,11 @@
           "label": "装饰分隔"
         }
       ],
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "separator"
         ],
@@ -1774,7 +2275,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/components/ui/separator.tsx",
       "preview": "http://127.0.0.1:6007/?component=separator&preset=sage&mode=daily&viewport=390&scenario=horizontal",
@@ -1820,11 +2329,11 @@
           "label": "加载中"
         }
       ],
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button"
         ],
@@ -1848,7 +2357,15 @@
             "reference": "docs/ux-vnext/rc4-feedback-report.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/item-identity.tsx",
       "preview": "http://127.0.0.1:6007/?component=item-identity&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -1898,11 +2415,11 @@
           "label": "加载中"
         }
       ],
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [],
         "feedback": [
           {
@@ -1924,7 +2441,15 @@
             "reference": "docs/ux-vnext/rc4-feedback-report.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/quantity-value.tsx",
       "preview": "http://127.0.0.1:6007/?component=quantity-value&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -2002,11 +2527,11 @@
           "label": "加载中"
         }
       ],
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [],
         "feedback": [
           {
@@ -2022,7 +2547,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/date-fact-value.tsx",
       "preview": "http://127.0.0.1:6007/?component=date-fact-value&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -2068,11 +2601,11 @@
           "label": "加载中"
         }
       ],
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button"
         ],
@@ -2090,7 +2623,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/location-path.tsx",
       "preview": "http://127.0.0.1:6007/?component=location-path&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -2132,11 +2673,11 @@
         }
       ],
       "storyId": "rc1-lists--item-status",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "badge",
           "button",
@@ -2156,7 +2697,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/item-status.tsx",
       "preview": "http://127.0.0.1:6007/?component=item-status&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -2202,11 +2751,11 @@
           "label": "加载中"
         }
       ],
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button"
         ],
@@ -2224,7 +2773,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/fact-source.tsx",
       "preview": "http://127.0.0.1:6007/?component=fact-source&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -2270,11 +2827,11 @@
         }
       ],
       "storyId": "rc1-fields--search-bar",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button",
           "form-field",
@@ -2301,7 +2858,15 @@
             "reference": "docs/ux-vnext/rc4-feedback-report.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/search-bar.tsx",
       "preview": "http://127.0.0.1:6007/?component=search-bar&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -2347,11 +2912,11 @@
         }
       ],
       "storyId": "rc1-fields--filter-bar",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button"
         ],
@@ -2369,7 +2934,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/filter-bar.tsx",
       "preview": "http://127.0.0.1:6007/?component=filter-bar&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -2427,11 +3000,11 @@
         }
       ],
       "storyId": "rc1-fields--quantity-input",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button",
           "form-field",
@@ -2453,7 +3026,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/quantity-input.tsx",
       "preview": "http://127.0.0.1:6007/?component=quantity-input&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -2516,11 +3097,11 @@
       ],
       "storyId": "rc1-fields--date-fact-field",
       "limitations": "编辑日期不派生到期状态；时区和状态由调用方提供。",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "date-fact-value",
           "date-input",
@@ -2542,7 +3123,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/date-fact-field.tsx",
       "preview": "http://127.0.0.1:6007/?component=date-fact-field&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -2597,11 +3186,11 @@
       ],
       "storyId": "rc1-fields--catalog-picker",
       "limitations": "仅展示外部候选页；创建只发出意图，不合并同名节点。",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "badge",
           "button",
@@ -2621,7 +3210,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/catalog-picker.tsx",
       "preview": "http://127.0.0.1:6007/?component=catalog-picker&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -2676,11 +3273,11 @@
       ],
       "storyId": "rc1-fields--location-picker",
       "limitations": "容器有效性必须由调用方确认；不凭名称判断或读取全部物品。",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button",
           "combobox",
@@ -2700,7 +3297,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/location-picker.tsx",
       "preview": "http://127.0.0.1:6007/?component=location-picker&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -2738,11 +3343,11 @@
         }
       ],
       "storyId": "rc1-lists--page-header",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button"
         ],
@@ -2766,7 +3371,15 @@
             "reference": "docs/ux-vnext/rc4-feedback-report.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/page-header.tsx",
       "preview": "http://127.0.0.1:6007/?component=page-header&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -2824,11 +3437,11 @@
         }
       ],
       "storyId": "rc1-lists--product-summary",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "badge",
           "button",
@@ -2858,7 +3471,15 @@
             "reference": "docs/ux-vnext/rc4-feedback-report.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/product-summary.tsx",
       "preview": "http://127.0.0.1:6007/?component=product-summary&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -2920,11 +3541,11 @@
         }
       ],
       "storyId": "rc1-lists--item-row",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button",
           "checkbox",
@@ -2957,7 +3578,15 @@
             "reference": "docs/ux-vnext/rc6-feedback-report.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/item-row.tsx",
       "preview": "http://127.0.0.1:6007/?component=item-row&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -3019,11 +3648,11 @@
         }
       ],
       "storyId": "rc1-lists--item-card",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "item-row"
         ],
@@ -3055,7 +3684,15 @@
             "feedbackId": "b450b1ca-9ad6-4e6c-ad5f-199a2dc0af6b"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/item-card.tsx",
       "preview": "http://127.0.0.1:6007/?component=item-card&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -3105,11 +3742,11 @@
         }
       ],
       "storyId": "rc1-lists--attention-summary",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "badge",
           "button",
@@ -3131,7 +3768,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/attention-summary.tsx",
       "preview": "http://127.0.0.1:6007/?component=attention-summary&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -3185,11 +3830,11 @@
         }
       ],
       "storyId": "rc1-lists--batch-selection-bar",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button",
           "inline-notice"
@@ -3221,7 +3866,15 @@
             "feedbackId": "8f649802-c5b7-425d-b6b2-d3b8349556a7"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/batch-selection-bar.tsx",
       "preview": "http://127.0.0.1:6007/?component=batch-selection-bar&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -3263,11 +3916,11 @@
         }
       ],
       "storyId": "rc1-overlays--empty-state",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [],
         "feedback": [
           {
@@ -3283,7 +3936,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/empty-state.tsx",
       "preview": "http://127.0.0.1:6007/?component=empty-state&preset=sage&mode=daily&viewport=390&scenario=empty",
@@ -3325,11 +3986,11 @@
         }
       ],
       "storyId": "rc1-overlays--loading-state",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "inline-notice",
           "skeleton"
@@ -3348,7 +4009,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/loading-state.tsx",
       "preview": "http://127.0.0.1:6007/?component=loading-state&preset=sage&mode=daily&viewport=390&scenario=loading",
@@ -3394,11 +4063,11 @@
         }
       ],
       "storyId": "rc1-operations--approval-summary",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "badge",
           "button",
@@ -3424,7 +4093,15 @@
             "reference": "docs/ux-vnext/rc4-feedback-report.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/approval-summary.tsx",
       "preview": "http://127.0.0.1:6007/?component=approval-summary&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -3466,11 +4143,11 @@
         }
       ],
       "storyId": "rc1-operations--conflict-resolution",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button",
           "inline-notice",
@@ -3490,7 +4167,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/conflict-resolution.tsx",
       "preview": "http://127.0.0.1:6007/?component=conflict-resolution&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -3536,11 +4221,11 @@
         }
       ],
       "storyId": "rc1-operations--operation-receipt",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "badge",
           "button",
@@ -3561,7 +4246,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/operation-receipt.tsx",
       "preview": "http://127.0.0.1:6007/?component=operation-receipt&preset=sage&mode=daily&viewport=390&scenario=success",
@@ -3599,11 +4292,11 @@
         }
       ],
       "storyId": "rc1-operations--pending-operation-banner",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button",
           "inline-notice"
@@ -3622,7 +4315,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/pending-operation-banner.tsx",
       "preview": "http://127.0.0.1:6007/?component=pending-operation-banner&preset=sage&mode=daily&viewport=390&scenario=unknown",
@@ -3664,11 +4365,11 @@
         }
       ],
       "storyId": "rc1-operations--offline-banner",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button",
           "inline-notice"
@@ -3687,7 +4388,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/offline-banner.tsx",
       "preview": "http://127.0.0.1:6007/?component=offline-banner&preset=sage&mode=daily&viewport=390&scenario=partial",
@@ -3721,11 +4430,11 @@
         }
       ],
       "storyId": "rc1-operations--draft-status",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "badge",
           "button",
@@ -3745,7 +4454,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/draft-status.tsx",
       "preview": "http://127.0.0.1:6007/?component=draft-status&preset=sage&mode=daily&viewport=390&scenario=saved",
@@ -3823,11 +4540,11 @@
         }
       ],
       "storyId": "rc1-operations--operation-sheet",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "badge",
           "button",
@@ -3848,7 +4565,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/operation-sheet.tsx",
       "preview": "http://127.0.0.1:6007/?component=operation-sheet&preset=sage&mode=daily&viewport=390&scenario=initial",
@@ -3882,11 +4607,11 @@
         }
       ],
       "storyId": "rc1-navigation--mode-switcher",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button",
           "popover",
@@ -3906,7 +4631,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/mode-switcher.tsx",
       "preview": "http://127.0.0.1:6007/?component=mode-switcher&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -3932,11 +4665,11 @@
         }
       ],
       "storyId": "rc1-navigation--appearance-picker",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "radio-group"
         ],
@@ -3954,7 +4687,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/appearance-picker.tsx",
       "preview": "http://127.0.0.1:6007/?component=appearance-picker&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -4000,11 +4741,11 @@
         }
       ],
       "storyId": "rc1-navigation--desktop-navigation",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button",
           "mode-switcher"
@@ -4029,7 +4770,15 @@
             "reference": "docs/ux-vnext/rc4-feedback-report.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/desktop-navigation.tsx",
       "preview": "http://127.0.0.1:6007/?component=desktop-navigation&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -4071,11 +4820,11 @@
         }
       ],
       "storyId": "rc1-navigation--mobile-navigation",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button",
           "desktop-navigation",
@@ -4095,7 +4844,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/mobile-navigation.tsx",
       "preview": "http://127.0.0.1:6007/?component=mobile-navigation&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -4146,11 +4903,11 @@
       ],
       "storyId": "rc1-navigation--household-switcher",
       "limitations": "仅展示调用方提供的家庭，不连接账号、认证或远程范围控制器。",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "select"
         ],
@@ -4168,7 +4925,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/household-switcher.tsx",
       "preview": "http://127.0.0.1:6007/?component=household-switcher&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -4215,11 +4980,11 @@
       ],
       "storyId": "rc1-navigation--app-shell",
       "limitations": "只组装展示区域；路由、主题提供器、权限、家庭切换和任务恢复由外部接线。未做真实客户端验收。",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "appearance-picker",
           "button",
@@ -4250,7 +5015,15 @@
             "feedbackId": "ed3b72c1-3285-4854-a93d-b6b0bf941d29"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/app-shell.tsx",
       "preview": "http://127.0.0.1:6007/?component=app-shell&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -4337,11 +5110,11 @@
       ],
       "storyId": "rc1-content--attribute-fields",
       "limitations": "值和数量为展示草稿；命令校验、完整模板升级由外部控制器负责。",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "badge",
           "capability-notice",
@@ -4376,7 +5149,15 @@
             "reference": "docs/ux-vnext/rc4-feedback-report.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/attribute-fields.tsx",
       "preview": "http://127.0.0.1:6007/?component=attribute-fields&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -4435,11 +5216,11 @@
       ],
       "storyId": "rc1-content--note-editor",
       "limitations": "保存仅为意图；Markdown 预览不加载图片或打开链接。",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "badge",
           "button",
@@ -4464,7 +5245,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/note-editor.tsx",
       "preview": "http://127.0.0.1:6007/?component=note-editor&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -4519,11 +5308,11 @@
       ],
       "storyId": "rc1-content--attachment-list",
       "limitations": "打开与移除由调用方处理；样例没有真实附件资源。",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "badge",
           "button",
@@ -4546,7 +5335,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/attachment-list.tsx",
       "preview": "http://127.0.0.1:6007/?component=attachment-list&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -4601,11 +5398,11 @@
       ],
       "storyId": "rc1-content--attachment-field",
       "limitations": "只传出所选 File 对象，不读取文件、生成资源地址或上传。",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "badge",
           "button",
@@ -4628,7 +5425,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/attachment-field.tsx",
       "preview": "http://127.0.0.1:6007/?component=attachment-field&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -4683,11 +5488,11 @@
       ],
       "storyId": "rc1-content--history-entry",
       "limitations": "姓名、操作名称及更正权限由调用方提供，不执行撤销。",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "badge",
           "button",
@@ -4710,7 +5515,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/history-entry.tsx",
       "preview": "http://127.0.0.1:6007/?component=history-entry&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -4761,11 +5574,11 @@
       ],
       "storyId": "rc1-content--history-changes",
       "limitations": "脱敏说明由上层显式传入；不推测缺失的前后值。",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "badge",
           "empty-state",
@@ -4787,7 +5600,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/history-changes.tsx",
       "preview": "http://127.0.0.1:6007/?component=history-changes&preset=sage&mode=daily&viewport=390&scenario=normal",
@@ -4837,11 +5658,11 @@
         }
       ],
       "storyId": "rc1-operations--capability-notice",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button",
           "inline-notice"
@@ -4860,7 +5681,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/capability-notice.tsx",
       "preview": "http://127.0.0.1:6007/?component=capability-notice&preset=sage&mode=daily&viewport=390&scenario=available",
@@ -4922,11 +5751,11 @@
         }
       ],
       "storyId": "rc1-operations--scan-input",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "button",
           "capability-notice",
@@ -4957,7 +5786,15 @@
             "feedbackId": "deae18eb-8944-44ab-97e7-a5fdf071cab7"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/scan-input.tsx",
       "preview": "http://127.0.0.1:6007/?component=scan-input&preset=sage&mode=daily&viewport=390&scenario=manual",
@@ -5015,11 +5852,11 @@
         }
       ],
       "storyId": "rc1-operations--label-print-panel",
-      "status": "待审阅",
       "version": "RC6",
+      "status": "已批准",
       "review": {
         "version": "RC6",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "badge",
           "button",
@@ -5040,7 +5877,15 @@
             "reference": "docs/ux-vnext/rc2-typography-alignment-audit.md"
           }
         ],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-07",
+            "version": "RC6",
+            "source": "用户明确确认",
+            "quote": "好的，组件先按 RC6 确认，接下来开始完整业务页面装配，继续用隔离数据，保留逐页审阅和修改意见入口，回归测试继续暂停。",
+            "scope": "组件设计；不代表页面、工程验收或业务接线完成"
+          }
+        ]
       },
       "source": "apps/web/src/ui/patterns/label-print-panel.tsx",
       "preview": "http://127.0.0.1:6007/?component=label-print-panel&preset=sage&mode=daily&viewport=390&scenario=not-sent",
@@ -5075,8 +5920,8 @@
           "label": "缓存子集"
         }
       ],
-      "status": "待审阅",
       "version": "RC6",
+      "status": "待审阅",
       "review": {
         "version": "RC6",
         "status": "待审阅",
@@ -5155,8 +6000,8 @@
           "label": "只读"
         }
       ],
-      "status": "待审阅",
       "version": "RC6",
+      "status": "待审阅",
       "review": {
         "version": "RC6",
         "status": "待审阅",
@@ -5258,8 +6103,8 @@
           "label": "身份已变化"
         }
       ],
-      "status": "待审阅",
       "version": "RC6",
+      "status": "待审阅",
       "review": {
         "version": "RC6",
         "status": "待审阅",
@@ -5321,8 +6166,8 @@
           "label": "总数未知"
         }
       ],
-      "status": "待审阅",
       "version": "RC6",
+      "status": "待审阅",
       "review": {
         "version": "RC6",
         "status": "待审阅",
@@ -5381,8 +6226,8 @@
           "label": "保留恢复入口"
         }
       ],
-      "status": "待审阅",
       "version": "RC6",
+      "status": "待审阅",
       "review": {
         "version": "RC6",
         "status": "待审阅",

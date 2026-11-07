@@ -16,6 +16,7 @@ const input = z
     mode: z.enum(['daily', 'management']),
     viewport: z.number().int().min(1).max(10000),
     version: z.string().min(1).max(30),
+    route: z.string().max(4096).optional(),
     text: z.string().trim().min(1).max(8000),
   })
   .strict();

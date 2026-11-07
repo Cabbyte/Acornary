@@ -39,6 +39,7 @@ const candidateRoots = [
   'apps/web/src/ui/components',
   'apps/web/src/ui/patterns',
   'apps/web/src/ui/theme',
+  'apps/web/src/features/daily/pages',
 ];
 const candidateFiles = [];
 function visitDirectory(dir) {

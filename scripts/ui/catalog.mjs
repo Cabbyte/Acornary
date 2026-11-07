@@ -6,12 +6,13 @@ const server = await createServer({
   logLevel: 'error',
 });
 try {
-  const { entries, expectedIds } = await server.ssrLoadModule('/registry.ts');
-  const components = entries.filter((e) => e.kind !== 'composition');
+  const { entries, expectedIds, expectedPageIds } = await server.ssrLoadModule('/registry.ts');
+  const components = entries.filter((e) => !e.kind || e.kind === 'component');
   const scenes = entries.filter((e) => e.kind === 'composition');
-  if (components.length !== 70 || scenes.length !== 5)
+  const pages = entries.filter((e) => e.kind === 'page');
+  if (components.length !== 70 || scenes.length !== 5 || pages.length !== expectedPageIds.length)
     throw Error(
-      `Expected 70 components + 5 scenarios, received ${components.length} + ${scenes.length}`,
+      `Expected 70 components + 5 scenarios + ${expectedPageIds.length} pages, received ${components.length} + ${scenes.length} + ${pages.length}`,
     );
   const ids = new Set();
   const reviewStatus = JSON.parse(readFileSync('apps/web/review/review-status.json', 'utf8'));
@@ -19,8 +20,10 @@ try {
   for (const entry of entries) {
     if (ids.has(entry.id)) throw Error(`Duplicate review ID: ${entry.id}`);
     ids.add(entry.id);
-    if (entry.kind !== 'composition' && !expectedIds.includes(entry.id))
+    if ((!entry.kind || entry.kind === 'component') && !expectedIds.includes(entry.id))
       throw Error(`Unexpected public component: ${entry.id}`);
+    if (entry.kind === 'page' && !expectedPageIds.includes(entry.id))
+      throw Error(`Unexpected page: ${entry.id}`);
     if (typeof entry.component !== 'function' || !entry.scenarios.length)
       throw Error(`Incomplete demo: ${entry.id}`);
     if (!entry.storyId || !storyIndex[entry.storyId])
@@ -31,16 +34,18 @@ try {
       throw Error(`Missing explicit approval evidence: ${entry.id}`);
   }
   for (const id of expectedIds) if (!ids.has(id)) throw Error(`Missing public component: ${id}`);
+  for (const id of expectedPageIds) if (!ids.has(id)) throw Error(`Missing page: ${id}`);
   const primitiveIds = expectedIds.slice(0, 28);
   const catalog = entries.map(({ component, ...entry }) => ({
     ...entry,
-    version: reviewStatus.version,
+    version: entry.version ?? reviewStatus.version,
     status: entry.status ?? '待审阅',
     review: reviewStatus.entries[entry.id],
     source:
-      entry.kind === 'composition'
+      entry.source ??
+      (entry.kind === 'composition'
         ? 'apps/web/review/groups/compositions-demos.tsx'
-        : `apps/web/src/ui/${primitiveIds.includes(entry.id) ? 'components/ui' : 'patterns'}/${entry.id}.tsx`,
+        : `apps/web/src/ui/${primitiveIds.includes(entry.id) ? 'components/ui' : 'patterns'}/${entry.id}.tsx`),
     preview: `http://127.0.0.1:6007/?component=${entry.id}&preset=sage&mode=daily&viewport=390&scenario=${entry.scenarios[0].id}`,
     storybook: `http://127.0.0.1:6006/?path=/story/${entry.storyId}`,
   }));
@@ -52,6 +57,7 @@ try {
         version: `Component Library ${reviewStatus.version}`,
         components: 70,
         compositions: 5,
+        pages: pages.length,
         entries: catalog,
       },
       null,
@@ -62,7 +68,7 @@ try {
   else if (readFileSync(path, 'utf8') !== result)
     throw Error('Component catalog is stale; run with --write');
   console.log(
-    `Catalog verified: 70 public components, 5 compositions, ${entries.reduce((n, e) => n + e.scenarios.length, 0)} states; every Storybook link resolves.`,
+    `Catalog verified: 70 public components, 5 compositions, ${pages.length} pages, ${entries.reduce((n, e) => n + e.scenarios.length, 0)} states; every Storybook link resolves.`,
   );
 } finally {
   await server.close();

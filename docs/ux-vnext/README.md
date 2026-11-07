@@ -1,12 +1,12 @@
 # Acornary Frontend vNext — 设计与组件审阅
 
-> 当前候选：**Component Library RC6：360px 对齐与图标动作**。本轮处理新增 4 条意见及“使用改为 icon”的要求，累计保留 26 条页面意见处理记录。70 个组件、5 个组合场景全部待用户审阅；已认可的 D01–D09、M01–M06 流程继续有效。
+> **RC6 的 70 个组件已获用户确认。** 当前页面候选为 **P01-RC1：我的物品、搜索结果、商品资料、单件档案**，4 页均待审阅。继续使用隔离 fixture，回归测试暂停。
 
 2026-11-07（Asia/Shanghai） · 独立工作树 `Acornary-frontend-vnext` · 分支 `codex/frontend-vnext`。
 
-[中文组件工作台](http://127.0.0.1:6007/) · [Storybook](http://127.0.0.1:6006/) · [逐项审阅清单](component-review.md) · [RC6 意见处理与检查报告](rc6-feedback-report.md) · [机器可读目录](component-catalog.json)。
+[组件与页面工作台](http://127.0.0.1:6007/?component=page-daily-home&viewport=1440) · [页面审阅清单](page-review.md) · [Storybook](http://127.0.0.1:6006/) · [逐项审阅清单](component-review.md) · [RC6 意见处理与检查报告](rc6-feedback-report.md) · [机器可读目录](component-catalog.json)。
 
-本轮调整窄屏卡片事实行、批量动作、扫码工具栏及模式入口，避免短标签和日期被挤断；使用动作统一为有可读名称的图标。新增意见下可查看 RC6 修改说明，显示“已修改，待复审”；意见原文和批准状态均保留。
+本批把日常浏览链路装配为正式 React 页面，以受控 props 接收事实和意图回调。隔离适配器提供查询、分页与路由演示，正式 Web/MCP 入口未变。修改意见跟随当前页面，并记录具体对象和查询路由。组件、组合示例与业务页面各自保留版本和审阅状态。
 
 四套浅色配色通过同一 Token 系统切换，内容面保持白色；字体、尺度、控件与页面视觉仍可分别提出修改。当前默认 `sage / daily` 仅用于预览。制作顺序已调整为一次完成全部候选后统一审阅，覆盖旧的逐批等待规则。
 

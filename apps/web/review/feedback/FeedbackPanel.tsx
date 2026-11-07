@@ -11,7 +11,7 @@ const drafts = new Map<string, string>();
 type Pending = FeedbackContext & { id: string; text: string };
 const pendingDrafts = new Map<string, Pending>();
 export function FeedbackPanel({ context }: { context: FeedbackContext }) {
-  const key = `${context.component}:${context.scenario}`;
+  const key = `${context.component}:${context.scenario}${context.route ? `:${context.route}` : ''}`;
   // Keyed editor prevents a late response for another page from changing this draft.
   return <FeedbackEditor key={key} context={context} draftKey={key} />;
 }

@@ -1,0 +1,18 @@
+[data-acornary-ui='vnext'] .page-review-journey {
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .page-review-boundary {
+  margin: 0 0 var(--vn-space-12);
+  color: var(--vn-muted-foreground);
+  font-size: var(--vn-type-metadata);
+}
+[data-acornary-ui='vnext'] .page-review-journey .vn-app-shell {
+  --vn-shell-height: 760px;
+  overflow: clip;
+}
+@media (max-width: 767px) {
+  [data-acornary-ui='vnext'] .page-review-journey .vn-app-shell {
+    /* Independent of iframe height: the workbench resizes the iframe to its content. */
+    --vn-shell-height: 680px;
+  }
+}

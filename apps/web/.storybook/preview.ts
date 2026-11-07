@@ -42,7 +42,7 @@ const preview: Preview = {
       const entry = catalog.entries.find((entry) => entry.storyId === context.id);
       const [globals, updateGlobals] = useGlobals();
       const preset = globals.preset as AppearancePreset;
-      const mode = globals.mode as UIMode;
+      const mode = context.parameters.pageReview ? 'daily' : (globals.mode as UIMode);
       return createElement(AcornaryThemeProvider, {
         preset,
         mode,
@@ -56,17 +56,18 @@ const preview: Preview = {
           children: createElement(
             Fragment,
             null,
-            createElement(FeedbackPanel, {
-              context: {
-                component: entry?.id || context.id,
-                name: entry?.name || context.name,
-                scenario: String(context.args.scenario || 'normal'),
-                preset,
-                mode,
-                viewport: window.innerWidth,
-                version: catalog.version,
-              },
-            }),
+            !context.parameters.pageReview &&
+              createElement(FeedbackPanel, {
+                context: {
+                  component: entry?.id || context.id,
+                  name: entry?.name || context.name,
+                  scenario: String(context.args.scenario || 'normal'),
+                  preset,
+                  mode,
+                  viewport: window.innerWidth,
+                  version: entry?.version || catalog.version,
+                },
+              }),
             createElement(ReviewFrame, { children: createElement(Story) }),
           ),
         }),

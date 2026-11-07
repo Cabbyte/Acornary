@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AcornaryThemeProvider,
   type AppearancePreset,
@@ -31,6 +31,8 @@ export function Library() {
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [frameHeight, setFrameHeight] = useState(560);
   const [available, setAvailable] = useState(0);
+  const [pageLocation, setPageLocation] = useState<{ id: string; route: string } | null>(null);
+  const [navigationEpoch, setNavigationEpoch] = useState(0);
   const frame = useRef<HTMLIFrameElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const main = useRef<HTMLElement>(null);
@@ -42,6 +44,18 @@ export function Library() {
   const activeScenario =
     entry?.scenarios.find((s) => s.id === scenario)?.id || entry?.scenarios[0]?.id || 'normal';
   const embedded = initial.get('embed') === '1';
+  const frameRoute = useMemo(
+    () => (navigationEpoch === 0 && id === initial.get('component') ? initial.get('route') : null),
+    [id, navigationEpoch],
+  );
+  const displayedEntry =
+    entry?.kind === 'page' && pageLocation
+      ? entries.find((candidate) => candidate.id === pageLocation.id) || entry
+      : entry;
+  useEffect(() => {
+    setPageLocation(null);
+    if (entry?.kind === 'page') setMode('daily');
+  }, [id, activeScenario, navigationEpoch, entry?.kind]);
   useEffect(() => {
     const params = new URLSearchParams({
       component: entry?.id || id,
@@ -51,18 +65,38 @@ export function Library() {
       scenario: activeScenario,
     });
     if (embedded) params.set('embed', '1');
-    history.replaceState(null, '', `?${params}`);
+    if (entry?.kind === 'page' && (pageLocation?.route || frameRoute))
+      params.set('route', pageLocation?.route || frameRoute!);
+    history.replaceState(history.state, '', `?${params}${location.hash}`);
     frame.current?.contentWindow?.postMessage(
       { kind: 'acornary-review-theme', preset, mode },
       location.origin,
     );
-  }, [id, preset, mode, width, activeScenario, entry?.id, embedded]);
+  }, [
+    id,
+    preset,
+    mode,
+    width,
+    activeScenario,
+    entry?.id,
+    entry?.kind,
+    embedded,
+    pageLocation,
+    frameRoute,
+  ]);
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (event.origin !== location.origin) return;
       if (embedded && event.source === parent && event.data?.kind === 'acornary-review-theme') {
         setPreset(validPreset(event.data.preset));
         setMode(event.data.mode === 'management' ? 'management' : 'daily');
+      } else if (
+        !embedded &&
+        event.source === frame.current?.contentWindow &&
+        event.data?.kind === 'acornary-review-page'
+      ) {
+        if (entries.some((entry) => entry.kind === 'page' && entry.id === event.data.id))
+          setPageLocation({ id: event.data.id, route: String(event.data.route) });
       } else if (
         !embedded &&
         event.source === frame.current?.contentWindow &&
@@ -87,14 +121,23 @@ export function Library() {
       parent.postMessage(
         {
           kind: 'acornary-review-height',
-          height: document.getElementById('review-embed')?.scrollHeight || 560,
+          height:
+            entry?.kind === 'page'
+              ? Math.ceil(
+                  document.getElementById('review-embed')?.getBoundingClientRect().height || 560,
+                )
+              : document.getElementById('review-embed')?.scrollHeight || 560,
         },
         location.origin,
       ),
     );
-    observer.observe(document.body);
+    observer.observe(
+      entry?.kind === 'page'
+        ? document.getElementById('review-embed') || document.body
+        : document.body,
+    );
     return () => observer.disconnect();
-  }, [embedded]);
+  }, [embedded, entry?.kind]);
   useEffect(() => {
     if (!stage.current) return;
     const observer = new ResizeObserver(([r]) => setAvailable(Math.floor(r.contentRect.width)));
@@ -129,7 +172,7 @@ export function Library() {
               },
             }}
           >
-            {parent === window && (
+            {parent === window && entry.kind !== 'page' && (
               <FeedbackPanel
                 context={{
                   component: entry.id,
@@ -138,7 +181,7 @@ export function Library() {
                   preset,
                   mode,
                   viewport: window.innerWidth,
-                  version: reviewStatus.version,
+                  version: entry.version || reviewStatus.version,
                 }}
               />
             )}
@@ -155,7 +198,11 @@ export function Library() {
       (groups[e.group] ??= []).push(e);
       return groups;
     }, {});
-  const link = `?component=${encodeURIComponent(entry.id)}&scenario=${encodeURIComponent(activeScenario)}&embed=1`;
+  const link = `?component=${encodeURIComponent(entry.id)}&scenario=${encodeURIComponent(activeScenario)}&embed=1${frameRoute ? `&route=${encodeURIComponent(frameRoute)}` : ''}`;
+  const standaloneLink =
+    entry.kind === 'page' && pageLocation
+      ? `?component=${pageLocation.id}&scenario=${activeScenario}&embed=1&route=${encodeURIComponent(pageLocation.route)}`
+      : link;
   const actual = Math.min(width, available || width);
   return (
     <AcornaryThemeProvider preset={preset} mode={mode}>
@@ -163,11 +210,11 @@ export function Library() {
         <header className="library-header">
           <div>
             <strong>Acornary</strong>
-            <span>组件设计审阅</span>
+            <span>组件与页面审阅</span>
           </div>
           <span className="library-meta">
-            {reviewStatus.version} · {entries.filter((e) => e.kind !== 'composition').length} 个组件
-            · {entries.filter((e) => e.kind === 'composition').length} 个组合场景 · 待审阅
+            {reviewStatus.version} 组件已确认 · {entries.filter((e) => e.kind === 'page').length}{' '}
+            个页面待审阅
           </span>
         </header>
         <div className="library-layout">
@@ -185,14 +232,14 @@ export function Library() {
               {catalogOpen ? '收起组件目录' : `浏览 ${entries.length} 项设计候选`}
             </button>
             <label className="library-label">
-              查找组件
+              查找组件或页面
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="名称或组件 ID"
               />
             </label>
-            <nav id="review-directory" aria-label="组件目录">
+            <nav id="review-directory" aria-label="审阅目录">
               {Object.entries(grouped).map(([group, list]) => (
                 <details key={group} open>
                   <summary>{group}</summary>
@@ -200,9 +247,10 @@ export function Library() {
                     <button
                       key={e.id}
                       type="button"
-                      aria-current={e.id === entry.id ? 'page' : undefined}
+                      aria-current={e.id === displayedEntry?.id ? 'page' : undefined}
                       onClick={() => {
                         setId(e.id);
+                        setNavigationEpoch((value) => value + 1);
                         setCatalogOpen(false);
                         setSearch('');
                         setScenario(e.scenarios[0]?.id || 'normal');
@@ -218,11 +266,11 @@ export function Library() {
           <main ref={main} tabIndex={-1} className="library-main">
             <div className="library-title">
               <div>
-                <h1>{entry.name}</h1>
-                <p>{entry.description}</p>
+                <h1>{displayedEntry?.name}</h1>
+                <p>{displayedEntry?.description}</p>
               </div>
               <span className="review-badge">
-                {entry.status === '待审阅' ? '待用户审阅' : entry.status}
+                {displayedEntry?.status === '待审阅' ? '待用户审阅' : displayedEntry?.status}
               </span>
             </div>
             <div className="library-controls">
@@ -241,7 +289,12 @@ export function Library() {
               </label>
               <label>
                 模式
-                <select value={mode} onChange={(e) => setMode(e.target.value as UIMode)}>
+                <select
+                  value={mode}
+                  disabled={entry.kind === 'page'}
+                  title={entry.kind === 'page' ? '本批为日常模式页面' : undefined}
+                  onChange={(e) => setMode(e.target.value as UIMode)}
+                >
                   <option value="daily">日常</option>
                   <option value="management">管理</option>
                 </select>
@@ -272,35 +325,37 @@ export function Library() {
                 示例数据 · 实际容器 {actual} px{actual < width ? '（受当前窗口限制）' : ''}
               </span>
               <a
-                href={`${link}&preset=${preset}&mode=${mode}&viewport=${width}`}
+                href={`${standaloneLink}&preset=${preset}&mode=${mode}&viewport=${width}`}
                 target="_blank"
                 rel="noreferrer"
               >
                 独立打开
               </a>
               <a
-                href={`http://127.0.0.1:6006/?path=/story/${entry.storyId || `components-${entry.id}--default`}`}
+                href={`http://127.0.0.1:6006/?path=/story/${displayedEntry?.storyId || `components-${entry.id}--default`}`}
                 target="_blank"
                 rel="noreferrer"
               >
                 Storybook
               </a>
             </div>
-            <FeedbackPanel
-              context={{
-                component: entry.id,
-                name: entry.name,
-                scenario: activeScenario,
-                preset,
-                mode,
-                viewport: actual,
-                version: reviewStatus.version,
-              }}
-            />
+            {entry.kind !== 'page' && (
+              <FeedbackPanel
+                context={{
+                  component: entry.id,
+                  name: entry.name,
+                  scenario: activeScenario,
+                  preset,
+                  mode,
+                  viewport: actual,
+                  version: entry.version || reviewStatus.version,
+                }}
+              />
+            )}
             <div ref={stage} className="library-stage">
               <iframe
                 ref={frame}
-                key={`${entry.id}:${activeScenario}`}
+                key={`${entry.id}:${activeScenario}:${navigationEpoch}`}
                 title={`${entry.name}预览`}
                 src={link}
                 onLoad={() =>
@@ -319,7 +374,7 @@ export function Library() {
               </p>
               <p>{entry.limitations || '尚未完成业务接线、完整回归及真实 MCP/设备验收。'}</p>
               <code>
-                {entry.id} · {reviewStatus.version}
+                {displayedEntry?.id} · {displayedEntry?.version || reviewStatus.version}
               </code>
             </details>
           </main>

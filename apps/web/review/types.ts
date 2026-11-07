@@ -9,7 +9,9 @@ export interface ReviewScenario {
 }
 export interface ReviewEntry {
   id: string;
-  kind?: 'component' | 'composition';
+  kind?: 'component' | 'composition' | 'page';
+  version?: string;
+  source?: string;
   name: string;
   group: string;
   description: string;

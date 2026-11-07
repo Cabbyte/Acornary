@@ -1,5 +1,7 @@
 import reviewStatus from './review-status.json';
 import type { ReviewEntry, ReviewStatus } from './types';
+import { pageDefinitions } from './pages/catalog';
+export const expectedPageIds = pageDefinitions.map((page) => page.id);
 const groups = import.meta.glob('./groups/*-demos.tsx', { eager: true });
 const order = [
   'Button',
@@ -102,11 +104,23 @@ export const entries: ReviewEntry[] = Object.values(groups)
   .map((entry) => ({
     ...entry,
     group: taxonomy.get(entry.id) ?? entry.group,
+    version:
+      reviewStatus.entries[entry.id as keyof typeof reviewStatus.entries]?.version ??
+      entry.version ??
+      reviewStatus.version,
     status: (reviewStatus.entries[entry.id as keyof typeof reviewStatus.entries]?.status ??
       '待审阅') as ReviewStatus,
   }))
   .sort(
     (a, b) =>
-      (expectedIds.includes(a.id) ? expectedIds.indexOf(a.id) : 100) -
-      (expectedIds.includes(b.id) ? expectedIds.indexOf(b.id) : 100),
+      (a.kind === 'page'
+        ? expectedPageIds.indexOf(a.id as (typeof expectedPageIds)[number]) - 10
+        : expectedIds.includes(a.id)
+          ? expectedIds.indexOf(a.id)
+          : 100) -
+      (b.kind === 'page'
+        ? expectedPageIds.indexOf(b.id as (typeof expectedPageIds)[number]) - 10
+        : expectedIds.includes(b.id)
+          ? expectedIds.indexOf(b.id)
+          : 100),
   );
