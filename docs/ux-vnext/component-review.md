@@ -7,6 +7,7 @@
 - [中文工作台](http://127.0.0.1:6007/) · [Storybook](http://127.0.0.1:6006/)
 - [交付和检查报告](rc3-report.md) · [完整场景目录](component-catalog.json)
 - 可编辑审阅记录：`apps/web/review/review-status.json`。保存版本、依赖、反馈和批准记录；工作台只展示登记结果。
+- [页面内修改意见](review-feedback.md)：在工作台或 Storybook 展开“修改意见”并提交，意见保存到本地文件，后续无需复制进聊天。
 - 默认 `sage / daily` 仅用于预览，正式默认外观未获批准。
 
 本轮建议先看 [控件对齐样板](http://127.0.0.1:6006/?path=/story/rc1-controls--density-alignment)，再看表单、混合动作列表、管理展开、操作恢复和 Shell。目录登记 597 个状态，未逐个验收；每项均可通过固定链接直接打开。

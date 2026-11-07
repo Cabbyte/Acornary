@@ -1,5 +1,7 @@
+import { FeedbackPanel } from '../review/feedback/FeedbackPanel';
+import catalog from '../../../docs/ux-vnext/component-catalog.json';
 import type { Preview } from '@storybook/react-vite';
-import { createElement } from 'react';
+import { Fragment, createElement } from 'react';
 import { useGlobals } from 'storybook/preview-api';
 import { ReviewAppearanceProvider } from '../review/appearance-context';
 import { ReviewFrame } from '../review/review-frame';
@@ -36,7 +38,8 @@ const preview: Preview = {
   },
   initialGlobals: { preset: 'sage', mode: 'daily' },
   decorators: [
-    (Story) => {
+    (Story, context) => {
+      const entry = catalog.entries.find((entry) => entry.storyId === context.id);
       const [globals, updateGlobals] = useGlobals();
       const preset = globals.preset as AppearancePreset;
       const mode = globals.mode as UIMode;
@@ -50,7 +53,22 @@ const preview: Preview = {
             onPresetChange: (next) => updateGlobals({ preset: next }),
             onModeChange: (next) => updateGlobals({ mode: next }),
           },
-          children: createElement(ReviewFrame, { children: createElement(Story) }),
+          children: createElement(
+            Fragment,
+            null,
+            createElement(FeedbackPanel, {
+              context: {
+                component: entry?.id || context.id,
+                name: entry?.name || context.name,
+                scenario: String(context.args.scenario || 'normal'),
+                preset,
+                mode,
+                viewport: window.innerWidth,
+                version: catalog.version,
+              },
+            }),
+            createElement(ReviewFrame, { children: createElement(Story) }),
+          ),
         }),
       });
     },

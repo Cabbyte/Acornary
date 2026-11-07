@@ -10,6 +10,7 @@ import reviewStatus from './review-status.json';
 import type { ReviewEntry } from './types';
 import './library.css';
 import { ReviewAppearanceProvider } from './appearance-context';
+import { FeedbackPanel } from './feedback/FeedbackPanel';
 import { ReviewFrame } from './review-frame';
 const presets = Object.keys(source.presets) as AppearancePreset[];
 const widths = [360, 390, 768, 1024, 1440, 1920];
@@ -128,6 +129,19 @@ export function Library() {
               },
             }}
           >
+            {parent === window && (
+              <FeedbackPanel
+                context={{
+                  component: entry.id,
+                  name: entry.name,
+                  scenario: activeScenario,
+                  preset,
+                  mode,
+                  viewport: window.innerWidth,
+                  version: reviewStatus.version,
+                }}
+              />
+            )}
             <ReviewFrame>
               <Demo scenario={activeScenario} />
             </ReviewFrame>
@@ -272,6 +286,17 @@ export function Library() {
                 Storybook
               </a>
             </div>
+            <FeedbackPanel
+              context={{
+                component: entry.id,
+                name: entry.name,
+                scenario: activeScenario,
+                preset,
+                mode,
+                viewport: actual,
+                version: reviewStatus.version,
+              }}
+            />
             <div ref={stage} className="library-stage">
               <iframe
                 ref={frame}
