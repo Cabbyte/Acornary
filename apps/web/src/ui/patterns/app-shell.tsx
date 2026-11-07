@@ -104,11 +104,13 @@ export function AppShell({
             {onAdd && (
               <Button
                 className="vn-app-shell__compact-add"
+                aria-label="添加物品"
+                title="添加物品"
                 onClick={onAdd}
                 disabled={disabled || loading || addDisabled}
               >
                 <Plus size={18} aria-hidden="true" />
-                添加物品
+                <span className="vn-app-shell__add-label">添加物品</span>
               </Button>
             )}
             <Popover

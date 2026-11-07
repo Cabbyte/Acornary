@@ -22,7 +22,7 @@ import {
 
 const meta = {
   id: 'rc1-lists',
-  title: 'RC5/列表与选择',
+  title: 'RC6/列表与选择',
   args: { scenario: 'normal' },
 } satisfies Meta<ReviewDemoProps>;
 export default meta;

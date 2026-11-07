@@ -1,4 +1,4 @@
-import { Camera } from 'lucide-react';
+import { Camera, ScanLine } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { FormField } from '../components/ui/form-field';
 import { Input } from '../components/ui/input';
@@ -90,19 +90,24 @@ export function ScanInput({
         </FormField>
         <div className="vn-operation-actions">
           <Button
+            aria-label="识别编码"
+            title="识别编码"
             disabled={disabled || readOnly || !rawText.trim()}
             busy={busy}
             onClick={() => onResolve(rawText)}
           >
-            识别
+            <ScanLine size={18} aria-hidden="true" />
+            <span className="vn-scan-action-label">识别</span>
           </Button>
           <Button
+            aria-label="打开相机扫码"
+            title="打开相机扫码"
             variant="secondary"
             disabled={disabled || readOnly || busy || effectiveCamera.kind !== 'available'}
             onClick={onRequestCamera}
           >
             <Camera size={16} aria-hidden="true" />
-            相机
+            <span className="vn-scan-action-label">相机</span>
           </Button>
         </div>
       </div>
@@ -168,6 +173,8 @@ export function ScanInput({
       {!stale && result.kind === 'barcode' && result.hasMore && (
         <div className="vn-operation-actions">
           <Button
+            aria-label="打开相机扫码"
+            title="打开相机扫码"
             variant="secondary"
             disabled={!onLoadMoreCandidates || disabled || busy}
             onClick={onLoadMoreCandidates}

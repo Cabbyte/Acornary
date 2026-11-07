@@ -13,7 +13,7 @@ import {
 } from './fields-demos';
 const meta = {
   id: 'rc1-fields',
-  title: 'RC5/领域输入',
+  title: 'RC6/领域输入',
   parameters: { layout: 'padded' },
 } satisfies Meta<ReviewDemoProps>;
 export default meta;

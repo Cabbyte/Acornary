@@ -10,7 +10,7 @@ import {
 } from './compositions-demos';
 const meta = {
   id: 'rc1-compositions',
-  title: 'RC5/组合场景',
+  title: 'RC6/组合场景',
   parameters: { layout: 'padded' },
 } satisfies Meta<ReviewDemoProps>;
 export default meta;

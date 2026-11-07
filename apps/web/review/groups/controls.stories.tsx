@@ -19,7 +19,7 @@ import { DateInputDemo } from './fields-demos';
 
 const meta = {
   id: 'rc1-controls',
-  title: 'RC5/基础控件',
+  title: 'RC6/基础控件',
   parameters: { layout: 'padded' },
 } satisfies Meta<ReviewDemoProps>;
 export default meta;

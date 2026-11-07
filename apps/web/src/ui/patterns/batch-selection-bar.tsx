@@ -31,7 +31,7 @@ export function BatchSelectionBar({
   onClear,
   onReview,
   onStartAction,
-  actionLabel = '处理已选物品',
+  actionLabel = '处理已选',
   availability = { kind: 'available' },
   readOnly = false,
   busy = false,
@@ -148,7 +148,7 @@ export function BatchSelectionBar({
             disabled={ids.length === 0 || busy}
             onClick={() => onReview(selection)}
           >
-            核对选择
+            核对
           </Button>
           <Button variant="quiet" disabled={ids.length === 0 || readOnly || busy} onClick={onClear}>
             清空

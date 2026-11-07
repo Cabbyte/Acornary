@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, PackageMinus } from 'lucide-react';
 import type {
   ActionAvailability,
   DateFactPresentation,
@@ -7,6 +7,7 @@ import type {
   QuantityPresentation,
 } from './types';
 import { Button } from '../components/ui/button';
+import { IconButton } from '../components/ui/icon-button';
 import { Checkbox } from '../components/ui/checkbox';
 import { DropdownMenu } from '../components/ui/dropdown-menu';
 import { ItemIdentity } from './item-identity';
@@ -122,16 +123,18 @@ export function ItemRow({
                 disabled={disabled}
               />
             </div>
-            {quantity && (
-              <div className="vn-item-row-quantity">
-                <QuantityValue quantity={quantity} />
-              </div>
-            )}
-            {date && (
-              <div className="vn-item-row-date">
-                <DateFactValue fact={date} compact dateOnly />
-              </div>
-            )}
+            <div className="vn-item-row-facts">
+              {quantity && (
+                <div className="vn-item-row-quantity">
+                  <QuantityValue quantity={quantity} />
+                </div>
+              )}
+              {date && (
+                <div className="vn-item-row-date">
+                  <DateFactValue fact={date} compact dateOnly />
+                </div>
+              )}
+            </div>
             {extraFacts.length > 0 && (
               <div className="vn-item-row-extra">
                 {extraFacts.map((fact) => (
@@ -151,24 +154,35 @@ export function ItemRow({
         )}
         {primaryAction && (
           <div className="vn-item-row-actions">
-            <Button
-              variant={primaryAction.destructive ? 'danger' : 'secondary'}
-              disabled={actionsDisabled || primaryAction.availability.kind !== 'available'}
-              onClick={() => onAction?.(primaryAction.kind, item.id)}
-            >
-              {primaryAction.label}
-            </Button>
+            {primaryAction.kind === 'consume' ? (
+              <IconButton
+                label={`使用${nameHidden ? '此物品' : item.name}`}
+                variant={primaryAction.destructive ? 'danger' : 'secondary'}
+                disabled={actionsDisabled || primaryAction.availability.kind !== 'available'}
+                onClick={() => onAction?.(primaryAction.kind, item.id)}
+              >
+                <PackageMinus size={18} />
+              </IconButton>
+            ) : (
+              <Button
+                variant={primaryAction.destructive ? 'danger' : 'secondary'}
+                disabled={actionsDisabled || primaryAction.availability.kind !== 'available'}
+                onClick={() => onAction?.(primaryAction.kind, item.id)}
+              >
+                {primaryAction.label}
+              </Button>
+            )}
             {moreActions.length > 0 && (
               <DropdownMenu
                 open={moreOpen}
                 onOpenChange={setMoreOpen}
                 trigger={
-                  <Button
+                  <IconButton
                     variant="quiet"
-                    aria-label={`${nameHidden ? '此物品' : item.name}的更多操作`}
+                    label={`${nameHidden ? '此物品' : item.name}的更多操作`}
                   >
                     <MoreHorizontal size={18} aria-hidden="true" />
-                  </Button>
+                  </IconButton>
                 }
                 disabled={disabled || loading}
                 items={moreActions.map((action) => ({
