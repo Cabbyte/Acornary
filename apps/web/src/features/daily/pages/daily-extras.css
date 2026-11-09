@@ -1,0 +1,120 @@
+[data-acornary-ui='vnext'] .vn-extra-stack,
+[data-acornary-ui='vnext'] .vn-extra-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-16);
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-extra-card {
+  padding: var(--vn-space-16);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-radius-md, 10px);
+}
+[data-acornary-ui='vnext'] .vn-extra-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vn-space-4);
+  padding-bottom: var(--vn-space-12);
+  border-bottom: 1px solid var(--vn-border);
+}
+[data-acornary-ui='vnext'] .vn-extra-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--vn-space-16);
+}
+[data-acornary-ui='vnext'] .vn-extra-date-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-extra-date-row,
+[data-acornary-ui='vnext'] .vn-extra-note-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--vn-space-8);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-radius-sm, 6px);
+  padding: var(--vn-space-12);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-extra-date-row[aria-pressed='true'],
+[data-acornary-ui='vnext'] .vn-extra-note-row[aria-pressed='true'] {
+  border-color: var(--vn-accent);
+  background: var(--vn-info-surface);
+}
+[data-acornary-ui='vnext'] .vn-extra-summary {
+  margin: 0;
+  padding-inline-start: var(--vn-space-24);
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-extra-selection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-12);
+}
+[data-acornary-ui='vnext'] .vn-extra-selection label {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--vn-space-12);
+  min-height: var(--vn-target-touch);
+  cursor: pointer;
+}
+[data-acornary-ui='vnext'] .vn-extra-selection label > span {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-4);
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-extra-selection input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 3px;
+  accent-color: var(--vn-accent);
+}
+[data-acornary-ui='vnext'] .vn-daily-extras details summary {
+  min-height: var(--vn-target-touch);
+  align-content: center;
+  cursor: pointer;
+}
+[data-acornary-ui='vnext'] .vn-daily-extras code {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+[data-acornary-ui='vnext'] .vn-extra-label-art {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: white;
+  color: black;
+  padding: 10px;
+  border: 1px solid #ddd;
+  max-width: 100%;
+}
+[data-acornary-ui='vnext'] .vn-extra-label-art svg {
+  width: 70px;
+  height: 70px;
+  flex-shrink: 0;
+}
+[data-acornary-ui='vnext'] .vn-extra-label-art span {
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+@container daily-page (min-width: 680px) {
+  [data-acornary-ui='vnext'] .vn-extra-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  [data-acornary-ui='vnext'] .vn-extra-notes {
+    grid-template-columns: minmax(200px, 0.75fr) minmax(0, 1.5fr);
+  }
+}
