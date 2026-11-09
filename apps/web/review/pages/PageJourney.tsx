@@ -1,3 +1,9 @@
+import reviewLedger from '../review-status.json';
+import { Button } from '../../src/ui/components/ui/button';
+import { DailyExtrasJourney, useExtraReviewNotes } from './DailyExtrasJourney';
+import { ManagementJourney } from './ManagementJourney';
+import { SettingsJourney } from './SettingsJourney';
+import { useReviewWorld } from './inventory-session';
 import { TaskJourney } from './TaskJourney';
 import type { DailyTaskKind } from '../../src/features/daily/pages/daily-task';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
@@ -32,9 +38,7 @@ import { definitionForPath, safePagePath } from './catalog';
 import {
   emptyProduct,
   firstItemId,
-  history,
   householdId,
-  itemFacts,
   locationOptions,
   notes,
   pageVersion,
@@ -55,15 +59,19 @@ const links: NavigationLink[] = [
   { id: 'items', label: '物品', href: '#/items' },
   { id: 'attention', label: '留意', href: '#/attention' },
   { id: 'activity', label: '动态', href: '#/activity' },
-  { id: 'settings', label: '设置', href: '/settings', disabled: true },
+  { id: 'settings', label: '设置', href: '#/settings' },
 ];
 
 function PageScreen() {
+  const { items: itemFacts, history } = useReviewWorld();
   const { scenario, scroll } = useContext(PreviewContext);
 
   const appearance = useReviewAppearance();
   const router = useRouter();
   const route = useLocation();
+  const extraNotes = useExtraReviewNotes(
+    route.pathname.startsWith('/items/') ? route.pathname.split('/')[2] : '',
+  );
   const params = new URLSearchParams(route.searchStr);
   const page = definitionForPath(route.pathname);
   const pageSize =
@@ -75,11 +83,20 @@ function PageScreen() {
   const taskKind = route.pathname.startsWith('/tasks/')
     ? (route.pathname.split('/')[2] as DailyTaskKind)
     : null;
-  const version = taskKind
-    ? 'P03-RC1'
-    : page.id === 'page-daily-attention' || page.id === 'page-daily-activity'
-      ? 'P02-RC1'
-      : pageVersion;
+  const extended =
+    route.pathname.startsWith('/daily/') ||
+    route.pathname.startsWith('/manage/') ||
+    route.pathname.startsWith('/settings');
+  const mode =
+    route.pathname.startsWith('/manage/') ||
+    (route.pathname.startsWith('/settings') && params.get('mode') === 'management')
+      ? 'management'
+      : 'daily';
+  useEffect(() => {
+    if (appearance && appearance.mode !== mode) appearance.onModeChange(mode);
+  }, [mode, appearance?.mode]);
+  const version =
+    reviewLedger.entries[page.id as keyof typeof reviewLedger.entries]?.version || 'Pages-RC1';
   const host = useRef<HTMLDivElement>(null);
   const previousPath = useRef('');
   const [recovered, setRecovered] = useState(false);
@@ -136,6 +153,8 @@ function PageScreen() {
     };
   }, [route.href, route.pathname, page.id, scroll]);
   const navigate = (path: string, replace = false) => {
+    if (mode === 'management' && path.startsWith('/settings') && !path.includes('mode='))
+      path += `${path.includes('?') ? '&' : '?'}mode=management`;
     const main = host.current?.querySelector<HTMLElement>('.vn-app-shell__main');
     if (main)
       scroll.set(route.href, {
@@ -195,7 +214,11 @@ function PageScreen() {
   );
   const catalogProducts = [
     ...productFactsFor(source),
-    ...(scenario !== 'empty' && state !== 'offline-partial' ? [emptyProduct] : []),
+    ...(scenario !== 'empty' &&
+    state !== 'offline-partial' &&
+    !source.some((f) => f.item.skuId === emptyProduct.group.id)
+      ? [emptyProduct]
+      : []),
   ];
   const products = (locationId ? productFactsFor(filtered) : catalogProducts).filter(
     ({ group }) =>
@@ -271,49 +294,79 @@ function PageScreen() {
   ) as ActivityFilter;
   // Explicit isolated household rule, not inferred from a product name or unknown quantity.
   const tasks: AttentionTask[] = source
-    .filter((f) => f.item.id === firstItemId)
-    .flatMap((facts) => [
-      {
-        id: 'best-before-1',
-        category: 'date' as const,
-        facts,
-        reason: '最佳食用期将至',
-        basis:
-          '包装标注 2026-11-10；示例家庭按未来 7 天提醒，判断基准 2026-11-07，Asia/Shanghai。最佳食用期不等于限用日期。',
-      },
-    ]);
+    .filter((f) => f.date?.dueOn && f.date.state !== 'COMPLETED' && f.date.state !== 'UNKNOWN')
+    .map((facts) => ({
+      id: `date:${facts.item.id}`,
+      category: 'date',
+      facts,
+      reason: `${facts.date!.label} · ${facts.date!.dueOn}`,
+      basis: `${facts.date!.basis || '依据未记录'}；判断基准 2026-11-07，Asia/Shanghai。保留原日期类型。`,
+    }));
   const dateRange = ['past', 'today'].includes(params.get('range') || '')
     ? params.get('range')!
     : 'upcoming';
-  const selectedTasks = tasks.filter((t) => t.category === category && dateRange === 'upcoming');
+  const selectedTasks = tasks.filter(
+    (t) =>
+      t.category === category &&
+      (dateRange === 'past'
+        ? t.facts.date!.dueOn! < '2026-11-07'
+        : dateRange === 'today'
+          ? t.facts.date!.dueOn === '2026-11-07'
+          : t.facts.date!.dueOn! > '2026-11-07' && t.facts.date!.dueOn! <= '2026-11-14'),
+  );
   const stocks =
-    category === 'stock' && scenario !== 'empty' && state !== 'offline-partial'
+    category === 'stock' &&
+    scenario !== 'empty' &&
+    state !== 'offline-partial' &&
+    !source.some((f) => f.item.skuId === emptyProduct.group.id)
       ? [
           {
             group: { ...emptyProduct.group, lowStock: true },
-            basis: '有效库存 0 件，低于示例补货规则 1 件；未知数量 0 件。入库将在后续批次开放。',
+            basis:
+              '有效库存 0 件，低于示例补货规则 1 件；未知数量 0 件。可从商品资料进入入库任务。',
           },
         ]
       : [];
   const taskPage = pageData(selectedTasks);
   const stockPage = pageData(stocks);
-  const activityPage = pageData(
-    (scenario === 'empty' ? [] : state === 'offline-partial' ? history.slice(0, 1) : history)
-      .filter(
-        (e) =>
-          !!e.event &&
-          e.event.occurred_at >=
-            (params.get('days') === '30' ? '2026-10-08T16:00:00Z' : '2026-10-31T16:00:00Z') &&
-          e.event.occurred_at < '2026-11-07T16:00:00Z',
-      )
-      .filter(
-        (e) =>
-          activityFilter === 'all' ||
-          (activityFilter === 'quantity'
-            ? e.operationLabel === '记录余量'
-            : e.operationLabel !== '记录余量'),
-      ),
-  );
+  const activityRows = (
+    scenario === 'empty' ? [] : state === 'offline-partial' ? history.slice(0, 1) : history
+  )
+    .filter(
+      (e) =>
+        !!e.event &&
+        e.event.occurred_at >=
+          (params.get('days') === '30' ? '2026-10-08T16:00:00Z' : '2026-10-31T16:00:00Z') &&
+        e.event.occurred_at < '2026-11-07T16:00:00Z',
+    )
+    .filter(
+      (e) =>
+        activityFilter === 'all' ||
+        (activityFilter === 'quantity'
+          ? e.event?.changes.some((change) => change.path.startsWith('contents.'))
+          : !e.event?.changes.some((change) => change.path.startsWith('contents.'))),
+    );
+  const operationGroups = new Map<string, typeof activityRows>();
+  for (const entry of activityRows) {
+    const id = entry.event!.operation_id;
+    operationGroups.set(id, [...(operationGroups.get(id) || []), entry]);
+  }
+  const operationPage = pageData([...operationGroups.values()]);
+  const activityPage = { data: operationPage.data.flat(), pagination: operationPage.pagination };
+  let pendingPath: string | null = null;
+  try {
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (!key?.startsWith('acornary-review-p03:')) continue;
+      const saved = JSON.parse(sessionStorage.getItem(key) || 'null');
+      if (!saved || !['networkUnknown', 'submitting'].includes(saved.state)) continue;
+      const [, kind, target, taskScenario] = key.split(':');
+      pendingPath = `/tasks/${kind}?taskScenario=${encodeURIComponent(taskScenario)}${target !== 'default' ? '&target=' + encodeURIComponent(target) : ''}`;
+      break;
+    }
+  } catch {
+    /* preview storage may be unavailable */
+  }
   return (
     <div
       className="page-review-journey"
@@ -336,7 +389,7 @@ function PageScreen() {
           name: page.name,
           scenario,
           preset: appearance?.preset || 'sage',
-          mode: 'daily',
+          mode,
           viewport: actualWidth,
           version,
           route: route.href,
@@ -344,31 +397,63 @@ function PageScreen() {
       />
       <p className="page-review-boundary">{version} · 隔离预览 · 示例结果不会写入库存</p>
       <AppShell
-        mode="daily"
-        onModeChange={() => undefined}
-        modeBlockedReason="管理页面待装配"
+        mode={mode}
+        onModeChange={(next) => navigate(next === 'management' ? '/manage/items' : '/items')}
         preset={appearance?.preset || 'sage'}
         onPresetChange={(preset) => appearance?.onPresetChange(preset)}
-        links={links}
+        links={
+          mode === 'management'
+            ? [
+                { id: 'items', label: '物品管理', href: '#/manage/items' },
+                { id: 'catalog', label: '商品目录', href: '#/manage/catalog' },
+                { id: 'locations', label: '位置与容器', href: '#/manage/locations' },
+                { id: 'activity', label: '动态与历史', href: '#/manage/history' },
+                { id: 'settings', label: '设置', href: '#/settings?mode=management' },
+              ]
+            : links
+        }
         activePath={
-          page.id === 'page-daily-attention'
-            ? '#/attention'
-            : page.id === 'page-daily-activity'
-              ? '#/activity'
-              : '#/items'
+          extended
+            ? '#' +
+              route.pathname +
+              (route.pathname === '/settings' && mode === 'management' ? '?mode=management' : '')
+            : page.id === 'page-daily-attention'
+              ? '#/attention'
+              : page.id === 'page-daily-activity'
+                ? '#/activity'
+                : '#/items'
         }
         onNavigate={(href) => navigate(href.replace(/^#/, ''))}
         householdId={householdId}
         households={[{ id: householdId, name: '梧桐之家 · 示例' }]}
-        onHouseholdSwitchIntent={() => undefined}
+        householdBlockedReason="此预览固定在示例家庭；账号与家庭页可审阅切换意图"
+        onHouseholdSwitchIntent={() => navigate('/settings/household')}
+        recoveredTask={
+          pendingPath && !taskKind ? (
+            <Button variant="secondary" onClick={() => navigate(pendingPath!)}>
+              有待确认任务 · 继续核对原请求
+            </Button>
+          ) : undefined
+        }
+        headerActions={
+          <Button variant="quiet" onClick={() => navigate('/daily/scan')}>
+            扫码
+          </Button>
+        }
         title={page.name.replace('页面 · ', '')}
       >
-        {taskKind ? (
+        {route.pathname.startsWith('/daily/') ? (
+          <DailyExtrasJourney path={route.href} scenario={scenario} navigate={navigate} />
+        ) : route.pathname.startsWith('/manage/') ? (
+          <ManagementJourney path={route.href} scenario={scenario} navigate={navigate} />
+        ) : route.pathname.startsWith('/settings') ? (
+          <SettingsJourney path={route.href} scenario={scenario} navigate={navigate} />
+        ) : taskKind ? (
           <TaskJourney
-            key={`${taskKind}:${params.get('target') || ''}:${scenario}`}
+            key={`${taskKind}:${params.get('target') || ''}:${params.get('taskScenario') || scenario}`}
             kind={taskKind}
             onSwitch={(kind) => navigate(`/tasks/${kind}`)}
-            scenario={scenario}
+            scenario={params.get('taskScenario') || scenario}
             target={params.get('target') || undefined}
             onBack={back}
           />
@@ -392,7 +477,7 @@ function PageScreen() {
             {...common}
             entries={activityPage.data.map((entry) => ({
               ...entry,
-              operationComplete: true,
+              operationComplete: state !== 'offline-partial',
               recordedDayLabel: entry.event
                 ? new Intl.DateTimeFormat('zh-CN', {
                     timeZone: 'Asia/Shanghai',
@@ -431,9 +516,10 @@ function PageScreen() {
             state={missingState(facts)}
             facts={facts}
             onTask={browse.onTask}
+            onNavigate={navigate}
             product={product}
-            notes={facts?.item.id === firstItemId ? notes : []}
-            history={facts?.item.id === firstItemId ? history : []}
+            notes={extraNotes ?? (facts?.item.id === firstItemId ? notes : [])}
+            history={history.filter((e) => e.event?.target_id === facts?.item.id)}
             tab={tab}
             onTabChange={(next) => update({ tab: next }, route.pathname, true)}
             onOpenProduct={browse.onOpenProduct}
@@ -442,9 +528,8 @@ function PageScreen() {
         )}
       </AppShell>
       <ReviewNote>
-        本批含 P01 浏览链路、S04 档案与 P02 留意/动态。固定家庭时区
-        Asia/Shanghai，样例日期判断基准为
-        2026-11-07。每页意见随当前路由归档；反馈只写入本地审阅目录。读取失败、无权限与离线无缓存分别展示，均不解释为零库存。正式业务、写入任务与附件页面尚未接通。
+        P01–P08 隔离页面候选。固定家庭时区 Asia/Shanghai，样例日期判断基准为
+        2026-11-07。每页意见随当前路由归档；反馈只写入本地审阅目录。读取失败、无权限与离线无缓存分别展示，均不解释为零库存。正式服务、认证、上传、扫码及打印设备尚未接通。
       </ReviewNote>
     </div>
   );
@@ -488,6 +573,10 @@ export function PageJourney({ initialPath, scenario }: { initialPath: string; sc
       '/items',
       '/search',
       '/tasks/$kind',
+      '/daily/$section',
+      '/manage/$section',
+      '/settings',
+      '/settings/$section',
       '/attention',
       '/activity',
       '/items/$itemId',

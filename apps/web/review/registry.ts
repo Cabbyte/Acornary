@@ -114,12 +114,12 @@ export const entries: ReviewEntry[] = Object.values(groups)
   .sort(
     (a, b) =>
       (a.kind === 'page'
-        ? expectedPageIds.indexOf(a.id as (typeof expectedPageIds)[number]) - 10
+        ? expectedPageIds.indexOf(a.id as (typeof expectedPageIds)[number]) - expectedPageIds.length
         : expectedIds.includes(a.id)
           ? expectedIds.indexOf(a.id)
           : 100) -
       (b.kind === 'page'
-        ? expectedPageIds.indexOf(b.id as (typeof expectedPageIds)[number]) - 10
+        ? expectedPageIds.indexOf(b.id as (typeof expectedPageIds)[number]) - expectedPageIds.length
         : expectedIds.includes(b.id)
           ? expectedIds.indexOf(b.id)
           : 100),

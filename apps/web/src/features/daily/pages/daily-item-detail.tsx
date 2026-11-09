@@ -62,6 +62,31 @@ export function DailyItemDetail(props: DailyItemProps) {
       <ReadContent state={props.state} onRetry={props.onRetry}>
         {item && props.facts && (
           <>
+            {props.onNavigate && (
+              <div className="vn-row">
+                {[
+                  ['opening', '开封'],
+                  ['dates', '日期'],
+                  ['notes', '笔记'],
+                  ['attachments', '附件'],
+                  ['labels', '标签'],
+                ].map(([route, label]) => (
+                  <Button
+                    variant="quiet"
+                    key={route}
+                    onClick={() => props.onNavigate?.(`/daily/${route}?target=${item.id}`)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+                <Button
+                  variant="quiet"
+                  onClick={() => props.onNavigate?.(`/manage/edit?target=${item.id}`)}
+                >
+                  精确编辑
+                </Button>
+              </div>
+            )}
             <div className="vn-daily-key-facts">
               <div>
                 <h2>存放位置</h2>

@@ -1,3 +1,4 @@
+import { applyReviewTask, useReviewWorld } from './inventory-session';
 import { useEffect, useState } from 'react';
 import Decimal from 'decimal.js';
 import {
@@ -9,7 +10,7 @@ import { Button } from '../../src/ui/components/ui/button';
 import { ApprovalSummary } from '../../src/ui/patterns/approval-summary';
 import { ConflictResolution } from '../../src/ui/patterns/conflict-resolution';
 import type { OperationState } from '../../src/ui/patterns/types';
-import { itemFacts, productFactsFor, locationOptions } from './fixtures';
+import { productFactsFor, locationOptions, emptyProduct } from './fixtures';
 const titles = {
   intake: '已有商品入库',
   'new-product': '新商品入库',
@@ -29,8 +30,12 @@ export function TaskJourney({
   onBack: () => void;
   onSwitch: (kind: DailyTaskKind) => void;
 }) {
+  const { items: itemFacts } = useReviewWorld();
   const item = itemFacts.find((f) => f.item.id === target) || (!target ? itemFacts[0] : null);
-  const products = productFactsFor(itemFacts);
+  const products = [
+    ...productFactsFor(itemFacts),
+    ...(itemFacts.some((f) => f.item.skuId === emptyProduct.group.id) ? [] : [emptyProduct]),
+  ];
   const product = products.find((p) => p.group.id === target);
   const key = `acornary-review-p03:${kind}:${target || 'default'}:${scenario}`;
   const initial: DailyTaskDraft = {
@@ -174,12 +179,20 @@ export function TaskJourney({
     return '';
   }
   function finish() {
-    const ids =
-      kind === 'intake' || kind === 'new-product'
-        ? Array.from({ length: Number(draft.count) }, (_, i) => `item_${crypto.randomUUID()}`)
-        : [item!.item.id];
+    if (!request) {
+      setError('原请求未保存，无法恢复。');
+      return;
+    }
+    let ids: string[];
+    try {
+      ids = applyReviewTask(request.key, kind, request.draft, target);
+    } catch {
+      setError('无法保存预览结果，原请求仍保留。');
+      setState('networkUnknown');
+      return;
+    }
     const result = [
-      '预览结果 · 未写入库存',
+      '预览结果 · 已更新隔离数据，未写入正式库存',
       ...summary,
       ...(kind === 'new-product' ? [`示例新商品：catalog_node_${request?.key}`] : []),
       ...ids.map((id) => `示例物品：${id}`),

@@ -52,11 +52,20 @@ export function DailyActivity(props: DailyActivityProps) {
         {props.entries.length ? (
           <div className="vn-daily-history">
             {props.entries.map((entry, index) => {
+              const sameOperation =
+                index > 0 &&
+                props.entries[index - 1].event?.operation_id === entry.event?.operation_id;
+              const operationCount = props.entries.filter(
+                (e) => e.event?.operation_id === entry.event?.operation_id,
+              ).length;
               const id = entry.event?.id || `unavailable-${index}`;
               return (
                 <section key={id} className="vn-daily-activity-operation">
                   {props.entries[index - 1]?.recordedDayLabel !== entry.recordedDayLabel && (
                     <h2>{entry.recordedDayLabel}</h2>
+                  )}
+                  {!sameOperation && operationCount > 1 && (
+                    <p className="vn-muted">同一次操作 · {operationCount} 条已加载记录</p>
                   )}
                   {!entry.operationComplete && <p className="vn-muted">本次操作仅加载部分变化</p>}
                   <HistoryEntry

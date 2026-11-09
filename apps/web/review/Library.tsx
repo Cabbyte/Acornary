@@ -54,7 +54,8 @@ export function Library() {
       : entry;
   useEffect(() => {
     setPageLocation(null);
-    if (entry?.kind === 'page') setMode('daily');
+    if (entry?.kind === 'page')
+      setMode(entry.id.startsWith('page-manage-') ? 'management' : 'daily');
   }, [id, activeScenario, navigationEpoch, entry?.kind]);
   useEffect(() => {
     const params = new URLSearchParams({
@@ -293,7 +294,9 @@ export function Library() {
                 <select
                   value={mode}
                   disabled={entry.kind === 'page'}
-                  title={entry.kind === 'page' ? '本批为日常模式页面' : undefined}
+                  title={
+                    entry.kind === 'page' ? '页面模式由当前路由决定，可在页面内切换' : undefined
+                  }
                   onChange={(e) => setMode(e.target.value as UIMode)}
                 >
                   <option value="daily">日常</option>

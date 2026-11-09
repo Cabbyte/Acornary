@@ -2375,8 +2375,8 @@
       "approvalRecords": []
     },
     "page-daily-home": {
-      "version": "P01-RC1",
-      "status": "已批准",
+      "version": "Pages-RC1",
+      "status": "变更后待复审",
       "dependencies": [
         "app-shell",
         "page-header",
@@ -2402,8 +2402,8 @@
       ]
     },
     "page-daily-search": {
-      "version": "P01-RC1",
-      "status": "已批准",
+      "version": "Pages-RC1",
+      "status": "变更后待复审",
       "dependencies": [
         "app-shell",
         "page-header",
@@ -2429,8 +2429,8 @@
       ]
     },
     "page-daily-product": {
-      "version": "P01-RC1",
-      "status": "已批准",
+      "version": "Pages-RC1",
+      "status": "变更后待复审",
       "dependencies": [
         "app-shell",
         "page-header",
@@ -2456,8 +2456,8 @@
       ]
     },
     "page-daily-item": {
-      "version": "P01-RC1",
-      "status": "已批准",
+      "version": "Pages-RC1",
+      "status": "变更后待复审",
       "dependencies": [
         "app-shell",
         "page-header",
@@ -2513,8 +2513,8 @@
       "approvalRecords": []
     },
     "page-daily-intake": {
-      "version": "P03-RC1",
-      "status": "已批准",
+      "version": "Pages-RC1",
+      "status": "变更后待复审",
       "dependencies": [
         "operation-sheet",
         "quantity-input",
@@ -2535,8 +2535,8 @@
       ]
     },
     "page-daily-new-product": {
-      "version": "P03-RC1",
-      "status": "已批准",
+      "version": "Pages-RC1",
+      "status": "变更后待复审",
       "dependencies": [
         "operation-sheet",
         "quantity-input",
@@ -2557,8 +2557,8 @@
       ]
     },
     "page-daily-consume": {
-      "version": "P03-RC1",
-      "status": "已批准",
+      "version": "Pages-RC1",
+      "status": "变更后待复审",
       "dependencies": [
         "operation-sheet",
         "quantity-input",
@@ -2579,8 +2579,8 @@
       ]
     },
     "page-daily-move": {
-      "version": "P03-RC1",
-      "status": "已批准",
+      "version": "Pages-RC1",
+      "status": "变更后待复审",
       "dependencies": [
         "operation-sheet",
         "quantity-input",
@@ -2599,6 +2599,139 @@
           "scope": "本批四个任务的交互候选设计；不代表完整恢复控制器、真实业务协议或工程验收完成"
         }
       ]
+    },
+    "page-daily-opening": {
+      "version": "Pages-RC1",
+      "status": "待审阅",
+      "dependencies": ["app-shell", "page-header", "operation-sheet"],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-daily-dates": {
+      "version": "Pages-RC1",
+      "status": "待审阅",
+      "dependencies": ["app-shell", "page-header", "operation-sheet"],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-daily-notes": {
+      "version": "Pages-RC1",
+      "status": "待审阅",
+      "dependencies": ["app-shell", "page-header", "operation-sheet"],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-daily-attachments": {
+      "version": "Pages-RC1",
+      "status": "待审阅",
+      "dependencies": ["app-shell", "page-header", "operation-sheet"],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-daily-scan": {
+      "version": "Pages-RC1",
+      "status": "待审阅",
+      "dependencies": ["app-shell", "page-header", "operation-sheet"],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-daily-labels": {
+      "version": "Pages-RC1",
+      "status": "待审阅",
+      "dependencies": ["app-shell", "page-header", "operation-sheet"],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-manage-items": {
+      "version": "Pages-RC1",
+      "status": "待审阅",
+      "dependencies": ["app-shell", "page-header", "operation-sheet"],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-manage-catalog": {
+      "version": "Pages-RC1",
+      "status": "待审阅",
+      "dependencies": ["app-shell", "page-header", "operation-sheet"],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-manage-locations": {
+      "version": "Pages-RC1",
+      "status": "待审阅",
+      "dependencies": ["app-shell", "page-header", "operation-sheet"],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-manage-edit": {
+      "version": "Pages-RC1",
+      "status": "待审阅",
+      "dependencies": ["app-shell", "page-header", "operation-sheet"],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-manage-bulk": {
+      "version": "Pages-RC1",
+      "status": "待审阅",
+      "dependencies": ["app-shell", "page-header", "operation-sheet"],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-manage-history": {
+      "version": "Pages-RC1",
+      "status": "待审阅",
+      "dependencies": ["app-shell", "page-header", "operation-sheet"],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-settings": {
+      "version": "Pages-RC1",
+      "status": "待审阅",
+      "dependencies": ["app-shell", "page-header", "operation-sheet"],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-settings-household": {
+      "version": "Pages-RC1",
+      "status": "待审阅",
+      "dependencies": ["app-shell", "page-header", "operation-sheet"],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-settings-members": {
+      "version": "Pages-RC1",
+      "status": "待审阅",
+      "dependencies": ["app-shell", "page-header", "operation-sheet"],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-settings-auth": {
+      "version": "Pages-RC1",
+      "status": "待审阅",
+      "dependencies": ["app-shell", "page-header", "operation-sheet"],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-settings-printing": {
+      "version": "Pages-RC1",
+      "status": "待审阅",
+      "dependencies": ["app-shell", "page-header", "operation-sheet"],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-settings-cache": {
+      "version": "Pages-RC1",
+      "status": "待审阅",
+      "dependencies": ["app-shell", "page-header", "operation-sheet"],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-settings-inspector": {
+      "version": "Pages-RC1",
+      "status": "待审阅",
+      "dependencies": ["app-shell", "page-header", "operation-sheet"],
+      "feedback": [],
+      "approvalRecords": []
     }
   }
 }

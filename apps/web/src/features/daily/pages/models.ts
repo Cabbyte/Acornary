@@ -61,6 +61,7 @@ export interface DailyProductProps extends DailyReadProps {
   onBack: () => void;
 }
 export interface DailyItemProps extends DailyReadProps {
+  onNavigate?: (path: string) => void;
   facts: DailyItemFacts | null;
   product: DailyProductFacts | null;
   notes: readonly NoteView[];

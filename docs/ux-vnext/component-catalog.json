@@ -2,14 +2,14 @@
   "version": "Component Library RC6",
   "components": 70,
   "compositions": 5,
-  "pages": 10,
+  "pages": 29,
   "entries": [
     {
       "id": "page-daily-home",
       "kind": "page",
       "name": "页面 · 我的物品",
       "group": "完整页面 · P01",
-      "version": "P01-RC1",
+      "version": "Pages-RC1",
       "description": "日常浏览链路，可连续导航；每页单独审阅。",
       "source": "apps/web/src/features/daily/pages/daily-home.tsx",
       "storyId": "pages-daily--home",
@@ -51,11 +51,11 @@
           "label": "身份变化"
         }
       ],
-      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
-      "status": "已批准",
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "变更后待复审",
       "review": {
-        "version": "P01-RC1",
-        "status": "已批准",
+        "version": "Pages-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
@@ -88,7 +88,7 @@
       "kind": "page",
       "name": "页面 · 搜索结果",
       "group": "完整页面 · P01",
-      "version": "P01-RC1",
+      "version": "Pages-RC1",
       "description": "日常浏览链路，可连续导航；每页单独审阅。",
       "source": "apps/web/src/features/daily/pages/daily-search.tsx",
       "storyId": "pages-daily--search",
@@ -130,11 +130,11 @@
           "label": "身份变化"
         }
       ],
-      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
-      "status": "已批准",
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "变更后待复审",
       "review": {
-        "version": "P01-RC1",
-        "status": "已批准",
+        "version": "Pages-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
@@ -167,7 +167,7 @@
       "kind": "page",
       "name": "页面 · 商品资料",
       "group": "完整页面 · P01",
-      "version": "P01-RC1",
+      "version": "Pages-RC1",
       "description": "日常浏览链路，可连续导航；每页单独审阅。",
       "source": "apps/web/src/features/daily/pages/daily-product.tsx",
       "storyId": "pages-daily--product",
@@ -209,11 +209,11 @@
           "label": "身份变化"
         }
       ],
-      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
-      "status": "已批准",
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "变更后待复审",
       "review": {
-        "version": "P01-RC1",
-        "status": "已批准",
+        "version": "Pages-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
@@ -246,7 +246,7 @@
       "kind": "page",
       "name": "页面 · 单件档案",
       "group": "完整页面 · P01",
-      "version": "P01-RC1",
+      "version": "Pages-RC1",
       "description": "日常浏览链路，可连续导航；每页单独审阅。",
       "source": "apps/web/src/features/daily/pages/daily-item-detail.tsx",
       "storyId": "pages-daily--item",
@@ -288,11 +288,11 @@
           "label": "身份变化"
         }
       ],
-      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
-      "status": "已批准",
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "变更后待复审",
       "review": {
-        "version": "P01-RC1",
-        "status": "已批准",
+        "version": "Pages-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
@@ -367,7 +367,7 @@
           "label": "身份变化"
         }
       ],
-      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
       "status": "待审阅",
       "review": {
         "version": "P02-RC1",
@@ -434,7 +434,7 @@
           "label": "身份变化"
         }
       ],
-      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
       "status": "待审阅",
       "review": {
         "version": "P02-RC1",
@@ -459,7 +459,7 @@
       "kind": "page",
       "name": "页面 · 已有商品入库",
       "group": "完整页面 · P03",
-      "version": "P03-RC1",
+      "version": "Pages-RC1",
       "description": "日常任务 · 隔离适配器驱动，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/daily-task.tsx",
       "storyId": "pages-daily--intake",
@@ -493,11 +493,11 @@
           "label": "新商品类型能力契约缺口"
         }
       ],
-      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
-      "status": "已批准",
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "变更后待复审",
       "review": {
-        "version": "P03-RC1",
-        "status": "已批准",
+        "version": "Pages-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "operation-sheet",
           "quantity-input",
@@ -525,7 +525,7 @@
       "kind": "page",
       "name": "页面 · 新商品入库",
       "group": "完整页面 · P03",
-      "version": "P03-RC1",
+      "version": "Pages-RC1",
       "description": "日常任务 · 隔离适配器驱动，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/daily-task.tsx",
       "storyId": "pages-daily--new-product",
@@ -559,11 +559,11 @@
           "label": "新商品类型能力契约缺口"
         }
       ],
-      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
-      "status": "已批准",
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "变更后待复审",
       "review": {
-        "version": "P03-RC1",
-        "status": "已批准",
+        "version": "Pages-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "operation-sheet",
           "quantity-input",
@@ -591,7 +591,7 @@
       "kind": "page",
       "name": "页面 · 记录使用",
       "group": "完整页面 · P03",
-      "version": "P03-RC1",
+      "version": "Pages-RC1",
       "description": "日常任务 · 隔离适配器驱动，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/daily-task.tsx",
       "storyId": "pages-daily--consume",
@@ -625,11 +625,11 @@
           "label": "新商品类型能力契约缺口"
         }
       ],
-      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
-      "status": "已批准",
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "变更后待复审",
       "review": {
-        "version": "P03-RC1",
-        "status": "已批准",
+        "version": "Pages-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "operation-sheet",
           "quantity-input",
@@ -657,7 +657,7 @@
       "kind": "page",
       "name": "页面 · 移动物品",
       "group": "完整页面 · P03",
-      "version": "P03-RC1",
+      "version": "Pages-RC1",
       "description": "日常任务 · 隔离适配器驱动，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/daily-task.tsx",
       "storyId": "pages-daily--move",
@@ -691,11 +691,11 @@
           "label": "新商品类型能力契约缺口"
         }
       ],
-      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
-      "status": "已批准",
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "变更后待复审",
       "review": {
-        "version": "P03-RC1",
-        "status": "已批准",
+        "version": "Pages-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "operation-sheet",
           "quantity-input",
@@ -717,6 +717,1407 @@
       },
       "preview": "http://127.0.0.1:6007/?component=page-daily-move&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--move"
+    },
+    {
+      "id": "page-daily-opening",
+      "kind": "page",
+      "name": "页面 · 开封记录",
+      "group": "完整页面 · 全产品候选",
+      "version": "Pages-RC1",
+      "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/../../daily/pages/daily-extras.tsx",
+      "storyId": "pages-daily--opening",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常"
+        },
+        {
+          "id": "loading",
+          "label": "加载"
+        },
+        {
+          "id": "empty",
+          "label": "空数据"
+        },
+        {
+          "id": "error",
+          "label": "失败重试"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "conflict",
+          "label": "冲突"
+        },
+        {
+          "id": "unknown",
+          "label": "不确定结果"
+        },
+        {
+          "id": "mcp",
+          "label": "受限宿主"
+        }
+      ],
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "Pages-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "operation-sheet"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-daily-opening&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--opening"
+    },
+    {
+      "id": "page-daily-dates",
+      "kind": "page",
+      "name": "页面 · 日期事项",
+      "group": "完整页面 · 全产品候选",
+      "version": "Pages-RC1",
+      "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/../../daily/pages/daily-extras.tsx",
+      "storyId": "pages-daily--dates",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常"
+        },
+        {
+          "id": "loading",
+          "label": "加载"
+        },
+        {
+          "id": "empty",
+          "label": "空数据"
+        },
+        {
+          "id": "error",
+          "label": "失败重试"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "conflict",
+          "label": "冲突"
+        },
+        {
+          "id": "unknown",
+          "label": "不确定结果"
+        },
+        {
+          "id": "mcp",
+          "label": "受限宿主"
+        }
+      ],
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "Pages-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "operation-sheet"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-daily-dates&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--dates"
+    },
+    {
+      "id": "page-daily-notes",
+      "kind": "page",
+      "name": "页面 · 笔记",
+      "group": "完整页面 · 全产品候选",
+      "version": "Pages-RC1",
+      "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/../../daily/pages/daily-extras.tsx",
+      "storyId": "pages-daily--notes",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常"
+        },
+        {
+          "id": "loading",
+          "label": "加载"
+        },
+        {
+          "id": "empty",
+          "label": "空数据"
+        },
+        {
+          "id": "error",
+          "label": "失败重试"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "conflict",
+          "label": "冲突"
+        },
+        {
+          "id": "unknown",
+          "label": "不确定结果"
+        },
+        {
+          "id": "mcp",
+          "label": "受限宿主"
+        }
+      ],
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "Pages-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "operation-sheet"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-daily-notes&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--notes"
+    },
+    {
+      "id": "page-daily-attachments",
+      "kind": "page",
+      "name": "页面 · 附件",
+      "group": "完整页面 · 全产品候选",
+      "version": "Pages-RC1",
+      "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/../../daily/pages/daily-extras.tsx",
+      "storyId": "pages-daily--attachments",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常"
+        },
+        {
+          "id": "loading",
+          "label": "加载"
+        },
+        {
+          "id": "empty",
+          "label": "空数据"
+        },
+        {
+          "id": "error",
+          "label": "失败重试"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "conflict",
+          "label": "冲突"
+        },
+        {
+          "id": "unknown",
+          "label": "不确定结果"
+        },
+        {
+          "id": "mcp",
+          "label": "受限宿主"
+        }
+      ],
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "Pages-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "operation-sheet"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-daily-attachments&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--attachments"
+    },
+    {
+      "id": "page-daily-scan",
+      "kind": "page",
+      "name": "页面 · 扫码",
+      "group": "完整页面 · 全产品候选",
+      "version": "Pages-RC1",
+      "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/../../daily/pages/daily-extras.tsx",
+      "storyId": "pages-daily--scan",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常"
+        },
+        {
+          "id": "loading",
+          "label": "加载"
+        },
+        {
+          "id": "empty",
+          "label": "空数据"
+        },
+        {
+          "id": "error",
+          "label": "失败重试"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "conflict",
+          "label": "冲突"
+        },
+        {
+          "id": "unknown",
+          "label": "不确定结果"
+        },
+        {
+          "id": "mcp",
+          "label": "受限宿主"
+        },
+        {
+          "id": "camera-denied",
+          "label": "相机不可用"
+        }
+      ],
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "Pages-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "operation-sheet"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-daily-scan&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--scan"
+    },
+    {
+      "id": "page-daily-labels",
+      "kind": "page",
+      "name": "页面 · 标签打印",
+      "group": "完整页面 · 全产品候选",
+      "version": "Pages-RC1",
+      "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/../../daily/pages/daily-extras.tsx",
+      "storyId": "pages-daily--labels",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常"
+        },
+        {
+          "id": "loading",
+          "label": "加载"
+        },
+        {
+          "id": "empty",
+          "label": "空数据"
+        },
+        {
+          "id": "error",
+          "label": "失败重试"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "conflict",
+          "label": "冲突"
+        },
+        {
+          "id": "unknown",
+          "label": "不确定结果"
+        },
+        {
+          "id": "mcp",
+          "label": "受限宿主"
+        },
+        {
+          "id": "print-unknown",
+          "label": "打印结果不确定"
+        }
+      ],
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "Pages-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "operation-sheet"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-daily-labels&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--labels"
+    },
+    {
+      "id": "page-manage-items",
+      "kind": "page",
+      "name": "页面 · 物品管理",
+      "group": "完整页面 · 全产品候选",
+      "version": "Pages-RC1",
+      "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/../../management/pages/management-pages.tsx",
+      "storyId": "pages-daily--manage-items",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常"
+        },
+        {
+          "id": "loading",
+          "label": "加载"
+        },
+        {
+          "id": "empty",
+          "label": "空数据"
+        },
+        {
+          "id": "error",
+          "label": "失败重试"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "conflict",
+          "label": "冲突"
+        },
+        {
+          "id": "unknown",
+          "label": "不确定结果"
+        },
+        {
+          "id": "mcp",
+          "label": "受限宿主"
+        },
+        {
+          "id": "hidden",
+          "label": "隐藏选中项"
+        },
+        {
+          "id": "selection-limit",
+          "label": "100 件选择边界"
+        },
+        {
+          "id": "unknown-template",
+          "label": "未知模板字段"
+        },
+        {
+          "id": "partial-history",
+          "label": "历史部分加载"
+        }
+      ],
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "Pages-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "operation-sheet"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-manage-items&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--manage-items"
+    },
+    {
+      "id": "page-manage-catalog",
+      "kind": "page",
+      "name": "页面 · 商品目录",
+      "group": "完整页面 · 全产品候选",
+      "version": "Pages-RC1",
+      "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/../../management/pages/management-pages.tsx",
+      "storyId": "pages-daily--manage-catalog",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常"
+        },
+        {
+          "id": "loading",
+          "label": "加载"
+        },
+        {
+          "id": "empty",
+          "label": "空数据"
+        },
+        {
+          "id": "error",
+          "label": "失败重试"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "conflict",
+          "label": "冲突"
+        },
+        {
+          "id": "unknown",
+          "label": "不确定结果"
+        },
+        {
+          "id": "mcp",
+          "label": "受限宿主"
+        },
+        {
+          "id": "hidden",
+          "label": "隐藏选中项"
+        },
+        {
+          "id": "selection-limit",
+          "label": "100 件选择边界"
+        },
+        {
+          "id": "unknown-template",
+          "label": "未知模板字段"
+        },
+        {
+          "id": "partial-history",
+          "label": "历史部分加载"
+        }
+      ],
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "Pages-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "operation-sheet"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-manage-catalog&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--manage-catalog"
+    },
+    {
+      "id": "page-manage-locations",
+      "kind": "page",
+      "name": "页面 · 位置与容器",
+      "group": "完整页面 · 全产品候选",
+      "version": "Pages-RC1",
+      "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/../../management/pages/management-pages.tsx",
+      "storyId": "pages-daily--manage-locations",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常"
+        },
+        {
+          "id": "loading",
+          "label": "加载"
+        },
+        {
+          "id": "empty",
+          "label": "空数据"
+        },
+        {
+          "id": "error",
+          "label": "失败重试"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "conflict",
+          "label": "冲突"
+        },
+        {
+          "id": "unknown",
+          "label": "不确定结果"
+        },
+        {
+          "id": "mcp",
+          "label": "受限宿主"
+        },
+        {
+          "id": "hidden",
+          "label": "隐藏选中项"
+        },
+        {
+          "id": "selection-limit",
+          "label": "100 件选择边界"
+        },
+        {
+          "id": "unknown-template",
+          "label": "未知模板字段"
+        },
+        {
+          "id": "partial-history",
+          "label": "历史部分加载"
+        }
+      ],
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "Pages-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "operation-sheet"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-manage-locations&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--manage-locations"
+    },
+    {
+      "id": "page-manage-edit",
+      "kind": "page",
+      "name": "页面 · 精确编辑",
+      "group": "完整页面 · 全产品候选",
+      "version": "Pages-RC1",
+      "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/../../management/pages/management-pages.tsx",
+      "storyId": "pages-daily--manage-edit",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常"
+        },
+        {
+          "id": "loading",
+          "label": "加载"
+        },
+        {
+          "id": "empty",
+          "label": "空数据"
+        },
+        {
+          "id": "error",
+          "label": "失败重试"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "conflict",
+          "label": "冲突"
+        },
+        {
+          "id": "unknown",
+          "label": "不确定结果"
+        },
+        {
+          "id": "mcp",
+          "label": "受限宿主"
+        },
+        {
+          "id": "hidden",
+          "label": "隐藏选中项"
+        },
+        {
+          "id": "selection-limit",
+          "label": "100 件选择边界"
+        },
+        {
+          "id": "unknown-template",
+          "label": "未知模板字段"
+        },
+        {
+          "id": "partial-history",
+          "label": "历史部分加载"
+        }
+      ],
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "Pages-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "operation-sheet"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-manage-edit&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--manage-edit"
+    },
+    {
+      "id": "page-manage-bulk",
+      "kind": "page",
+      "name": "页面 · 批量管理",
+      "group": "完整页面 · 全产品候选",
+      "version": "Pages-RC1",
+      "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/../../management/pages/management-pages.tsx",
+      "storyId": "pages-daily--manage-bulk",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常"
+        },
+        {
+          "id": "loading",
+          "label": "加载"
+        },
+        {
+          "id": "empty",
+          "label": "空数据"
+        },
+        {
+          "id": "error",
+          "label": "失败重试"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "conflict",
+          "label": "冲突"
+        },
+        {
+          "id": "unknown",
+          "label": "不确定结果"
+        },
+        {
+          "id": "mcp",
+          "label": "受限宿主"
+        },
+        {
+          "id": "hidden",
+          "label": "隐藏选中项"
+        },
+        {
+          "id": "selection-limit",
+          "label": "100 件选择边界"
+        },
+        {
+          "id": "unknown-template",
+          "label": "未知模板字段"
+        },
+        {
+          "id": "partial-history",
+          "label": "历史部分加载"
+        }
+      ],
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "Pages-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "operation-sheet"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-manage-bulk&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--manage-bulk"
+    },
+    {
+      "id": "page-manage-history",
+      "kind": "page",
+      "name": "页面 · 历史与纠错",
+      "group": "完整页面 · 全产品候选",
+      "version": "Pages-RC1",
+      "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/../../management/pages/management-pages.tsx",
+      "storyId": "pages-daily--manage-history",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常"
+        },
+        {
+          "id": "loading",
+          "label": "加载"
+        },
+        {
+          "id": "empty",
+          "label": "空数据"
+        },
+        {
+          "id": "error",
+          "label": "失败重试"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "conflict",
+          "label": "冲突"
+        },
+        {
+          "id": "unknown",
+          "label": "不确定结果"
+        },
+        {
+          "id": "mcp",
+          "label": "受限宿主"
+        },
+        {
+          "id": "hidden",
+          "label": "隐藏选中项"
+        },
+        {
+          "id": "selection-limit",
+          "label": "100 件选择边界"
+        },
+        {
+          "id": "unknown-template",
+          "label": "未知模板字段"
+        },
+        {
+          "id": "partial-history",
+          "label": "历史部分加载"
+        }
+      ],
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "Pages-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "operation-sheet"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-manage-history&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--manage-history"
+    },
+    {
+      "id": "page-settings",
+      "kind": "page",
+      "name": "页面 · 设置",
+      "group": "完整页面 · 全产品候选",
+      "version": "Pages-RC1",
+      "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/../../settings/pages/settings-pages.tsx",
+      "storyId": "pages-daily--settings",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常"
+        },
+        {
+          "id": "loading",
+          "label": "加载"
+        },
+        {
+          "id": "empty",
+          "label": "空数据"
+        },
+        {
+          "id": "error",
+          "label": "失败重试"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "conflict",
+          "label": "冲突"
+        },
+        {
+          "id": "unknown",
+          "label": "不确定结果"
+        },
+        {
+          "id": "mcp",
+          "label": "受限宿主"
+        }
+      ],
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "Pages-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "operation-sheet"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-settings&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--settings"
+    },
+    {
+      "id": "page-settings-household",
+      "kind": "page",
+      "name": "页面 · 账号与家庭",
+      "group": "完整页面 · 全产品候选",
+      "version": "Pages-RC1",
+      "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/../../settings/pages/settings-pages.tsx",
+      "storyId": "pages-daily--settings-household",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常"
+        },
+        {
+          "id": "loading",
+          "label": "加载"
+        },
+        {
+          "id": "empty",
+          "label": "空数据"
+        },
+        {
+          "id": "error",
+          "label": "失败重试"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "conflict",
+          "label": "冲突"
+        },
+        {
+          "id": "unknown",
+          "label": "不确定结果"
+        },
+        {
+          "id": "mcp",
+          "label": "受限宿主"
+        }
+      ],
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "Pages-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "operation-sheet"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-settings-household&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--settings-household"
+    },
+    {
+      "id": "page-settings-members",
+      "kind": "page",
+      "name": "页面 · 成员权限",
+      "group": "完整页面 · 全产品候选",
+      "version": "Pages-RC1",
+      "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/../../settings/pages/settings-pages.tsx",
+      "storyId": "pages-daily--settings-members",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常"
+        },
+        {
+          "id": "loading",
+          "label": "加载"
+        },
+        {
+          "id": "empty",
+          "label": "空数据"
+        },
+        {
+          "id": "error",
+          "label": "失败重试"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "conflict",
+          "label": "冲突"
+        },
+        {
+          "id": "unknown",
+          "label": "不确定结果"
+        },
+        {
+          "id": "mcp",
+          "label": "受限宿主"
+        }
+      ],
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "Pages-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "operation-sheet"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-settings-members&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--settings-members"
+    },
+    {
+      "id": "page-settings-auth",
+      "kind": "page",
+      "name": "页面 · 登录与授权",
+      "group": "完整页面 · 全产品候选",
+      "version": "Pages-RC1",
+      "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/../../settings/pages/settings-pages.tsx",
+      "storyId": "pages-daily--settings-auth",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常"
+        },
+        {
+          "id": "loading",
+          "label": "加载"
+        },
+        {
+          "id": "empty",
+          "label": "空数据"
+        },
+        {
+          "id": "error",
+          "label": "失败重试"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "conflict",
+          "label": "冲突"
+        },
+        {
+          "id": "unknown",
+          "label": "不确定结果"
+        },
+        {
+          "id": "mcp",
+          "label": "受限宿主"
+        },
+        {
+          "id": "login",
+          "label": "尚未登录"
+        },
+        {
+          "id": "oauth",
+          "label": "服务授权"
+        },
+        {
+          "id": "invite-expired",
+          "label": "邀请已过期"
+        },
+        {
+          "id": "password-error",
+          "label": "凭据失败"
+        }
+      ],
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "Pages-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "operation-sheet"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-settings-auth&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--settings-auth"
+    },
+    {
+      "id": "page-settings-printing",
+      "kind": "page",
+      "name": "页面 · 打印设置",
+      "group": "完整页面 · 全产品候选",
+      "version": "Pages-RC1",
+      "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/../../settings/pages/settings-pages.tsx",
+      "storyId": "pages-daily--settings-printing",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常"
+        },
+        {
+          "id": "loading",
+          "label": "加载"
+        },
+        {
+          "id": "empty",
+          "label": "空数据"
+        },
+        {
+          "id": "error",
+          "label": "失败重试"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "conflict",
+          "label": "冲突"
+        },
+        {
+          "id": "unknown",
+          "label": "不确定结果"
+        },
+        {
+          "id": "mcp",
+          "label": "受限宿主"
+        }
+      ],
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "Pages-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "operation-sheet"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-settings-printing&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--settings-printing"
+    },
+    {
+      "id": "page-settings-cache",
+      "kind": "page",
+      "name": "页面 · 缓存与离线",
+      "group": "完整页面 · 全产品候选",
+      "version": "Pages-RC1",
+      "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/../../settings/pages/settings-pages.tsx",
+      "storyId": "pages-daily--settings-cache",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常"
+        },
+        {
+          "id": "loading",
+          "label": "加载"
+        },
+        {
+          "id": "empty",
+          "label": "空数据"
+        },
+        {
+          "id": "error",
+          "label": "失败重试"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "conflict",
+          "label": "冲突"
+        },
+        {
+          "id": "unknown",
+          "label": "不确定结果"
+        },
+        {
+          "id": "mcp",
+          "label": "受限宿主"
+        },
+        {
+          "id": "offline-empty",
+          "label": "离线无缓存"
+        },
+        {
+          "id": "storage-error",
+          "label": "存储不可用"
+        }
+      ],
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "Pages-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "operation-sheet"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-settings-cache&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--settings-cache"
+    },
+    {
+      "id": "page-settings-inspector",
+      "kind": "page",
+      "name": "页面 · 只读检查器",
+      "group": "完整页面 · 全产品候选",
+      "version": "Pages-RC1",
+      "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/../../settings/pages/settings-pages.tsx",
+      "storyId": "pages-daily--settings-inspector",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常"
+        },
+        {
+          "id": "loading",
+          "label": "加载"
+        },
+        {
+          "id": "empty",
+          "label": "空数据"
+        },
+        {
+          "id": "error",
+          "label": "失败重试"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "conflict",
+          "label": "冲突"
+        },
+        {
+          "id": "unknown",
+          "label": "不确定结果"
+        },
+        {
+          "id": "mcp",
+          "label": "受限宿主"
+        }
+      ],
+      "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "Pages-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "operation-sheet"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-settings-inspector&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--settings-inspector"
     },
     {
       "id": "button",

@@ -40,6 +40,8 @@ const candidateRoots = [
   'apps/web/src/ui/patterns',
   'apps/web/src/ui/theme',
   'apps/web/src/features/daily/pages',
+  'apps/web/src/features/management/pages',
+  'apps/web/src/features/settings/pages',
 ];
 const candidateFiles = [];
 function visitDirectory(dir) {
