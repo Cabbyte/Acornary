@@ -4,14 +4,16 @@
 
 本次交付是首批日常浏览链路：P01 三页，以及从列表进入的 S04 单件档案。它们是正式页面源码，由隔离适配器提供数据；不是完整 Phase 2 交付。组件批准不自动批准页面。
 
+2026-11-09 更新：用户确认首批四页设计，P01-RC1 登记为已批准。下一批为 P02 的“需要留意”和“最近变化”；继续使用隔离数据，回归测试仍暂停。
+
 ## 逐页入口
 
 | 稳定 ID              | 页面 / 已装配内容                                           | 审阅入口                                                                                                                                           | 状态   |
 | -------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| `page-daily-home`    | S01 我的物品：名称搜索、物品/商品切换、位置及下级筛选、分页 | [工作台](http://127.0.0.1:6007/?component=page-daily-home&viewport=1440) · [Storybook](http://127.0.0.1:6006/?path=/story/pages-daily--home)       | 待审阅 |
-| `page-daily-search`  | S02 搜索结果：保留查询、同名 SKU、多件 Item、无结果和返回   | [工作台](http://127.0.0.1:6007/?component=page-daily-search&viewport=1440) · [Storybook](http://127.0.0.1:6006/?path=/story/pages-daily--search)   | 待审阅 |
-| `page-daily-product` | S03 商品资料：分类路径、已知量合计、未知量、实际物品列表    | [工作台](http://127.0.0.1:6007/?component=page-daily-product&viewport=1440) · [Storybook](http://127.0.0.1:6006/?path=/story/pages-daily--product) | 待审阅 |
-| `page-daily-item`    | S04 单件档案：位置/数量/日期、概览、笔记、历史及版本        | [工作台](http://127.0.0.1:6007/?component=page-daily-item&viewport=390) · [Storybook](http://127.0.0.1:6006/?path=/story/pages-daily--item)        | 待审阅 |
+| `page-daily-home`    | S01 我的物品：名称搜索、物品/商品切换、位置及下级筛选、分页 | [工作台](http://127.0.0.1:6007/?component=page-daily-home&viewport=1440) · [Storybook](http://127.0.0.1:6006/?path=/story/pages-daily--home)       | 已批准 |
+| `page-daily-search`  | S02 搜索结果：保留查询、同名 SKU、多件 Item、无结果和返回   | [工作台](http://127.0.0.1:6007/?component=page-daily-search&viewport=1440) · [Storybook](http://127.0.0.1:6006/?path=/story/pages-daily--search)   | 已批准 |
+| `page-daily-product` | S03 商品资料：分类路径、已知量合计、未知量、实际物品列表    | [工作台](http://127.0.0.1:6007/?component=page-daily-product&viewport=1440) · [Storybook](http://127.0.0.1:6006/?path=/story/pages-daily--product) | 已批准 |
+| `page-daily-item`    | S04 单件档案：位置/数量/日期、概览、笔记、历史及版本        | [工作台](http://127.0.0.1:6007/?component=page-daily-item&viewport=390) · [Storybook](http://127.0.0.1:6006/?path=/story/pages-daily--item)        | 已批准 |
 
 推荐从“我的物品”搜索“燕麦”，在物品与商品间切换，打开原味商品及具体某件；查看笔记、历史，再返回。无糖商品有商品资料但零库存；巧克力味是另一 SKU。更改宽度与配色不会重新挂载当前页面，正式默认配色仍未冻结。
 
@@ -42,10 +44,10 @@
 
 ## 后续装配顺序
 
-1. 汇总这四页的反馈，共享组件需要改动时回到同一组件入口复审。
+1. 首批四页已确认；保留意见入口，后续共享组件需要改动时回到同一组件入口复审。
 2. P02 剩余：需要留意、最近变化；补齐单件档案的跨页面入口。
 3. P03–P05：入库/消耗/移动、开封与日期、笔记与附件、扫码与打印；先接隔离操作展示适配器和恢复控制器，再逐页审阅。
 4. P06–P08：管理双树、表格、精确编辑、批量、历史纠错、设置/账号/授权/检查器。
 5. P09：完整任务回归与 Phase 2 工程验收，须在恢复测试后执行；Phase 3 才接真实业务和替换正式入口。
 
-批准状态以 `apps/web/review/review-status.json` 为准。首次页面候选全部待审阅，不沿用 RC6 组件批准。
+批准状态以 `apps/web/review/review-status.json` 为准。首批四页根据 2026-11-09 的用户明确确认独立批准，不沿用 RC6 组件批准；后续页面需单独审阅。

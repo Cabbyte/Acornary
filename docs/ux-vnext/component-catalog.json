@@ -52,10 +52,10 @@
         }
       ],
       "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
-      "status": "待审阅",
+      "status": "已批准",
       "review": {
         "version": "P01-RC1",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "app-shell",
           "page-header",
@@ -70,7 +70,15 @@
           "history-entry"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-09",
+            "version": "P01-RC1",
+            "source": "用户明确确认",
+            "quote": "我觉得没问题，下一步需要做啥？",
+            "scope": "首批四页的页面设计审阅；不代表真实业务接线或工程验收"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-daily-home&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--home"
@@ -123,10 +131,10 @@
         }
       ],
       "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
-      "status": "待审阅",
+      "status": "已批准",
       "review": {
         "version": "P01-RC1",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "app-shell",
           "page-header",
@@ -141,7 +149,15 @@
           "history-entry"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-09",
+            "version": "P01-RC1",
+            "source": "用户明确确认",
+            "quote": "我觉得没问题，下一步需要做啥？",
+            "scope": "首批四页的页面设计审阅；不代表真实业务接线或工程验收"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-daily-search&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--search"
@@ -194,10 +210,10 @@
         }
       ],
       "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
-      "status": "待审阅",
+      "status": "已批准",
       "review": {
         "version": "P01-RC1",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "app-shell",
           "page-header",
@@ -212,7 +228,15 @@
           "history-entry"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-09",
+            "version": "P01-RC1",
+            "source": "用户明确确认",
+            "quote": "我觉得没问题，下一步需要做啥？",
+            "scope": "首批四页的页面设计审阅；不代表真实业务接线或工程验收"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-daily-product&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--product"
@@ -265,10 +289,10 @@
         }
       ],
       "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
-      "status": "待审阅",
+      "status": "已批准",
       "review": {
         "version": "P01-RC1",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "app-shell",
           "page-header",
@@ -283,7 +307,15 @@
           "history-entry"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-09",
+            "version": "P01-RC1",
+            "source": "用户明确确认",
+            "quote": "我觉得没问题，下一步需要做啥？",
+            "scope": "首批四页的页面设计审阅；不代表真实业务接线或工程验收"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-daily-item&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--item"

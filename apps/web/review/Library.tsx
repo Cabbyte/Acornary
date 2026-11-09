@@ -213,8 +213,9 @@ export function Library() {
             <span>组件与页面审阅</span>
           </div>
           <span className="library-meta">
-            {reviewStatus.version} 组件已确认 · {entries.filter((e) => e.kind === 'page').length}{' '}
-            个页面待审阅
+            {reviewStatus.version} 组件已确认 · 页面{' '}
+            {entries.filter((e) => e.kind === 'page' && e.status === '已批准').length}/
+            {entries.filter((e) => e.kind === 'page').length} 已确认
           </span>
         </header>
         <div className="library-layout">

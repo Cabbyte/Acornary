@@ -2376,7 +2376,7 @@
     },
     "page-daily-home": {
       "version": "P01-RC1",
-      "status": "待审阅",
+      "status": "已批准",
       "dependencies": [
         "app-shell",
         "page-header",
@@ -2391,11 +2391,19 @@
         "history-entry"
       ],
       "feedback": [],
-      "approvalRecords": []
+      "approvalRecords": [
+        {
+          "date": "2026-11-09",
+          "version": "P01-RC1",
+          "source": "用户明确确认",
+          "quote": "我觉得没问题，下一步需要做啥？",
+          "scope": "首批四页的页面设计审阅；不代表真实业务接线或工程验收"
+        }
+      ]
     },
     "page-daily-search": {
       "version": "P01-RC1",
-      "status": "待审阅",
+      "status": "已批准",
       "dependencies": [
         "app-shell",
         "page-header",
@@ -2410,11 +2418,19 @@
         "history-entry"
       ],
       "feedback": [],
-      "approvalRecords": []
+      "approvalRecords": [
+        {
+          "date": "2026-11-09",
+          "version": "P01-RC1",
+          "source": "用户明确确认",
+          "quote": "我觉得没问题，下一步需要做啥？",
+          "scope": "首批四页的页面设计审阅；不代表真实业务接线或工程验收"
+        }
+      ]
     },
     "page-daily-product": {
       "version": "P01-RC1",
-      "status": "待审阅",
+      "status": "已批准",
       "dependencies": [
         "app-shell",
         "page-header",
@@ -2429,11 +2445,19 @@
         "history-entry"
       ],
       "feedback": [],
-      "approvalRecords": []
+      "approvalRecords": [
+        {
+          "date": "2026-11-09",
+          "version": "P01-RC1",
+          "source": "用户明确确认",
+          "quote": "我觉得没问题，下一步需要做啥？",
+          "scope": "首批四页的页面设计审阅；不代表真实业务接线或工程验收"
+        }
+      ]
     },
     "page-daily-item": {
       "version": "P01-RC1",
-      "status": "待审阅",
+      "status": "已批准",
       "dependencies": [
         "app-shell",
         "page-header",
@@ -2448,7 +2472,15 @@
         "history-entry"
       ],
       "feedback": [],
-      "approvalRecords": []
+      "approvalRecords": [
+        {
+          "date": "2026-11-09",
+          "version": "P01-RC1",
+          "source": "用户明确确认",
+          "quote": "我觉得没问题，下一步需要做啥？",
+          "scope": "首批四页的页面设计审阅；不代表真实业务接线或工程验收"
+        }
+      ]
     }
   }
 }
