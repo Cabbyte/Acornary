@@ -494,10 +494,10 @@
         }
       ],
       "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
-      "status": "待审阅",
+      "status": "已批准",
       "review": {
         "version": "P03-RC1",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "operation-sheet",
           "quantity-input",
@@ -507,7 +507,15 @@
           "conflict-resolution"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-09",
+            "version": "P03-RC1",
+            "source": "用户明确确认",
+            "quote": "没问题，下一步做啥？",
+            "scope": "本批四个任务的交互候选设计；不代表完整恢复控制器、真实业务协议或工程验收完成"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-daily-intake&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--intake"
@@ -552,10 +560,10 @@
         }
       ],
       "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
-      "status": "待审阅",
+      "status": "已批准",
       "review": {
         "version": "P03-RC1",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "operation-sheet",
           "quantity-input",
@@ -565,7 +573,15 @@
           "conflict-resolution"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-09",
+            "version": "P03-RC1",
+            "source": "用户明确确认",
+            "quote": "没问题，下一步做啥？",
+            "scope": "本批四个任务的交互候选设计；不代表完整恢复控制器、真实业务协议或工程验收完成"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-daily-new-product&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--new-product"
@@ -610,10 +626,10 @@
         }
       ],
       "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
-      "status": "待审阅",
+      "status": "已批准",
       "review": {
         "version": "P03-RC1",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "operation-sheet",
           "quantity-input",
@@ -623,7 +639,15 @@
           "conflict-resolution"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-09",
+            "version": "P03-RC1",
+            "source": "用户明确确认",
+            "quote": "没问题，下一步做啥？",
+            "scope": "本批四个任务的交互候选设计；不代表完整恢复控制器、真实业务协议或工程验收完成"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-daily-consume&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--consume"
@@ -668,10 +692,10 @@
         }
       ],
       "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
-      "status": "待审阅",
+      "status": "已批准",
       "review": {
         "version": "P03-RC1",
-        "status": "待审阅",
+        "status": "已批准",
         "dependencies": [
           "operation-sheet",
           "quantity-input",
@@ -681,7 +705,15 @@
           "conflict-resolution"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [
+          {
+            "date": "2026-11-09",
+            "version": "P03-RC1",
+            "source": "用户明确确认",
+            "quote": "没问题，下一步做啥？",
+            "scope": "本批四个任务的交互候选设计；不代表完整恢复控制器、真实业务协议或工程验收完成"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-daily-move&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--move"

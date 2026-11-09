@@ -2514,7 +2514,7 @@
     },
     "page-daily-intake": {
       "version": "P03-RC1",
-      "status": "待审阅",
+      "status": "已批准",
       "dependencies": [
         "operation-sheet",
         "quantity-input",
@@ -2524,11 +2524,19 @@
         "conflict-resolution"
       ],
       "feedback": [],
-      "approvalRecords": []
+      "approvalRecords": [
+        {
+          "date": "2026-11-09",
+          "version": "P03-RC1",
+          "source": "用户明确确认",
+          "quote": "没问题，下一步做啥？",
+          "scope": "本批四个任务的交互候选设计；不代表完整恢复控制器、真实业务协议或工程验收完成"
+        }
+      ]
     },
     "page-daily-new-product": {
       "version": "P03-RC1",
-      "status": "待审阅",
+      "status": "已批准",
       "dependencies": [
         "operation-sheet",
         "quantity-input",
@@ -2538,11 +2546,19 @@
         "conflict-resolution"
       ],
       "feedback": [],
-      "approvalRecords": []
+      "approvalRecords": [
+        {
+          "date": "2026-11-09",
+          "version": "P03-RC1",
+          "source": "用户明确确认",
+          "quote": "没问题，下一步做啥？",
+          "scope": "本批四个任务的交互候选设计；不代表完整恢复控制器、真实业务协议或工程验收完成"
+        }
+      ]
     },
     "page-daily-consume": {
       "version": "P03-RC1",
-      "status": "待审阅",
+      "status": "已批准",
       "dependencies": [
         "operation-sheet",
         "quantity-input",
@@ -2552,11 +2568,19 @@
         "conflict-resolution"
       ],
       "feedback": [],
-      "approvalRecords": []
+      "approvalRecords": [
+        {
+          "date": "2026-11-09",
+          "version": "P03-RC1",
+          "source": "用户明确确认",
+          "quote": "没问题，下一步做啥？",
+          "scope": "本批四个任务的交互候选设计；不代表完整恢复控制器、真实业务协议或工程验收完成"
+        }
+      ]
     },
     "page-daily-move": {
       "version": "P03-RC1",
-      "status": "待审阅",
+      "status": "已批准",
       "dependencies": [
         "operation-sheet",
         "quantity-input",
@@ -2566,7 +2590,15 @@
         "conflict-resolution"
       ],
       "feedback": [],
-      "approvalRecords": []
+      "approvalRecords": [
+        {
+          "date": "2026-11-09",
+          "version": "P03-RC1",
+          "source": "用户明确确认",
+          "quote": "没问题，下一步做啥？",
+          "scope": "本批四个任务的交互候选设计；不代表完整恢复控制器、真实业务协议或工程验收完成"
+        }
+      ]
     }
   }
 }
