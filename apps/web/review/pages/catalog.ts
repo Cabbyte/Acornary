@@ -41,8 +41,17 @@ export const pageDefinitions = [
     source: 'daily-activity',
     story: 'activity',
   },
+  ...(['intake', 'new-product', 'consume', 'move'] as const).map((kind, i) => ({
+    id: `page-daily-${kind}`,
+    name: `页面 · ${['已有商品入库', '新商品入库', '记录使用', '移动物品'][i]}`,
+    path: `/tasks/${kind}`,
+    source: 'daily-task',
+    story: kind,
+  })),
 ] as const;
 export function definitionForPath(path: string) {
+  const task = pageDefinitions.find((p) => p.path === path);
+  if (task) return task;
   return path.startsWith('/attention')
     ? pageDefinitions[4]
     : path.startsWith('/activity')
@@ -58,7 +67,7 @@ export function definitionForPath(path: string) {
 export function safePagePath(value: string | null): string | null {
   return value &&
     value.length < 4096 &&
-    /^\/(?:items(?:\/item_[\w-]+)?|attention|activity|search|products\/catalog_node_[\w-]+)(?:\?|$)/.test(
+    /^\/(?:items(?:\/item_[\w-]+)?|tasks\/(?:intake|new-product|consume|move)|attention|activity|search|products\/catalog_node_[\w-]+)(?:\?|$)/.test(
       value,
     )
     ? value

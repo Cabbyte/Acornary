@@ -16,14 +16,38 @@ import './daily-pages.css';
 export function DailyItemList({
   items,
   onOpen,
+  onTask,
 }: {
   items: readonly DailyItemFacts[];
   onOpen: (id: string) => void;
+  onTask?: DailyBrowseProps['onTask'];
 }) {
   return (
     <div className="vn-item-list">
       {items.map(({ item, quantity, date }) => (
-        <ItemRow key={item.id} item={item} quantity={quantity} date={date} onOpen={onOpen} />
+        <ItemRow
+          key={item.id}
+          item={item}
+          quantity={quantity}
+          date={date}
+          onOpen={onOpen}
+          actions={
+            onTask
+              ? [
+                  {
+                    kind: 'consume',
+                    label: '使用',
+                    availability:
+                      item.profile === 'CONSUMABLE'
+                        ? { kind: 'available' }
+                        : { kind: 'blockedState', reason: '此物品不支持消耗' },
+                  },
+                  { kind: 'move', label: '移动', availability: { kind: 'available' } },
+                ]
+              : undefined
+          }
+          onAction={(kind, id) => onTask?.(kind === 'consume' ? 'consume' : 'move', id)}
+        />
       ))}
     </div>
   );
@@ -53,7 +77,7 @@ export function BrowseContent(props: DailyBrowseProps) {
       ) : (
         <>
           {props.view === 'items' ? (
-            <DailyItemList items={props.items} onOpen={props.onOpenItem} />
+            <DailyItemList items={props.items} onOpen={props.onOpenItem} onTask={props.onTask} />
           ) : (
             <div className="vn-daily-products">
               {props.products.map((product) => (
@@ -64,6 +88,7 @@ export function BrowseContent(props: DailyBrowseProps) {
                   coverage={props.state === 'offline-partial' ? 'cached-subset' : 'live'}
                   knownItemCount={props.state === 'offline-partial' ? null : product.group.count}
                   onOpenItems={props.onOpenProduct}
+                  onIntake={props.onTask ? (id) => props.onTask?.('intake', id) : undefined}
                 />
               ))}
             </div>

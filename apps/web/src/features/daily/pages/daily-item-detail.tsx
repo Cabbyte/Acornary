@@ -28,6 +28,28 @@ export function DailyItemDetail(props: DailyItemProps) {
             : '物品档案'
         }
         onBack={props.onBack}
+        secondaryActions={
+          canRead && item && props.onTask
+            ? [
+                {
+                  id: 'move',
+                  label: '移动',
+                  availability: { kind: 'available' },
+                  onAction: () => props.onTask?.('move', item.id),
+                },
+                ...(item.profile === 'CONSUMABLE'
+                  ? [
+                      {
+                        id: 'consume',
+                        label: '使用',
+                        availability: { kind: 'available' as const },
+                        onAction: () => props.onTask?.('consume', item.id),
+                      },
+                    ]
+                  : []),
+              ]
+            : undefined
+        }
         context={
           canRead && item ? (
             <>

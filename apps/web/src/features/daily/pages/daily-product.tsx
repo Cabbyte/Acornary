@@ -24,6 +24,7 @@ export function DailyProduct(props: DailyProductProps) {
               nextDate={props.product.date ?? null}
               coverage={props.state === 'offline-partial' ? 'cached-subset' : 'live'}
               knownItemCount={props.state === 'offline-partial' ? null : props.product.group.count}
+              onIntake={props.onTask ? (id) => props.onTask?.('intake', id) : undefined}
               onOpenItems={() => {
                 list.current?.scrollIntoView({ block: 'nearest' });
                 list.current?.focus({ preventScroll: true });

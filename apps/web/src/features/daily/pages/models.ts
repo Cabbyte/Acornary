@@ -31,6 +31,7 @@ export interface DailyProductFacts {
 }
 export type DailyPagination = Omit<PaginationControlsProps, 'className' | 'loading' | 'disabled'>;
 export interface DailyReadProps {
+  onTask?: (kind: import('./daily-task').DailyTaskKind, target?: string) => void;
   state: DailyReadState;
   onRetry: () => void;
 }

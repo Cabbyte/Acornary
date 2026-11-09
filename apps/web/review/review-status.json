@@ -2511,6 +2511,62 @@
       ],
       "feedback": [],
       "approvalRecords": []
+    },
+    "page-daily-intake": {
+      "version": "P03-RC1",
+      "status": "待审阅",
+      "dependencies": [
+        "operation-sheet",
+        "quantity-input",
+        "catalog-picker",
+        "location-picker",
+        "approval-summary",
+        "conflict-resolution"
+      ],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-daily-new-product": {
+      "version": "P03-RC1",
+      "status": "待审阅",
+      "dependencies": [
+        "operation-sheet",
+        "quantity-input",
+        "catalog-picker",
+        "location-picker",
+        "approval-summary",
+        "conflict-resolution"
+      ],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-daily-consume": {
+      "version": "P03-RC1",
+      "status": "待审阅",
+      "dependencies": [
+        "operation-sheet",
+        "quantity-input",
+        "catalog-picker",
+        "location-picker",
+        "approval-summary",
+        "conflict-resolution"
+      ],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-daily-move": {
+      "version": "P03-RC1",
+      "status": "待审阅",
+      "dependencies": [
+        "operation-sheet",
+        "quantity-input",
+        "catalog-picker",
+        "location-picker",
+        "approval-summary",
+        "conflict-resolution"
+      ],
+      "feedback": [],
+      "approvalRecords": []
     }
   }
 }

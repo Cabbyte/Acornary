@@ -59,3 +59,9 @@
 - [最近变化](http://127.0.0.1:6007/?component=page-daily-activity&viewport=390)：最近 7/30 天、变化类型、记录日分组、操作者、前后变化、分页和对象历史。
 
 两页各有正常、分页、加载、空、失败、权限、离线部分缓存、无缓存和身份变化 9 个场景。意见沿用本地服务，页面 ID、版本、路由随当前页面变化。原四页保持批准；新两页待审阅。详见 [P02-RC1 报告](p02-rc1-report.md)。
+
+## P03-RC1 · 待审阅
+
+[已有商品入库](http://127.0.0.1:6007/?component=page-daily-intake&viewport=390) · [新商品入库](http://127.0.0.1:6007/?component=page-daily-new-product&viewport=390) · [记录使用](http://127.0.0.1:6007/?component=page-daily-consume&viewport=390) · [移动物品](http://127.0.0.1:6007/?component=page-daily-move&viewport=390)。
+
+选择正常任务或异常场景后按核对、确认推进。每个任务保留独立意见入口；关闭或保留任务后填写意见。范围和未验证项见 [P03 报告](p03-rc1-report.md)。

@@ -2,7 +2,7 @@
   "version": "Component Library RC6",
   "components": 70,
   "compositions": 5,
-  "pages": 6,
+  "pages": 10,
   "entries": [
     {
       "id": "page-daily-home",
@@ -453,6 +453,238 @@
       },
       "preview": "http://127.0.0.1:6007/?component=page-daily-activity&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--activity"
+    },
+    {
+      "id": "page-daily-intake",
+      "kind": "page",
+      "name": "页面 · 已有商品入库",
+      "group": "完整页面 · P03",
+      "version": "P03-RC1",
+      "description": "日常任务 · 隔离适配器驱动，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/daily-task.tsx",
+      "storyId": "pages-daily--intake",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常任务"
+        },
+        {
+          "id": "unknown",
+          "label": "提交后结果不确定"
+        },
+        {
+          "id": "conflict",
+          "label": "版本冲突"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "contract-gap",
+          "label": "新商品类型能力契约缺口"
+        }
+      ],
+      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "P03-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "operation-sheet",
+          "quantity-input",
+          "catalog-picker",
+          "location-picker",
+          "approval-summary",
+          "conflict-resolution"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-daily-intake&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--intake"
+    },
+    {
+      "id": "page-daily-new-product",
+      "kind": "page",
+      "name": "页面 · 新商品入库",
+      "group": "完整页面 · P03",
+      "version": "P03-RC1",
+      "description": "日常任务 · 隔离适配器驱动，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/daily-task.tsx",
+      "storyId": "pages-daily--new-product",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常任务"
+        },
+        {
+          "id": "unknown",
+          "label": "提交后结果不确定"
+        },
+        {
+          "id": "conflict",
+          "label": "版本冲突"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "contract-gap",
+          "label": "新商品类型能力契约缺口"
+        }
+      ],
+      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "P03-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "operation-sheet",
+          "quantity-input",
+          "catalog-picker",
+          "location-picker",
+          "approval-summary",
+          "conflict-resolution"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-daily-new-product&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--new-product"
+    },
+    {
+      "id": "page-daily-consume",
+      "kind": "page",
+      "name": "页面 · 记录使用",
+      "group": "完整页面 · P03",
+      "version": "P03-RC1",
+      "description": "日常任务 · 隔离适配器驱动，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/daily-task.tsx",
+      "storyId": "pages-daily--consume",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常任务"
+        },
+        {
+          "id": "unknown",
+          "label": "提交后结果不确定"
+        },
+        {
+          "id": "conflict",
+          "label": "版本冲突"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "contract-gap",
+          "label": "新商品类型能力契约缺口"
+        }
+      ],
+      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "P03-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "operation-sheet",
+          "quantity-input",
+          "catalog-picker",
+          "location-picker",
+          "approval-summary",
+          "conflict-resolution"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-daily-consume&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--consume"
+    },
+    {
+      "id": "page-daily-move",
+      "kind": "page",
+      "name": "页面 · 移动物品",
+      "group": "完整页面 · P03",
+      "version": "P03-RC1",
+      "description": "日常任务 · 隔离适配器驱动，逐页审阅。",
+      "source": "apps/web/src/features/daily/pages/daily-task.tsx",
+      "storyId": "pages-daily--move",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常任务"
+        },
+        {
+          "id": "unknown",
+          "label": "提交后结果不确定"
+        },
+        {
+          "id": "conflict",
+          "label": "版本冲突"
+        },
+        {
+          "id": "offline",
+          "label": "离线"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        },
+        {
+          "id": "contract-gap",
+          "label": "新商品类型能力契约缺口"
+        }
+      ],
+      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "P03-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "operation-sheet",
+          "quantity-input",
+          "catalog-picker",
+          "location-picker",
+          "approval-summary",
+          "conflict-resolution"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-daily-move&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--move"
     },
     {
       "id": "button",

@@ -1,3 +1,5 @@
+import { TaskJourney } from './TaskJourney';
+import type { DailyTaskKind } from '../../src/features/daily/pages/daily-task';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import {
   createBrowserHistory,
@@ -70,8 +72,12 @@ function PageScreen() {
         ? 1
         : 5
       : 50;
-  const version =
-    page.id === 'page-daily-attention' || page.id === 'page-daily-activity'
+  const taskKind = route.pathname.startsWith('/tasks/')
+    ? (route.pathname.split('/')[2] as DailyTaskKind)
+    : null;
+  const version = taskKind
+    ? 'P03-RC1'
+    : page.id === 'page-daily-attention' || page.id === 'page-daily-activity'
       ? 'P02-RC1'
       : pageVersion;
   const host = useRef<HTMLDivElement>(null);
@@ -235,6 +241,8 @@ function PageScreen() {
     onOpenItem: (id) => navigate(`/items/${id}`),
     onOpenProduct: (id) => navigate(`/products/${id}`),
     onBack: () => navigate('/items'),
+    onTask: (kind, target) =>
+      navigate(`/tasks/${kind}${target ? '?target=' + encodeURIComponent(target) : ''}`),
   };
   const objectId = route.pathname.split('/')[2];
   const facts = source.find(({ item }) => item.id === objectId) || null;
@@ -334,9 +342,7 @@ function PageScreen() {
           route: route.href,
         }}
       />
-      <p className="page-review-boundary">
-        {version} · 日常只读预览 · 添加与使用等任务在后续批次开放
-      </p>
+      <p className="page-review-boundary">{version} · 隔离预览 · 示例结果不会写入库存</p>
       <AppShell
         mode="daily"
         onModeChange={() => undefined}
@@ -357,7 +363,16 @@ function PageScreen() {
         onHouseholdSwitchIntent={() => undefined}
         title={page.name.replace('页面 · ', '')}
       >
-        {page.id === 'page-daily-attention' ? (
+        {taskKind ? (
+          <TaskJourney
+            key={`${taskKind}:${params.get('target') || ''}:${scenario}`}
+            kind={taskKind}
+            onSwitch={(kind) => navigate(`/tasks/${kind}`)}
+            scenario={scenario}
+            target={params.get('target') || undefined}
+            onBack={back}
+          />
+        ) : page.id === 'page-daily-attention' ? (
           <DailyAttention
             {...common}
             tasks={taskPage.data}
@@ -404,6 +419,7 @@ function PageScreen() {
             {...common}
             state={missingState(product)}
             product={product}
+            onTask={browse.onTask}
             items={productItems.data}
             pagination={productItems.pagination}
             onOpenItem={browse.onOpenItem}
@@ -414,6 +430,7 @@ function PageScreen() {
             {...common}
             state={missingState(facts)}
             facts={facts}
+            onTask={browse.onTask}
             product={product}
             notes={facts?.item.id === firstItemId ? notes : []}
             history={facts?.item.id === firstItemId ? history : []}
@@ -470,6 +487,7 @@ export function PageJourney({ initialPath, scenario }: { initialPath: string; sc
     const routes = [
       '/items',
       '/search',
+      '/tasks/$kind',
       '/attention',
       '/activity',
       '/items/$itemId',
