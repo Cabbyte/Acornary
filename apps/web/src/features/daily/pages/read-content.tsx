@@ -9,8 +9,9 @@ export function ReadContent({
   state,
   onRetry,
   children,
-}: DailyReadProps & { children: ReactNode }) {
-  if (state === 'loading') return <LoadingState label="正在读取物品" layout="list" />;
+  loadingLabel = '正在读取物品',
+}: DailyReadProps & { children: ReactNode; loadingLabel?: string }) {
+  if (state === 'loading') return <LoadingState label={loadingLabel} layout="list" />;
   if (state === 'error')
     return (
       <EmptyState

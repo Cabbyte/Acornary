@@ -14,22 +14,35 @@ export function ProductPageDemo({ scenario }: ReviewDemoProps) {
 export function ItemPageDemo({ scenario }: ReviewDemoProps) {
   return <PageJourney initialPath={pageDefinitions[3].path} scenario={scenario} />;
 }
-const demos = [HomePageDemo, SearchPageDemo, ProductPageDemo, ItemPageDemo];
+export function AttentionPageDemo({ scenario }: ReviewDemoProps) {
+  return <PageJourney initialPath="/attention" scenario={scenario} />;
+}
+export function ActivityPageDemo({ scenario }: ReviewDemoProps) {
+  return <PageJourney initialPath="/activity" scenario={scenario} />;
+}
+const demos = [
+  HomePageDemo,
+  SearchPageDemo,
+  ProductPageDemo,
+  ItemPageDemo,
+  AttentionPageDemo,
+  ActivityPageDemo,
+];
 export const pageEntries: ReviewEntry[] = pageDefinitions.map((page, index) => ({
   id: page.id,
   kind: 'page',
   name: page.name,
-  group: '完整页面 · P01',
-  version: 'P01-RC1',
+  group: index < 4 ? '完整页面 · P01' : '完整页面 · P02',
+  version: index < 4 ? 'P01-RC1' : 'P02-RC1',
   description: '日常浏览链路，可连续导航；每页单独审阅。',
   component: demos[index],
   source: `apps/web/src/features/daily/pages/${page.source}.tsx`,
   storyId: `pages-daily--${page.story}`,
   scenarios: [
     { id: 'normal', label: '正常 · 可连续浏览' },
-    { id: 'pagination', label: '分页样例 · 每页 5 条' },
+    { id: 'pagination', label: index < 4 ? '分页样例 · 每页 5 条' : '分页样例 · 每页 1 条' },
     { id: 'loading', label: '正在读取' },
-    { id: 'empty', label: index < 2 ? '没有记录' : '记录不可用' },
+    { id: 'empty', label: index < 2 || index > 3 ? '没有记录' : '记录不可用' },
     { id: 'error', label: '读取失败 · 可重试' },
     { id: 'forbidden', label: '无权限' },
     { id: 'offline', label: '离线 · 部分缓存' },

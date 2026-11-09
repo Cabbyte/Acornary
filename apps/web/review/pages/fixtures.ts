@@ -219,3 +219,30 @@ export const history: DailyItemProps['history'] = [
     changesPresentation: { 'contents.remaining': { label: '剩余量' } },
   },
 ];
+
+// Earlier events of the same fixture item; newest-first and revision-contiguous.
+for (const [revision, before, after, date] of [
+  [6, '750', '500', '2026-11-05T06:32:00Z'],
+  [5, '1000', '750', '2026-11-04T06:32:00Z'],
+] as const) {
+  const latest = history[0];
+  (history as Array<(typeof history)[number]>).push({
+    ...latest,
+    event: {
+      ...latest.event!,
+      id: `event_00000000-0000-4000-8000-00000000000${revision}`,
+      operation_id: `operation_00000000-0000-4000-8000-00000000000${revision}`,
+      before_revision: revision - 1,
+      after_revision: revision,
+      occurred_at: date,
+      recorded_at: date,
+      changes: [
+        {
+          ...latest.event!.changes[0],
+          before: { value: before, unit: 'mL' },
+          after: { value: after, unit: 'mL' },
+        },
+      ],
+    },
+  });
+}

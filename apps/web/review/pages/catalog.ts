@@ -27,20 +27,40 @@ export const pageDefinitions = [
     source: 'daily-item-detail',
     story: 'item',
   },
+  {
+    id: 'page-daily-attention',
+    name: '页面 · 需要留意',
+    path: '/attention',
+    source: 'daily-attention',
+    story: 'attention',
+  },
+  {
+    id: 'page-daily-activity',
+    name: '页面 · 最近变化',
+    path: '/activity',
+    source: 'daily-activity',
+    story: 'activity',
+  },
 ] as const;
 export function definitionForPath(path: string) {
-  return path.startsWith('/products/')
-    ? pageDefinitions[2]
-    : path.startsWith('/items/')
-      ? pageDefinitions[3]
-      : path.startsWith('/search')
-        ? pageDefinitions[1]
-        : pageDefinitions[0];
+  return path.startsWith('/attention')
+    ? pageDefinitions[4]
+    : path.startsWith('/activity')
+      ? pageDefinitions[5]
+      : path.startsWith('/products/')
+        ? pageDefinitions[2]
+        : path.startsWith('/items/')
+          ? pageDefinitions[3]
+          : path.startsWith('/search')
+            ? pageDefinitions[1]
+            : pageDefinitions[0];
 }
 export function safePagePath(value: string | null): string | null {
   return value &&
     value.length < 4096 &&
-    /^\/(?:items(?:\/item_[\w-]+)?|search|products\/catalog_node_[\w-]+)(?:\?|$)/.test(value)
+    /^\/(?:items(?:\/item_[\w-]+)?|attention|activity|search|products\/catalog_node_[\w-]+)(?:\?|$)/.test(
+      value,
+    )
     ? value
     : null;
 }

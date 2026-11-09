@@ -113,3 +113,38 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+[data-acornary-ui='vnext'] .vn-daily-feed-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vn-space-12);
+}
+[data-acornary-ui='vnext'] .vn-daily-feed-toolbar > :first-child {
+  width: 180px;
+  max-width: 100%;
+}
+[data-acornary-ui='vnext'] .vn-daily-feed-toolbar .vn-muted {
+  font-size: var(--vn-type-metadata);
+}
+[data-acornary-ui='vnext'] .vn-daily-attention-list > article {
+  padding-block: var(--vn-space-12);
+  border-bottom: 1px solid var(--vn-border);
+}
+[data-acornary-ui='vnext'] .vn-daily-attention-reason {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-daily-attention-reason details {
+  color: var(--vn-muted-foreground);
+  font-size: var(--vn-type-metadata);
+  max-width: 100%;
+}
+[data-acornary-ui='vnext'] .vn-daily-attention-reason summary {
+  min-height: var(--vn-target-touch);
+  align-content: center;
+  cursor: pointer;
+}

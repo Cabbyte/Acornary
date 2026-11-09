@@ -12,6 +12,12 @@ import {
 } from '@tanstack/react-router';
 import { AppShell } from '../../src/ui/patterns/app-shell';
 import type { NavigationLink } from '../../src/ui/patterns/desktop-navigation';
+import {
+  DailyAttention,
+  type AttentionCategory,
+  type AttentionTask,
+} from '../../src/features/daily/pages/daily-attention';
+import { DailyActivity, type ActivityFilter } from '../../src/features/daily/pages/daily-activity';
 import { DailyHome } from '../../src/features/daily/pages/daily-home';
 import { DailySearch } from '../../src/features/daily/pages/daily-search';
 import { DailyProduct } from '../../src/features/daily/pages/daily-product';
@@ -45,19 +51,29 @@ const PreviewContext = createContext({
 const focusSelector = 'button, a[href], input, [role="tab"]';
 const links: NavigationLink[] = [
   { id: 'items', label: '物品', href: '#/items' },
-  { id: 'attention', label: '留意', href: '/attention', disabled: true },
-  { id: 'activity', label: '动态', href: '/activity', disabled: true },
+  { id: 'attention', label: '留意', href: '#/attention' },
+  { id: 'activity', label: '动态', href: '#/activity' },
   { id: 'settings', label: '设置', href: '/settings', disabled: true },
 ];
 
 function PageScreen() {
   const { scenario, scroll } = useContext(PreviewContext);
-  const pageSize = scenario === 'pagination' ? 5 : 50;
+
   const appearance = useReviewAppearance();
   const router = useRouter();
   const route = useLocation();
   const params = new URLSearchParams(route.searchStr);
   const page = definitionForPath(route.pathname);
+  const pageSize =
+    scenario === 'pagination'
+      ? route.pathname === '/attention' || route.pathname === '/activity'
+        ? 1
+        : 5
+      : 50;
+  const version =
+    page.id === 'page-daily-attention' || page.id === 'page-daily-activity'
+      ? 'P02-RC1'
+      : pageVersion;
   const host = useRef<HTMLDivElement>(null);
   const previousPath = useRef('');
   const [recovered, setRecovered] = useState(false);
@@ -237,6 +253,59 @@ function PageScreen() {
         ? 'offline-empty'
         : 'not-found'
       : state;
+  const category = (
+    ['stock', 'loan', 'repair'].includes(params.get('category') || '')
+      ? params.get('category')
+      : 'date'
+  ) as AttentionCategory;
+  const activityFilter = (
+    ['quantity', 'other'].includes(params.get('filter') || '') ? params.get('filter') : 'all'
+  ) as ActivityFilter;
+  // Explicit isolated household rule, not inferred from a product name or unknown quantity.
+  const tasks: AttentionTask[] = source
+    .filter((f) => f.item.id === firstItemId)
+    .flatMap((facts) => [
+      {
+        id: 'best-before-1',
+        category: 'date' as const,
+        facts,
+        reason: '最佳食用期将至',
+        basis:
+          '包装标注 2026-11-10；示例家庭按未来 7 天提醒，判断基准 2026-11-07，Asia/Shanghai。最佳食用期不等于限用日期。',
+      },
+    ]);
+  const dateRange = ['past', 'today'].includes(params.get('range') || '')
+    ? params.get('range')!
+    : 'upcoming';
+  const selectedTasks = tasks.filter((t) => t.category === category && dateRange === 'upcoming');
+  const stocks =
+    category === 'stock' && scenario !== 'empty' && state !== 'offline-partial'
+      ? [
+          {
+            group: { ...emptyProduct.group, lowStock: true },
+            basis: '有效库存 0 件，低于示例补货规则 1 件；未知数量 0 件。入库将在后续批次开放。',
+          },
+        ]
+      : [];
+  const taskPage = pageData(selectedTasks);
+  const stockPage = pageData(stocks);
+  const activityPage = pageData(
+    (scenario === 'empty' ? [] : state === 'offline-partial' ? history.slice(0, 1) : history)
+      .filter(
+        (e) =>
+          !!e.event &&
+          e.event.occurred_at >=
+            (params.get('days') === '30' ? '2026-10-08T16:00:00Z' : '2026-10-31T16:00:00Z') &&
+          e.event.occurred_at < '2026-11-07T16:00:00Z',
+      )
+      .filter(
+        (e) =>
+          activityFilter === 'all' ||
+          (activityFilter === 'quantity'
+            ? e.operationLabel === '记录余量'
+            : e.operationLabel !== '记录余量'),
+      ),
+  );
   return (
     <div
       className="page-review-journey"
@@ -261,12 +330,12 @@ function PageScreen() {
           preset: appearance?.preset || 'sage',
           mode: 'daily',
           viewport: actualWidth,
-          version: pageVersion,
+          version,
           route: route.href,
         }}
       />
       <p className="page-review-boundary">
-        {pageVersion} · 日常只读预览 · 添加与使用等任务在后续批次开放
+        {version} · 日常只读预览 · 添加与使用等任务在后续批次开放
       </p>
       <AppShell
         mode="daily"
@@ -275,14 +344,58 @@ function PageScreen() {
         preset={appearance?.preset || 'sage'}
         onPresetChange={(preset) => appearance?.onPresetChange(preset)}
         links={links}
-        activePath="#/items"
+        activePath={
+          page.id === 'page-daily-attention'
+            ? '#/attention'
+            : page.id === 'page-daily-activity'
+              ? '#/activity'
+              : '#/items'
+        }
         onNavigate={(href) => navigate(href.replace(/^#/, ''))}
         householdId={householdId}
         households={[{ id: householdId, name: '梧桐之家 · 示例' }]}
         onHouseholdSwitchIntent={() => undefined}
         title={page.name.replace('页面 · ', '')}
       >
-        {page.id === 'page-daily-home' ? (
+        {page.id === 'page-daily-attention' ? (
+          <DailyAttention
+            {...common}
+            tasks={taskPage.data}
+            stocks={stockPage.data}
+            onOpenProduct={browse.onOpenProduct}
+            dateRange={dateRange}
+            onDateRangeChange={(value) => update({ range: value, page: null })}
+            category={category}
+            onCategoryChange={(value) => update({ category: value, page: null })}
+            pagination={category === 'stock' ? stockPage.pagination : taskPage.pagination}
+            familyTimezone="Asia/Shanghai"
+            asOf="2026-11-07"
+            onOpenItem={browse.onOpenItem}
+          />
+        ) : page.id === 'page-daily-activity' ? (
+          <DailyActivity
+            {...common}
+            entries={activityPage.data.map((entry) => ({
+              ...entry,
+              operationComplete: true,
+              recordedDayLabel: entry.event
+                ? new Intl.DateTimeFormat('zh-CN', {
+                    timeZone: 'Asia/Shanghai',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                  }).format(new Date(entry.event.recorded_at))
+                : '日期未知',
+            }))}
+            rangeLabel="截至 2026-11-07 · Asia/Shanghai"
+            days={params.get('days') === '30' ? '30' : '7'}
+            onDaysChange={(value) => update({ days: value, page: null })}
+            filter={activityFilter}
+            onFilterChange={(value) => update({ filter: value, page: null })}
+            pagination={activityPage.pagination}
+            onOpenItemHistory={(id) => navigate(`/items/${id}?tab=history`)}
+          />
+        ) : page.id === 'page-daily-home' ? (
           <DailyHome {...browse} />
         ) : page.id === 'page-daily-search' ? (
           <DailySearch {...browse} />
@@ -312,7 +425,8 @@ function PageScreen() {
         )}
       </AppShell>
       <ReviewNote>
-        本批为 P01 浏览链路及 S04 档案。固定家庭时区 Asia/Shanghai，样例日期判断基准为
+        本批含 P01 浏览链路、S04 档案与 P02 留意/动态。固定家庭时区
+        Asia/Shanghai，样例日期判断基准为
         2026-11-07。每页意见随当前路由归档；反馈只写入本地审阅目录。读取失败、无权限与离线无缓存分别展示，均不解释为零库存。正式业务、写入任务与附件页面尚未接通。
       </ReviewNote>
     </div>
@@ -353,9 +467,14 @@ export function PageJourney({ initialPath, scenario }: { initialPath: string; sc
           createHref: (path) => `${window.location.pathname}${window.location.search}#${path}`,
         });
     const root = createRootRoute({ component: Outlet });
-    const routes = ['/items', '/search', '/items/$itemId', '/products/$productId'].map((path) =>
-      createRoute({ getParentRoute: () => root, path, component: PageScreen }),
-    );
+    const routes = [
+      '/items',
+      '/search',
+      '/attention',
+      '/activity',
+      '/items/$itemId',
+      '/products/$productId',
+    ].map((path) => createRoute({ getParentRoute: () => root, path, component: PageScreen }));
     return createRouter({
       history,
       routeTree: root.addChildren(routes),

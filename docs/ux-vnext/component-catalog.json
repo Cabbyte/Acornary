@@ -2,7 +2,7 @@
   "version": "Component Library RC6",
   "components": 70,
   "compositions": 5,
-  "pages": 4,
+  "pages": 6,
   "entries": [
     {
       "id": "page-daily-home",
@@ -319,6 +319,140 @@
       },
       "preview": "http://127.0.0.1:6007/?component=page-daily-item&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--item"
+    },
+    {
+      "id": "page-daily-attention",
+      "kind": "page",
+      "name": "页面 · 需要留意",
+      "group": "完整页面 · P02",
+      "version": "P02-RC1",
+      "description": "日常浏览链路，可连续导航；每页单独审阅。",
+      "source": "apps/web/src/features/daily/pages/daily-attention.tsx",
+      "storyId": "pages-daily--attention",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常 · 可连续浏览"
+        },
+        {
+          "id": "pagination",
+          "label": "分页样例 · 每页 1 条"
+        },
+        {
+          "id": "loading",
+          "label": "正在读取"
+        },
+        {
+          "id": "empty",
+          "label": "没有记录"
+        },
+        {
+          "id": "error",
+          "label": "读取失败 · 可重试"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "offline",
+          "label": "离线 · 部分缓存"
+        },
+        {
+          "id": "offline-empty",
+          "label": "离线 · 无缓存"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        }
+      ],
+      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "P02-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "item-row",
+          "history-entry",
+          "pagination-controls",
+          "empty-state",
+          "loading-state"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-daily-attention&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--attention"
+    },
+    {
+      "id": "page-daily-activity",
+      "kind": "page",
+      "name": "页面 · 最近变化",
+      "group": "完整页面 · P02",
+      "version": "P02-RC1",
+      "description": "日常浏览链路，可连续导航；每页单独审阅。",
+      "source": "apps/web/src/features/daily/pages/daily-activity.tsx",
+      "storyId": "pages-daily--activity",
+      "scenarios": [
+        {
+          "id": "normal",
+          "label": "正常 · 可连续浏览"
+        },
+        {
+          "id": "pagination",
+          "label": "分页样例 · 每页 1 条"
+        },
+        {
+          "id": "loading",
+          "label": "正在读取"
+        },
+        {
+          "id": "empty",
+          "label": "没有记录"
+        },
+        {
+          "id": "error",
+          "label": "读取失败 · 可重试"
+        },
+        {
+          "id": "forbidden",
+          "label": "无权限"
+        },
+        {
+          "id": "offline",
+          "label": "离线 · 部分缓存"
+        },
+        {
+          "id": "offline-empty",
+          "label": "离线 · 无缓存"
+        },
+        {
+          "id": "session-changed",
+          "label": "身份变化"
+        }
+      ],
+      "limitations": "只读适配器为隔离 fixture；真实服务端分页、权限、缓存及 MCP 验收尚未执行。",
+      "status": "待审阅",
+      "review": {
+        "version": "P02-RC1",
+        "status": "待审阅",
+        "dependencies": [
+          "app-shell",
+          "page-header",
+          "item-row",
+          "history-entry",
+          "pagination-controls",
+          "empty-state",
+          "loading-state"
+        ],
+        "feedback": [],
+        "approvalRecords": []
+      },
+      "preview": "http://127.0.0.1:6007/?component=page-daily-activity&preset=sage&mode=daily&viewport=390&scenario=normal",
+      "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--activity"
     },
     {
       "id": "button",

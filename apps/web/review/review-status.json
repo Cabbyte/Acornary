@@ -2481,6 +2481,36 @@
           "scope": "首批四页的页面设计审阅；不代表真实业务接线或工程验收"
         }
       ]
+    },
+    "page-daily-attention": {
+      "version": "P02-RC1",
+      "status": "待审阅",
+      "dependencies": [
+        "app-shell",
+        "page-header",
+        "item-row",
+        "history-entry",
+        "pagination-controls",
+        "empty-state",
+        "loading-state"
+      ],
+      "feedback": [],
+      "approvalRecords": []
+    },
+    "page-daily-activity": {
+      "version": "P02-RC1",
+      "status": "待审阅",
+      "dependencies": [
+        "app-shell",
+        "page-header",
+        "item-row",
+        "history-entry",
+        "pagination-controls",
+        "empty-state",
+        "loading-state"
+      ],
+      "feedback": [],
+      "approvalRecords": []
     }
   }
 }
