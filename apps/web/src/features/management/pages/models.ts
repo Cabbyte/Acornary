@@ -54,7 +54,15 @@ export interface ManagementTask {
   impact: readonly { label: string; before: string; after: string }[];
   blockedReason?: string;
   error?: string;
-  phase: 'draft' | 'review' | 'receipt';
+  phase: 'draft' | 'review' | 'submitting' | 'unknown' | 'receipt';
+  taskId?: string;
+  returnPath?: string;
+  scopeGeneration?: number;
+  draft?: {
+    name: FieldDraft;
+    binding: AttributeBindingV2 | null;
+    changedAttributes: readonly string[];
+  };
   approval?: ApprovalPresentation;
   receipt?: string;
   confirmLabel: string;

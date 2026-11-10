@@ -1,5 +1,6 @@
+import { trialToday, trialInstant } from '../trial/clock';
 // Isolated review controller. All reading, filtering and mutation simulation stays here.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AttributeFieldEdit } from '../../src/ui/patterns/attribute-fields';
 import type { ItemView } from '../../src/ui/patterns/types';
 import type { TreeViewNode } from '../../src/ui/components/ui/tree-view';
@@ -18,8 +19,12 @@ import type {
   ManagedCatalog,
   ManagedLocation,
 } from '../../src/features/management/pages/models';
-import { householdId, history as baseHistory, itemFacts } from './fixtures';
-import { useReviewWorld, updateReviewItems } from './inventory-session';
+import { householdId, itemFacts } from './fixtures';
+import { useReviewWorld, getReviewWorld, updateReviewItems } from './inventory-session';
+import type { DailyItemFacts } from '../../src/features/daily/pages/models';
+import { flushReviewStorage, runReviewTransaction } from '../trial/storage';
+import { getTrialScope, isTrial } from '../trial/session';
+import { readManagementState, writeManagementState } from './management-storage';
 import {
   catalogFixtures,
   locationFixtures,
@@ -33,6 +38,17 @@ import {
 } from './management-fixtures';
 
 type LocalState = {
+  explicitNames: Record<string, boolean>;
+  receipts: Record<string, string>;
+  storageError: string;
+  itemDrafts: Record<
+    string,
+    {
+      nameDraft: ManagementModel['nameDraft'];
+      attributeDraft: typeof lifecycleBinding | null;
+      changedAttributes: string[];
+    }
+  >;
   query: string;
   sorting: ManagementModel['sorting'];
   page: number;
@@ -79,8 +95,13 @@ const persisted = new Map<string, LocalState>();
 const specialLimit = (scenario: string) =>
   ['limit', 'over-limit', '100-items', 'selection-limit'].includes(scenario);
 function makeInitial(scenario: string, items: readonly ItemView[]): LocalState {
-  const locations = scenario === 'empty' ? [] : locationFixtures(items);
+  const locations =
+    scenario === 'empty' || (isTrial() && !items.length) ? [] : locationFixtures(items);
   return {
+    explicitNames: {},
+    receipts: {},
+    storageError: '',
+    itemDrafts: {},
     query: '',
     sorting: [],
     page: 0,
@@ -103,7 +124,7 @@ function makeInitial(scenario: string, items: readonly ItemView[]): LocalState {
     treeOpen: false,
     catalogId: null,
     locationId: locations.find((row) => row.name === '冰箱')?.id || locations[0]?.id || null,
-    catalogs: scenario === 'empty' ? [] : catalogFixtures(items),
+    catalogs: scenario === 'empty' || (isTrial() && !items.length) ? [] : catalogFixtures(items),
     locations,
     feedback: '',
     task: null,
@@ -131,14 +152,15 @@ function makeInitial(scenario: string, items: readonly ItemView[]): LocalState {
 function tree(
   rows: readonly { id: string; parentId: string | null; name: string; path: string[] }[],
   parent: string | null = null,
+  ancestors: readonly string[] = [],
 ): TreeViewNode[] {
   return rows
-    .filter((row) => row.parentId === parent)
+    .filter((row) => row.parentId === parent && !ancestors.includes(row.id))
     .map((row) => ({
       id: row.id,
       label: row.name,
       description: row.path.join(' › '),
-      children: tree(rows, row.id),
+      children: tree(rows, row.id, [...ancestors, row.id]),
     }));
 }
 function field(
@@ -193,6 +215,119 @@ function describe(value: unknown): string {
         : JSON.stringify(value);
 }
 
+function bindingFromFacts(facts: DailyItemFacts | undefined): typeof lifecycleBinding {
+  const values: Record<string, unknown> = {};
+  if (facts?.date?.dueOn)
+    values.expiry = {
+      date: facts.date.dueOn,
+      ...(facts.date.dateKind ? { date_kind: facts.date.dateKind } : {}),
+    };
+  if (facts?.item.status.label === '已开封') values.opening = { state: 'OPENED' };
+  else if (facts?.item.status.label === '未开封') values.opening = { state: 'SEALED' };
+  return { ...lifecycleBinding, values };
+}
+function projectLifecycle(
+  facts: DailyItemFacts,
+  binding: typeof lifecycleBinding | null,
+): DailyItemFacts {
+  const values = binding?.values || {};
+  const expiry = atPath(values, 'expiry.date');
+  const dateKind = atPath(values, 'expiry.date_kind');
+  const opening = atPath(values, 'opening.state');
+  const acquired = atPath(values, 'acquisition.acquired_on');
+  const condition = atPath(values, 'condition');
+  const result: DailyItemFacts = {
+    ...facts,
+    item: {
+      ...facts.item,
+      revision: facts.item.revision + 1,
+      facts: facts.item.facts.filter(
+        (f) => f.source?.templateId !== 'lifecycle' && f.kind !== 'opening' && f.kind !== 'expiry',
+      ),
+    },
+  };
+  if (typeof expiry === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(expiry))
+    result.date = {
+      kind: 'EXPIRY',
+      dateKind:
+        dateKind === 'BEST_BEFORE' || dateKind === 'USE_BY' || dateKind === 'ESTIMATED'
+          ? dateKind
+          : null,
+      dueOn: expiry,
+      basis: facts.date?.basis || null,
+      state: expiry < trialToday() ? 'OVERDUE' : expiry === trialToday() ? 'DUE' : 'UPCOMING',
+      source: 'LIFECYCLE',
+      label:
+        dateKind === 'BEST_BEFORE'
+          ? '最佳食用期'
+          : dateKind === 'USE_BY'
+            ? '使用期限'
+            : dateKind === 'ESTIMATED'
+              ? '估计日期'
+              : '标注日期',
+    };
+  else if (!facts.date?.source || facts.date.source === 'LIFECYCLE') result.date = undefined;
+  if (opening === 'OPENED' || opening === 'SEALED') {
+    const label = opening === 'OPENED' ? '已开封' : '未开封';
+    result.item.facts.push({
+      kind: 'opening',
+      label: '开封',
+      value: label,
+      priority: 2,
+      source: {
+        templateId: 'lifecycle',
+        version: binding!.template_version,
+        path: 'opening.state',
+      },
+    });
+    if (!['已用完', '已处置', '已拆包'].includes(result.item.status.label))
+      result.item.status = { label, tone: 'neutral' };
+  } else if (['已开封', '未开封'].includes(result.item.status.label))
+    result.item.status = { label: '开封状态未记录', tone: 'neutral' };
+  if (typeof acquired === 'string')
+    result.item.facts.push({
+      kind: 'custom',
+      label: '取得日期',
+      value: acquired,
+      priority: 4,
+      source: {
+        templateId: 'lifecycle',
+        version: binding!.template_version,
+        path: 'acquisition.acquired_on',
+      },
+    });
+  if (typeof condition === 'string')
+    result.item.facts.push({
+      kind: 'condition',
+      label: '成色',
+      value:
+        (
+          { NEW: '全新', GOOD: '良好', WORN: '磨损', DAMAGED: '损坏', BROKEN: '故障' } as Record<
+            string,
+            string
+          >
+        )[condition] || condition,
+      priority: 3,
+      source: { templateId: 'lifecycle', version: binding!.template_version, path: 'condition' },
+    });
+  return result;
+}
+function hasAncestor(
+  rows: readonly ManagedLocation[],
+  candidateId: string,
+  ancestorId: string,
+): boolean {
+  let id: string | null = candidateId;
+  const seen = new Set<string>();
+  while (id) {
+    if (id === ancestorId) return true;
+    if (seen.has(id)) return true;
+    seen.add(id);
+    id = rows.find((row) => row.id === id)?.parentId || null;
+  }
+  return false;
+}
+
 export function ManagementJourney({
   path,
   scenario,
@@ -207,18 +342,91 @@ export function ManagementJourney({
   const route = url.pathname;
   const baseItems = world.items.map((row) => row.item);
   const availableItems = specialLimit(scenario) ? largeSelectionItems() : baseItems;
-  const [local, setLocal] = useState<LocalState>(
-    () => persisted.get(scenario) || makeInitial(scenario, availableItems),
-  );
-  const set = (updater: (state: LocalState) => LocalState) =>
-    setLocal((current) => {
-      const next = updater(current);
-      persisted.set(scenario, next);
-      return next;
-    });
+  const scope = getTrialScope();
+  const scopeKey = isTrial()
+    ? `${scope.accountId}:${scope.householdId}:${scope.generation}`
+    : `review:${scenario}`;
+  const load = (): LocalState => {
+    const initial = makeInitial(scenario, availableItems);
+    try {
+      const stored = isTrial() ? readManagementState<LocalState>() : persisted.get(scopeKey);
+      if (!stored) return initial;
+      const recover = (task: ManagementTask | null) => {
+        if (task && ['submitting', 'networkUnknown'].includes(task.phase))
+          return {
+            ...task,
+            phase: 'unknown' as const,
+            error: '上次提交被中断，先按原任务核对结果；不会自动重发。',
+          };
+        if (
+          task &&
+          task.scopeGeneration !== scope.generation &&
+          !['unknown', 'receipt'].includes(task.phase)
+        )
+          return {
+            ...task,
+            phase: 'draft' as const,
+            scopeGeneration: scope.generation,
+            approval: task.approval ? { ...task.approval, status: 'awaiting' as const } : undefined,
+          };
+        return task;
+      };
+      return {
+        ...initial,
+        ...stored,
+        task: recover(stored.task),
+        retainedTask: recover(stored.retainedTask),
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '管理草稿读取失败，暂不能提交。';
+      return { ...initial, storageError: message, feedback: message };
+    }
+  };
+  const [storedLocal, setLocal] = useState(() => ({ key: scopeKey, value: load() }));
+  const local = storedLocal.key === scopeKey ? storedLocal.value : load();
+  const localRef = useRef(local);
+  localRef.current = local;
+  const inFlight = useRef(false);
+  const set = (updater: (state: LocalState) => LocalState): boolean => {
+    if (isTrial()) {
+      const latest = getTrialScope();
+      if (
+        latest.accountId !== scope.accountId ||
+        latest.householdId !== scope.householdId ||
+        latest.generation !== scope.generation
+      )
+        return false;
+    }
+    let next = updater(localRef.current);
+    if (next.editId)
+      next = {
+        ...next,
+        itemDrafts: {
+          ...next.itemDrafts,
+          [next.editId]: {
+            nameDraft: next.nameDraft,
+            attributeDraft: next.attributeDraft,
+            changedAttributes: next.changedAttributes,
+          },
+        },
+      };
+    try {
+      writeManagementState(next);
+      persisted.set(scopeKey, next);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '草稿持久化失败，当前输入仍保留。';
+      next = { ...next, storageError: message, feedback: message };
+      localRef.current = next;
+      setLocal({ key: scopeKey, value: next });
+      return false;
+    }
+    localRef.current = next;
+    setLocal({ key: scopeKey, value: next });
+    return true;
+  };
   useEffect(() => {
-    setLocal(persisted.get(scenario) || makeInitial(scenario, availableItems));
-  }, [scenario]);
+    if (storedLocal.key !== scopeKey) setLocal({ key: scopeKey, value: load() });
+  }, [scopeKey]);
   const state: ManagementModel['state'] = local.recovered
     ? 'ready'
     : scenario === 'loading'
@@ -232,16 +440,23 @@ export function ManagementJourney({
             : scenario.startsWith('offline')
               ? 'offline'
               : 'ready';
-  const available = state === 'ready';
+  const available =
+    state === 'ready' && (!isTrial() || scope.role !== 'viewer') && !local.storageError;
   const writeAvailability: ManagementModel['writeAvailability'] = available
     ? { kind: 'available' }
     : {
         kind:
-          state === 'offline' ? 'offline' : state === 'forbidden' ? 'forbidden' : 'blockedState',
-        reason:
           state === 'offline'
-            ? '离线时保留草稿，恢复连接后重新核对。'
-            : '当前身份或读取状态不允许提交。',
+            ? 'offline'
+            : state === 'forbidden' || (isTrial() && scope.role === 'viewer')
+              ? 'forbidden'
+              : 'blockedState',
+        reason:
+          local.storageError || (isTrial() && scope.role === 'viewer')
+            ? local.storageError || '当前为只读成员，可以查看记录，不能提交修改。'
+            : state === 'offline'
+              ? '离线时保留草稿，恢复连接后重新核对。'
+              : '当前身份或读取状态不允许提交。',
       };
   const items =
     state === 'session-changed' ||
@@ -251,21 +466,39 @@ export function ManagementJourney({
       : availableItems;
   const itemId = url.searchParams.get('id') || items[0]?.id || '';
   const item = items.find((row) => row.id === itemId) || null;
-  const dynamicCatalogs = local.catalogs.map((row) =>
+  const dynamicCatalogs = [
+    ...local.catalogs,
+    ...(items.length ? catalogFixtures(items) : []).filter(
+      (row) => !local.catalogs.some((existing) => existing.id === row.id),
+    ),
+  ].map((row) =>
     row.kind === 'SKU'
       ? { ...row, itemCount: items.filter((item) => item.skuId === row.id).length }
       : row,
   );
   const catalogId = url.searchParams.get('id') || local.catalogId || local.categoryFilter;
   const selectedCatalog = dynamicCatalogs.find((row) => row.id === catalogId) || null;
-  const dynamicLocations = local.locations.map((location) => ({
-    ...location,
-    contentCount: items.filter(
-      (item) =>
-        item.location.path.join('/') === location.path.join('/') ||
-        item.location.path.join('/').startsWith(location.path.join('/') + '/'),
-    ).length,
-  }));
+  const dynamicLocations = local.locations.map((stored) => {
+    const actual = items.find((item) => item.id === stored.id);
+    const location = actual
+      ? {
+          ...stored,
+          name: actual.name,
+          parentId: actual.location.id,
+          path: [...actual.location.path, actual.name],
+          revision: actual.revision,
+          recordState: actual.recordState,
+        }
+      : stored;
+    return {
+      ...location,
+      contentCount: items.filter(
+        (item) =>
+          item.location.path.join('/') === location.path.join('/') ||
+          item.location.path.join('/').startsWith(location.path.join('/') + '/'),
+      ).length,
+    };
+  });
   const selectedLocation =
     dynamicLocations.find(
       (row) => row.id === local.locationId && (local.includeVoid || row.recordState === 'VALID'),
@@ -302,7 +535,7 @@ export function ManagementJourney({
   const shown = filtered.slice(page * pageSize, (page + 1) * pageSize);
   const selectedIds = state === 'session-changed' || state === 'forbidden' ? [] : local.selectedIds;
   const selection = {
-    scope: householdId,
+    scope: isTrial() ? scope.householdId : householdId,
     ids: selectedIds,
     visibleIds: shown.map((row) => row.id),
     revisions: local.revisions,
@@ -313,7 +546,7 @@ export function ManagementJourney({
     ? local.attributeDraft && local.editId === item.id
       ? local.attributeDraft
       : local.bindings[item.id] === undefined
-        ? lifecycleBinding
+        ? bindingFromFacts(world.items.find((row) => row.item.id === item.id))
         : local.bindings[item.id]
     : null;
   useEffect(() => {
@@ -321,12 +554,16 @@ export function ManagementJourney({
       set((current) => ({
         ...current,
         editId: item.id,
-        nameDraft: { mode: 'unchanged', value: item.name },
+        nameDraft: current.itemDrafts[item.id]?.nameDraft || {
+          mode: 'unchanged',
+          value: item.name,
+        },
         attributeDraft:
-          current.bindings[item.id] === undefined
-            ? structuredClone(lifecycleBinding)
-            : current.bindings[item.id],
-        changedAttributes: [],
+          current.itemDrafts[item.id]?.attributeDraft ??
+          (current.bindings[item.id] === undefined
+            ? bindingFromFacts(world.items.find((row) => row.item.id === item.id))
+            : current.bindings[item.id]),
+        changedAttributes: current.itemDrafts[item.id]?.changedAttributes || [],
         conflict: null,
       }));
   }, [route, item?.id]);
@@ -410,6 +647,7 @@ export function ManagementJourney({
       .map((row) => ({ ...row, item: { ...patch(row.item), revision: row.item.revision + 1 } }));
     if (changed.length !== ids.length) throw Error('部分对象已不可访问；整批未执行。');
     updateReviewItems(changed, {
+      requestKey: local.task?.taskId,
       operationLabel: local.task?.title,
       reason: local.task
         ? withValues(local.task).reason || withValues(local.task).note || '隔离预览操作'
@@ -424,45 +662,6 @@ export function ManagementJourney({
             : 'ITEM_UPDATED',
     });
   }
-  function appendHistory(
-    ids: readonly string[],
-    label: string,
-    changes: {
-      path: string;
-      before_present: boolean;
-      after_present: boolean;
-      before?: unknown;
-      after?: unknown;
-    }[],
-    reason: string,
-  ) {
-    const op = `operation_${crypto.randomUUID()}`;
-    set((current) => ({
-      ...current,
-      extraHistory: [
-        ...ids.map((id) => ({
-          ...baseHistory[0],
-          operationLabel: label,
-          objectLabel: items.find((item) => item.id === id)?.name || '当前对象',
-          event: {
-            ...baseHistory[0].event!,
-            id: `event_${crypto.randomUUID()}`,
-            operation_id: op,
-            target_id: id,
-            event_type: 'ITEM_CORRECTED' as const,
-            reason,
-            changes,
-            occurred_at: '2026-11-07T08:00:00Z',
-            recorded_at: '2026-11-07T08:00:00Z',
-            before_revision: items.find((item) => item.id === id)?.revision || 1,
-            after_revision: (items.find((item) => item.id === id)?.revision || 1) + 1,
-          },
-          operationComplete: true,
-        })),
-        ...current.extraHistory,
-      ],
-    }));
-  }
   function baseTask(kind: string, id?: string): ManagementTask {
     const targets = kind.startsWith('bulk-') ? selectedIds : id ? [id] : [];
     const rows = targets
@@ -476,6 +675,14 @@ export function ManagementJourney({
       fields: [],
       impact: [],
       phase: 'draft',
+      taskId: `management_${crypto.randomUUID()}`,
+      returnPath: path,
+      scopeGeneration: scope.generation,
+      draft: {
+        name: structuredClone(local.nameDraft),
+        binding: structuredClone(itemBinding),
+        changedAttributes: [...local.changedAttributes],
+      },
       confirmLabel: '确认隔离预览',
       snapshot: rows.map((row) => ({
         id: row.id,
@@ -486,12 +693,14 @@ export function ManagementJourney({
     };
   }
   function createTask(kind: string, id?: string) {
+    if (kind === 'item-move' && local.locations.some((row) => row.id === (id || itemId)))
+      kind = 'location-move';
     const targetItem = items.find((row) => row.id === (id || itemId));
     const catalog = dynamicCatalogs.find((row) => row.id === (id || selectedCatalog?.id));
     const location = dynamicLocations.find((row) => row.id === (id || selectedLocation?.id));
     const task = baseTask(kind, id);
     const stock = catalog?.attributes.find((binding) => binding.template_id === 'stock')?.values;
-    const locationOptions = local.locations
+    const locationOptions = dynamicLocations
       .filter((row) => row.canContain && row.recordState === 'VALID')
       .map((row) => ({
         value: row.id,
@@ -534,7 +743,15 @@ export function ManagementJourney({
       task.title = '核对生命周期属性';
       task.impact = local.changedAttributes.map((path) => ({
         label: path,
-        before: describe(atPath((local.bindings[itemId] || lifecycleBinding).values, path)),
+        before: describe(
+          atPath(
+            (
+              local.bindings[itemId] ||
+              bindingFromFacts(world.items.find((row) => row.item.id === itemId))
+            ).values,
+            path,
+          ),
+        ),
         after: describe(itemBinding ? atPath(itemBinding.values, path) : undefined),
       }));
       task.description = `仅此物品，绑定版本 ${itemBinding?.template_version}。未改字段和无法识别字段完整保留。`;
@@ -969,8 +1186,8 @@ export function ManagementJourney({
     for (const f of task.fields) if (f.required && !f.value.trim()) return `请填写${f.label}。`;
     if (
       task.kind === 'item-save' &&
-      local.nameDraft.mode === 'set' &&
-      !local.nameDraft.value.trim()
+      (task.draft?.name || local.nameDraft).mode === 'set' &&
+      !(task.draft?.name || local.nameDraft).value.trim()
     )
       return '名称不能为空；需要清除覆盖时请选择“清除”。';
     if (
@@ -1006,6 +1223,27 @@ export function ManagementJourney({
       if (toInt(a, scale) !== toInt(values.quantity, scale) * BigInt(count))
         return 'SPLIT_NOT_CONSERVED：源件数量与全部子件数量不相等。';
     }
+    if (
+      task.kind === 'location-move' &&
+      values.destination !== 'root' &&
+      hasAncestor(dynamicLocations, values.destination, task.targetIds[0])
+    )
+      return '不能把容器移动到自身或下级；原结构未变化。';
+    if (
+      task.kind === 'bulk-move' &&
+      task.targetIds.some((id) => local.locations.some((row) => row.id === id))
+    )
+      return '所选范围含容器，请逐件通过“移动容器”核对子内容影响。';
+    if (task.kind === 'catalog-move' || task.kind === 'catalog-edit') {
+      const target = local.catalogs.find((row) => row.id === task.targetIds[0]);
+      const parent = local.catalogs.find((row) => row.id === values.parent);
+      if (
+        target?.kind === 'GROUP' &&
+        parent &&
+        (parent.id === target.id || parent.path.join('/').startsWith(target.path.join('/') + '/'))
+      )
+        return '分类不能归属自身或下级。';
+    }
     for (const snapshot of task.snapshot) {
       const current = items.find((item) => item.id === snapshot.id);
       if (!current || current.revision !== snapshot.revision)
@@ -1014,6 +1252,8 @@ export function ManagementJourney({
     return null;
   }
   function onChange(key: string, value: unknown) {
+    if (localRef.current.task?.phase === 'submitting' || localRef.current.task?.phase === 'unknown')
+      return;
     if (key.startsWith('task.')) {
       set((current) => {
         if (!current.task) return current;
@@ -1073,7 +1313,7 @@ export function ManagementJourney({
     }
     if (key === 'selectedCatalog') {
       set((current) => ({ ...current, catalogId: value as string | null }));
-      if (url.searchParams.has('id')) navigate('/manage/catalog');
+      if (url.searchParams.has('id')) go('/manage/catalog');
       return;
     }
     if (key === 'selectedLocation') {
@@ -1098,7 +1338,13 @@ export function ManagementJourney({
     }));
   }
   function onAttributeChange(edit: AttributeFieldEdit) {
-    if (edit.kind !== 'value' || !itemBinding) return;
+    if (
+      edit.kind !== 'value' ||
+      !itemBinding ||
+      localRef.current.task?.phase === 'unknown' ||
+      localRef.current.task?.phase === 'submitting'
+    )
+      return;
     set((current) => ({
       ...current,
       attributeDraft: {
@@ -1113,14 +1359,41 @@ export function ManagementJourney({
       task: null,
     }));
   }
-  function onIntent(kind: string, id?: string) {
+  async function onIntent(kind: string, id?: string) {
+    if (inFlight.current || localRef.current.task?.phase === 'submitting') return;
+    if (kind === 'approve-task' && !available) return;
+    if (kind === 'recover-task') {
+      const pending = localRef.current.task;
+      if (!pending?.taskId) return;
+      const known =
+        localRef.current.receipts[pending.taskId] ||
+        (getReviewWorld().receipts[pending.taskId]
+          ? '已找到原任务回执，相关物品已更新；没有再次提交。'
+          : null);
+      set((current) => ({
+        ...current,
+        task: {
+          ...pending,
+          phase: known ? 'receipt' : 'unknown',
+          receipt: known || undefined,
+          error: known
+            ? undefined
+            : '尚未找到原任务回执。原请求保留，请核对原作用域与存储状态；不会重新执行。',
+        },
+      }));
+      return;
+    }
+    if (kind === 'retry-storage') {
+      set((current) => ({ ...current, storageError: '', feedback: '' }));
+      return;
+    }
     if (kind === 'retry') {
       set((current) => ({ ...current, recovered: true, feedback: '已重新读取隔离样例范围。' }));
       return;
     }
     if (kind === 'bulk') {
       set((current) => ({ ...current, page: 0 }));
-      navigate('/manage/bulk');
+      go('/manage/bulk');
       return;
     }
     if (kind === 'refresh-selection') {
@@ -1168,7 +1441,7 @@ export function ManagementJourney({
         exportRows: structuredClone(filtered),
         export: {
           scope: `物品查询：${local.query || '全部名称'} · ${local.includeVoid ? '含作废' : '有效记录'} · ${skuFilter ? '指定商品' : local.categoryFilter ? dynamicCatalogs.find((row) => row.id === local.categoryFilter)?.path.join(' › ') : '全部分类'} · ${local.locationFilter ? dynamicLocations.find((row) => row.id === local.locationFilter)?.path.join(' › ') : '全部位置'}`,
-          generatedAt: '2026-11-07 16:00 · Asia/Shanghai',
+          generatedAt: `${trialToday()} 14:30 · Asia/Shanghai`,
           total: filtered.length,
           loaded: 0,
           complete: false,
@@ -1230,7 +1503,7 @@ export function ManagementJourney({
         historyFrom: '',
         historyTo: '',
       }));
-      navigate('/manage/history');
+      go('/manage/history');
       return;
     }
     if (kind === 'history-complete') {
@@ -1284,11 +1557,23 @@ export function ManagementJourney({
       return;
     }
     if (kind !== 'submit-task') {
+      if (localRef.current.task?.phase === 'unknown') {
+        set((current) => ({ ...current, feedback: '请先保留或核对原任务，再开始另一项操作。' }));
+        return;
+      }
       createTask(kind, id);
       return;
     }
-    const task = local.task;
-    if (!task || task.blockedReason || !available) return;
+    const task = localRef.current.task;
+    if (
+      !task ||
+      task.phase === 'receipt' ||
+      task.phase === 'unknown' ||
+      task.phase === 'submitting' ||
+      task.blockedReason ||
+      !available
+    )
+      return;
     const error = validate(task);
     if (error) {
       set((current) => ({ ...current, task: { ...task, error } }));
@@ -1328,348 +1613,496 @@ export function ManagementJourney({
       return;
     }
     const v = withValues(task);
+    const targetItemId = task.targetIds[0];
+    const frozenName = task.draft?.name || local.nameDraft;
+    const frozenBinding = task.draft?.binding === undefined ? itemBinding : task.draft.binding;
     let receipt = '隔离样例已更新。正式家庭未发生写入。';
+    inFlight.current = true;
+    if (
+      !set((current) => ({ ...current, task: { ...task, phase: 'submitting', error: undefined } }))
+    ) {
+      inFlight.current = false;
+      return;
+    }
     try {
-      if (task.kind === 'item-save') {
-        const name =
-          local.nameDraft.mode === 'clear'
-            ? dynamicCatalogs.find((row) => row.id === item?.skuId)?.name || item!.name
-            : local.nameDraft.value;
-        patchWorld(task.targetIds, (row) => ({ ...row, name }));
-        set((current) => ({ ...current, nameDraft: { mode: 'unchanged', value: name } }));
-      } else if (task.kind === 'item-move' || task.kind === 'bulk-move') {
-        const location = local.locations.find((row) => row.id === v.destination);
-        patchWorld(task.targetIds, (row) => ({
-          ...row,
-          location: location
-            ? { id: location.id, path: [...location.path], label: location.name }
-            : { id: null, path: [], label: '位置未记录' },
-        }));
-      } else if (task.kind === 'void' || task.kind === 'restore') {
-        patchWorld(task.targetIds, (row) => ({
-          ...row,
-          recordState: task.kind === 'void' ? 'VOID' : 'VALID',
-          voidedAt: task.kind === 'void' ? '2026-11-07T08:00:00Z' : null,
-        }));
-      } else if (task.kind === 'dispose') {
-        patchWorld(task.targetIds, (row) => ({
-          ...row,
-          status: { label: '已处置', tone: 'neutral' },
-        }));
-      } else if (task.kind === 'bulk-consume') {
-        const changed = world.items
-          .filter((row) => task.targetIds.includes(row.item.id))
-          .map((row) => ({
-            ...row,
-            quantity: { ...row.quantity, value: '0' },
-            item: {
-              ...row.item,
-              revision: row.item.revision + 1,
-              status: { label: '已用完', tone: 'neutral' as const },
+      if (isTrial()) await flushReviewStorage();
+      const active = getTrialScope();
+      if (
+        isTrial() &&
+        (active.generation !== scope.generation ||
+          active.householdId !== scope.householdId ||
+          active.accountId !== scope.accountId ||
+          active.role === 'viewer')
+      )
+        throw Error('身份已变化，原任务尚未执行。');
+      const currentWorld = getReviewWorld();
+      for (const row of task.snapshot) {
+        if (
+          currentWorld.items.find((item) => item.item.id === row.id)?.item.revision !== row.revision
+        )
+          throw Error('记录版本已变化；整个操作未执行，请保留输入重新核对。');
+      }
+      runReviewTransaction(() => {
+        if (task.kind === 'item-save') {
+          const name =
+            frozenName.mode === 'clear'
+              ? dynamicCatalogs.find(
+                  (row) =>
+                    row.id === world.items.find((row) => row.item.id === targetItemId)?.item.skuId,
+                )?.name || world.items.find((row) => row.item.id === targetItemId)!.item.name
+              : frozenName.value;
+          patchWorld(task.targetIds, (row) => ({ ...row, name }));
+          set((current) => ({
+            ...current,
+            explicitNames: {
+              ...current.explicitNames,
+              [task.targetIds[0]]: frozenName.mode !== 'clear',
             },
+            itemDrafts: {
+              ...current.itemDrafts,
+              [targetItemId]: {
+                nameDraft: { mode: 'unchanged', value: name },
+                attributeDraft: current.itemDrafts[targetItemId]?.attributeDraft || null,
+                changedAttributes: [],
+              },
+            },
+            nameDraft:
+              current.editId === targetItemId
+                ? { mode: 'unchanged', value: name }
+                : current.nameDraft,
           }));
-        if (changed.length !== task.targetIds.length) throw Error('部分对象不可访问，全部未执行。');
-        updateReviewItems(changed, {
-          operationLabel: local.task?.title,
-          reason: local.task
-            ? withValues(local.task).reason || withValues(local.task).note || '隔离预览操作'
-            : '隔离预览操作',
-          eventType:
-            local.task?.kind === 'history-correct' ||
-            local.task?.kind === 'reassign' ||
-            local.task?.kind === 'restore'
-              ? 'ITEM_CORRECTED'
-              : local.task?.kind.includes('move')
-                ? 'ITEM_MOVED'
-                : 'ITEM_UPDATED',
-        });
-      } else if (task.kind === 'attribute-save') {
-        set((current) => ({
-          ...current,
-          bindings: { ...current.bindings, [itemId]: structuredClone(itemBinding) },
-          changedAttributes: [],
-        }));
-        appendHistory(
-          task.targetIds,
-          '修改生命周期属性',
-          local.changedAttributes.map((path) => ({
-            path: `lifecycle.${path}`,
-            before_present: true,
-            after_present: true,
-            after: itemBinding ? atPath(itemBinding.values, path) : undefined,
-          })),
-          '隔离属性修改',
-        );
-      } else if (task.kind === 'bulk-lifecycle') {
-        set((current) => {
-          const bindings = { ...current.bindings };
-          for (const id of task.targetIds) {
-            const base = bindings[id] || lifecycleBinding;
-            const values = patchAt(
-              base.values,
-              'acquisition.acquired_on',
-              v.mode === 'clear' ? undefined : v.date,
-            );
-            bindings[id] = { ...base, values };
-          }
-          return { ...current, bindings };
-        });
-        appendHistory(
-          task.targetIds,
-          '批量修改取得日期',
-          [
-            {
-              path: 'lifecycle.acquisition.acquired_on',
-              before_present: true,
-              after_present: v.mode !== 'clear',
-              after: v.date,
-            },
-          ],
-          '隔离批量操作',
-        );
-      } else if (
-        task.kind === 'template-upgrade' ||
-        task.kind === 'template-remove' ||
-        task.kind === 'template-add'
-      ) {
-        const binding =
-          task.kind === 'template-remove'
-            ? null
-            : task.kind === 'template-upgrade'
-              ? {
-                  ...itemBinding!,
-                  template_version: 2,
-                  values: Object.fromEntries(
-                    Object.entries(itemBinding!.values).filter(([key]) => key !== 'availability'),
-                  ),
-                }
-              : { ...lifecycleBinding, values: {} };
-        set((current) => ({
-          ...current,
-          bindings: { ...current.bindings, [itemId]: binding },
-          attributeDraft: binding,
-          changedAttributes: [],
-        }));
-        receipt = '隔离样例的模板绑定已更新；未渲染字段保持原值，原历史保留。';
-      } else if (task.kind === 'history-correct') {
-        patchWorld(task.targetIds, (row) => ({ ...row, name: v.name }));
-        receipt = '已追加一条隔离纠正事件，原历史事件没有改写。';
-      } else if (task.kind === 'reassign') {
-        patchWorld(task.targetIds, (row) => ({ ...row, skuId: v.sku }));
-      } else if (task.kind === 'split') {
-        const source = world.items.find((row) => row.item.id === task.targetIds[0])!;
-        const count = Number(v.count);
-        const target = dynamicCatalogs.find((row) => row.id === v.sku)!;
-        const children = Array.from({ length: count }, () => ({
-          ...structuredClone(source),
-          item: {
-            ...source.item,
-            id: `item_${crypto.randomUUID()}`,
-            skuId: target.id,
-            name: target.name,
-            revision: 1,
-            status: { label: '开封状态未记录', tone: 'neutral' as const },
-            facts: [],
-          },
-          quantity: { value: v.quantity, unit: v.unit, accuracy: source.quantity.accuracy },
-        }));
-        updateReviewItems(
-          [
-            {
-              ...source,
-              item: {
-                ...source.item,
-                revision: source.item.revision + 1,
-                status: { label: '已拆包', tone: 'neutral' },
-              },
-              quantity: { ...source.quantity, value: '0' },
-            },
-            ...children,
-          ],
-          { operationLabel: '拆包', reason: '隔离预览：数量守恒，子件独立身份' },
-        );
-        receipt = `隔离源件已结束，建立 ${count} 件独立子件；内容守恒已核对，物理位置继承原位置。`;
-      } else if (task.kind.startsWith('catalog-') || task.kind === 'stock') {
-        set((current) => {
-          let catalogs = [...current.catalogs];
-          const index = catalogs.findIndex((row) => row.id === task.targetIds[0]);
-          if (task.kind.startsWith('catalog-create')) {
-            const parent = catalogs.find((row) => row.id === v.parent);
-            catalogs.push({
-              ...containerCatalog,
-              id: `catalog_node_${crypto.randomUUID()}`,
-              name: v.name,
-              kind: task.kind === 'catalog-create-group' ? 'GROUP' : 'SKU',
-              parentId: v.parent === 'root' ? null : v.parent || null,
-              path: [...(parent?.path || []), v.name],
-              profile:
-                v.profile === 'unknown'
-                  ? null
-                  : v.profile === 'CONSUMABLE'
-                    ? 'CONSUMABLE'
-                    : v.profile === 'DURABLE'
-                      ? 'DURABLE'
-                      : null,
-              effectiveCapabilities: [],
-              itemCount: 0,
-            });
-          } else if (index >= 0) {
-            const old = catalogs[index];
-            const parent = catalogs.find((row) => row.id === v.parent);
-            catalogs[index] = {
-              ...old,
-              revision: old.revision + 1,
-              ...(task.kind === 'catalog-void'
-                ? { recordState: 'VOID', voidedAt: '2026-11-07T08:00:00Z' }
-                : task.kind === 'stock'
-                  ? {
-                      attributes: [
-                        ...old.attributes.filter((b) => b.template_id !== 'stock'),
-                        {
-                          template_id: 'stock',
-                          template_version: 1,
-                          status: 'KNOWN',
-                          values: {
-                            basis: v.mode,
-                            ...(v.mode === 'CONTENT' ? { content_unit: v.unit } : {}),
-                            reorder_threshold: v.threshold,
-                            target: v.target,
-                          },
-                        },
-                      ],
-                    }
-                  : {
-                      name: v.name || old.name,
-                      parentId: v.parent === 'root' ? null : v.parent || old.parentId,
-                      path: [...(parent?.path || []), v.name || old.name],
-                      profile:
-                        v.profile === 'unknown'
-                          ? null
-                          : v.profile === 'CONSUMABLE'
-                            ? 'CONSUMABLE'
-                            : v.profile === 'DURABLE'
-                              ? 'DURABLE'
-                              : old.profile,
-                    }),
-            };
-            if (old.kind === 'GROUP') {
-              const newPath = catalogs[index].path;
-              catalogs = catalogs.map((row) =>
-                row.id !== old.id && row.path.join('/').startsWith(old.path.join('/') + '/')
-                  ? { ...row, path: [...newPath, ...row.path.slice(old.path.length)] }
-                  : row,
-              );
-            }
-          }
-          return { ...current, catalogs };
-        });
-        receipt = task.kind.startsWith('catalog-create')
-          ? '商品或分类资料已在隔离样例建立；没有增加任何实物库存。'
-          : '隔离目录提案已确认并应用；实物位置不变。';
-      } else if (task.kind.startsWith('location-')) {
-        const loc = local.locations.find((row) => row.id === task.targetIds[0]);
-        const parent = local.locations.find((row) => row.id === v.destination);
-        const newPath =
-          task.kind === 'location-move'
-            ? [...(parent?.path || []), loc!.name]
-            : [...(loc?.path.slice(0, -1) || parent?.path || []), v.name || loc?.name || ''];
-        const createdLocationId =
-          task.kind === 'location-create' ? `item_${crypto.randomUUID()}` : null;
-        if (createdLocationId) {
-          const prototype = world.items[0] || itemFacts[0];
-          updateReviewItems([
-            {
-              ...structuredClone(prototype),
-              item: {
-                ...prototype.item,
-                id: createdLocationId,
-                skuId: containerCatalog.id,
-                name: v.name,
-                subtitle: '位置容器',
-                profile: 'DURABLE',
-                revision: 1,
-                recordState: 'VALID',
-                voidedAt: null,
-                location: parent
-                  ? { id: parent.id, label: parent.name, path: [...parent.path] }
-                  : { id: null, label: '未指定位置', path: [] },
-                status: { label: '容器 · 可以容纳', tone: 'neutral' },
-                facts: [],
-                noteCount: 0,
-                attachmentCount: 0,
-              },
-              quantity: { value: null, unit: '', accuracy: 'unknown' },
-              date: undefined,
-            },
-          ]);
-        }
-        if (loc && (task.kind === 'location-move' || task.kind === 'location-edit')) {
-          const affected = world.items
-            .filter((row) => row.item.location.path.join('/').startsWith(loc.path.join('/')))
+        } else if (task.kind === 'item-move' || task.kind === 'bulk-move') {
+          const location = local.locations.find((row) => row.id === v.destination);
+          patchWorld(task.targetIds, (row) => ({
+            ...row,
+            location: location
+              ? { id: location.id, path: [...location.path], label: location.name }
+              : { id: null, path: [], label: '位置未记录' },
+          }));
+        } else if (task.kind === 'void' || task.kind === 'restore') {
+          patchWorld(task.targetIds, (row) => ({
+            ...row,
+            recordState: task.kind === 'void' ? 'VOID' : 'VALID',
+            voidedAt: task.kind === 'void' ? trialInstant() : null,
+          }));
+        } else if (task.kind === 'dispose') {
+          patchWorld(task.targetIds, (row) => ({
+            ...row,
+            status: { label: '已处置', tone: 'neutral' },
+          }));
+        } else if (task.kind === 'bulk-consume') {
+          const changed = world.items
+            .filter((row) => task.targetIds.includes(row.item.id))
             .map((row) => ({
               ...row,
+              quantity: { ...row.quantity, value: '0' },
               item: {
                 ...row.item,
                 revision: row.item.revision + 1,
-                location: {
-                  ...row.item.location,
-                  path: [...newPath, ...row.item.location.path.slice(loc.path.length)],
-                },
+                status: { label: '已用完', tone: 'neutral' as const },
               },
             }));
-          if (affected.length) updateReviewItems(affected);
-        }
-        set((current) => {
-          let locations = [...current.locations];
-          if (task.kind === 'location-create')
-            locations.push({
-              id: createdLocationId!,
-              parentId: parent?.id || null,
-              name: v.name,
-              path: newPath,
-              revision: 1,
-              canContain: true,
-              recordState: 'VALID',
-              contentCount: 0,
-              containerCatalogId: containerCatalog.id,
-            });
-          else
-            locations = locations.map((row) =>
-              row.id === loc?.id
+          if (changed.length !== task.targetIds.length)
+            throw Error('部分对象不可访问，全部未执行。');
+          updateReviewItems(changed, {
+            requestKey: local.task?.taskId,
+            operationLabel: local.task?.title,
+            reason: local.task
+              ? withValues(local.task).reason || withValues(local.task).note || '隔离预览操作'
+              : '隔离预览操作',
+            eventType:
+              local.task?.kind === 'history-correct' ||
+              local.task?.kind === 'reassign' ||
+              local.task?.kind === 'restore'
+                ? 'ITEM_CORRECTED'
+                : local.task?.kind.includes('move')
+                  ? 'ITEM_MOVED'
+                  : 'ITEM_UPDATED',
+          });
+        } else if (task.kind === 'attribute-save' || task.kind === 'bulk-lifecycle') {
+          const bindings = { ...local.bindings };
+          for (const id of task.targetIds) {
+            const current = world.items.find((row) => row.item.id === id)!;
+            const base = bindings[id] || bindingFromFacts(current);
+            bindings[id] =
+              task.kind === 'attribute-save'
+                ? structuredClone(frozenBinding)
+                : {
+                    ...base,
+                    values: patchAt(
+                      base.values,
+                      'acquisition.acquired_on',
+                      v.mode === 'clear' ? undefined : v.date,
+                    ),
+                  };
+          }
+          updateReviewItems(
+            world.items
+              .filter((row) => task.targetIds.includes(row.item.id))
+              .map((row) => projectLifecycle(row, bindings[row.item.id])),
+            { requestKey: task.taskId, operationLabel: task.title, reason: '隔离模板属性修改' },
+          );
+          set((current) => ({
+            ...current,
+            bindings,
+            changedAttributes: [],
+            attributeDraft: bindings[itemId] || null,
+          }));
+        } else if (
+          task.kind === 'template-upgrade' ||
+          task.kind === 'template-remove' ||
+          task.kind === 'template-add'
+        ) {
+          const binding =
+            task.kind === 'template-remove'
+              ? null
+              : task.kind === 'template-upgrade'
                 ? {
-                    ...row,
-                    revision: row.revision + 1,
-                    name: v.name || row.name,
-                    path: newPath,
-                    ...(task.kind === 'location-move' ? { parentId: parent?.id || null } : {}),
-                    recordState:
-                      task.kind === 'location-void'
-                        ? 'VOID'
-                        : task.kind === 'location-restore'
-                          ? 'VALID'
-                          : row.recordState,
+                    ...frozenBinding!,
+                    template_version: 2,
+                    values: Object.fromEntries(
+                      Object.entries(frozenBinding!.values).filter(
+                        ([key]) => key !== 'availability',
+                      ),
+                    ),
                   }
-                : loc && row.path.join('/').startsWith(loc.path.join('/') + '/')
-                  ? { ...row, path: [...newPath, ...row.path.slice(loc.path.length)] }
-                  : row,
+                : { ...lifecycleBinding, values: {} };
+          updateReviewItems(
+            world.items
+              .filter((row) => task.targetIds.includes(row.item.id))
+              .map((row) => projectLifecycle(row, binding)),
+            {
+              requestKey: task.taskId,
+              operationLabel: task.title,
+              reason: v.reason || '隔离模板绑定变更',
+            },
+          );
+          set((current) => ({
+            ...current,
+            bindings: { ...current.bindings, [targetItemId]: binding },
+            attributeDraft: current.editId === targetItemId ? binding : current.attributeDraft,
+            changedAttributes: current.editId === targetItemId ? [] : current.changedAttributes,
+          }));
+          receipt = '隔离样例的模板绑定已更新；未渲染字段保持原值，原历史保留。';
+        } else if (task.kind === 'history-correct') {
+          patchWorld(task.targetIds, (row) => ({ ...row, name: v.name }));
+          set((current) => ({
+            ...current,
+            explicitNames: { ...current.explicitNames, [task.targetIds[0]]: true },
+          }));
+          receipt = '已追加一条隔离纠正事件，原历史事件没有改写。';
+        } else if (task.kind === 'reassign') {
+          patchWorld(task.targetIds, (row) => ({ ...row, skuId: v.sku }));
+        } else if (task.kind === 'split') {
+          const source = world.items.find((row) => row.item.id === task.targetIds[0])!;
+          const count = Number(v.count);
+          const target = dynamicCatalogs.find((row) => row.id === v.sku)!;
+          const children = Array.from({ length: count }, () => ({
+            ...structuredClone(source),
+            item: {
+              ...source.item,
+              id: `item_${crypto.randomUUID()}`,
+              skuId: target.id,
+              name: target.name,
+              revision: 1,
+              status: { label: '开封状态未记录', tone: 'neutral' as const },
+              facts: [],
+            },
+            quantity: { value: v.quantity, unit: v.unit, accuracy: source.quantity.accuracy },
+          }));
+          updateReviewItems(
+            [
+              {
+                ...source,
+                item: {
+                  ...source.item,
+                  revision: source.item.revision + 1,
+                  status: { label: '已拆包', tone: 'neutral' },
+                },
+                quantity: { ...source.quantity, value: '0' },
+              },
+              ...children,
+            ],
+            {
+              requestKey: task.taskId,
+              operationLabel: '拆包',
+              reason: '隔离预览：数量守恒，子件独立身份',
+            },
+          );
+          receipt = `隔离源件已结束，建立 ${count} 件独立子件；内容守恒已核对，物理位置继承原位置。`;
+        } else if (task.kind.startsWith('catalog-') || task.kind === 'stock') {
+          set((current) => {
+            let catalogs = [...dynamicCatalogs];
+            const index = catalogs.findIndex((row) => row.id === task.targetIds[0]);
+            if (task.kind.startsWith('catalog-create')) {
+              const parent = catalogs.find((row) => row.id === v.parent);
+              catalogs.push({
+                ...containerCatalog,
+                id: `catalog_node_${crypto.randomUUID()}`,
+                name: v.name,
+                kind: task.kind === 'catalog-create-group' ? 'GROUP' : 'SKU',
+                parentId: v.parent === 'root' ? null : v.parent || null,
+                path: [...(parent?.path || []), v.name],
+                profile:
+                  v.profile === 'unknown'
+                    ? null
+                    : v.profile === 'CONSUMABLE'
+                      ? 'CONSUMABLE'
+                      : v.profile === 'DURABLE'
+                        ? 'DURABLE'
+                        : null,
+                effectiveCapabilities: [],
+                itemCount: 0,
+              });
+            } else if (index >= 0) {
+              const old = catalogs[index];
+              const parent = catalogs.find((row) => row.id === v.parent);
+              catalogs[index] = {
+                ...old,
+                revision: old.revision + 1,
+                ...(task.kind === 'catalog-void'
+                  ? { recordState: 'VOID', voidedAt: trialInstant() }
+                  : task.kind === 'stock'
+                    ? {
+                        attributes: [
+                          ...old.attributes.filter((b) => b.template_id !== 'stock'),
+                          {
+                            template_id: 'stock',
+                            template_version: 1,
+                            status: 'KNOWN',
+                            values: {
+                              basis: v.mode,
+                              ...(v.mode === 'CONTENT' ? { content_unit: v.unit } : {}),
+                              reorder_threshold: v.threshold,
+                              target: v.target,
+                            },
+                          },
+                        ],
+                      }
+                    : {
+                        name: v.name || old.name,
+                        parentId: v.parent === 'root' ? null : v.parent || old.parentId,
+                        path: [...(parent?.path || []), v.name || old.name],
+                        profile:
+                          v.profile === 'unknown'
+                            ? null
+                            : v.profile === 'CONSUMABLE'
+                              ? 'CONSUMABLE'
+                              : v.profile === 'DURABLE'
+                                ? 'DURABLE'
+                                : old.profile,
+                      }),
+              };
+              if (old.kind === 'GROUP') {
+                const newPath = catalogs[index].path;
+                catalogs = catalogs.map((row) =>
+                  row.id !== old.id && row.path.join('/').startsWith(old.path.join('/') + '/')
+                    ? { ...row, path: [...newPath, ...row.path.slice(old.path.length)] }
+                    : row,
+                );
+              }
+            }
+            const updated = catalogs.find((row) => row.id === task.targetIds[0]);
+            const original = dynamicCatalogs.find((row) => row.id === task.targetIds[0]);
+            if (
+              updated?.kind === 'SKU' &&
+              original &&
+              (updated.name !== original.name || updated.profile !== original.profile)
+            ) {
+              const related = world.items
+                .filter((row) => row.item.skuId === updated.id)
+                .map((row) => ({
+                  ...row,
+                  item: {
+                    ...row.item,
+                    revision: row.item.revision + 1,
+                    profile: updated.profile,
+                    name:
+                      !current.explicitNames[row.item.id] && row.item.name === original.name
+                        ? updated.name
+                        : row.item.name,
+                  },
+                }));
+              updateReviewItems(related, {
+                requestKey: task.taskId,
+                operationLabel: task.title,
+                reason: '隔离共享商品资料变更',
+              });
+            }
+            return { ...current, catalogs };
+          });
+          receipt = task.kind.startsWith('catalog-create')
+            ? '商品或分类资料已在隔离样例建立；没有增加任何实物库存。'
+            : '隔离目录提案已确认并应用；实物位置不变。';
+        } else if (task.kind.startsWith('location-')) {
+          const loc = dynamicLocations.find((row) => row.id === task.targetIds[0]);
+          const parent = dynamicLocations.find((row) => row.id === v.destination);
+          const newPath =
+            task.kind === 'location-move'
+              ? [...(parent?.path || []), loc!.name]
+              : [...(loc?.path.slice(0, -1) || parent?.path || []), v.name || loc?.name || ''];
+          const createdLocationId =
+            task.kind === 'location-create' ? `item_${crypto.randomUUID()}` : null;
+          if (createdLocationId) {
+            const prototype = world.items[0] || itemFacts[0];
+            updateReviewItems(
+              [
+                {
+                  ...structuredClone(prototype),
+                  item: {
+                    ...prototype.item,
+                    id: createdLocationId,
+                    skuId: containerCatalog.id,
+                    name: v.name,
+                    subtitle: '位置容器',
+                    profile: 'DURABLE',
+                    revision: 1,
+                    recordState: 'VALID',
+                    voidedAt: null,
+                    location: parent
+                      ? { id: parent.id, label: parent.name, path: [...parent.path] }
+                      : { id: null, label: '未指定位置', path: [] },
+                    status: { label: '容器 · 可以容纳', tone: 'neutral' },
+                    facts: [],
+                    noteCount: 0,
+                    attachmentCount: 0,
+                  },
+                  quantity: { value: null, unit: '', accuracy: 'unknown' },
+                  date: undefined,
+                },
+              ],
+              { requestKey: task.taskId, operationLabel: task.title, reason: '隔离容器创建' },
             );
-          return { ...current, locations };
-        });
-      }
-      set((current) => ({
-        ...current,
-        task: { ...task, phase: 'receipt', receipt },
-        feedback: '',
-        retainedTask: null,
-      }));
+          }
+          if (loc) {
+            const rootRecord = world.items.find((row) => row.item.id === loc.id);
+            if (!rootRecord) throw Error('此容器的具体物品记录不可访问，原任务未执行。');
+            const affected = world.items
+              .filter(
+                (row) =>
+                  row.item.id === loc.id ||
+                  ((task.kind === 'location-move' || task.kind === 'location-edit') &&
+                    (row.item.location.path.join('/') === loc.path.join('/') ||
+                      row.item.location.path.join('/').startsWith(loc.path.join('/') + '/'))),
+              )
+              .map((row) => {
+                if (row.item.id === loc.id)
+                  return {
+                    ...row,
+                    item: {
+                      ...row.item,
+                      name: v.name || row.item.name,
+                      revision: row.item.revision + 1,
+                      location:
+                        task.kind === 'location-move'
+                          ? parent
+                            ? { id: parent.id, label: parent.name, path: [...parent.path] }
+                            : { id: null, label: '未指定位置', path: [] }
+                          : row.item.location,
+                      recordState:
+                        task.kind === 'location-void'
+                          ? ('VOID' as const)
+                          : task.kind === 'location-restore'
+                            ? ('VALID' as const)
+                            : row.item.recordState,
+                      voidedAt:
+                        task.kind === 'location-void'
+                          ? trialInstant()
+                          : task.kind === 'location-restore'
+                            ? null
+                            : row.item.voidedAt,
+                    },
+                  };
+                return {
+                  ...row,
+                  item: {
+                    ...row.item,
+                    revision: row.item.revision + 1,
+                    location: {
+                      ...row.item.location,
+                      path: [...newPath, ...row.item.location.path.slice(loc.path.length)],
+                    },
+                  },
+                };
+              });
+            updateReviewItems(affected, {
+              requestKey: task.taskId,
+              operationLabel: task.title,
+              reason: v.reason || '隔离容器结构修改',
+            });
+          }
+          set((current) => {
+            let locations = [...current.locations];
+            if (task.kind === 'location-create')
+              locations.push({
+                id: createdLocationId!,
+                parentId: parent?.id || null,
+                name: v.name,
+                path: newPath,
+                revision: 1,
+                canContain: true,
+                recordState: 'VALID',
+                contentCount: 0,
+                containerCatalogId: containerCatalog.id,
+              });
+            else
+              locations = locations.map((row) =>
+                row.id === loc?.id
+                  ? {
+                      ...row,
+                      revision: row.revision + 1,
+                      name: v.name || row.name,
+                      path: newPath,
+                      ...(task.kind === 'location-move' ? { parentId: parent?.id || null } : {}),
+                      recordState:
+                        task.kind === 'location-void'
+                          ? 'VOID'
+                          : task.kind === 'location-restore'
+                            ? 'VALID'
+                            : row.recordState,
+                    }
+                  : loc && row.path.join('/').startsWith(loc.path.join('/') + '/')
+                    ? { ...row, path: [...newPath, ...row.path.slice(loc.path.length)] }
+                    : row,
+              );
+            return { ...current, locations };
+          });
+        }
+        set((current) => ({
+          ...current,
+          receipts: task.taskId
+            ? { ...current.receipts, [task.taskId]: receipt }
+            : current.receipts,
+          task: {
+            ...task,
+            phase: ['unknown', 'network-unknown'].includes(scenario) ? 'unknown' : 'receipt',
+            receipt,
+          },
+          feedback: '',
+          retainedTask: null,
+        }));
+      });
+      if (isTrial()) await flushReviewStorage();
     } catch (error) {
+      const committed = !!task.taskId && !!getReviewWorld().receipts[task.taskId];
       set((current) => ({
         ...current,
-        task: { ...task, error: error instanceof Error ? error.message : '保存失败，草稿已保留。' },
+        task: {
+          ...task,
+          phase: committed ? 'unknown' : 'review',
+          error: error instanceof Error ? error.message : '保存失败，草稿已保留。',
+        },
       }));
+    } finally {
+      inFlight.current = false;
     }
   }
-  const props = { model, onChange, onIntent, onNavigate: navigate, onAttributeChange };
+  const go = (next: string) => {
+    if (inFlight.current || localRef.current.task?.phase === 'submitting') return;
+    if (!set((current) => current)) return;
+    navigate(next);
+  };
+  const props = { model, onChange, onIntent, onNavigate: go, onAttributeChange };
   const Page =
     route === '/manage/catalog'
       ? ManagementCatalog
@@ -1685,6 +2118,18 @@ export function ManagementJourney({
   return (
     <>
       <Page {...props} />
+      {local.storageError && (
+        <div role="alert" className="management-card">
+          <p>{local.storageError} 当前输入仍保留；保存前不能提交。</p>
+          <button
+            type="button"
+            className="vn-button"
+            onClick={() => void onIntent('retry-storage')}
+          >
+            重试保存草稿
+          </button>
+        </div>
+      )}
       {local.retainedTask && !local.task && (
         <div className="management-card">
           <p>保留的任务：{local.retainedTask.title}</p>
@@ -1692,7 +2137,11 @@ export function ManagementJourney({
             type="button"
             className="vn-button"
             onClick={() =>
-              set((current) => ({ ...current, task: current.retainedTask, retainedTask: null }))
+              (() => {
+                const retained = localRef.current.retainedTask;
+                set((current) => ({ ...current, task: current.retainedTask, retainedTask: null }));
+                if (retained?.returnPath) go(retained.returnPath);
+              })()
             }
           >
             继续草稿

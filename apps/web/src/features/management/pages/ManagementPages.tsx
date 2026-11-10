@@ -80,6 +80,11 @@ function Frame({
           </Button>
         </InlineNotice>
       )}
+      {!blocked && m.writeAvailability.kind !== 'available' && m.state !== 'offline' && (
+        <InlineNotice tone="info" title="当前可查看资料">
+          {m.writeAvailability.reason}
+        </InlineNotice>
+      )}
       {!blocked && children}
       {m.feedback && (
         <InlineNotice tone="info" title="隔离预览反馈">
@@ -96,7 +101,11 @@ function TaskPanel({ model: m, onChange, onIntent }: ManagementProps) {
     <section className="management-card management-task" aria-label={task.title}>
       <div className="management-heading">
         <h2>{task.title}</h2>
-        <Button variant="quiet" onClick={() => onIntent('close-task')}>
+        <Button
+          variant="quiet"
+          disabled={task.phase === 'submitting'}
+          onClick={() => onIntent('close-task')}
+        >
           {task.phase === 'receipt' ? '完成' : '保留草稿并收起'}
         </Button>
       </div>
@@ -104,6 +113,17 @@ function TaskPanel({ model: m, onChange, onIntent }: ManagementProps) {
       {task.phase === 'receipt' ? (
         <InlineNotice tone="success" title="隔离预览结果">
           {task.receipt}
+        </InlineNotice>
+      ) : task.phase === 'submitting' ? (
+        <InlineNotice tone="info" title="正在保存原任务">
+          提交期间请保留此页面；强制关闭后将按原任务核对，不会自动重发。
+        </InlineNotice>
+      ) : task.phase === 'unknown' ? (
+        <InlineNotice tone="warning" title="结果待核对">
+          {task.error || '原任务已保留，请查询原结果。'}
+          <Button variant="secondary" onClick={() => onIntent('recover-task')}>
+            核对原任务结果
+          </Button>
         </InlineNotice>
       ) : (
         <>
