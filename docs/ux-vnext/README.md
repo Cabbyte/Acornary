@@ -14,6 +14,10 @@ RC6 延续 Operate（操作优先）的默认画面：突出名称、关键事�
 
 下方保留 Phase 1 设计索引与领域约束。历史交付证据见 [Phase 1 报告](review-report.md)、[B00 报告](b00-report.md)、[RC1 报告](rc1-report.md)、[RC2 报告](rc2-report.md)、[RC2 设计说明](rc2-design-notes.md)及[RC3 报告](rc3-report.md)。历史检查不能当作 RC6 当前检查或用户批准。
 
+## Trial RC1 连续试用
+
+2026-11-10：[完整试用版](http://127.0.0.1:6008/#/items) 已提供 29 页连续体验。运行 `pnpm dev:ui-trial`；保留 6007/6006 审阅入口。当前页和任务面板均可提交修改意见。全部数据、身份与设备结果继续隔离；回归暂停。实施选择、实际检查及工程剩余门槛见 [Trial RC1 报告](trial-rc1-report.md)。本轮可试用不表示 Phase 2 工程验收完成。
+
 ## 从哪里开始审阅
 
 1. [产品原则](product-principles.md)：两种模式各自解决什么问题，什么事实不能简化。
