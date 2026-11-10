@@ -114,6 +114,7 @@ export interface NotesModel {
 }
 export interface AttachmentTransfer {
   id: string;
+  disabled?: boolean;
   name: string;
   state: 'uploaded' | 'unknown';
   onAssociate: () => void;
@@ -121,6 +122,13 @@ export interface AttachmentTransfer {
 }
 export interface AttachmentsModel {
   scopeLabel: string;
+  samples?: readonly { id: string; label: string; description: string }[];
+  onChooseSample?: (id: string) => void;
+  sampleSelectionDisabled?: boolean;
+  showField?: boolean;
+  preview?: ReactNode;
+  onClosePreview?: () => void;
+  preparedLabel?: string;
   field: AttachmentFieldProps;
   list: AttachmentListProps;
   transfers: readonly AttachmentTransfer[];
@@ -611,13 +619,42 @@ function Attachments({ model }: { model: AttachmentsModel }) {
         JPEG / PNG / WebP / PDF · 每个文件最多 25 MiB · 每个目标最多 20 个有效附件 · 家庭总容量 5
         GiB。{model.quotaLabel}
       </InlineNotice>
+      {model.samples && (
+        <section className="vn-extra-card">
+          <h2>选择内置样例附件</h2>
+          <p className="vn-muted">样例仅保存在本地试用数据中。</p>
+          <div className="vn-row">
+            {model.samples.map((sample) => (
+              <Button
+                key={sample.id}
+                variant="secondary"
+                disabled={model.sampleSelectionDisabled}
+                onClick={() => model.onChooseSample?.(sample.id)}
+                title={sample.description}
+              >
+                {sample.label}
+              </Button>
+            ))}
+          </div>
+        </section>
+      )}
       <AttachmentList {...model.list} />
-      <AttachmentField {...model.field} />
+      {model.preview && (
+        <section className="vn-extra-card" aria-label="附件预览">
+          {model.preview}
+          <Button variant="quiet" onClick={model.onClosePreview}>
+            关闭预览
+          </Button>
+        </section>
+      )}
+      {model.showField !== false && <AttachmentField {...model.field} />}
       {model.transfers.map((transfer) => (
         <section className="vn-extra-card" key={transfer.id}>
           <h2>{transfer.name}</h2>
           <Badge variant={transfer.state === 'unknown' ? 'warning' : 'info'}>
-            {transfer.state === 'unknown' ? '关联结果未知' : '上传完成，尚未关联'}
+            {transfer.state === 'unknown'
+              ? '关联结果未知'
+              : model.preparedLabel || '上传完成，尚未关联'}
           </Badge>
           <p>
             {transfer.state === 'unknown'
@@ -626,6 +663,7 @@ function Attachments({ model }: { model: AttachmentsModel }) {
           </p>
           <Button
             variant="secondary"
+            disabled={transfer.disabled}
             onClick={transfer.state === 'unknown' ? transfer.onRecover : transfer.onAssociate}
           >
             {transfer.state === 'unknown' ? '核对原关联结果' : '关联到当前对象'}

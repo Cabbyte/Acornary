@@ -1,3 +1,6 @@
+import { trialProducts } from '../trial/products';
+import { isTrial } from '../trial/session';
+import { reviewStorage, assertTrialWrite, runReviewTransaction } from '../trial/storage';
 import { applyReviewTask, useReviewWorld } from './inventory-session';
 import { useEffect, useState } from 'react';
 import Decimal from 'decimal.js';
@@ -30,14 +33,16 @@ export function TaskJourney({
   onBack: () => void;
   onSwitch: (kind: DailyTaskKind) => void;
 }) {
-  const { items: itemFacts } = useReviewWorld();
+  const { items: itemFacts, receipts } = useReviewWorld();
   const item = itemFacts.find((f) => f.item.id === target) || (!target ? itemFacts[0] : null);
   const products = [
-    ...productFactsFor(itemFacts),
-    ...(itemFacts.some((f) => f.item.skuId === emptyProduct.group.id) ? [] : [emptyProduct]),
+    ...trialProducts(itemFacts),
+    ...(!isTrial() && !itemFacts.some((f) => f.item.skuId === emptyProduct.group.id)
+      ? [emptyProduct]
+      : []),
   ];
   const product = products.find((p) => p.group.id === target);
-  const key = `acornary-review-p03:${kind}:${target || 'default'}:${scenario}`;
+  const key = `acornary-review-p03:${kind}:${target || 'default'}:${isTrial() ? 'trial' : scenario}`;
   const initial: DailyTaskDraft = {
     name: '',
     count: '1',
@@ -56,14 +61,19 @@ export function TaskJourney({
     [error, setError] = useState('');
   const [catalogQuery, setCatalogQuery] = useState(''),
     [locationQuery, setLocationQuery] = useState('');
-  const [request, setRequest] = useState<{ key: string; draft: DailyTaskDraft } | null>(null);
+  const [request, setRequest] = useState<{
+    key: string;
+    draft: DailyTaskDraft;
+    expectedRevision?: number;
+    reviewSummary?: string[];
+  } | null>(null);
   const [approved, setApproved] = useState(false),
     [revision, setRevision] = useState(item?.item.revision || 1);
   const [choice, setChoice] = useState<'current' | 'input' | undefined>();
   const [receipt, setReceipt] = useState<string[]>([]);
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(key);
+      const raw = reviewStorage.getItem(key);
       if (raw) {
         const saved = JSON.parse(raw);
         setDraft(saved.draft);
@@ -94,7 +104,7 @@ export function TaskJourney({
     nextReceipt = receipt,
   ) {
     try {
-      sessionStorage.setItem(
+      reviewStorage.setItem(
         key,
         JSON.stringify({
           draft: nextDraft,
@@ -112,6 +122,7 @@ export function TaskJourney({
   }
   const patch = (next: DailyTaskDraft) => {
     setDraft(next);
+    setRequest(null);
     setApproved(false);
     persist('draft', next, null, false);
   };
@@ -126,35 +137,39 @@ export function TaskJourney({
     !draft.finish &&
     item?.quantity.value &&
     /^\d+(\.\d+)?$/.test(draft.quantity.value || '')
-      ? new Decimal(item.quantity.value).minus(draft.quantity.value!).toString()
+      ? request && receipts[request.key]
+        ? item.quantity.value
+        : new Decimal(item.quantity.value).minus(draft.quantity.value!).toString()
       : null;
   const summary =
     state === 'success'
       ? receipt
-      : [
-          kind === 'intake' || kind === 'new-product'
-            ? `${kind === 'new-product' ? draft.name : draft.catalog?.name || '未选商品'} · ${draft.count} 件`
-            : `${item?.item.name || '对象不可用'} · ${item?.item.id || ''}`,
-          ...(kind === 'consume'
-            ? [
-                draft.finish
-                  ? '整件用完'
-                  : `本次使用 ${draft.quantity.value || '未填写'} ${draft.quantity.unit} · ${draft.quantity.accuracy === 'estimated' ? '估计' : draft.quantity.accuracy === 'measured' ? '实测' : '依据未记录'}`,
-              ]
-            : [`目标位置：${location}`]),
-          ...(remaining !== null
-            ? [`核对后剩余：${remaining} ${item?.quantity.unit}（计算预览，依据沿用原事实）`]
-            : []),
-          ...(kind === 'move'
-            ? [`原位置：${item?.item.location.path.join(' › ') || '未记录'}`]
-            : []),
-          ...(kind === 'new-product'
-            ? [`商品分类：${draft.catalog?.path.join(' › ') || '未选择'}`]
-            : []),
-          ...draft.dates
-            .slice(0, Number(draft.count))
-            .flatMap((d, i) => (d ? [`第 ${i + 1} 件最佳食用期：${d} · 包装标注`] : [])),
-        ];
+      : request?.reviewSummary && ['submitting', 'networkUnknown'].includes(state)
+        ? request.reviewSummary
+        : [
+            kind === 'intake' || kind === 'new-product'
+              ? `${kind === 'new-product' ? draft.name : draft.catalog?.name || '未选商品'} · ${draft.count} 件`
+              : `${item?.item.name || '对象不可用'} · ${item?.item.id || ''}`,
+            ...(kind === 'consume'
+              ? [
+                  draft.finish
+                    ? '整件用完'
+                    : `本次使用 ${draft.quantity.value || '未填写'} ${draft.quantity.unit} · ${draft.quantity.accuracy === 'estimated' ? '估计' : draft.quantity.accuracy === 'measured' ? '实测' : '依据未记录'}`,
+                ]
+              : [`目标位置：${location}`]),
+            ...(remaining !== null
+              ? [`核对后剩余：${remaining} ${item?.quantity.unit}（计算预览，依据沿用原事实）`]
+              : []),
+            ...(kind === 'move'
+              ? [`原位置：${item?.item.location.path.join(' › ') || '未记录'}`]
+              : []),
+            ...(kind === 'new-product'
+              ? [`商品分类：${draft.catalog?.path.join(' › ') || '未选择'}`]
+              : []),
+            ...draft.dates
+              .slice(0, Number(draft.count))
+              .flatMap((d, i) => (d ? [`第 ${i + 1} 件最佳食用期：${d} · 包装标注`] : [])),
+          ];
   function validate() {
     if ((kind === 'consume' || kind === 'move') && !item) return '目标物品不可用。';
     if (kind === 'intake' || kind === 'new-product') {
@@ -183,28 +198,48 @@ export function TaskJourney({
       setError('原请求未保存，无法恢复。');
       return;
     }
-    let ids: string[];
     try {
-      ids = applyReviewTask(request.key, kind, request.draft, target);
-    } catch {
-      setError('无法保存预览结果，原请求仍保留。');
-      setState('networkUnknown');
-      return;
+      let result: string[] = [];
+      runReviewTransaction(() => {
+        const ids = applyReviewTask(
+          request.key,
+          kind,
+          request.draft,
+          target,
+          request.expectedRevision,
+        );
+        result = [
+          '预览结果 · 已更新隔离数据，未写入正式库存',
+          ...summary,
+          ...ids.map((id) => `示例物品：${id}`),
+        ];
+        if (!persist('success', draft, request, true, result))
+          throw Error('无法保存回执，原请求保留。');
+      });
+      setReceipt(result);
+      setState('success');
+    } catch (error) {
+      const message = String(error);
+      setError(message);
+      const next = message.includes('版本') ? 'revisionConflict' : 'networkUnknown';
+      setState(next);
+      persist(next);
     }
-    const result = [
-      '预览结果 · 已更新隔离数据，未写入正式库存',
-      ...summary,
-      ...(kind === 'new-product' ? [`示例新商品：catalog_node_${request?.key}`] : []),
-      ...ids.map((id) => `示例物品：${id}`),
-    ];
-    setReceipt(result);
-    setState('success');
-    persist('success', draft, request, true, result);
   }
+
   useEffect(() => {
     if (state !== 'submitting') return;
     const timer = setTimeout(() => {
       if (scenario === 'unknown') {
+        try {
+          assertTrialWrite();
+          if (request)
+            applyReviewTask(request.key, kind, request.draft, target, request.expectedRevision);
+        } catch (e) {
+          setError(String(e));
+          setState('validationError');
+          return;
+        }
         setState('networkUnknown');
         persist('networkUnknown');
       } else finish();
@@ -246,7 +281,12 @@ export function TaskJourney({
       persist();
       return;
     }
-    const original = request || { key: crypto.randomUUID(), draft: structuredClone(draft) };
+    const original = request || {
+      key: crypto.randomUUID(),
+      draft: structuredClone(draft),
+      expectedRevision: item?.item.revision,
+      reviewSummary: structuredClone(summary),
+    };
     if (!persist('submitting', draft, original, true)) return;
     setRequest(original);
     setState('submitting');
@@ -277,7 +317,19 @@ export function TaskJourney({
               path: [...p.catalogPath, p.group.name],
             }))
       }
-      locations={locationOptions.map((l) => ({
+      locations={(isTrial()
+        ? itemFacts
+            .filter(
+              (f) =>
+                f.item.skuId === 'catalog_node_00000000-0000-4000-8000-000000000800' &&
+                f.item.recordState === 'VALID',
+            )
+            .map((f) => ({
+              id: f.item.id,
+              label: [...f.item.location.path, f.item.name].join(' › '),
+            }))
+        : locationOptions
+      ).map((l) => ({
         itemId: l.id,
         name: l.label,
         path: l.label.split(' › '),
@@ -294,7 +346,10 @@ export function TaskJourney({
       open={open}
       onOpen={() => setOpen(true)}
       onClose={() => {
-        if (persist()) setOpen(false);
+        if (persist()) {
+          setOpen(false);
+          if (isTrial()) onBack();
+        }
       }}
       onBack={onBack}
       reviewing={reviewing}
@@ -359,6 +414,21 @@ export function TaskJourney({
               <Button
                 onClick={() => {
                   if (scenario === 'unknown') {
+                    try {
+                      assertTrialWrite();
+                      if (request)
+                        applyReviewTask(
+                          request.key,
+                          kind,
+                          request.draft,
+                          target,
+                          request.expectedRevision,
+                        );
+                    } catch (e) {
+                      setError(String(e));
+                      setState('validationError');
+                      return;
+                    }
                     setState('networkUnknown');
                     persist('networkUnknown');
                   } else finish();
@@ -414,6 +484,7 @@ export function TaskJourney({
               onRefresh={() => setError('已读取示例最新版本，请核对并选择。')}
               onReconfirm={() => {
                 setRevision(revision + 1);
+                persist('draft', choice === 'current' ? initial : draft, null, false);
                 setState('draft');
                 setReviewing(false);
                 setRequest(null);

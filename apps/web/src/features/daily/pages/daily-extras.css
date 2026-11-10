@@ -118,3 +118,10 @@
     grid-template-columns: minmax(200px, 0.75fr) minmax(0, 1.5fr);
   }
 }
+
+[data-acornary-ui='vnext'] .vn-extra-attachment-preview {
+  display: block;
+  width: min(100%, 480px);
+  height: auto;
+  border-radius: var(--vn-radius-sm, 6px);
+}

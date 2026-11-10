@@ -1,3 +1,4 @@
+import { trialToday, trialInstant } from '../trial/clock';
 // Isolated P04/P05 review adapter. No business API, camera, Bluetooth or production storage calls.
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import QRCode from 'qrcode';
@@ -26,12 +27,16 @@ import type {
 import { isPlainDate } from '../../src/ui/components/ui/calendar';
 import { itemLabelURL, expandItemId } from '../../src/lib/labels';
 import type { DailyItemFacts } from '../../src/features/daily/pages/models';
-import { notes as initialNotes, firstItemId } from './fixtures';
-import { useReviewWorld, updateReviewItems } from './inventory-session';
+import { notes as initialNotes, firstItemId, history as baseHistory } from './fixtures';
+import {
+  useReviewWorld,
+  updateReviewItems,
+  getReviewWorld,
+  appendReviewEvent,
+} from './inventory-session';
+import { reviewStorage, flushReviewStorage, runReviewTransaction } from '../trial/storage';
+import { getTrialScope, subscribeTrialScope, isTrial } from '../trial/session';
 
-const today = '2026-11-07';
-const nowLabel = '2026-11-07 14:30（Asia/Shanghai，UTC+08:00）';
-const currentInstant = '2026-11-07T14:30:00+08:00';
 const available: ActionAvailability = { kind: 'available' };
 const blankDate: DateFactPresentation = {
   kind: 'EXPIRY',
@@ -66,10 +71,13 @@ interface Transfer {
   name: string;
   size: number;
   mime: string;
+  sampleId?: string;
   state: 'uploaded' | 'unknown';
 }
 interface RequestSnapshot {
   key: string;
+  accountId?: string;
+  householdId?: string;
   revision: number;
   targetRevision: number;
   summary: string[];
@@ -111,7 +119,7 @@ interface ReviewState {
   attachments: AttachmentView[];
   attachmentNames: Record<string, string>;
   attachmentLocalIds: Record<string, string>;
-  pending: PendingAttachment[];
+  pending: Array<PendingAttachment & { scope?: 'item' | 'product'; sampleId?: string }>;
   transfers: Transfer[];
   attachmentMessage: string;
   scanText: string;
@@ -127,14 +135,29 @@ interface ReviewState {
 }
 const noteStoreKey = 'acornary-review-extra-notes-v1';
 let noteStore: Record<string, NoteView[]> | null = null;
+let noteStoreScope = '';
+let noteStoreRaw: string | null = null;
+const scopeKey = () => {
+  const scope = getTrialScope();
+  return `${scope.accountId}:${scope.householdId}:${scope.generation}`;
+};
 const noteListeners = new Set<() => void>();
 function readNoteStore() {
-  if (!noteStore) {
+  const currentScope = scopeKey();
+  let raw: string | null = null;
+  try {
+    raw = reviewStorage.getItem(noteStoreKey);
+  } catch {
+    /* reading initial examples remains possible */
+  }
+  if (!noteStore || noteStoreScope !== currentScope || noteStoreRaw !== raw) {
     try {
-      noteStore = JSON.parse(sessionStorage.getItem(noteStoreKey) || '{}');
+      noteStore = JSON.parse(raw || '{}');
     } catch {
       noteStore = {};
     }
+    noteStoreScope = currentScope;
+    noteStoreRaw = raw;
   }
   return noteStore!;
 }
@@ -145,15 +168,24 @@ export function useExtraReviewNotes(targetId: string): NoteView[] | undefined {
   return useSyncExternalStore(
     (listener) => {
       noteListeners.add(listener);
+      const unsubscribe = subscribeTrialScope(listener);
+      window.addEventListener('storage', listener);
       return () => {
         noteListeners.delete(listener);
+        unsubscribe();
+        window.removeEventListener('storage', listener);
       };
     },
     () => getExtraReviewNotes(targetId),
     () => undefined,
   );
 }
-function publishNotes(targetId: string, notes: NoteRecord[], scope: 'item' | 'product') {
+function publishNotes(
+  targetId: string,
+  notes: NoteRecord[],
+  scope: 'item' | 'product',
+  modifiedId?: string,
+) {
   const ownNotes: NoteView[] = notes
     .filter((note) => note.scope === scope)
     .map((note) => ({
@@ -162,13 +194,134 @@ function publishNotes(targetId: string, notes: NoteRecord[], scope: 'item' | 'pr
       title: note.title,
       excerpt: note.redacted ? '已隐藏' : note.excerpt,
       body: note.redacted ? undefined : note.body,
-      updatedAt: currentInstant,
+      updatedAt: trialInstant(),
       sensitivity: 'NORMAL',
     }));
-  const next = { ...readNoteStore(), [targetId]: ownNotes };
-  sessionStorage.setItem(noteStoreKey, JSON.stringify(next));
+  const current = readNoteStore()[targetId] || ownNotes;
+  const merged = modifiedId
+    ? [
+        ...current.filter((note) => note.id !== modifiedId),
+        ...ownNotes.filter((note) => note.id === modifiedId),
+      ]
+    : ownNotes;
+  const next = { ...readNoteStore(), [targetId]: merged };
+  reviewStorage.setItem(noteStoreKey, JSON.stringify(next));
   noteStore = next;
+  noteStoreScope = scopeKey();
+  noteStoreRaw = JSON.stringify(next);
   noteListeners.forEach((listener) => listener());
+}
+interface StoredAttachment extends AttachmentView {
+  name: string;
+  localId: string;
+  sampleId?: string;
+}
+const attachmentStoreKey = 'acornary-review-extra-attachments-v1';
+let attachmentStore: Record<string, StoredAttachment[]> | null = null;
+let attachmentStoreScope = '';
+let attachmentStoreRaw: string | null = null;
+function readAttachmentStore() {
+  const currentScope = scopeKey();
+  let raw: string | null = null;
+  try {
+    raw = reviewStorage.getItem(attachmentStoreKey);
+  } catch {
+    /* initial metadata stays readable */
+  }
+  if (!attachmentStore || attachmentStoreScope !== currentScope || attachmentStoreRaw !== raw) {
+    try {
+      attachmentStore = JSON.parse(raw || '{}');
+    } catch {
+      attachmentStore = {};
+    }
+    attachmentStoreScope = currentScope;
+    attachmentStoreRaw = raw;
+  }
+  return attachmentStore!;
+}
+export function getExtraReviewAttachments(targetId: string): StoredAttachment[] | undefined {
+  return readAttachmentStore()[targetId];
+}
+export function useExtraReviewAttachments(targetId: string): StoredAttachment[] | undefined {
+  return useSyncExternalStore(
+    (listener) => {
+      noteListeners.add(listener);
+      const unsubscribe = subscribeTrialScope(listener);
+      window.addEventListener('storage', listener);
+      return () => {
+        noteListeners.delete(listener);
+        unsubscribe();
+        window.removeEventListener('storage', listener);
+      };
+    },
+    () => getExtraReviewAttachments(targetId),
+    () => undefined,
+  );
+}
+function publishAttachments(targetId: string, records: StoredAttachment[]) {
+  const next = { ...readAttachmentStore(), [targetId]: records };
+  reviewStorage.setItem(attachmentStoreKey, JSON.stringify(next));
+  attachmentStore = next;
+  attachmentStoreScope = scopeKey();
+  attachmentStoreRaw = JSON.stringify(next);
+  noteListeners.forEach((listener) => listener());
+}
+const samples = [
+  {
+    id: 'sample-label-photo',
+    label: '包装标签样例 · PNG',
+    description: '本地生成的示例包装标签，用于体验附件预览。',
+  },
+  {
+    id: 'sample-guide-pdf',
+    label: '使用说明样例 · PDF',
+    description: '内置的一页 PDF，仅供试用下载。',
+  },
+];
+function sampleFile(id: string): File {
+  if (id === 'sample-label-photo') {
+    const canvas = document.createElement('canvas');
+    canvas.width = 480;
+    canvas.height = 300;
+    const context = canvas.getContext('2d')!;
+    context.fillStyle = '#f1f4ed';
+    context.fillRect(0, 0, 480, 300);
+    context.fillStyle = '#fff';
+    context.fillRect(28, 26, 424, 248);
+    context.fillStyle = '#365645';
+    context.font = 'bold 28px sans-serif';
+    context.fillText('ACORNARY / SAMPLE', 50, 78);
+    context.font = '20px sans-serif';
+    context.fillText('Oat drink - Original 1 L', 50, 126);
+    context.font = '16px sans-serif';
+    context.fillText('Best before: 2026-11-10', 50, 166);
+    context.fillText('Review attachment only', 50, 206);
+    const bytes = Uint8Array.from(atob(canvas.toDataURL('image/png').split(',')[1]), (character) =>
+      character.charCodeAt(0),
+    );
+    return new File([bytes], '包装标签样例.png', { type: 'image/png' });
+  }
+  const stream =
+    'BT /F1 18 Tf 48 760 Td (Acornary trial - sample guide) Tj 0 -36 Td /F1 12 Tf (This document is a local sample. No upload or external request.) Tj 0 -24 Td (Use, save, preview and remove it within the trial household.) Tj ET';
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+  ];
+  let content = '%PDF-1.4\n';
+  const offsets = [0];
+  objects.forEach((object, index) => {
+    offsets.push(content.length);
+    content += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+  const xref = content.length;
+  content += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets
+    .slice(1)
+    .map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`)
+    .join('')}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return new File([content], '使用说明样例.pdf', { type: 'application/pdf' });
 }
 const freshMutation = (baseRevision?: number): MutationState => ({
   baseRevision,
@@ -184,8 +337,19 @@ function createState(
   scope: 'item' | 'product',
 ): ReviewState {
   const item = facts?.item;
-  const dates = scenario === 'empty' ? [] : facts?.date ? [structuredClone(facts.date)] : [];
-  if (scenario !== 'empty')
+  const savedAttachments = [
+    ...(getExtraReviewAttachments(item?.id || '') || []),
+    ...(getExtraReviewAttachments(item?.skuId || '') || []),
+  ];
+  const dates =
+    scenario === 'empty'
+      ? []
+      : facts?.dates
+        ? structuredClone(facts.dates)
+        : facts?.date
+          ? [structuredClone(facts.date)]
+          : [];
+  if (scenario !== 'empty' && !facts?.dates && !isTrial())
     dates.push({
       kind: 'SERVICE_DUE',
       dateKind: null,
@@ -274,9 +438,11 @@ function createState(
       dates: freshMutation(item?.revision),
       notes: freshMutation(item?.revision),
     },
-    attachments: [],
-    attachmentNames: {},
-    attachmentLocalIds: {},
+    attachments: savedAttachments,
+    attachmentNames: Object.fromEntries(savedAttachments.map((record) => [record.id, record.name])),
+    attachmentLocalIds: Object.fromEntries(
+      savedAttachments.map((record) => [record.id, record.localId]),
+    ),
     pending: [],
     transfers: [],
     attachmentMessage: '',
@@ -294,7 +460,7 @@ function createState(
 }
 function loadState(key: string, initial: ReviewState): ReviewState {
   try {
-    const raw = sessionStorage.getItem(key);
+    const raw = reviewStorage.getItem(key);
     if (!raw) return initial;
     const parsed = JSON.parse(raw) as ReviewState;
     if (
@@ -307,6 +473,17 @@ function loadState(key: string, initial: ReviewState): ReviewState {
     // A page that was sending when its adapter closed has an uncertain physical outcome.
     return {
       ...parsed,
+      attachments: initial.attachments,
+      attachmentNames: initial.attachmentNames,
+      attachmentLocalIds: initial.attachmentLocalIds,
+      mutations: Object.fromEntries(
+        Object.entries(parsed.mutations).map(([kind, mutation]) => [
+          kind,
+          mutation.state === 'submitting' || mutation.state === 'validating'
+            ? { ...mutation, state: 'networkUnknown' }
+            : mutation,
+        ]),
+      ) as ReviewState['mutations'],
       notes: [
         ...initial.notes,
         ...parsed.notes.filter(
@@ -362,12 +539,16 @@ function ReviewSession({
   navigate: (path: string) => void;
   target: string;
 }) {
+  const today = trialToday(),
+    currentInstant = trialInstant(),
+    nowLabel = `${today} 14:30（Asia/Shanghai，UTC+08:00）`;
   const world = useReviewWorld();
+  const trialScope = useSyncExternalStore(subscribeTrialScope, getTrialScope, getTrialScope);
   const route = new URL(path, 'https://review.invalid');
   const surface = route.pathname.split('/')[2] as DailyExtraSurface;
   const facts = world.items.find((entry) => entry.item.id === target);
   const item = facts?.item;
-  const storageKey = `acornary-review-daily-extras-v1:${target}:${scenario}`;
+  const storageKey = `acornary-review-daily-extras-v1:${target}:${isTrial() ? 'trial' : scenario}`;
   const [state, setState] = useState(() => {
     const initial = createState(
       facts,
@@ -396,11 +577,37 @@ function ReviewSession({
   const [readRecovered, setReadRecovered] = useState(false);
   const [inspectPage, setInspectPage] = useState<string | null>(null);
   const [removeId, setRemoveId] = useState<string | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const savedItemAttachments = useExtraReviewAttachments(target);
+  const savedProductAttachments = useExtraReviewAttachments(item?.skuId || '');
   const files = useRef(new Map<string, File>());
+  const commitBusy = useRef(false);
+  useEffect(
+    () => () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    },
+    [previewUrl],
+  );
+  useEffect(() => {
+    const records = [...(savedItemAttachments || []), ...(savedProductAttachments || [])];
+    setState((current) =>
+      JSON.stringify(current.attachments) === JSON.stringify(records)
+        ? current
+        : {
+            ...current,
+            attachments: records,
+            attachmentNames: Object.fromEntries(records.map((record) => [record.id, record.name])),
+            attachmentLocalIds: Object.fromEntries(
+              records.map((record) => [record.id, record.localId]),
+            ),
+          },
+    );
+  }, [savedItemAttachments, savedProductAttachments]);
   const change = (update: (current: ReviewState) => ReviewState) => setState(update);
   useEffect(() => {
     try {
-      sessionStorage.setItem(storageKey, JSON.stringify(state));
+      reviewStorage.setItem(storageKey, JSON.stringify(state));
       setStorageError('');
     } catch {
       setStorageError('浏览器未允许保存本地草稿，发送操作已暂停。');
@@ -472,13 +679,16 @@ function ReviewSession({
           : !readRecovered && scenario === 'error'
             ? 'error'
             : 'ready';
-  const availability: ActionAvailability = storageError
-    ? { kind: 'blockedState', reason: storageError }
-    : scenario === 'offline'
-      ? { kind: 'offline', reason: '当前离线，草稿可保留；恢复连接后重新核对再保存。' }
-      : scenario === 'missing-capability'
-        ? { kind: 'missingContract', reason: '此对象已不具备此资料的写入能力，原输入已保留。' }
-        : available;
+  const availability: ActionAvailability =
+    trialScope.role === 'viewer'
+      ? { kind: 'readOnly', reason: '当前示例身份只读，可查看资料但不能保存修改。' }
+      : storageError
+        ? { kind: 'blockedState', reason: storageError }
+        : scenario === 'offline'
+          ? { kind: 'offline', reason: '当前离线，草稿可保留；恢复连接后重新核对再保存。' }
+          : scenario === 'missing-capability'
+            ? { kind: 'missingContract', reason: '此对象已不具备此资料的写入能力，原输入已保留。' }
+            : available;
   const context = {
     itemId: target,
     itemLabel: item ? `${item.name}${item.subtitle ? ` · ${item.subtitle}` : ''}` : '未取得物品',
@@ -511,6 +721,8 @@ function ReviewSession({
     const boundRevision = state.mutations[kind].baseRevision || context.revision;
     const base = {
       key: uniqueId('review-request'),
+      accountId: trialScope.accountId,
+      householdId: trialScope.householdId,
       targetRevision: boundRevision,
       revision: kind === 'notes' ? selectedNote?.revision || boundRevision : boundRevision,
     };
@@ -556,6 +768,12 @@ function ReviewSession({
   function validate(kind: EditSurface, request: RequestSnapshot) {
     if (availability.kind !== 'available') return availability.reason;
     if (kind === 'opening') {
+      if (
+        item?.profile !== 'CONSUMABLE' ||
+        item.recordState !== 'VALID' ||
+        item.status.label === '已用完'
+      )
+        return '此件当前不支持开封操作；已有输入已保留。';
       const opening = request.opening!;
       if (opening.intent === 'backdate' && !opening.localTime) return '请填写实际开封日期与时间。';
       const offset =
@@ -592,7 +810,124 @@ function ReviewSession({
     if (kind === 'notes' && !request.note?.body?.trim()) return '请填写笔记正文；标题可以留空。';
     return '';
   }
-  function applyRequest(kind: EditSurface, request: RequestSnapshot) {
+  function mergeResult(current: ReviewState, result: ReviewState, kind: EditSurface): ReviewState {
+    const merged = {
+      ...current,
+      mutations: { ...current.mutations, [kind]: result.mutations[kind] },
+    };
+    if (kind === 'opening')
+      return {
+        ...merged,
+        opening: result.opening,
+        openingState: result.openingState,
+        openedAt: result.openedAt,
+      };
+    if (kind === 'dates')
+      return {
+        ...merged,
+        facts: result.facts,
+        dateDraft: result.dateDraft,
+        dateIndex: result.dateIndex,
+        completing: result.completing,
+      };
+    const noteScope = result.mutations.notes.request?.scope || current.scope;
+    return {
+      ...merged,
+      notes: [
+        ...current.notes.filter((note) => note.scope !== noteScope),
+        ...result.notes.filter((note) => note.scope === noteScope),
+      ],
+      selectedNotes: { ...current.selectedNotes, [noteScope]: result.selectedNotes[noteScope] },
+      noteDrafts: { ...current.noteDrafts, ...result.noteDrafts },
+    };
+  }
+  function recordNoteHistory(request: RequestSnapshot, result: ReviewState) {
+    // New single-item notes already have the shared note-count event.
+    if (request.scope !== 'product' && request.noteId?.startsWith('new-')) return;
+    const id = result.selectedNotes[request.scope!];
+    appendReviewEvent(
+      {
+        ...baseHistory[0],
+        operationLabel: request.noteId?.startsWith('new-') ? '新建商品公共说明' : '编辑笔记',
+        objectLabel: context.itemLabel,
+        event: {
+          ...baseHistory[0].event!,
+          id: `event_${request.key.replace(/^review-request_/, '')}`,
+          operation_id: `operation_${request.key.replace(/^review-request_/, '')}`,
+          target_kind: request.scope === 'product' ? 'CATALOG_NODE' : 'ITEM',
+          target_id: request.scope === 'product' ? item!.skuId : target,
+          event_type: request.noteId?.startsWith('new-') ? 'NOTE_CREATE' : 'NOTE_UPDATE',
+          before_revision: request.revision,
+          after_revision: request.revision + 1,
+          occurred_at: currentInstant,
+          recorded_at: currentInstant,
+          reason: '隔离试用笔记操作；正文保留在笔记中，历史仅记录引用。',
+          changes: [
+            {
+              path: 'notes',
+              before_present: !request.noteId?.startsWith('new-'),
+              after_present: true,
+              before: request.noteId?.startsWith('new-') ? undefined : { note_id: request.noteId },
+              after: { note_id: id, scope: request.scope },
+            },
+          ],
+        },
+      },
+      `${request.key}:history`,
+    );
+  }
+  async function applyRequest(kind: EditSurface, request: RequestSnapshot, loseReceipt = false) {
+    if (availability.kind !== 'available') return;
+    if (
+      request.accountId &&
+      (request.accountId !== trialScope.accountId || request.householdId !== trialScope.householdId)
+    )
+      return;
+    const operationScope = scopeKey();
+    const receiptKey = `acornary-review-extra-receipt:${request.key}`;
+    type SavedReceipt = {
+      kind: EditSurface;
+      result: ReviewState;
+      patches: DailyItemFacts[];
+      phase: 'prepared' | 'committed';
+    };
+    let saved: SavedReceipt | null = null;
+    try {
+      const raw = reviewStorage.getItem(receiptKey);
+      saved = raw ? JSON.parse(raw) : null;
+    } catch {
+      /* original frozen request remains the source */
+    }
+    if (saved) {
+      try {
+        runReviewTransaction(() => {
+          if (!getReviewWorld().receipts[request.key])
+            updateReviewItems(saved.patches, {
+              requestKey: request.key,
+              operationLabel:
+                kind === 'notes' ? '保存笔记' : kind === 'dates' ? '保存日期事实' : '记录开封',
+            });
+          if (kind === 'notes')
+            publishNotes(
+              request.scope === 'product' ? item!.skuId : target,
+              saved.result.notes,
+              request.scope!,
+              saved.result.selectedNotes[request.scope!],
+            );
+          if (kind === 'notes') recordNoteHistory(request, saved.result);
+          reviewStorage.setItem(receiptKey, JSON.stringify({ ...saved, phase: 'committed' }));
+        });
+        const restored = mergeResult(state, saved.result, kind);
+        reviewStorage.setItem(storageKey, JSON.stringify(restored));
+        await flushReviewStorage();
+        if (scopeKey() !== operationScope) return;
+        setState(restored);
+      } catch {
+        if (scopeKey() === operationScope)
+          setStorageError('原请求仍保留；当前无法完成持久化或读取原回执。');
+      }
+      return;
+    }
     const next = structuredClone(state);
     let receipt = '';
     if (kind === 'opening') {
@@ -619,7 +954,19 @@ function ReviewSession({
       };
       receipt = `此件已记录为已开封；${next.openedAt ? `开封时间 ${next.openedAt}` : '开封时间仍未记录，不生成开封后期限'}。`;
     } else if (kind === 'dates') {
-      const updated = { ...request.date!, state: 'UNKNOWN' as const };
+      const updated: DateFactPresentation = {
+        ...request.date!,
+        state:
+          !context.timezone ||
+          !request.date?.dueOn ||
+          (request.date.kind === 'EXPIRY' && !request.date.dateKind)
+            ? 'UNKNOWN'
+            : request.date.dueOn < today
+              ? 'OVERDUE'
+              : request.date.dueOn === today
+                ? 'DUE'
+                : 'UPCOMING',
+      };
       if (request.completing) {
         const completed: DateFactPresentation = {
           ...updated,
@@ -628,7 +975,8 @@ function ReviewSession({
         };
         if (request.dateIndex! >= 0) next.facts[request.dateIndex!] = completed;
         else next.facts.push(completed);
-        const recurring = updated.kind === 'SERVICE_DUE';
+        const recurring =
+          updated.kind === 'SERVICE_DUE' && updated.basis === '已记录的每 30 天检查计划';
         if (recurring) {
           const nextDay = new Date(`${request.completedOn}T00:00:00Z`);
           nextDay.setUTCDate(nextDay.getUTCDate() + 30);
@@ -649,12 +997,13 @@ function ReviewSession({
           next.dateIndex = next.facts.length - 1;
         }
         next.dateDraft = updated;
-        receipt = `已保存：${dateSummary(updated)}。日期状态待重新读取，不推算为已过期。`;
+        receipt = `已保存：${dateSummary(updated)}。按当前家庭时区与试用日期重新读取；未知日期或类型保持未知。`;
       }
     } else {
       const note = request.note!;
       const existing = next.notes.findIndex((value) => value.id === request.noteId);
-      const id = existing >= 0 ? request.noteId! : uniqueId('note');
+      const id =
+        existing >= 0 ? request.noteId! : `note_${request.key.replace(/^review-request_/, '')}`;
       const record: NoteRecord = {
         id,
         scope: request.scope!,
@@ -680,6 +1029,7 @@ function ReviewSession({
     };
     try {
       const updatedFacts = facts ? structuredClone(facts) : null;
+      const patches: DailyItemFacts[] = [];
       if (updatedFacts && (kind !== 'notes' || request.scope === 'item')) {
         updatedFacts.item.revision += 1;
         if (kind === 'opening') {
@@ -689,25 +1039,74 @@ function ReviewSession({
             { kind: 'opening', label: '开封时间', value: next.openedAt || '未记录', priority: 3 },
           ];
         }
-        if (kind === 'dates' && request.date?.kind === 'EXPIRY') updatedFacts.date = next.dateDraft;
-        if (kind === 'notes' && request.scope === 'item')
+        if (kind === 'dates') {
+          updatedFacts.dates = structuredClone(next.facts);
+          updatedFacts.date = next.facts.find((fact) => fact.kind === 'EXPIRY');
+          updatedFacts.item.facts = [
+            ...updatedFacts.item.facts.filter((fact) => fact.kind !== 'deadline'),
+            ...next.facts
+              .filter((fact) => fact.kind !== 'EXPIRY')
+              .map((fact) => ({
+                kind: 'deadline' as const,
+                label: fact.label || dateLabels[fact.kind],
+                value: `${dateSummary(fact)}${fact.state === 'COMPLETED' ? ` · 已完成 ${fact.completedOn}` : ''}`,
+                priority: 4,
+              })),
+          ];
+        }
+        if (kind === 'notes')
           updatedFacts.item.noteCount = next.notes.filter((note) => note.scope === 'item').length;
-        sessionStorage.setItem(storageKey, JSON.stringify(next));
-        updateReviewItems([updatedFacts]);
+        patches.push(updatedFacts);
       }
-      if (kind === 'notes')
-        publishNotes(
-          request.scope === 'product' ? item!.skuId : target,
-          next.notes,
-          request.scope!,
-        );
-      setState(next);
+      const prepared: SavedReceipt = { kind, result: next, patches, phase: 'prepared' };
+      reviewStorage.setItem(receiptKey, JSON.stringify(prepared));
+      await flushReviewStorage();
+      if (scopeKey() !== operationScope) return;
+      runReviewTransaction(() => {
+        updateReviewItems(patches, {
+          requestKey: request.key,
+          operationLabel:
+            kind === 'notes' ? '保存笔记' : kind === 'dates' ? '保存日期事实' : '记录开封',
+        });
+        if (kind === 'notes')
+          publishNotes(
+            request.scope === 'product' ? item!.skuId : target,
+            next.notes,
+            request.scope!,
+            next.selectedNotes[request.scope!],
+          );
+        if (kind === 'notes') recordNoteHistory(request, next);
+        reviewStorage.setItem(receiptKey, JSON.stringify({ ...prepared, phase: 'committed' }));
+      });
+      const visible = loseReceipt
+        ? {
+            ...state,
+            mutations: {
+              ...state.mutations,
+              [kind]: {
+                ...state.mutations[kind],
+                state: 'networkUnknown' as const,
+                request,
+                receipt: '',
+                error: '',
+              },
+            },
+          }
+        : mergeResult(state, next, kind);
+      reviewStorage.setItem(storageKey, JSON.stringify(visible));
+      await flushReviewStorage();
+      if (scopeKey() !== operationScope) return;
+      setState(visible);
     } catch {
+      if (scopeKey() !== operationScope) return;
       setStorageError('示例回执未能完整保存，请保留草稿后核对原请求。');
       setMutation(kind, { state: 'networkUnknown', request, error: '' });
     }
   }
-  function submit(kind: EditSurface) {
+
+  async function submit(kind: EditSurface) {
+    if (availability.kind !== 'available' || commitBusy.current) return;
+    const operationScope = scopeKey();
     const existing = state.mutations[kind];
     if (existing.state === 'networkUnknown' || existing.state === 'success') return;
     const request = existing.request || buildRequest(kind);
@@ -728,18 +1127,25 @@ function ReviewSession({
       ...state,
       mutations: {
         ...state.mutations,
-        [kind]: { ...existing, request, state: 'networkUnknown' as const },
+        [kind]: { ...existing, request, state: 'submitting' as const },
       },
     };
+    commitBusy.current = true;
+    setState(frozen);
     try {
-      sessionStorage.setItem(storageKey, JSON.stringify(frozen));
+      reviewStorage.setItem(storageKey, JSON.stringify(frozen));
+      await flushReviewStorage();
     } catch {
-      setStorageError('原请求无法保存在本地，请允许本地存储后再保存。');
+      if (scopeKey() === operationScope) {
+        setStorageError('原请求无法保存在本地，请允许本地存储后再保存。');
+        setMutation(kind, { state: 'draft', request: null });
+      }
+      commitBusy.current = false;
       return;
     }
-    if (scenario === 'unknown' || scenario === 'network-unknown')
-      setMutation(kind, { state: 'networkUnknown', request, error: '' });
-    else applyRequest(kind, request);
+    if (scopeKey() === operationScope)
+      await applyRequest(kind, request, scenario === 'unknown' || scenario === 'network-unknown');
+    commitBusy.current = false;
   }
   function mutation(kind: EditSurface): ExtraMutation {
     const current = state.mutations[kind];
@@ -767,8 +1173,14 @@ function ReviewSession({
         }),
       onClose: () => setMutation(kind, { open: false }),
       onSubmit: () => submit(kind),
-      onRecover: () => {
-        if (current.request) applyRequest(kind, current.request);
+      onRecover: async () => {
+        if (!current.request || commitBusy.current) return;
+        commitBusy.current = true;
+        try {
+          await applyRequest(kind, current.request);
+        } finally {
+          commitBusy.current = false;
+        }
       },
       onEdit: () => setMutation(kind, { ...freshMutation(context.revision), resolved: true }),
       conflict:
@@ -895,7 +1307,9 @@ function ReviewSession({
             completedOn: state.completedOn,
             onCompletedOnChange: (completedOn) =>
               change((current) => ({ ...current, completedOn })),
-            recurring: state.dateDraft.kind === 'SERVICE_DUE',
+            recurring:
+              state.dateDraft.kind === 'SERVICE_DUE' &&
+              state.dateDraft.basis === '已记录的每 30 天检查计划',
             mutation: mutation('dates'),
           }}
         />
@@ -962,15 +1376,17 @@ function ReviewSession({
       </>
     );
   if (surface === 'attachments') {
+    const trial = isTrial();
     const unsupported =
       (scenario === 'mcp' || scenario === 'unsupported-host') &&
       route.searchParams.get('host') !== 'web';
     const scopeKind = state.scope === 'product' ? 'CATALOG_NODE' : 'ITEM';
+    const targetObject = state.scope === 'product' ? item?.skuId || '' : target;
     const visibleAttachments = state.attachments.filter(
       (attachment) => attachment.targetKind === scopeKind,
     );
     const visiblePending = state.pending.filter(
-      (pending) => !('scope' in pending) || pending.scope === state.scope,
+      (pending) => !pending.scope || pending.scope === state.scope,
     );
     const visibleTransfers = state.transfers.filter((transfer) => transfer.scope === state.scope);
     const cap: ActionAvailability = unsupported
@@ -981,44 +1397,275 @@ function ReviewSession({
       : availability;
     const fail = (message: string) =>
       change((current) => ({ ...current, attachmentMessage: message }));
-    function associate(id: string, recover: boolean) {
+    const records = getExtraReviewAttachments(targetObject) || [];
+    function validateFiles(chosen: readonly File[]) {
+      if (cap.kind !== 'available') return cap.reason;
+      if (
+        visibleAttachments.length +
+          visiblePending.length +
+          visibleTransfers.length +
+          chosen.length >
+        20
+      )
+        return '每个目标最多 20 个有效附件，包含当前待处理文件。';
+      const knownBytes = Object.values(readAttachmentStore())
+        .flat()
+        .reduce((sum, record) => sum + record.fileSize, 0);
+      const pendingBytes =
+        state.pending.reduce((sum, pending) => sum + (pending.size || 0), 0) +
+        state.transfers.reduce((sum, transfer) => sum + transfer.size, 0);
+      if (
+        knownBytes + pendingBytes + chosen.reduce((sum, file) => sum + file.size, 0) >
+          5 * 1024 ** 3 ||
+        scenario === 'quota-full'
+      )
+        return '示例家庭总容量已达到 5 GiB，尚未加入这些文件。';
+      if (
+        chosen.some(
+          (file) =>
+            !['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(file.type) ||
+            file.size > 25 * 1024 ** 2 ||
+            file.size === 0,
+        )
+      )
+        return '仅允许 JPEG / PNG / WebP / PDF，且每个文件需大于 0、最多 25 MiB。';
+      return '';
+    }
+    function recordProductAttachmentHistory(
+      requestKey: string,
+      objectId: string,
+      attachmentId: string,
+      removing: boolean,
+    ) {
+      if (getReviewWorld().receipts[`${requestKey}:history`]) return;
+      const revisionKey = `acornary-review-attachment-revision:${objectId}`;
+      const revision = Number(reviewStorage.getItem(revisionKey) || '0');
+      const eventId = uniqueId('event');
+      appendReviewEvent(
+        {
+          ...baseHistory[0],
+          operationLabel: removing ? '移除商品共有附件' : '关联商品共有附件',
+          objectLabel: context.productLabel,
+          event: {
+            ...baseHistory[0].event!,
+            id: eventId,
+            operation_id: uniqueId('operation'),
+            target_kind: 'CATALOG_NODE',
+            target_id: objectId,
+            event_type: removing ? 'ATTACHMENT_DETACH' : 'ATTACHMENT_ATTACH',
+            before_revision: revision,
+            after_revision: revision + 1,
+            occurred_at: currentInstant,
+            recorded_at: currentInstant,
+            reason: '隔离试用附件集合变更；版本指此附件集合，不改实物资料。',
+            changes: [
+              {
+                path: 'attachments',
+                before_present: removing,
+                after_present: !removing,
+                ...(removing
+                  ? { before: { attachment_id: attachmentId } }
+                  : { after: { attachment_id: attachmentId } }),
+              },
+            ],
+          },
+        },
+        `${requestKey}:history`,
+      );
+      reviewStorage.setItem(revisionKey, String(revision + 1));
+    }
+    async function associate(id: string, recover: boolean) {
       const transfer = state.transfers.find((value) => value.id === id);
-      if (!transfer || cap.kind !== 'available') return;
-      if (!recover && (scenario === 'unknown' || scenario === 'network-unknown')) {
-        change((current) => ({
-          ...current,
-          transfers: current.transfers.map((value) =>
-            value.id === id ? { ...value, state: 'unknown' } : value,
-          ),
-          attachmentMessage: '关联回执未取得；原上传引用已保留，不会重新上传。',
-        }));
+      if (!transfer || cap.kind !== 'available' || commitBusy.current) return;
+      const operationScope = scopeKey();
+      const objectId = transfer.scope === 'product' ? item!.skuId : target;
+      const requestKey = `associate:${transfer.id}`;
+      const attachmentId = `attachment_${id.replace('upload_', '')}`;
+      const record: StoredAttachment = {
+        id: attachmentId,
+        targetKind: transfer.scope === 'product' ? 'CATALOG_NODE' : 'ITEM',
+        mimeType: transfer.mime,
+        fileSize: transfer.size,
+        width: transfer.sampleId === 'sample-label-photo' ? 480 : null,
+        height: transfer.sampleId === 'sample-label-photo' ? 300 : null,
+        caption: transfer.name,
+        sortOrder: records.length,
+        sensitivity: 'NORMAL',
+        thumbnailUrl: null,
+        name: transfer.name,
+        localId: transfer.localId,
+        sampleId: transfer.sampleId,
+      };
+      commitBusy.current = true;
+      try {
+        reviewStorage.setItem(
+          `acornary-review-extra-attachment-request:${requestKey}`,
+          JSON.stringify({
+            key: requestKey,
+            operation: 'associate',
+            target: objectId,
+            record,
+            state: 'submitting',
+          }),
+        );
+        await flushReviewStorage();
+        if (operationScope !== scopeKey()) return;
+        const currentRecords = getExtraReviewAttachments(objectId) || [];
+        const nextRecords = currentRecords.some((value) => value.id === attachmentId)
+          ? currentRecords
+          : [...currentRecords, record];
+        const loseReceipt = !recover && (scenario === 'unknown' || scenario === 'network-unknown');
+        const nextState = {
+          ...state,
+          attachments: [
+            ...state.attachments.filter(
+              (attachment) => attachment.targetKind !== record.targetKind,
+            ),
+            ...nextRecords,
+          ],
+          attachmentNames: {
+            ...state.attachmentNames,
+            ...Object.fromEntries(nextRecords.map((value) => [value.id, value.name])),
+          },
+          attachmentLocalIds: {
+            ...state.attachmentLocalIds,
+            ...Object.fromEntries(nextRecords.map((value) => [value.id, value.localId])),
+          },
+          transfers: loseReceipt
+            ? state.transfers.map((value) =>
+                value.id === id ? { ...value, state: 'unknown' as const } : value,
+              )
+            : state.transfers.filter((value) => value.id !== id),
+          attachmentMessage: loseReceipt
+            ? '示例关联已执行但回执未送达；保留原上传引用，先核对原结果。'
+            : `${transfer.name} 已保存附件${recover ? '，恢复的是原关联结果' : ''}。`,
+        };
+        runReviewTransaction(() => {
+          publishAttachments(objectId, nextRecords);
+          const currentFacts = getReviewWorld().items.find((value) => value.item.id === target);
+          const patches =
+            transfer.scope === 'item' && currentFacts
+              ? [
+                  {
+                    ...currentFacts,
+                    item: { ...currentFacts.item, attachmentCount: nextRecords.length },
+                  },
+                ]
+              : [];
+          updateReviewItems(patches, { requestKey, operationLabel: '关联附件' });
+          if (transfer.scope === 'product')
+            recordProductAttachmentHistory(requestKey, objectId, attachmentId, false);
+          reviewStorage.setItem(
+            `acornary-review-extra-attachment-request:${requestKey}`,
+            JSON.stringify({
+              key: requestKey,
+              operation: 'associate',
+              target: objectId,
+              record,
+              state: loseReceipt ? 'networkUnknown' : 'success',
+            }),
+          );
+          reviewStorage.setItem(storageKey, JSON.stringify(nextState));
+        });
+        await flushReviewStorage();
+        if (operationScope === scopeKey()) setState(nextState);
+      } catch {
+        if (operationScope === scopeKey())
+          fail('附件关联未能完成持久化；原引用仍保留，请核对后重试原关联。');
+      } finally {
+        commitBusy.current = false;
+      }
+    }
+    async function removeAttachment() {
+      if (!removeId || cap.kind !== 'available' || commitBusy.current) return;
+      const operationScope = scopeKey();
+      const requestKey = `remove-attachment:${removeId}`;
+      commitBusy.current = true;
+      try {
+        reviewStorage.setItem(
+          `acornary-review-extra-attachment-request:${requestKey}`,
+          JSON.stringify({
+            key: requestKey,
+            operation: 'remove',
+            target: targetObject,
+            attachmentId: removeId,
+            state: 'submitting',
+          }),
+        );
+        await flushReviewStorage();
+        if (operationScope !== scopeKey()) return;
+        const nextRecords = (getExtraReviewAttachments(targetObject) || []).filter(
+          (record) => record.id !== removeId,
+        );
+        const nextState = {
+          ...state,
+          attachments: state.attachments.filter((attachment) => attachment.id !== removeId),
+          attachmentMessage: '已移除此对象的附件关联。',
+        };
+        runReviewTransaction(() => {
+          publishAttachments(targetObject, nextRecords);
+          const currentFacts = getReviewWorld().items.find((value) => value.item.id === target);
+          const patches =
+            state.scope === 'item' && currentFacts
+              ? [
+                  {
+                    ...currentFacts,
+                    item: { ...currentFacts.item, attachmentCount: nextRecords.length },
+                  },
+                ]
+              : [];
+          updateReviewItems(patches, { requestKey, operationLabel: '移除附件关联' });
+          if (state.scope === 'product')
+            recordProductAttachmentHistory(requestKey, targetObject, removeId, true);
+          reviewStorage.setItem(
+            `acornary-review-extra-attachment-request:${requestKey}`,
+            JSON.stringify({
+              key: requestKey,
+              operation: 'remove',
+              target: targetObject,
+              attachmentId: removeId,
+              state: 'success',
+            }),
+          );
+          reviewStorage.setItem(storageKey, JSON.stringify(nextState));
+        });
+        await flushReviewStorage();
+        if (operationScope === scopeKey()) {
+          setState(nextState);
+          setRemoveId(null);
+          if (previewId === removeId) {
+            setPreviewId(null);
+            setPreviewUrl(null);
+          }
+        }
+      } catch {
+        if (operationScope === scopeKey())
+          fail('移除结果未能完成持久化；请保留当前对象后核对原请求。');
+      } finally {
+        commitBusy.current = false;
+      }
+    }
+    function openAttachment(attachment: AttachmentView) {
+      const record = records.find((value) => value.id === attachment.id);
+      const file = record?.sampleId
+        ? sampleFile(record.sampleId)
+        : files.current.get(record?.localId || state.attachmentLocalIds[attachment.id]);
+      if (!file) {
+        fail('已读取附件摘要；本机文件内容未保留，当前无法下载。');
         return;
       }
-      change((current) => {
-        const attachmentId = `attachment_${id.replace('upload_', '')}`;
-        const attachment: AttachmentView = {
-          id: attachmentId,
-          targetKind: transfer.scope === 'product' ? 'CATALOG_NODE' : 'ITEM',
-          mimeType: transfer.mime,
-          fileSize: transfer.size,
-          width: null,
-          height: null,
-          caption: transfer.name,
-          sortOrder: current.attachments.length,
-          sensitivity: 'NORMAL',
-          thumbnailUrl: null,
-        };
-        return {
-          ...current,
-          attachments: current.attachments.some((value) => value.id === attachmentId)
-            ? current.attachments
-            : [...current.attachments, attachment],
-          attachmentNames: { ...current.attachmentNames, [attachmentId]: transfer.name },
-          attachmentLocalIds: { ...current.attachmentLocalIds, [attachmentId]: transfer.localId },
-          transfers: current.transfers.filter((value) => value.id !== id),
-          attachmentMessage: `${transfer.name} 已保存附件${recover ? '，恢复的是原关联结果' : ''}。`,
-        };
-      });
+      const url = URL.createObjectURL(file);
+      if (file.type !== 'application/pdf') {
+        setPreviewId(attachment.id);
+        setPreviewUrl(url);
+        return;
+      }
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = record?.name || file.name;
+      anchor.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      fail(`${file.name} 已交给浏览器下载；PDF 不生成缩略图。`);
     }
     return (
       <>
@@ -1028,59 +1675,64 @@ function ReviewSession({
           surface="attachments"
           model={{
             scopeLabel: `${state.scope === 'product' ? '商品共有附件' : '仅此件附件'} · ${context.itemLabel}`,
-            quotaLabel: `当前目标 ${visibleAttachments.length} / 20；隔离示例占用 ${Math.ceil(state.attachments.reduce((total, attachment) => total + attachment.fileSize, 0) / 1024)} KiB。`,
+            quotaLabel: `当前目标 ${visibleAttachments.length} / 20；此家庭样例占用 ${Math.ceil(
+              Object.values(readAttachmentStore())
+                .flat()
+                .reduce((sum, record) => sum + record.fileSize, 0) / 1024,
+            )} KiB。`,
+            ...(trial && !unsupported
+              ? {
+                  samples,
+                  sampleSelectionDisabled: cap.kind !== 'available',
+                  onChooseSample: (sampleId: string) => {
+                    if (!samples.some((sample) => sample.id === sampleId)) return;
+                    const file = sampleFile(sampleId);
+                    const error = validateFiles([file]);
+                    if (error) {
+                      fail(error);
+                      return;
+                    }
+                    const transfer: Transfer = {
+                      id: uniqueId('upload'),
+                      localId: `builtin:${sampleId}`,
+                      sampleId,
+                      name: file.name,
+                      mime: file.type,
+                      size: file.size,
+                      scope: state.scope,
+                      state: 'uploaded',
+                    };
+                    change((current) => ({
+                      ...current,
+                      transfers: [...current.transfers, transfer],
+                      attachmentMessage: '内置样例已准备，确认关联后才成为此对象的附件。',
+                    }));
+                  },
+                  showField: false,
+                  preparedLabel: '样例已准备，尚未关联',
+                }
+              : {}),
+            preview:
+              previewId && previewUrl ? (
+                <img
+                  className="vn-extra-attachment-preview"
+                  src={previewUrl}
+                  alt={state.attachmentNames[previewId] || '附件预览'}
+                />
+              ) : undefined,
+            onClosePreview: () => {
+              setPreviewId(null);
+              setPreviewUrl(null);
+            },
             field: {
               capability: cap,
-              allowLocalSelection: !unsupported,
+              allowLocalSelection: !unsupported && !trial,
               pending: visiblePending,
-              error: undefined,
               onFilesSelected: (chosen) => {
-                if (cap.kind !== 'available') return;
-                const occupied =
-                  visibleAttachments.length + visiblePending.length + visibleTransfers.length;
-                if (occupied + chosen.length > 20) {
-                  fail('每个目标最多 20 个有效附件，包含当前待处理文件；这次选择尚未加入。');
-                  return;
-                }
-                const bytesIn = (value: ReviewState) =>
-                  value.attachments.reduce((sum, attachment) => sum + attachment.fileSize, 0) +
-                  value.pending.reduce((sum, pending) => sum + (pending.size || 0), 0) +
-                  value.transfers.reduce((sum, transfer) => sum + transfer.size, 0);
-                let used = bytesIn(state);
-                try {
-                  for (let index = 0; index < sessionStorage.length; index++) {
-                    const key = sessionStorage.key(index);
-                    if (
-                      key &&
-                      key !== storageKey &&
-                      key.startsWith('acornary-review-daily-extras-v1:') &&
-                      key.endsWith(`:${scenario}`)
-                    )
-                      used += bytesIn(JSON.parse(sessionStorage.getItem(key)!));
-                  }
-                } catch {
-                  fail('当前无法核对家庭附件占用，请先恢复本地草稿存储。');
-                  return;
-                }
-                if (
-                  used + chosen.reduce((sum, file) => sum + file.size, 0) > 5 * 1024 ** 3 ||
-                  scenario === 'quota-full'
-                ) {
-                  fail('示例家庭总容量已达到 5 GiB，尚未选择这些文件。');
-                  return;
-                }
-                const rejected = chosen.filter(
-                  (file) =>
-                    !['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(
-                      file.type,
-                    ) ||
-                    file.size > 25 * 1024 ** 2 ||
-                    file.size === 0,
-                );
-                if (rejected.length) {
-                  fail(
-                    `未加入：${rejected.map((file) => file.name).join('、')}。只允许 JPEG / PNG / WebP / PDF，且每个文件需大于 0、最多 25 MiB。`,
-                  );
+                if (trial) return;
+                const error = validateFiles(chosen);
+                if (error) {
+                  fail(error);
                   return;
                 }
                 const pending = chosen.map((file) => {
@@ -1098,37 +1750,40 @@ function ReviewSession({
                 change((current) => ({
                   ...current,
                   pending: [...current.pending, ...pending],
-                  attachmentMessage: '文件只保留在当前浏览器内；尚未执行示例上传。',
+                  attachmentMessage: '文件只保留在当前浏览器内，尚未关联。',
                 }));
               },
-              onUploadIntent: unsupported
-                ? undefined
-                : (ids) =>
-                    change((current) => {
-                      const chosen = current.pending.filter((pending) => ids.includes(pending.id));
-                      const absent = chosen.filter((pending) => !files.current.has(pending.id));
-                      if (absent.length)
+              onUploadIntent:
+                unsupported || trial
+                  ? undefined
+                  : (ids) => {
+                      if (cap.kind !== 'available') return;
+                      change((current) => {
+                        const chosen = current.pending.filter((pending) =>
+                          ids.includes(pending.id),
+                        );
+                        if (chosen.some((pending) => !files.current.has(pending.id)))
+                          return {
+                            ...current,
+                            attachmentMessage: '本机文件未恢复；请重新选择。原上传引用仍保留。',
+                          };
+                        const transfers: Transfer[] = chosen.map((pending) => ({
+                          id: uniqueId('upload'),
+                          localId: pending.id,
+                          name: pending.name,
+                          mime: pending.mimeType!,
+                          size: pending.size!,
+                          state: 'uploaded',
+                          scope: state.scope,
+                        }));
                         return {
                           ...current,
-                          attachmentMessage:
-                            '浏览器重新打开后无法恢复本机文件内容，请移除待选条目并重新选择；已存在的上传引用不会重建。',
+                          pending: current.pending.filter((pending) => !ids.includes(pending.id)),
+                          transfers: [...current.transfers, ...transfers],
+                          attachmentMessage: '示例文件准备完成，尚未关联；没有上传到外部服务。',
                         };
-                      const transfers: Transfer[] = chosen.map((pending) => ({
-                        id: uniqueId('upload'),
-                        localId: pending.id,
-                        name: pending.name,
-                        mime: pending.mimeType!,
-                        size: pending.size!,
-                        state: 'uploaded',
-                        scope: state.scope,
-                      }));
-                      return {
-                        ...current,
-                        pending: current.pending.filter((pending) => !ids.includes(pending.id)),
-                        transfers: [...current.transfers, ...transfers],
-                        attachmentMessage: '示例上传完成，尚未关联；没有文件传输到服务器。',
-                      };
-                    }),
+                      });
+                    },
               onRemove: (id) => {
                 files.current.delete(id);
                 change((current) => ({
@@ -1146,30 +1801,20 @@ function ReviewSession({
                 ]),
               ),
               removeAvailability: cap,
-              onOpen: (attachment) => {
-                const file = files.current.get(state.attachmentLocalIds[attachment.id]);
-                if (!file) {
-                  fail(
-                    '已读取附件摘要；本机文件内容未保留，当前无法下载。可重新选择文件作为新的独立附件。',
-                  );
-                  return;
-                }
-                const url = URL.createObjectURL(file);
-                const anchor = document.createElement('a');
-                anchor.href = url;
-                anchor.download = state.attachmentNames[attachment.id] || file.name;
-                anchor.click();
-                window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-                fail(`${file.name} 已交给浏览器下载；PDF 不生成缩略图。`);
-              },
+              onOpen: openAttachment,
               onRemove: (attachment) => setRemoveId(attachment.id),
             },
             transfers: visibleTransfers.map((transfer) => ({
               id: transfer.id,
               name: transfer.name,
               state: transfer.state,
-              onAssociate: () => associate(transfer.id, false),
-              onRecover: () => associate(transfer.id, true),
+              disabled: cap.kind !== 'available',
+              onAssociate: () => {
+                void associate(transfer.id, false);
+              },
+              onRecover: () => {
+                void associate(transfer.id, true);
+              },
             })),
             message: state.attachmentMessage,
             ...(unsupported
@@ -1181,13 +1826,7 @@ function ReviewSession({
               : {}),
             removeName: removeId ? state.attachmentNames[removeId] || '附件' : undefined,
             onConfirmRemove: () => {
-              if (cap.kind !== 'available') return;
-              change((current) => ({
-                ...current,
-                attachments: current.attachments.filter((attachment) => attachment.id !== removeId),
-                attachmentMessage: '已移除此对象的附件关联。',
-              }));
-              setRemoveId(null);
+              void removeAttachment();
             },
             onCancelRemove: () => setRemoveId(null),
           }}
@@ -1355,8 +1994,10 @@ function ReviewSession({
     const entry = world.items.find((value) => value.item.id === id);
     return entry ? [entry] : [];
   });
-  const startPrinting = (ids: readonly string[]) => {
+  const startPrinting = async (ids: readonly string[]) => {
     if (
+      availability.kind !== 'available' ||
+      commitBusy.current ||
       state.pages.some((page) => page.status === 'unknown' || page.status === 'sending') ||
       unsupported ||
       state.connection !== 'connected'
@@ -1367,14 +2008,26 @@ function ReviewSession({
     );
     const [first, ...queue] = safeIds;
     if (!first) return;
-    change((current) => ({
-      ...current,
+    const operationScope = scopeKey();
+    const next = {
+      ...state,
       queue,
-      pages: current.pages.map((page) =>
-        page.pageId === first ? { ...page, status: 'sending' } : page,
+      pages: state.pages.map((page) =>
+        page.pageId === first ? { ...page, status: 'sending' as const } : page,
       ),
-    }));
+    };
+    commitBusy.current = true;
+    try {
+      reviewStorage.setItem(storageKey, JSON.stringify(next));
+      await flushReviewStorage();
+      if (operationScope === scopeKey()) setState(next);
+    } catch {
+      if (operationScope === scopeKey()) setStorageError('标签任务未能保存，尚未开始发送。');
+    } finally {
+      commitBusy.current = false;
+    }
   };
+
   return (
     <>
       {notice}
@@ -1433,11 +2086,15 @@ function ReviewSession({
               : availability,
             connection: state.connection,
             deviceLabel: '隔离模拟打印机 · 不连接真实设备',
-            onConnect: () => change((current) => ({ ...current, connection: 'connected' })),
+            onConnect: () => {
+              if (availability.kind === 'available')
+                change((current) => ({ ...current, connection: 'connected' }));
+            },
             onPrintUnsent: startPrinting,
             onStop: () => change((current) => ({ ...current, queue: [] })),
             onInspectPage: setInspectPage,
             onConfirmPaper: (id) =>
+              availability.kind === 'available' &&
               change((current) => ({
                 ...current,
                 pages: current.pages.map((page) =>
@@ -1456,6 +2113,7 @@ function ReviewSession({
           inspectPageId: inspectPage,
           onCloseInspect: () => setInspectPage(null),
           onReprint: (id) => {
+            if (availability.kind !== 'available') return;
             change((current) => ({
               ...current,
               pages: current.pages.map((page) =>
@@ -1542,7 +2200,7 @@ export function DailyExtrasJourney({
   const target = route.searchParams.get('target') || route.searchParams.get('item') || firstItemId;
   return (
     <ReviewSession
-      key={`${target}:${scenario}`}
+      key={`${scopeKey()}:${target}:${isTrial() ? 'trial' : scenario}`}
       path={path}
       scenario={scenario}
       navigate={navigate}
