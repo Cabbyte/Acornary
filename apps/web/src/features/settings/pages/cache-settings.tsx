@@ -15,6 +15,7 @@ export interface CacheSettingsPageProps extends SettingsPageProps {
   readState: SettingsReadState;
   clearOpen: boolean;
   discardTask: SettingsTask | null;
+  externalDraftsRetained?: boolean;
   onRetry: () => void;
   onRefresh: () => void;
   onClearOpen: (open: boolean) => void;
@@ -78,7 +79,11 @@ export function CacheSettingsPage(props: CacheSettingsPageProps) {
         description="与读缓存分开保存。清理读缓存不会移除待确认请求，也不会把它们标记为失败。"
       >
         {scoped.length === 0 ? (
-          <p className="vn-settings-muted">当前家庭没有草稿或待恢复请求。</p>
+          <p className="vn-settings-muted">
+            {props.externalDraftsRetained
+              ? '当前没有待确认请求。已保存的草稿可从原任务页面继续。'
+              : '当前家庭没有草稿或待恢复请求。'}
+          </p>
         ) : (
           scoped.map((task) => (
             <article className="vn-settings-row" key={task.id}>

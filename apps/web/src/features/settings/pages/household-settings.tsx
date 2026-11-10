@@ -23,6 +23,8 @@ export interface HouseholdSettingsPageProps extends SettingsPageProps {
   onConfirmSwitch: () => void;
   onReconcile: (id: string) => void;
   onRetry: () => void;
+  allowPendingSwitch?: boolean;
+  externalDraftsRetained?: boolean;
 }
 export function HouseholdSettingsPage(props: HouseholdSettingsPageProps) {
   const {
@@ -106,7 +108,10 @@ export function HouseholdSettingsPage(props: HouseholdSettingsPageProps) {
             <Button variant="secondary" onClick={() => onSelect(null)}>
               取消
             </Button>
-            <Button disabled={unknown.length > 0 || !online || host} onClick={onConfirmSwitch}>
+            <Button
+              disabled={(!props.allowPendingSwitch && unknown.length > 0) || !online || host}
+              onClick={onConfirmSwitch}
+            >
               确认切换家庭
             </Button>
           </>
@@ -114,8 +119,15 @@ export function HouseholdSettingsPage(props: HouseholdSettingsPageProps) {
       >
         <div className="vn-settings-stack">
           {unknown.length > 0 && (
-            <InlineNotice tone="warning" title="先核对结果待确认的原请求">
-              不能通过丢弃草稿掩盖可能已经发生的写入。
+            <InlineNotice
+              tone="warning"
+              title={
+                props.allowPendingSwitch ? '待确认请求会保留在原家庭' : '先核对结果待确认的原请求'
+              }
+            >
+              {props.allowPendingSwitch
+                ? `可先切换家庭，之后回到 ${household.name} 核对原请求；不会重发，也不会随草稿选择被丢弃。`
+                : '不能通过丢弃草稿掩盖可能已经发生的写入。'}
             </InlineNotice>
           )}
           {unknown.map((task) => (
@@ -150,7 +162,13 @@ export function HouseholdSettingsPage(props: HouseholdSettingsPageProps) {
               ]}
             />
           )}
-          {scopedTasks.length === 0 && <p>当前家庭没有未发送草稿或待确认请求。</p>}
+          {scopedTasks.length === 0 && (
+            <p>
+              {props.externalDraftsRetained
+                ? '已保存的草稿会留在原家庭。当前未发现待确认请求。'
+                : '当前家庭没有未发送草稿或待确认请求。'}
+            </p>
+          )}
         </div>
       </AlertDialog>
     </SettingsLayout>

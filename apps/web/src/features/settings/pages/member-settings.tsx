@@ -31,6 +31,7 @@ export interface MemberSettingsPageProps extends SettingsPageProps {
   onConfirmIntent: () => void;
   onRetry: () => void;
   pendingCount: number;
+  leaveUnavailableReason?: string;
 }
 export function MemberSettingsPage(props: MemberSettingsPageProps) {
   const { members, invitations, canManage, online, intent, onIntent, pendingCount } = props;
@@ -106,13 +107,18 @@ export function MemberSettingsPage(props: MemberSettingsPageProps) {
                   </div>
                 )}
                 {member.self && member.role !== 'owner' && (
-                  <Button
-                    variant="quiet"
-                    disabled={!online}
-                    onClick={() => onIntent({ kind: 'leave', memberId: member.id })}
-                  >
-                    离开此家庭
-                  </Button>
+                  <>
+                    <Button
+                      variant="quiet"
+                      disabled={!online || !!props.leaveUnavailableReason}
+                      onClick={() => onIntent({ kind: 'leave', memberId: member.id })}
+                    >
+                      离开此家庭
+                    </Button>
+                    {props.leaveUnavailableReason && (
+                      <p className="vn-settings-muted">{props.leaveUnavailableReason}</p>
+                    )}
+                  </>
                 )}
                 {member.self && member.role === 'owner' && (
                   <p className="vn-settings-muted">

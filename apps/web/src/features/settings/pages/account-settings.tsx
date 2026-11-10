@@ -28,6 +28,7 @@ export interface AccountSettingsPageProps extends SettingsPageProps {
   status: AuthStatus;
   online: boolean;
   pendingCount: number;
+  allowPendingLogout?: boolean;
   logoutOpen: boolean;
   onLogoutOpen: (open: boolean) => void;
   hostStorage: 'available' | 'unavailable';
@@ -487,7 +488,11 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
         open={props.logoutOpen}
         onOpenChange={props.onLogoutOpen}
         title="退出当前账号？"
-        description="只清理本次隔离预览的会话和读缓存，不影响真实账号。未决请求必须先核对；退出后不承诺跨账号恢复草稿。"
+        description={
+          props.allowPendingLogout
+            ? '只退出隔离试用账号并清理读缓存，不影响真实账号。草稿与待确认请求留在原账号、原家庭，重新登录后可继续；提交中的任务会阻止退出。'
+            : '只清理本次隔离预览的会话和读缓存，不影响真实账号。未决请求必须先核对；退出后不承诺跨账号恢复草稿。'
+        }
         footer={
           <>
             <Button variant="secondary" onClick={() => props.onLogoutOpen(false)}>
@@ -495,7 +500,7 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
             </Button>
             <Button
               variant="danger"
-              disabled={props.pendingCount > 0 || !online}
+              disabled={(!props.allowPendingLogout && props.pendingCount > 0) || !online}
               onClick={() => onAction('logout')}
             >
               确认退出示例账号
@@ -519,7 +524,9 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
               </Button>
             }
           >
-            先核对原请求；未发送草稿可在原家庭明确丢弃。
+            {props.allowPendingLogout
+              ? '这些任务保留在原账号与原家庭，不会重新发送或在退出时删除。'
+              : '先核对原请求；未发送草稿可在原家庭明确丢弃。'}
           </InlineNotice>
         )}
       </AlertDialog>

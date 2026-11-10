@@ -1,4 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  getTrialScope,
+  isTrial,
+  subscribeTrialScope,
+  switchTrialHousehold,
+  setTrialSignedIn,
+} from '../trial/session';
+import { pendingTrialTasks, reviewStorage } from '../trial/storage';
+import { safePagePath } from './catalog';
 import {
   AccountSettingsPage,
   CacheSettingsPage,
@@ -78,7 +87,7 @@ function createState(scenario: string): PreviewSettingsState {
       signedIn,
     },
     invitations: Object.fromEntries(households.map((home) => [home.id, invitationsFor()])),
-    tasks: tasksFor(scenario),
+    tasks: isTrial() ? [] : tasksFor(scenario),
     caches: Object.fromEntries(
       households.map((home) => [
         home.id,
@@ -99,27 +108,195 @@ function createState(scenario: string): PreviewSettingsState {
     printState: 'idle',
   };
 }
-// Route components may unmount between settings pages. Keep only this review's
-// fixture state in memory; a full refresh resets it, and scenarios never share it.
+// The workbench remains an in-memory fixture. Trial settings use the shared
+// account-global durable adapter and are never imported from review snapshots.
 const previewSessions = new Map<string, PreviewSettingsState>();
-function previewSession(scenario: string): PreviewSettingsState {
-  const existing = previewSessions.get(scenario);
-  if (existing) return existing;
-  const initial = createState(scenario);
-  previewSessions.set(scenario, initial);
-  return initial;
+interface SettingsSnapshot {
+  contextKey: string;
+  state: PreviewSettingsState;
+  raw: string | null | undefined;
+  error?: string;
+  incompatible?: boolean;
+}
+function settingsContext(scenario: string): string {
+  if (!isTrial()) return `review:${scenario}`;
+  const scope = getTrialScope();
+  return JSON.stringify([
+    scope.accountId,
+    scope.householdId,
+    scope.role,
+    scope.signedIn,
+    scope.generation,
+    scenario,
+  ]);
+}
+function validState(value: unknown): value is PreviewSettingsState {
+  if (!value || typeof value !== 'object') return false;
+  const state = value as PreviewSettingsState;
+  const ids = settingsHouseholds.map((home) => home.id);
+  const roles = ['owner', 'admin', 'member', 'viewer'];
+  const preferences = (entry: PrinterPreferences) =>
+    entry &&
+    ['40x30', '50x30'].includes(entry.paper) &&
+    ['1', '2', '3'].includes(entry.density) &&
+    ['1', '2', '3'].includes(entry.copies);
+  return (
+    ids.includes(state.householdId) &&
+    Array.isArray(state.households) &&
+    state.households.length === ids.length &&
+    ids.every((id) =>
+      state.households.some(
+        (home) => home.id === id && typeof home.name === 'string' && roles.includes(home.role),
+      ),
+    ) &&
+    !!state.identity &&
+    typeof state.identity.name === 'string' &&
+    typeof state.identity.email === 'string' &&
+    typeof state.identity.signedIn === 'boolean' &&
+    typeof state.identity.passwordConfigured === 'boolean' &&
+    Array.isArray(state.identity.passkeys) &&
+    state.identity.passkeys.every((key) => typeof key === 'string') &&
+    !!state.members &&
+    ids.every(
+      (id) =>
+        Array.isArray(state.members[id]) &&
+        state.members[id].every(
+          (member) =>
+            typeof member.id === 'string' &&
+            typeof member.name === 'string' &&
+            typeof member.email === 'string' &&
+            typeof member.self === 'boolean' &&
+            roles.includes(member.role),
+        ),
+    ) &&
+    !!state.invitations &&
+    ids.every(
+      (id) =>
+        Array.isArray(state.invitations[id]) &&
+        state.invitations[id].every(
+          (invite) =>
+            typeof invite.id === 'string' &&
+            typeof invite.label === 'string' &&
+            ['member', 'viewer'].includes(invite.role) &&
+            ['pending', 'revoked', 'expired'].includes(invite.state),
+        ),
+    ) &&
+    Array.isArray(state.tasks) &&
+    state.tasks.every(
+      (task) =>
+        typeof task.id === 'string' &&
+        typeof task.title === 'string' &&
+        ids.includes(task.householdId) &&
+        ['draft', 'unknown', 'confirmed'].includes(task.state),
+    ) &&
+    !!state.caches &&
+    ids.every((id) => {
+      const entry = state.caches[id];
+      return (
+        entry &&
+        ['available', 'empty'].includes(entry.state) &&
+        typeof entry.updatedAt === 'string' &&
+        [entry.itemCount, entry.catalogCount, entry.historyCount].every(
+          (count) => Number.isFinite(count) && count >= 0,
+        )
+      );
+    }) &&
+    Array.isArray(state.scopes) &&
+    state.scopes.every((scope) => ['inventory:read', 'inventory:write'].includes(scope)) &&
+    typeof state.requestedWrite === 'boolean' &&
+    ['ready', 'loading', 'error', 'forbidden'].includes(state.readState) &&
+    [
+      'idle',
+      'passkey-cancelled',
+      'password-error',
+      'email-waiting',
+      'email-failed',
+      'recovery-complete',
+      'invite-expired',
+      'invite-accepted',
+      'allowed',
+      'denied',
+      'reauthorization-required',
+    ].includes(state.authStatus) &&
+    ['disconnected', 'unavailable', 'connected'].includes(state.printer) &&
+    preferences(state.printerDraft) &&
+    preferences(state.printerSaved) &&
+    ['idle', 'sent', 'confirmed', 'failed'].includes(state.printState)
+  );
+}
+function loadSettings(scenario: string, contextKey: string): SettingsSnapshot {
+  if (!isTrial()) {
+    const state = previewSessions.get(scenario) || createState(scenario);
+    previewSessions.set(scenario, state);
+    return { contextKey, state, raw: null };
+  }
+  const scope = getTrialScope();
+  let state = createState(scenario),
+    raw: string | null | undefined;
+  let error: string | undefined,
+    incompatible = false,
+    storedGeneration = scope.generation;
+  try {
+    raw = reviewStorage.getItem(`settings-state:${scenario}`);
+    if (raw !== null) {
+      const stored = JSON.parse(raw);
+      if (
+        stored.schemaVersion !== 1 ||
+        stored.accountId !== scope.accountId ||
+        !Number.isInteger(stored.generation) ||
+        !validState(stored.state)
+      ) {
+        incompatible = true;
+        throw new Error('incompatible');
+      }
+      state = stored.state;
+      storedGeneration = stored.generation;
+    }
+  } catch {
+    incompatible = incompatible || typeof raw === 'string';
+    error = incompatible
+      ? '已有试用设置的版本或内容无法读取，原数据已保留。请在试用工具中处理或明确重置后再保存。'
+      : '试用设置暂时无法读取；当前只显示初始样例，保存成功前不会提交更改。';
+  }
+  const scopeChanged =
+    state.householdId !== scope.householdId || storedGeneration !== scope.generation;
+  state = {
+    ...state,
+    householdId: scope.householdId,
+    identity: { ...state.identity, signedIn: scope.signedIn },
+    readState: !scope.signedIn
+      ? 'forbidden'
+      : !state.identity.signedIn
+        ? settingsReadState(scenario)
+        : state.readState,
+    households: state.households.map((home) =>
+      home.id === scope.householdId ? { ...home, role: scope.role } : home,
+    ),
+    members: {
+      ...state.members,
+      [scope.householdId]: (state.members[scope.householdId] || []).map((member) =>
+        member.self ? { ...member, role: scope.role } : member,
+      ),
+    },
+    ...(scopeChanged || !scope.signedIn
+      ? {
+          scopes: [],
+          requestedWrite: false,
+          authStatus: 'reauthorization-required' as const,
+          caches: {
+            ...state.caches,
+            [scope.householdId]: { ...state.caches[scope.householdId], state: 'empty' as const },
+          },
+        }
+      : {}),
+  };
+  return { contextKey, state, raw, error, incompatible };
 }
 function safeReturnPath(raw: string | null): string {
-  if (
-    !raw ||
-    raw.length > 1024 ||
-    !/^\/(?:settings(?:\/(?:household|members|auth|printing|cache|inspector))?|items|attention|activity)(?:\?|$)/.test(
-      raw,
-    )
-  )
-    return '/settings';
+  const safe = safePagePath(raw);
+  if (!safe) return '/settings';
   try {
-    const parsed = new URL(raw, 'https://preview.invalid');
+    const parsed = new URL(safe, 'https://preview.invalid');
     return parsed.origin === 'https://preview.invalid'
       ? parsed.pathname + parsed.search
       : '/settings';
@@ -137,7 +314,7 @@ function authViewFor(value: string | null, scenario: string, signedIn: boolean):
   return signedIn ? 'account' : 'login';
 }
 
-/** P08 adapter: entirely in-memory state. No APIs, auth, storage, Bluetooth or printer calls. */
+/** Review/Trial adapter: no production APIs, credentials, Bluetooth or printer calls. */
 export function SettingsJourney({
   path,
   scenario,
@@ -147,7 +324,17 @@ export function SettingsJourney({
   scenario: string;
   navigate: (path: string) => void;
 }) {
-  const [state, setState] = useState(() => previewSession(scenario));
+  const contextKey = useSyncExternalStore(
+    subscribeTrialScope,
+    () => settingsContext(scenario),
+    () => `review:${scenario}`,
+  );
+  const loaded = useMemo(() => loadSettings(scenario, contextKey), [scenario, contextKey]);
+  const [saved, setSaved] = useState(loaded);
+  const snapshot = saved.contextKey === contextKey ? saved : loaded;
+  const currentSnapshot = useRef(snapshot);
+  currentSnapshot.current = snapshot;
+  const state = snapshot.state;
   const [notice, setNotice] = useState<SettingsNotice | null>(null);
   const [selectedHousehold, setSelectedHousehold] = useState<string | null>(null);
   const [draftChoice, setDraftChoice] = useState<'keep' | 'discard'>('keep');
@@ -162,7 +349,6 @@ export function SettingsJourney({
   const [inspectorQuery, setInspectorQuery] = useState(''),
     [selectedRecord, setSelectedRecord] = useState<string | null>(null);
   useEffect(() => {
-    setState(previewSession(scenario));
     setNotice(null);
     setSelectedHousehold(null);
     setMemberIntent(null);
@@ -174,7 +360,7 @@ export function SettingsJourney({
     setSelectedRecord(null);
     setInspectorQuery('');
     setInspectorScope('items');
-  }, [scenario]);
+  }, [scenario, contextKey]);
   const url = new URL(path, 'https://preview.invalid');
   const route = url.pathname.replace(/\/$/, '') || '/settings';
   const online = !['offline', 'offline-partial', 'offline-empty'].includes(scenario);
@@ -187,38 +373,112 @@ export function SettingsJourney({
     state.identity.signedIn &&
     ['owner', 'admin'].includes(household.role) &&
     state.readState !== 'forbidden';
-  const activeTasks = state.tasks.filter(
+  const recoveryLinks = isTrial() ? pendingTrialTasks() : [];
+  const sharedTasks: SettingsTask[] = recoveryLinks.map((task, index) => ({
+    id: `shared:${task.key}`,
+    householdId: household.id,
+    title: `待确认任务 ${index + 1}`,
+    state: 'unknown',
+  }));
+  const visibleTasks = [...state.tasks, ...sharedTasks];
+  const activeTasks = visibleTasks.filter(
     (task) => task.householdId === household.id && task.state !== 'confirmed',
   );
-  const allPending = state.tasks.filter((task) => task.state !== 'confirmed');
+  const allPending = visibleTasks.filter((task) => task.state !== 'confirmed');
   const show = (message: string, tone: SettingsNotice['tone'] = 'success') =>
     setNotice({ message, tone });
   const go = (next: string) => {
     setNotice(null);
     navigate(next);
   };
-  const common = { household: { ...household, memberCount: members.length }, navigate: go, notice };
+  const common = {
+    household: { ...household, memberCount: members.length },
+    navigate: go,
+    notice: snapshot.error ? { tone: 'danger' as const, message: snapshot.error } : notice,
+  };
   const commit = (next: PreviewSettingsState) => {
+    const previous = currentSnapshot.current;
+    if (settingsContext(scenario) !== contextKey) {
+      show('家庭或角色已变化，请重新核对当前页面后操作。', 'warning');
+      return false;
+    }
+    if (isTrial()) {
+      if (previous.incompatible) return false;
+      try {
+        const latest = reviewStorage.getItem(`settings-state:${scenario}`);
+        if (latest !== (previous.raw ?? null)) {
+          const refreshed = loadSettings(scenario, contextKey);
+          refreshed.error =
+            '另一页面已更新试用设置，已读取最新内容。当前输入仍保留，请重新核对后再确认。';
+          currentSnapshot.current = refreshed;
+          setSaved(refreshed);
+          return false;
+        }
+        const scope = getTrialScope();
+        const raw = JSON.stringify({
+          schemaVersion: 1,
+          accountId: scope.accountId,
+          generation: scope.generation,
+          state: next,
+        });
+        reviewStorage.setItem(`settings-state:${scenario}`, raw);
+        const fresh = { contextKey, state: next, raw };
+        currentSnapshot.current = fresh;
+        setSaved(fresh);
+        return true;
+      } catch (error) {
+        const failed = {
+          ...previous,
+          error:
+            error instanceof Error && /标签|版本/.test(error.message)
+              ? `${error.message} 当前输入已保留，操作尚未完成。`
+              : '试用设置未能保存，操作未完成；当前输入已保留。恢复存储后可再次确认。',
+        };
+        currentSnapshot.current = failed;
+        setSaved(failed);
+        return false;
+      }
+    }
     previewSessions.set(scenario, next);
-    setState(next);
+    const fresh = { contextKey, state: next, raw: null };
+    currentSnapshot.current = fresh;
+    setSaved(fresh);
+    return true;
   };
   const update = (patch: Partial<PreviewSettingsState>) => commit({ ...state, ...patch });
+  const edit = (patch: Partial<PreviewSettingsState>) => {
+    if (update(patch) || settingsContext(scenario) !== contextKey) return;
+    const retained = {
+      ...currentSnapshot.current,
+      state: { ...currentSnapshot.current.state, ...patch },
+    };
+    currentSnapshot.current = retained;
+    setSaved(retained);
+  };
   const retry = () => {
     if (state.readState === 'forbidden') return;
-    update({ readState: 'ready' });
+    if (!update({ readState: 'ready' })) return;
     show('示例区块已重新读取，原查询和输入保持不变。');
   };
   function reconcile(id: string) {
+    const shared = recoveryLinks.find((task) => `shared:${task.key}` === id);
+    if (shared) {
+      go(safeReturnPath(shared.route));
+      return;
+    }
     if (!online) return;
     const task = state.tasks.find(
       (entry) => entry.id === id && entry.householdId === household.id && entry.state === 'unknown',
     );
     if (!task) return;
-    update({
-      tasks: state.tasks.map((entry) =>
-        entry.id === id ? { ...entry, state: 'confirmed' } : entry,
-      ),
-    });
+    if (
+      !update({
+        tasks: state.tasks.map((entry) =>
+          entry.id === id ? { ...entry, state: 'confirmed' } : entry,
+        ),
+      })
+    )
+      return;
     show(`已核对原请求 ${id}：示例回执确认完成；没有创建或重复发送新请求。`);
   }
   function switchHousehold() {
@@ -229,32 +489,47 @@ export function SettingsJourney({
       !state.identity.signedIn ||
       !online ||
       host ||
-      activeTasks.some((task) => task.state === 'unknown')
+      (!isTrial() && activeTasks.some((task) => task.state === 'unknown'))
     )
       return;
-    commit({
-      ...state,
-      householdId: target.id,
-      tasks:
-        draftChoice === 'discard'
-          ? state.tasks.filter(
-              (task) => !(task.householdId === household.id && task.state === 'draft'),
-            )
-          : state.tasks,
-      caches: {
-        ...state.caches,
-        [household.id]: { ...state.caches[household.id], state: 'empty' },
-        [target.id]: { ...state.caches[target.id], state: 'empty' },
-      },
-      scopes: [],
-      readState: 'ready',
-      authStatus: 'reauthorization-required',
-    });
+    if (
+      !commit({
+        ...state,
+        householdId: target.id,
+        tasks:
+          draftChoice === 'discard'
+            ? state.tasks.filter(
+                (task) => !(task.householdId === household.id && task.state === 'draft'),
+              )
+            : state.tasks,
+        caches: {
+          ...state.caches,
+          [household.id]: { ...state.caches[household.id], state: 'empty' },
+          [target.id]: { ...state.caches[target.id], state: 'empty' },
+        },
+        scopes: [],
+        readState: 'ready',
+        authStatus: 'reauthorization-required',
+      })
+    )
+      return;
+    if (isTrial()) {
+      try {
+        switchTrialHousehold(target.id);
+      } catch (error) {
+        commit(state);
+        show(
+          error instanceof Error ? error.message : '家庭切换未完成，请保留当前任务后重试。',
+          'warning',
+        );
+        return;
+      }
+    }
     setSelectedHousehold(null);
     setSelectedRecord(null);
     setInspectorQuery('');
     show(
-      `设置预览已切换到 ${target.name}；读缓存与连接授权已重置。草稿${draftChoice === 'keep' ? '保留在原家庭' : '已按选择丢弃'}。其他页面仍使用各自隔离样例。`,
+      `已切换到 ${target.name}；${isTrial() ? '导航、物品数据和操作权限已同步更新。' : ''}读缓存与连接授权已重置。草稿${draftChoice === 'keep' ? '保留在原家庭' : '已按选择丢弃'}，待确认请求始终保留在原家庭。`,
     );
   }
   function confirmMemberIntent() {
@@ -262,21 +537,28 @@ export function SettingsJourney({
     const target = members.find((member) => member.id === memberIntent.memberId);
     if (!target || target.role === 'owner') return;
     if (memberIntent.kind === 'leave') {
+      if (isTrial()) {
+        show('试用版尚未开放退出家庭；可以切换当前家庭继续试用。', 'warning');
+        return;
+      }
       if (!target.self || activeTasks.length > 0) return;
       const nextHome = state.households.find((home) => home.id !== household.id);
       if (!nextHome) {
         show('当前没有其他可访问的家庭；本预览保留当前身份，未离开。', 'warning');
         return;
       }
-      update({
-        households: state.households.filter((home) => home.id !== household.id),
-        householdId: nextHome.id,
-        scopes: [],
-        caches: {
-          ...state.caches,
-          [nextHome.id]: { ...state.caches[nextHome.id], state: 'empty' },
-        },
-      });
+      if (
+        !update({
+          households: state.households.filter((home) => home.id !== household.id),
+          householdId: nextHome.id,
+          scopes: [],
+          caches: {
+            ...state.caches,
+            [nextHome.id]: { ...state.caches[nextHome.id], state: 'empty' },
+          },
+        })
+      )
+        return;
       show('已离开当前示例家庭，清除原连接授权；真实成员关系没有改变。');
     } else {
       if (!canManage || target.self) return;
@@ -286,7 +568,7 @@ export function SettingsJourney({
           : members.map((member) =>
               member.id === target.id ? { ...member, role: memberIntent.role } : member,
             );
-      update({ members: { ...state.members, [household.id]: nextMembers } });
+      if (!update({ members: { ...state.members, [household.id]: nextMembers } })) return;
       show(
         memberIntent.kind === 'remove'
           ? `已从此预览家庭移除 ${target.name}，物品与历史保持不变。`
@@ -313,11 +595,23 @@ export function SettingsJourney({
   ) {
     if (!online) return;
     if (action === 'passkey' || action === 'password') {
-      update({
-        identity: { ...state.identity, signedIn: true },
-        authStatus: 'idle',
-        readState: 'ready',
-      });
+      if (
+        !update({
+          identity: { ...state.identity, signedIn: true },
+          authStatus: 'idle',
+          readState: 'ready',
+        })
+      )
+        return;
+      if (isTrial()) {
+        try {
+          setTrialSignedIn(true);
+        } catch (error) {
+          commit(state);
+          show(error instanceof Error ? error.message : '登录状态未能保存，请重试。', 'warning');
+          return;
+        }
+      }
       show('示例身份验证完成，已返回允许的原页面；没有调用真实凭据。');
       navigate(returnPath);
       return;
@@ -329,7 +623,10 @@ export function SettingsJourney({
         (_, i) => i + 1,
       ).find((i) => !state.identity.passkeys.includes(`通行密钥样例 ${i}`));
       const label = `通行密钥样例 ${suffix}`;
-      update({ identity: { ...state.identity, passkeys: [...state.identity.passkeys, label] } });
+      if (
+        !update({ identity: { ...state.identity, passkeys: [...state.identity.passkeys, label] } })
+      )
+        return;
       show(`已加入 ${label}；未登记真实设备凭据。`);
       return;
     }
@@ -366,7 +663,7 @@ export function SettingsJourney({
       return;
     }
     if (action === 'reauthorize') {
-      update({ scopes: [], authStatus: 'reauthorization-required' });
+      if (!update({ scopes: [], authStatus: 'reauthorization-required' })) return;
       show('旧连接已暂停，需重新选择家庭和权限；未调用宿主授权接口。', 'warning');
       return;
     }
@@ -375,19 +672,31 @@ export function SettingsJourney({
       return;
     }
     if (action === 'logout') {
-      if (allPending.length > 0 || !state.identity.signedIn) return;
-      update({
-        identity: { ...state.identity, signedIn: false },
-        scopes: [],
-        caches: Object.fromEntries(
-          Object.entries(state.caches).map(([id, entry]) => [
-            id,
-            { ...entry, state: 'empty' as const },
-          ]),
-        ),
-        authStatus: 'idle',
-        readState: 'forbidden',
-      });
+      if ((!isTrial() && allPending.length > 0) || !state.identity.signedIn) return;
+      if (
+        !update({
+          identity: { ...state.identity, signedIn: false },
+          scopes: [],
+          caches: Object.fromEntries(
+            Object.entries(state.caches).map(([id, entry]) => [
+              id,
+              { ...entry, state: 'empty' as const },
+            ]),
+          ),
+          authStatus: 'idle',
+          readState: 'forbidden',
+        })
+      )
+        return;
+      if (isTrial()) {
+        try {
+          setTrialSignedIn(false);
+        } catch (error) {
+          commit(state);
+          show(error instanceof Error ? error.message : '退出状态未能保存，请重试。', 'warning');
+          return;
+        }
+      }
       setLogoutOpen(false);
       show('已退出示例账号并清理预览读缓存；真实账号未受影响。');
       navigate('/settings/auth?view=login');
@@ -401,7 +710,7 @@ export function SettingsJourney({
           ...home,
           memberCount: state.members[home.id]?.length || home.memberCount,
         }))}
-        tasks={state.tasks}
+        tasks={visibleTasks}
         readState={state.readState}
         online={online}
         host={host}
@@ -415,6 +724,8 @@ export function SettingsJourney({
         onConfirmSwitch={switchHousehold}
         onReconcile={reconcile}
         onRetry={retry}
+        allowPendingSwitch={isTrial()}
+        externalDraftsRetained={isTrial()}
       />
     );
   if (route === '/settings/members')
@@ -429,6 +740,9 @@ export function SettingsJourney({
         inviteRole={inviteRole}
         intent={memberIntent}
         pendingCount={activeTasks.length}
+        leaveUnavailableReason={
+          isTrial() ? '试用版尚未开放退出家庭；可在家庭列表切换当前家庭。' : undefined
+        }
         onInviteRole={setInviteRole}
         onIntent={setMemberIntent}
         onConfirmIntent={confirmMemberIntent}
@@ -442,21 +756,27 @@ export function SettingsJourney({
             role: inviteRole,
             state: 'pending',
           };
-          update({
-            invitations: { ...state.invitations, [household.id]: [...existing, invitation] },
-          });
+          if (
+            !update({
+              invitations: { ...state.invitations, [household.id]: [...existing, invitation] },
+            })
+          )
+            return;
           show('已生成隔离邀请记录；未发送邮件或消息。');
         }}
         onRevoke={(id) => {
           if (!canManage || !online) return;
-          update({
-            invitations: {
-              ...state.invitations,
-              [household.id]: (state.invitations[household.id] || []).map((entry) =>
-                entry.id === id ? { ...entry, state: 'revoked' } : entry,
-              ),
-            },
-          });
+          if (
+            !update({
+              invitations: {
+                ...state.invitations,
+                [household.id]: (state.invitations[household.id] || []).map((entry) =>
+                  entry.id === id ? { ...entry, state: 'revoked' } : entry,
+                ),
+              },
+            })
+          )
+            return;
           show('示例邀请已撤销，不再等待接受。');
         }}
       />
@@ -485,6 +805,7 @@ export function SettingsJourney({
         }
         online={online}
         pendingCount={allPending.length}
+        allowPendingLogout={isTrial()}
         logoutOpen={logoutOpen}
         onLogoutOpen={setLogoutOpen}
         hostStorage={
@@ -494,7 +815,7 @@ export function SettingsJourney({
         }
         scopes={state.scopes}
         requestedWrite={state.requestedWrite}
-        onRequestedWrite={(value) => update({ requestedWrite: value, authStatus: 'idle' })}
+        onRequestedWrite={(value) => edit({ requestedWrite: value, authStatus: 'idle' })}
         returnPath={returnPath}
         registrationAvailable={false}
         credentialIntent={credentialIntent}
@@ -522,7 +843,7 @@ export function SettingsJourney({
             if (!next.passkeys.length) return;
             next.passwordConfigured = false;
           } else next.passwordConfigured = true;
-          update({ identity: next });
+          if (!update({ identity: next })) return;
           setCredentialIntent(null);
           show('示例安全设置已更新；未修改真实凭据。');
         }}
@@ -539,20 +860,20 @@ export function SettingsJourney({
         saved={state.printerSaved}
         printState={state.printState}
         onChange={(draft) => {
-          if (state.printState !== 'sent') update({ printerDraft: draft, printState: 'idle' });
+          if (state.printState !== 'sent') edit({ printerDraft: draft, printState: 'idle' });
         }}
         onSave={() => {
           if (state.printState === 'sent') return;
-          update({ printerSaved: { ...state.printerDraft }, printState: 'idle' });
+          if (!update({ printerSaved: { ...state.printerDraft }, printState: 'idle' })) return;
           show('标签设置已保存到本次预览，未修改真实打印配置。');
         }}
         onConnect={() => {
           if (state.printer === 'unavailable') return;
-          update({ printer: 'connected' });
+          if (!update({ printer: 'connected' })) return;
           show('示例设备已连接；尚未试打。');
         }}
         onDisconnect={() => {
-          update({ printer: 'disconnected' });
+          if (!update({ printer: 'disconnected' })) return;
           show(
             state.printState === 'sent'
               ? '示例连接已断开；已发送任务仍需核对结果。'
@@ -567,7 +888,7 @@ export function SettingsJourney({
             JSON.stringify(state.printerDraft) !== JSON.stringify(state.printerSaved)
           )
             return;
-          update({ printState: 'sent' });
+          if (!update({ printState: 'sent' })) return;
           setNotice(null);
         }}
         onPrintResult={(success) => {
@@ -581,27 +902,34 @@ export function SettingsJourney({
         {...common}
         online={online}
         cache={cache}
-        tasks={state.tasks}
+        tasks={visibleTasks}
+        externalDraftsRetained={isTrial()}
         readState={state.readState}
         clearOpen={clearOpen}
         discardTask={discardTask}
         onRetry={retry}
         onRefresh={() => {
           if (!online) return;
-          update({
-            caches: {
-              ...state.caches,
-              [household.id]: {
-                ...cacheFor(household.id),
-                updatedAt: `${new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', dateStyle: 'short', timeStyle: 'medium' }).format(new Date())} · 示例刷新`,
+          if (
+            !update({
+              caches: {
+                ...state.caches,
+                [household.id]: {
+                  ...cacheFor(household.id),
+                  updatedAt: `${new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', dateStyle: 'short', timeStyle: 'medium' }).format(new Date())} · 示例刷新`,
+                },
               },
-            },
-          });
+            })
+          )
+            return;
           show('示例读缓存已更新；草稿和原请求保持不变。');
         }}
         onClearOpen={setClearOpen}
         onClear={() => {
-          update({ caches: { ...state.caches, [household.id]: { ...cache, state: 'empty' } } });
+          if (
+            !update({ caches: { ...state.caches, [household.id]: { ...cache, state: 'empty' } } })
+          )
+            return;
           setClearOpen(false);
           show('仅清理此家庭的示例读缓存；全部草稿与原请求已保留。');
         }}
@@ -614,7 +942,7 @@ export function SettingsJourney({
             discardTask.householdId !== household.id
           )
             return;
-          update({ tasks: state.tasks.filter((task) => task.id !== discardTask.id) });
+          if (!update({ tasks: state.tasks.filter((task) => task.id !== discardTask.id) })) return;
           setDiscardTask(null);
           show('已丢弃指定未发送草稿；其他草稿和待确认请求保持不变。');
         }}
