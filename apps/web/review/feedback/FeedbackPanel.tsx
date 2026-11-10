@@ -56,7 +56,7 @@ function FeedbackEditor({ context, draftKey }: { context: FeedbackContext; draft
       setRecords(data.records);
       setError('');
     } catch {
-      setError('无法读取本地意见。请使用运行中的 6007 或 6006 开发预览，稍后重试。');
+      setError('无法读取本地意见。请使用运行中的 6008、6007 或 6006 开发预览，稍后重试。');
     }
   };
   useEffect(() => {

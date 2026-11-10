@@ -22,7 +22,9 @@
     "check:ui-tokens": "node scripts/ui/tokens.mjs --check",
     "check:ui-boundaries": "node scripts/ui/boundaries.mjs",
     "test:e2e:ui": "playwright test --config apps/web/review/playwright.config.ts",
-    "check:ui-catalog": "node scripts/ui/catalog.mjs"
+    "check:ui-catalog": "node scripts/ui/catalog.mjs",
+    "dev:ui-trial": "vite --config apps/web/review/trial/vite.config.ts",
+    "build:ui-trial": "vite build --config apps/web/review/trial/vite.config.ts"
   },
   "dependencies": {
     "@ant-design/icons": "6.3.4",

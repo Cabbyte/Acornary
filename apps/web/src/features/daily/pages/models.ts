@@ -22,6 +22,7 @@ export interface DailyItemFacts {
   item: ItemView;
   quantity: QuantityPresentation;
   date?: DateFactPresentation;
+  dates?: DateFactPresentation[];
 }
 export interface DailyProductFacts {
   group: GroupView;

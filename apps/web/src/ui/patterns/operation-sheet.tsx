@@ -1,3 +1,4 @@
+import { useOperationSupport } from './operation-support';
 import type { ReactNode } from 'react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -68,6 +69,7 @@ export function OperationSheet({
   onCloseBlocked,
   onReestablishContext,
 }: OperationSheetProps) {
+  const support = useOperationSupport();
   const busy = operation.state === 'submitting' || operation.state === 'validating';
   const blockedReason = busy
     ? '当前步骤正在进行，暂时不能关闭或返回。'
@@ -227,6 +229,7 @@ export function OperationSheet({
             ))}
         </ul>
       )}
+      {support?.(operation)}
     </Sheet>
   );
 }

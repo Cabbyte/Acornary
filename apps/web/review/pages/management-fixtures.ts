@@ -46,31 +46,36 @@ export const containerCatalog: ManagedCatalog = {
   specification: '独立容器 · 允许容纳',
 };
 export function catalogFixtures(items: readonly ItemView[]): ManagedCatalog[] {
-  const skus = [...new Set(items.map((item) => item.skuId))].map((id) => {
-    const members = items.filter((item) => item.skuId === id);
-    const item = members[0];
-    const group = item.profile === 'CONSUMABLE' ? groups[0] : groups[1];
-    return {
-      ...group,
-      id,
-      parentId: group.id,
-      kind: 'SKU' as const,
-      name: item.name,
-      profile: item.profile,
-      effectiveCapabilities:
-        item.profile === 'CONSUMABLE'
-          ? ['lifecycle.expiry' as const, 'lifecycle.opening' as const, 'contents' as const]
-          : ['lifecycle.expiry' as const],
-      path: [group.name, item.name],
-      itemCount: members.length,
-      specification: item.subtitle || '规格未记录',
-      revision: 2,
-    };
-  });
+  const skus = [...new Set(items.map((item) => item.skuId))]
+    .filter((id) => id !== containerCatalog.id)
+    .map((id) => {
+      const members = items.filter((item) => item.skuId === id);
+      const item = members[0];
+      const group = item.profile === 'CONSUMABLE' ? groups[0] : groups[1];
+      return {
+        ...group,
+        id,
+        parentId: group.id,
+        kind: 'SKU' as const,
+        name: item.name,
+        profile: item.profile,
+        effectiveCapabilities:
+          item.profile === 'CONSUMABLE'
+            ? ['lifecycle.expiry' as const, 'lifecycle.opening' as const, 'contents' as const]
+            : ['lifecycle.expiry' as const],
+        path: [group.name, item.name],
+        itemCount: members.length,
+        specification: item.subtitle || '规格未记录',
+        revision: 2,
+      };
+    });
   return [
     ...groups,
     ...skus,
-    containerCatalog,
+    {
+      ...containerCatalog,
+      itemCount: items.filter((item) => item.skuId === containerCatalog.id).length,
+    },
     {
       ...containerCatalog,
       id: gid(801),
@@ -205,4 +210,37 @@ export function largeSelectionItems(): ItemView[] {
     name: `库存核对样例 ${index + 1}`,
     revision: 1,
   }));
+}
+
+/** Explicit initial container Items; root uses this only while seeding a TrialWorld. */
+export function containerFactsFor(
+  facts: readonly import('../../src/features/daily/pages/models').DailyItemFacts[],
+) {
+  if (!facts.length) return [];
+  const existing = new Set(facts.map((row) => row.item.id));
+  return locationFixtures(facts.map((row) => row.item))
+    .filter((location) => !existing.has(location.id))
+    .map((location) => ({
+      item: {
+        ...structuredClone(facts[0].item),
+        id: location.id,
+        skuId: containerCatalog.id,
+        name: location.name,
+        subtitle: '位置容器',
+        profile: 'DURABLE' as const,
+        location: {
+          id: location.parentId,
+          label: location.path.length > 1 ? location.path[location.path.length - 2] : '未指定位置',
+          path: location.path.slice(0, -1),
+        },
+        revision: 1,
+        recordState: 'VALID' as const,
+        voidedAt: null,
+        status: { label: '容器 · 可以容纳', tone: 'neutral' as const },
+        facts: [],
+        noteCount: 0,
+        attachmentCount: 0,
+      },
+      quantity: { value: null, unit: '', accuracy: 'unknown' as const },
+    }));
 }

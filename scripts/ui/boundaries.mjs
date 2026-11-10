@@ -27,11 +27,13 @@ function walk(file) {
   }
 }
 for (const file of ['apps/web/src/main.tsx', 'apps/web/src/plugin.tsx']) walk(file);
-const preview = readFileSync('apps/web/review/vite.config.ts', 'utf8');
+const preview =
+  readFileSync('apps/web/review/vite.config.ts', 'utf8') +
+  readFileSync('apps/web/review/trial/vite.config.ts', 'utf8');
 if (/proxy|serviceWorker|offline-shell/.test(preview))
   throw Error('Preview config must not use business proxy or SW');
 console.log(`Static production graph checked: ${seen.size} files; no review/fixture imports.`);
-for (const path of ['output/storybook/sw.js', 'output/ui-preview/sw.js'])
+for (const path of ['output/storybook/sw.js', 'output/ui-preview/sw.js', 'output/ui-trial/sw.js'])
   if (existsSync(path)) throw Error(`Unexpected app service worker: ${path}`);
 
 // Candidate UI must remain pure even before it becomes reachable from main/plugin.

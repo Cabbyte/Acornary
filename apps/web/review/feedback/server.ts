@@ -17,6 +17,9 @@ const input = z
     viewport: z.number().int().min(1).max(10000),
     version: z.string().min(1).max(30),
     route: z.string().max(4096).optional(),
+    source: z.literal('trial').optional(),
+    datasetVersion: z.string().max(40).optional(),
+    taskStage: z.string().max(120).optional(),
     text: z.string().trim().min(1).max(8000),
   })
   .strict();

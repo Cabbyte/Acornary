@@ -1,3 +1,7 @@
+import { trialToday, trialInstant } from '../trial/clock';
+import { containerFactsFor } from './management-fixtures';
+import { reviewStorage, assertTrialWrite, afterReviewCommit } from '../trial/storage';
+import { getTrialScope, isTrial } from '../trial/session';
 // Local review world only. Never import from production sources.
 import { useSyncExternalStore } from 'react';
 import Decimal from 'decimal.js';
@@ -16,12 +20,42 @@ let snapshot: Snapshot = {
   receipts: {},
 };
 let initialized = false;
+let loadedScope = '';
+let lastSerialized: string | null = null;
 const listeners = new Set<() => void>();
 function initialize() {
+  const key = isTrial() ? getTrialScope().householdId : 'review';
+  if (loadedScope !== key) {
+    initialized = false;
+    loadedScope = key;
+    snapshot = {
+      items:
+        key === 'preview-home-weekend'
+          ? []
+          : isTrial()
+            ? [...structuredClone(itemFacts), ...containerFactsFor(itemFacts)]
+            : structuredClone(itemFacts),
+      history: key === 'preview-home-weekend' ? [] : structuredClone(baseHistory),
+      receipts: {},
+    };
+  }
+  if (isTrial() && initialized) {
+    const raw = reviewStorage.getItem(storageKey);
+    if (raw !== lastSerialized) {
+      if (!raw) {
+        initialized = false;
+        loadedScope = '';
+        return initialize();
+      }
+      snapshot = JSON.parse(raw);
+      lastSerialized = raw;
+    }
+  }
   if (initialized || typeof window === 'undefined') return;
   initialized = true;
   try {
-    const raw = sessionStorage.getItem(storageKey);
+    const raw = reviewStorage.getItem(storageKey);
+    lastSerialized = raw;
     if (raw) {
       const value = JSON.parse(raw);
       if (Array.isArray(value.items) && Array.isArray(value.history) && value.receipts)
@@ -50,8 +84,10 @@ export function applyReviewTask(
   kind: DailyTaskKind,
   draft: DailyTaskDraft,
   target?: string,
+  expectedRevision?: number,
 ): string[] {
   initialize();
+  assertTrialWrite();
   if (snapshot.receipts[key]) return snapshot.receipts[key];
   const next = structuredClone(snapshot);
   const targetId = target || itemFacts[0].item.id;
@@ -62,6 +98,8 @@ export function applyReviewTask(
       ? { id: draft.location.itemId, label: draft.location.name, path: [...draft.location.path] }
       : { id: null, label: '位置未记录', path: [] };
   if (kind === 'intake' || kind === 'new-product') {
+    if (!/^\d+$/.test(draft.count) || Number(draft.count) < 1 || Number(draft.count) > 100)
+      throw Error('入库件数须为 1–100。');
     const prototype = next.items.find((f) => f.item.skuId === draft.catalog?.id) || itemFacts[0];
     for (let i = 0; i < Number(draft.count); i++) {
       const id = `item_${crypto.randomUUID()}`;
@@ -99,9 +137,9 @@ export function applyReviewTask(
           basis: '包装标注',
           source: 'LIFECYCLE',
           state:
-            draft.dates[i] < '2026-11-07'
+            draft.dates[i] < trialToday()
               ? 'OVERDUE'
-              : draft.dates[i] === '2026-11-07'
+              : draft.dates[i] === trialToday()
                 ? 'DUE'
                 : 'UPCOMING',
           label: '最佳食用期',
@@ -110,10 +148,54 @@ export function applyReviewTask(
     }
   } else {
     if (!current) throw Error('示例对象已不可用');
+    if (expectedRevision !== undefined && current.item.revision !== expectedRevision)
+      throw Error('物品版本已变化，请重新读取并核对；原输入已保留。');
     ids.push(current.item.id);
     current.item.revision++;
-    if (kind === 'move') current.item.location = location;
-    else {
+    if (kind === 'move') {
+      if (isTrial() && location.id) {
+        const destination = next.items.find((f) => f.item.id === location.id);
+        if (
+          !destination ||
+          destination.item.skuId !== 'catalog_node_00000000-0000-4000-8000-000000000800' ||
+          destination.item.recordState !== 'VALID'
+        )
+          throw Error('目标不是可用容器。');
+        const seen = new Set([current.item.id]);
+        let cursor: typeof destination | undefined = destination;
+        while (cursor) {
+          if (seen.has(cursor.item.id)) throw Error('不能形成循环容纳关系。');
+          seen.add(cursor.item.id);
+          cursor = next.items.find((f) => f.item.id === cursor?.item.location.id);
+        }
+      }
+      const oldPath = [...current.item.location.path, current.item.name];
+      current.item.location = location;
+      for (const child of next.items) {
+        if (
+          child.item.id !== current.item.id &&
+          oldPath.every((p, i) => child.item.location.path[i] === p)
+        ) {
+          child.item.location = {
+            ...child.item.location,
+            path: [
+              ...location.path,
+              current.item.name,
+              ...child.item.location.path.slice(oldPath.length),
+            ],
+          };
+        }
+      }
+    } else {
+      if (
+        !draft.finish &&
+        (current.quantity.value === null ||
+          draft.quantity.value === null ||
+          !/^\d+(\.\d+)?$/.test(draft.quantity.value) ||
+          new Decimal(draft.quantity.value).lte(0) ||
+          new Decimal(draft.quantity.value).gt(current.quantity.value))
+      )
+        throw Error('无法确认使用数量，原事实未修改。');
       current.quantity = {
         ...current.quantity,
         value: draft.finish
@@ -144,8 +226,8 @@ export function applyReviewTask(
           target_id: id,
           before_revision: kind === 'intake' || kind === 'new-product' ? 0 : f.item.revision - 1,
           after_revision: f.item.revision,
-          occurred_at: '2026-11-07T08:00:00Z',
-          recorded_at: '2026-11-07T08:00:00Z',
+          occurred_at: trialInstant(),
+          recorded_at: trialInstant(),
           reason: '隔离预览操作',
           changes: [
             {
@@ -172,9 +254,11 @@ export function applyReviewTask(
     ];
   }
   next.receipts[key] = ids;
-  sessionStorage.setItem(storageKey, JSON.stringify(next));
-  snapshot = next;
-  listeners.forEach((fn) => fn());
+  reviewStorage.setItem(storageKey, JSON.stringify(next));
+  afterReviewCommit(() => {
+    snapshot = next;
+    listeners.forEach((fn) => fn());
+  });
   return ids;
 }
 
@@ -184,10 +268,13 @@ export function updateReviewItems(
   metadata: {
     operationLabel?: string;
     reason?: string;
+    requestKey?: string;
     eventType?: NonNullable<DailyItemProps['history'][number]['event']>['event_type'];
   } = {},
 ) {
   initialize();
+  assertTrialWrite();
+  if (metadata.requestKey && snapshot.receipts[metadata.requestKey]) return;
   const patches = new Map(items.map((item) => [item.item.id, structuredClone(item)]));
   const next = structuredClone(snapshot);
   const operationId = `operation_${crypto.randomUUID()}`;
@@ -207,6 +294,9 @@ export function updateReviewItems(
         patch.item.facts.find((fact) => fact.kind === 'opening'),
       ],
       ['note_count', item.item.noteCount, patch.item.noteCount],
+      ['facts', item.item.facts, patch.item.facts],
+      ['date_facts', item.dates, patch.dates],
+      ['attachments', item.item.attachmentCount, patch.item.attachmentCount],
       ['contents.remaining', item.quantity, patch.quantity],
       ['lifecycle.expiry', item.date, patch.date],
     ] as const;
@@ -234,8 +324,8 @@ export function updateReviewItems(
             target_id: patch.item.id,
             before_revision: item.item.revision,
             after_revision: patch.item.revision,
-            occurred_at: '2026-11-07T08:00:00Z',
-            recorded_at: '2026-11-07T08:00:00Z',
+            occurred_at: trialInstant(),
+            recorded_at: trialInstant(),
             reason: metadata.reason ?? '隔离预览操作',
             changes,
           },
@@ -246,7 +336,24 @@ export function updateReviewItems(
     return patch;
   });
   next.items.push(...patches.values());
-  sessionStorage.setItem(storageKey, JSON.stringify(next));
-  snapshot = next;
-  listeners.forEach((fn) => fn());
+  if (metadata.requestKey) next.receipts[metadata.requestKey] = items.map((f) => f.item.id);
+  reviewStorage.setItem(storageKey, JSON.stringify(next));
+  afterReviewCommit(() => {
+    snapshot = next;
+    listeners.forEach((fn) => fn());
+  });
+}
+
+export function appendReviewEvent(entry: DailyItemProps['history'][number], requestKey: string) {
+  initialize();
+  assertTrialWrite();
+  if (snapshot.receipts[requestKey]) return;
+  const next = structuredClone(snapshot);
+  next.history = [entry, ...next.history];
+  next.receipts[requestKey] = [];
+  reviewStorage.setItem(storageKey, JSON.stringify(next));
+  afterReviewCommit(() => {
+    snapshot = next;
+    listeners.forEach((fn) => fn());
+  });
 }
