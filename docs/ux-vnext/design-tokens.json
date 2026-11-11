@@ -1,0 +1,268 @@
+{
+  "version": "Component-Library-RC1",
+  "status": "awaiting-user-review",
+  "semantic": {
+    "danger": "#A33828",
+    "dangerSurface": "#F7E2DC",
+    "warning": "#875919",
+    "warningSurface": "#FFF0D4",
+    "success": "#466241",
+    "successSurface": "#E8EFE4",
+    "info": "#365F78",
+    "infoSurface": "#E4EDF0",
+    "focus": "#315B7C",
+    "disabledForeground": "#59616A",
+    "disabledSurface": "#E5E7E9"
+  },
+  "typography": {
+    "bodyFamily": "-apple-system, BlinkMacSystemFont, PingFang SC, Microsoft YaHei, system-ui, sans-serif",
+    "displayFamily": "-apple-system, BlinkMacSystemFont, PingFang SC, Microsoft YaHei, system-ui, sans-serif",
+    "titlePx": 22,
+    "mobileTitlePx": 22,
+    "sectionPx": 16,
+    "dailyBodyPx": 14,
+    "managementBodyPx": 14,
+    "metadataPx": 13,
+    "inputTouchPx": 16,
+    "bodyLineHeight": 1.5,
+    "titleLineHeight": 1.3,
+    "weights": [
+      400,
+      500,
+      600
+    ],
+    "numericVariant": "tabular-nums"
+  },
+  "spacingPx": [
+    4,
+    8,
+    12,
+    16,
+    24,
+    32,
+    48
+  ],
+  "radiusPx": {
+    "control": 8,
+    "panel": 12
+  },
+  "targetPx": {
+    "desktopControl": 36,
+    "touch": 44,
+    "closeAndBack": 44
+  },
+  "rowMinPx": {
+    "daily": 64,
+    "managementDesktop": 48,
+    "managementTouch": 72
+  },
+  "focus": {
+    "widthPx": 2,
+    "offsetPx": 2,
+    "style": "solid"
+  },
+  "motion": {
+    "fastMs": 120,
+    "baseMs": 180,
+    "reducedMs": 0,
+    "easing": "cubic-bezier(.2,.8,.2,1)"
+  },
+  "layoutPx": {
+    "compactBelow": 768,
+    "sidebarFrom": 1024,
+    "sidebarWidth": 216,
+    "treeWidth": 240,
+    "treeContentFrom": 960,
+    "splitDetailContentFrom": 1160,
+    "splitDetailWidth": 360,
+    "dailyMaxWidth": 1120,
+    "managementMaxWidth": 1600,
+    "settingsMaxWidth": 720,
+    "sheet": 560,
+    "sheetWide": 720
+  },
+  "presets": {
+    "sage": {
+      "name": "苔绿与石板蓝",
+      "modes": {
+        "daily": {
+          "background": "#FAFBF8",
+          "foreground": "#272A27",
+          "surface": "#FFFFFF",
+          "surfaceRaised": "#FFFFFF",
+          "mutedForeground": "#646A64",
+          "border": "#E2E6E1",
+          "controlBorder": "#8B8077",
+          "accent": "#526D5B",
+          "accentForeground": "#FFFFFF",
+          "accentText": "#526D5B",
+          "selection": "#EDF2EC",
+          "accentHover": "#486050",
+          "accentActive": "#3E5345",
+          "selectionForeground": "#486050"
+        },
+        "management": {
+          "background": "#F9FAFB",
+          "foreground": "#272A27",
+          "surface": "#FFFFFF",
+          "surfaceRaised": "#FFFFFF",
+          "mutedForeground": "#646A64",
+          "border": "#E2E6E1",
+          "controlBorder": "#768493",
+          "accent": "#4B6478",
+          "accentForeground": "#FFFFFF",
+          "accentText": "#4B6478",
+          "selection": "#EDF1F5",
+          "accentHover": "#42586A",
+          "accentActive": "#394C5B",
+          "selectionForeground": "#42586A"
+        }
+      }
+    },
+    "apricot": {
+      "name": "杏橙与靛蓝",
+      "modes": {
+        "daily": {
+          "background": "#FCFBF8",
+          "foreground": "#272A27",
+          "surface": "#FFFFFF",
+          "surfaceRaised": "#FFFFFF",
+          "mutedForeground": "#646A64",
+          "border": "#E2E6E1",
+          "controlBorder": "#8B8077",
+          "accent": "#AC5B32",
+          "accentForeground": "#FFFFFF",
+          "accentText": "#AC5B32",
+          "selection": "#FAEFE7",
+          "accentHover": "#97502C",
+          "accentActive": "#834526",
+          "selectionForeground": "#97502C"
+        },
+        "management": {
+          "background": "#FAFAFC",
+          "foreground": "#272A27",
+          "surface": "#FFFFFF",
+          "surfaceRaised": "#FFFFFF",
+          "mutedForeground": "#646A64",
+          "border": "#E2E6E1",
+          "controlBorder": "#768493",
+          "accent": "#5964A0",
+          "accentForeground": "#FFFFFF",
+          "accentText": "#5964A0",
+          "selection": "#EEEFF8",
+          "accentHover": "#4E588D",
+          "accentActive": "#444C7A",
+          "selectionForeground": "#4E588D"
+        }
+      }
+    },
+    "berry": {
+      "name": "莓紫与青灰",
+      "modes": {
+        "daily": {
+          "background": "#FCFAFB",
+          "foreground": "#272A27",
+          "surface": "#FFFFFF",
+          "surfaceRaised": "#FFFFFF",
+          "mutedForeground": "#646A64",
+          "border": "#E2E6E1",
+          "controlBorder": "#8B8077",
+          "accent": "#995F76",
+          "accentForeground": "#FFFFFF",
+          "accentText": "#995F76",
+          "selection": "#F6EDF1",
+          "accentHover": "#875468",
+          "accentActive": "#74485A",
+          "selectionForeground": "#875468"
+        },
+        "management": {
+          "background": "#F9FBFA",
+          "foreground": "#272A27",
+          "surface": "#FFFFFF",
+          "surfaceRaised": "#FFFFFF",
+          "mutedForeground": "#646A64",
+          "border": "#E2E6E1",
+          "controlBorder": "#768493",
+          "accent": "#376F70",
+          "accentForeground": "#FFFFFF",
+          "accentText": "#376F70",
+          "selection": "#EAF2F1",
+          "accentHover": "#306263",
+          "accentActive": "#2A5455",
+          "selectionForeground": "#306263"
+        }
+      }
+    },
+    "terracotta": {
+      "name": "陶土与蓝灰",
+      "modes": {
+        "daily": {
+          "background": "#FBFBF9",
+          "foreground": "#272A27",
+          "surface": "#FFFFFF",
+          "surfaceRaised": "#FFFFFF",
+          "mutedForeground": "#646A64",
+          "border": "#E2E6E1",
+          "controlBorder": "#8B8077",
+          "accent": "#AB5F40",
+          "accentForeground": "#FFFFFF",
+          "accentText": "#AB5F40",
+          "selection": "#F7EEE8",
+          "accentHover": "#965438",
+          "accentActive": "#824831",
+          "selectionForeground": "#965438"
+        },
+        "management": {
+          "background": "#FAFBFC",
+          "foreground": "#272A27",
+          "surface": "#FFFFFF",
+          "surfaceRaised": "#FFFFFF",
+          "mutedForeground": "#646A64",
+          "border": "#E2E6E1",
+          "controlBorder": "#768493",
+          "accent": "#456B8A",
+          "accentForeground": "#FFFFFF",
+          "accentText": "#456B8A",
+          "selection": "#ECF1F5",
+          "accentHover": "#3D5E79",
+          "accentActive": "#345169",
+          "selectionForeground": "#3D5E79"
+        }
+      }
+    }
+  },
+  "modes": {
+    "daily": {
+      "background": "#FAFBF8",
+      "foreground": "#272A27",
+      "surface": "#FFFFFF",
+      "surfaceRaised": "#FFFFFF",
+      "mutedForeground": "#646A64",
+      "border": "#E2E6E1",
+      "controlBorder": "#8B8077",
+      "accent": "#526D5B",
+      "accentForeground": "#FFFFFF",
+      "accentText": "#526D5B",
+      "selection": "#EDF2EC",
+      "accentHover": "#486050",
+      "accentActive": "#3E5345",
+      "selectionForeground": "#486050"
+    },
+    "management": {
+      "background": "#F9FAFB",
+      "foreground": "#272A27",
+      "surface": "#FFFFFF",
+      "surfaceRaised": "#FFFFFF",
+      "mutedForeground": "#646A64",
+      "border": "#E2E6E1",
+      "controlBorder": "#768493",
+      "accent": "#4B6478",
+      "accentForeground": "#FFFFFF",
+      "accentText": "#4B6478",
+      "selection": "#EDF1F5",
+      "accentHover": "#42586A",
+      "accentActive": "#394C5B",
+      "selectionForeground": "#42586A"
+    }
+  }
+}

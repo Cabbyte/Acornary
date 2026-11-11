@@ -1,0 +1,36 @@
+[data-acornary-ui='vnext'] .review-frame {
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .review-environment {
+  font-size: var(--vn-type-metadata);
+  color: var(--vn-muted-foreground);
+  margin-bottom: var(--vn-space-16);
+}
+[data-acornary-ui='vnext'] .review-canvas {
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .review-guidance {
+  margin-top: var(--vn-space-24);
+  padding-top: var(--vn-space-8);
+  border-top: 1px solid var(--vn-border);
+  font-size: var(--vn-type-metadata);
+  color: var(--vn-muted-foreground);
+}
+[data-acornary-ui='vnext'] .review-guidance > summary {
+  min-height: var(--vn-target-touch);
+  align-content: center;
+  width: fit-content;
+  cursor: pointer;
+}
+[data-acornary-ui='vnext'] .review-guidance p {
+  margin: 0 0 var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .review-guidance-note {
+  margin-block: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .review-feedback {
+  margin: var(--vn-space-8) 0 0;
+  color: var(--vn-muted-foreground);
+  font-size: var(--vn-type-metadata);
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,161 @@
+[data-acornary-ui='vnext'] .vn-daily-page {
+  container: daily-page / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-16);
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-daily-page h2 {
+  font-size: var(--vn-type-section);
+  font-weight: 600;
+  margin: 0;
+}
+[data-acornary-ui='vnext'] .vn-daily-page p {
+  margin: 0;
+}
+[data-acornary-ui='vnext'] .vn-daily-page .vn-page-header .vn-list-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vn-space-8);
+  align-items: center;
+}
+[data-acornary-ui='vnext'] .vn-daily-products {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--vn-space-16);
+}
+[data-acornary-ui='vnext'] .vn-daily-page .vn-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-16);
+}
+[data-acornary-ui='vnext'] .vn-daily-page .vn-tab-panel[hidden] {
+  display: none;
+}
+[data-acornary-ui='vnext'] .vn-daily-key-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--vn-space-16);
+  padding-block: var(--vn-space-16);
+  border-block: 1px solid var(--vn-border);
+}
+[data-acornary-ui='vnext'] .vn-daily-key-facts > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-daily-key-facts h2 {
+  font-size: var(--vn-type-metadata);
+  color: var(--vn-muted-foreground);
+  font-weight: 400;
+}
+[data-acornary-ui='vnext'] .vn-daily-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--vn-space-24);
+}
+[data-acornary-ui='vnext'] .vn-daily-section,
+[data-acornary-ui='vnext'] .vn-daily-notes,
+[data-acornary-ui='vnext'] .vn-daily-history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-12);
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-daily-notes article {
+  border-bottom: 1px solid var(--vn-border);
+  padding-block: var(--vn-space-12);
+}
+[data-acornary-ui='vnext'] .vn-daily-notes article p {
+  white-space: pre-wrap;
+  margin-block-start: var(--vn-space-8);
+  overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-daily-product-link {
+  justify-content: flex-start;
+  width: fit-content;
+  max-width: 100%;
+  text-align: start;
+}
+[data-acornary-ui='vnext'] .vn-daily-technical summary {
+  min-height: var(--vn-target-touch);
+  align-content: center;
+  cursor: pointer;
+  color: var(--vn-muted-foreground);
+}
+[data-acornary-ui='vnext'] .vn-daily-technical dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--vn-space-8) var(--vn-space-12);
+  font-size: var(--vn-type-metadata);
+}
+[data-acornary-ui='vnext'] .vn-daily-technical dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-daily-technical dt {
+  color: var(--vn-muted-foreground);
+}
+[data-acornary-ui='vnext'] .vn-daily-product-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--vn-space-8) var(--vn-space-24);
+}
+@container daily-page (min-width: 640px) {
+  [data-acornary-ui='vnext'] .vn-daily-key-facts {
+    grid-template-columns: 1.2fr 1fr 1fr;
+  }
+  [data-acornary-ui='vnext'] .vn-daily-overview,
+  [data-acornary-ui='vnext'] .vn-daily-products {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+[data-acornary-ui='vnext'] .vn-daily-feed-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vn-space-12);
+}
+[data-acornary-ui='vnext'] .vn-daily-feed-toolbar > :first-child {
+  width: 180px;
+  max-width: 100%;
+}
+[data-acornary-ui='vnext'] .vn-daily-feed-toolbar .vn-muted {
+  font-size: var(--vn-type-metadata);
+}
+[data-acornary-ui='vnext'] .vn-daily-attention-list > article {
+  padding-block: var(--vn-space-12);
+  border-bottom: 1px solid var(--vn-border);
+}
+[data-acornary-ui='vnext'] .vn-daily-attention-reason {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-daily-attention-reason details {
+  color: var(--vn-muted-foreground);
+  font-size: var(--vn-type-metadata);
+  max-width: 100%;
+}
+[data-acornary-ui='vnext'] .vn-daily-attention-reason summary {
+  min-height: var(--vn-target-touch);
+  align-content: center;
+  cursor: pointer;
+}
+
+[data-acornary-ui='vnext'] .vn-daily-task-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-12);
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-daily-task-stack p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

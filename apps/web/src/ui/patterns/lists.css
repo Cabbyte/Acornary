@@ -1,0 +1,637 @@
+[data-acornary-ui='vnext'] .vn-list-meta {
+  margin: 0;
+  color: var(--vn-muted-foreground);
+  font-size: var(--vn-type-metadata);
+  overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-list-meta > span {
+  display: block;
+  margin-top: var(--vn-space-4);
+}
+[data-acornary-ui='vnext'] .vn-list-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+[data-acornary-ui='vnext'] .vn-list-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-16);
+  padding: var(--vn-space-16);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-radius-panel);
+  background: var(--vn-surface);
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-list-panel h2 {
+  margin: 0;
+  font-size: var(--vn-type-section);
+  font-weight: 600;
+}
+[data-acornary-ui='vnext'] .vn-list-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--vn-space-12);
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-list-heading > div {
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-list-heading h2 {
+  overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-list-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--vn-space-4);
+  max-width: 100%;
+}
+[data-acornary-ui='vnext'] .vn-list-action button {
+  white-space: normal;
+  text-align: center;
+}
+[data-acornary-ui='vnext'] .vn-list-filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-8);
+  max-width: var(--vn-layout-sheet);
+}
+[data-acornary-ui='vnext'] .vn-list-filter label {
+  font-size: var(--vn-type-metadata);
+  font-weight: 500;
+}
+[data-acornary-ui='vnext'] .vn-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vn-space-12);
+  padding-block: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-data-row {
+  min-height: var(--vn-row-min-management-desktop);
+}
+[data-acornary-ui='vnext'] .vn-data-row > .vn-table-cell {
+  vertical-align: top;
+}
+[data-acornary-ui='vnext'] .vn-data-sort {
+  justify-content: flex-start;
+  padding-inline: 0;
+  border-inline-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-data-primary {
+  min-width: 12rem;
+}
+[data-acornary-ui='vnext'] .vn-data-secondary {
+  min-width: 9rem;
+}
+[data-acornary-ui='vnext'] .vn-data-selection {
+  width: var(--vn-target-touch);
+}
+[data-acornary-ui='vnext'] .vn-data-actions {
+  width: 1%;
+  white-space: nowrap;
+}
+[data-acornary-ui='vnext'] .vn-data-cell-label,
+[data-acornary-ui='vnext'] .vn-data-mobile-tools,
+[data-acornary-ui='vnext'] .vn-data-narrow-heading,
+[data-acornary-ui='vnext'] .vn-data-expand {
+  display: none;
+}
+[data-acornary-ui='vnext'] .vn-data-primary-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--vn-space-4);
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-data-primary-value {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-data-expand {
+  flex: 0 0 var(--vn-control-height);
+  min-width: var(--vn-control-height);
+  min-height: var(--vn-control-height);
+  padding: 0;
+}
+[data-acornary-ui='vnext'] .vn-data-expand[data-has-details='true'] {
+  display: inline-flex;
+}
+[data-acornary-ui='vnext'] .vn-data-expand[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+[data-acornary-ui='vnext'] .vn-data-row-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-4);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-data-details-row[hidden] {
+  display: none;
+}
+[data-acornary-ui='vnext'] .vn-data-details-row > .vn-table-cell {
+  border-top: 0;
+  padding-top: var(--vn-space-4);
+}
+[data-acornary-ui='vnext'] .vn-item-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-status-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--vn-space-8) var(--vn-space-16);
+  margin: 0;
+}
+[data-acornary-ui='vnext'] .vn-status-facts > div {
+  display: flex;
+  align-items: center;
+  gap: var(--vn-space-4);
+}
+[data-acornary-ui='vnext'] .vn-status-facts dt {
+  color: var(--vn-muted-foreground);
+  font-size: var(--vn-type-metadata);
+}
+[data-acornary-ui='vnext'] .vn-status-facts dd {
+  margin: 0;
+}
+[data-acornary-ui='vnext'] .vn-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--vn-space-16);
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-page-header-title {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--vn-space-12);
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-page-header-title > div {
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-page-header h1,
+[data-acornary-ui='vnext'] .vn-page-header h2 {
+  margin: 0 0 var(--vn-space-4);
+  font-size: var(--vn-type-title);
+  line-height: var(--vn-type-title-line-height);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-page-back {
+  min-height: var(--vn-control-height);
+  flex-shrink: 0;
+}
+[data-acornary-ui='vnext'] .vn-page-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-product-counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: var(--vn-space-12);
+  margin: 0;
+}
+[data-acornary-ui='vnext'] .vn-product-counts dt {
+  color: var(--vn-muted-foreground);
+  font-size: var(--vn-type-metadata);
+}
+[data-acornary-ui='vnext'] .vn-product-counts dd {
+  margin: var(--vn-space-4) 0 0;
+  font-size: var(--vn-type-section);
+  font-weight: 500;
+  font-variant-numeric: var(--vn-type-numeric-variant);
+}
+[data-acornary-ui='vnext'] .vn-item-row {
+  container: vn-item-row / inline-size;
+  min-height: var(--vn-row-min);
+  min-width: 0;
+  padding: var(--vn-space-8) var(--vn-space-16);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-radius-panel);
+  background: var(--vn-surface);
+}
+[data-acornary-ui='vnext'] .vn-item-row[data-selected] {
+  background: var(--vn-selection);
+  border-color: var(--vn-accent);
+}
+[data-acornary-ui='vnext'] .vn-item-row-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: 'identity identity' 'location location' 'facts facts' 'actions actions';
+  align-items: start;
+  column-gap: var(--vn-space-12);
+  min-width: 0;
+}
+/* A list reserves a selection track only when one of its direct rows needs it. */
+[data-acornary-ui='vnext'] .vn-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-item-list:has(> .vn-item-row) {
+  background: var(--vn-surface);
+  border-block: 1px solid var(--vn-border);
+}
+[data-acornary-ui='vnext'] .vn-item-list > .vn-item-row {
+  border: 0;
+  border-radius: 0;
+}
+[data-acornary-ui='vnext'] .vn-item-list > .vn-item-row + .vn-item-row {
+  border-top: 1px solid var(--vn-border);
+}
+[data-acornary-ui='vnext'] .vn-item-row-content[data-selectable='true'],
+[data-acornary-ui='vnext']
+  .vn-item-list:has(> .vn-item-row > .vn-item-row-content[data-selectable='true'])
+  > .vn-item-row
+  > .vn-item-row-content {
+  grid-template-columns: var(--vn-control-height) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: 'selection identity identity' 'location location location' 'facts facts facts' 'actions actions actions';
+}
+[data-acornary-ui='vnext'] .vn-item-row-content > div {
+  min-width: 0;
+  padding-block: var(--vn-space-4);
+}
+[data-acornary-ui='vnext'] .vn-item-row-selection {
+  grid-area: selection;
+}
+[data-acornary-ui='vnext'] .vn-item-row-identity {
+  grid-area: identity;
+}
+[data-acornary-ui='vnext'] .vn-item-row-location {
+  grid-area: location;
+}
+[data-acornary-ui='vnext'] .vn-item-row-quantity {
+  grid-area: quantity;
+}
+[data-acornary-ui='vnext'] .vn-item-row-date {
+  grid-area: date;
+}
+[data-acornary-ui='vnext'] .vn-item-row-identity {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-4);
+}
+[data-acornary-ui='vnext'] .vn-item-row-actions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vn-space-4);
+  align-items: flex-start;
+}
+[data-acornary-ui='vnext'] .vn-item-row-actions > .vn-button {
+  white-space: normal;
+}
+[data-acornary-ui='vnext'] .vn-item-row-extra,
+[data-acornary-ui='vnext'] .vn-item-row-feedback {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vn-space-4) var(--vn-space-16);
+  align-items: baseline;
+}
+[data-acornary-ui='vnext'] .vn-item-row-feedback > * {
+  width: 100%;
+}
+[data-acornary-ui='vnext'] .vn-item-extra-fact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vn-space-4) var(--vn-space-8);
+  align-items: center;
+  overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-item-extra-fact[data-tone='danger'] > span:not(.vn-list-meta) {
+  color: var(--vn-danger);
+}
+[data-acornary-ui='vnext'] .vn-item-extra-fact[data-tone='warning'] > span:not(.vn-list-meta) {
+  color: var(--vn-warning);
+}
+@container vn-item-row (min-width: 800px) {
+  [data-acornary-ui='vnext'] .vn-item-row > .vn-item-row-content {
+    grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 1.3fr) 8rem;
+    grid-template-areas: 'identity location quantity date actions';
+  }
+  [data-acornary-ui='vnext'] .vn-item-row > .vn-item-row-content[data-selectable='true'],
+  [data-acornary-ui='vnext']
+    .vn-item-list:has(> .vn-item-row > .vn-item-row-content[data-selectable='true'])
+    > .vn-item-row
+    > .vn-item-row-content {
+    grid-template-columns:
+      var(--vn-control-height) minmax(0, 1.8fr) minmax(0, 1fr) minmax(0, 0.7fr)
+      minmax(0, 1.3fr) 8rem;
+    grid-template-areas: 'selection identity location quantity date actions';
+  }
+}
+[data-acornary-ui='vnext'] .vn-attention-categories {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-12);
+}
+[data-acornary-ui='vnext'] .vn-attention-categories li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vn-space-12);
+  padding-block: var(--vn-space-12);
+  border-bottom: 1px solid var(--vn-border);
+}
+[data-acornary-ui='vnext'] .vn-attention-categories li:last-child {
+  border-bottom: 0;
+}
+[data-acornary-ui='vnext'] .vn-attention-categories li > div {
+  flex: 1;
+  min-width: 8rem;
+}
+[data-acornary-ui='vnext'] .vn-attention-categories h3 {
+  margin: 0 0 var(--vn-space-4);
+  font-size: var(--vn-body-size);
+  font-weight: 500;
+}
+[data-acornary-ui='vnext'] .vn-attention-count {
+  font-size: var(--vn-type-section);
+  font-weight: 600;
+  font-variant-numeric: var(--vn-type-numeric-variant);
+}
+[data-acornary-ui='vnext'] .vn-batch-ids {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-8);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 20rem;
+  overflow: auto;
+}
+[data-acornary-ui='vnext'] .vn-batch-ids li {
+  display: flex;
+  align-items: center;
+  gap: var(--vn-space-12);
+  justify-content: space-between;
+  padding: var(--vn-space-8);
+  border-bottom: 1px solid var(--vn-border);
+}
+[data-acornary-ui='vnext'] .vn-batch-ids li > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-4);
+  min-width: 0;
+}
+[data-acornary-ui='vnext'] .vn-batch-ids code {
+  font-family: inherit;
+  font-size: var(--vn-type-metadata);
+  overflow-wrap: anywhere;
+}
+[data-acornary-ui='vnext'] .vn-lists-demo-message {
+  padding: var(--vn-space-12);
+  background: var(--vn-background);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-radius-control);
+}
+[data-acornary-ui='vnext'] .vn-lists-demo-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--vn-space-16);
+}
+@container vn-data-table (max-width:767px) {
+  [data-acornary-ui='vnext'] .vn-data-mobile-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--vn-space-12);
+  }
+  [data-acornary-ui='vnext'] .vn-data-narrow-heading {
+    display: inline;
+  }
+  [data-acornary-ui='vnext'] .vn-data-table-body .vn-table-header button,
+  [data-acornary-ui='vnext'] .vn-data-table-body .vn-table-header .vn-choice {
+    display: none;
+  }
+  [data-acornary-ui='vnext'] .vn-data-table-body .vn-table {
+    display: block;
+  }
+  [data-acornary-ui='vnext'] .vn-data-table-body .vn-table-caption,
+  [data-acornary-ui='vnext'] .vn-data-table-body .vn-table-body {
+    display: block;
+  }
+  [data-acornary-ui='vnext'] .vn-data-table-body .vn-table-header {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  [data-acornary-ui='vnext'] .vn-data-table-body .vn-data-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    min-height: var(--vn-row-min-management-touch);
+    padding: var(--vn-space-8);
+    border-top: 1px solid var(--vn-border);
+  }
+  [data-acornary-ui='vnext'] .vn-data-table-body .vn-data-row > .vn-table-cell {
+    width: auto;
+    min-width: 0;
+    border: 0;
+    padding: var(--vn-space-8);
+  }
+  [data-acornary-ui='vnext'] .vn-data-selection {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  [data-acornary-ui='vnext'] .vn-data-primary {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  [data-acornary-ui='vnext'] .vn-data-actions {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  [data-acornary-ui='vnext'] .vn-data-secondary {
+    grid-column: 2/-1;
+    display: none;
+  }
+  [data-acornary-ui='vnext'] .vn-data-row[data-expanded='true'] .vn-data-secondary {
+    display: block;
+  }
+  [data-acornary-ui='vnext'] .vn-data-cell-label {
+    display: block;
+    color: var(--vn-muted-foreground);
+    font-size: var(--vn-type-metadata);
+    margin-bottom: var(--vn-space-4);
+  }
+  [data-acornary-ui='vnext'] .vn-data-primary .vn-data-cell-label {
+    display: none;
+  }
+  [data-acornary-ui='vnext'] .vn-data-expand {
+    display: inline-flex;
+  }
+  [data-acornary-ui='vnext'] .vn-data-details-row {
+    display: block;
+  }
+  [data-acornary-ui='vnext'] .vn-data-details-row > .vn-table-cell {
+    display: block;
+    width: 100%;
+    padding: var(--vn-space-4) var(--vn-space-16) var(--vn-space-16);
+  }
+}
+@container vn-host (max-width:767px) {
+  [data-acornary-ui='vnext'] .vn-item-row {
+    padding: var(--vn-space-8) var(--vn-space-12);
+  }
+  [data-acornary-ui='vnext'] .vn-page-header-actions {
+    width: 100%;
+  }
+}
+@media (pointer: coarse) {
+  [data-acornary-ui='vnext'] .vn-item-row,
+  [data-acornary-ui='vnext'] .vn-data-row {
+    min-height: var(--vn-row-min-management-touch);
+  }
+}
+[data-acornary-ui='vnext'] .vn-product-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: var(--vn-space-16);
+  align-items: start;
+}
+[data-acornary-ui='vnext'] .vn-product-quantities {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-space-4);
+}
+[data-acornary-ui='vnext'] .vn-product-quantities .vn-section-title {
+  margin: 0;
+}
+[data-acornary-ui='vnext'] .vn-batch-selection {
+  gap: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-attention-categories {
+  gap: 0;
+}
+[data-acornary-ui='vnext'] .vn-attention-categories li {
+  padding-block: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-data-table {
+  container: vn-data-table / inline-size;
+}
+[data-acornary-ui='vnext'] .vn-item-row-actions > button,
+[data-acornary-ui='vnext'] .vn-item-row-actions > [data-slot='button'] {
+  min-width: var(--vn-control-height);
+}
+
+[data-acornary-ui='vnext'] .vn-page-header h1,
+[data-acornary-ui='vnext'] .vn-page-header h2 {
+  min-height: var(--vn-control-height);
+  display: flex;
+  align-items: center;
+  margin: 0;
+}
+[data-acornary-ui='vnext'] .vn-page-header-title .vn-list-meta {
+  margin-top: var(--vn-space-4);
+}
+
+[data-acornary-ui='vnext'] .vn-product-summary {
+  gap: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-product-summary h2 {
+  font-size: var(--vn-type-title);
+  line-height: var(--vn-type-title-line-height);
+}
+[data-acornary-ui='vnext'] .vn-product-counts-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vn-space-12);
+  margin-top: var(--vn-space-4);
+}
+[data-acornary-ui='vnext'] .vn-product-counts-inline > span {
+  margin: 0;
+}
+[data-acornary-ui='vnext'] .vn-product-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vn-space-16) var(--vn-space-32);
+}
+[data-acornary-ui='vnext'] .vn-product-quantities {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--vn-space-12);
+}
+[data-acornary-ui='vnext'] .vn-product-facts > .vn-date-fact[data-presentation] {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--vn-space-8);
+}
+
+/* Fact blocks wrap as units; a selection control never reduces the date's width. */
+[data-acornary-ui='vnext'] .vn-item-row-facts {
+  grid-area: facts;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--vn-space-4) var(--vn-space-12);
+}
+[data-acornary-ui='vnext'] .vn-item-row-facts > div {
+  min-width: 0;
+  max-width: 100%;
+}
+[data-acornary-ui='vnext'] .vn-item-row-facts .vn-date-trigger {
+  padding-inline: 0;
+  white-space: nowrap;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+[data-acornary-ui='vnext'] .vn-date-trigger time {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+@container vn-item-row (min-width: 800px) {
+  [data-acornary-ui='vnext'] .vn-item-row-content > .vn-item-row-facts {
+    display: contents;
+  }
+  [data-acornary-ui='vnext'] .vn-item-row-facts > div {
+    padding-block: var(--vn-space-4);
+  }
+}
+[data-acornary-ui='vnext'] .vn-batch-selection .vn-list-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-batch-selection .vn-list-heading > .vn-button {
+  white-space: nowrap;
+  padding-inline: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-batch-selection .vn-split-actions {
+  gap: var(--vn-space-8);
+}
+[data-acornary-ui='vnext'] .vn-batch-selection .vn-split-actions .vn-button {
+  flex: 0 0 auto;
+}

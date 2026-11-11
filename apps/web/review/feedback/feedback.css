@@ -1,0 +1,62 @@
+.review-comments {
+  margin-block: 12px;
+  border-block: 1px solid var(--vn-border);
+  font-size: var(--vn-text-body);
+}
+.review-comments > summary {
+  cursor: pointer;
+  padding-block: 12px;
+  font-weight: 500;
+}
+.review-comments-body {
+  display: grid;
+  gap: 16px;
+  padding-bottom: 16px;
+}
+.review-comments form {
+  display: grid;
+  gap: 8px;
+}
+.review-comments textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+.review-comments-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.review-comments-actions > span,
+.review-comments-hint,
+.review-comments time {
+  color: var(--vn-muted-foreground);
+  font-size: 13px;
+}
+.review-comments p {
+  margin: 0;
+}
+.review-comments-history {
+  max-height: 280px;
+  overflow: auto;
+}
+.review-comments article {
+  padding-block: 12px;
+  border-top: 1px solid var(--vn-border);
+}
+.review-comments article p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin-block: 8px;
+}
+.review-comments-actions input[type='checkbox'] {
+  min-height: auto;
+  accent-color: var(--vn-accent);
+}
+
+.review-comments-resolution {
+  padding: var(--vn-space-8);
+  background: var(--vn-background);
+  border-radius: var(--vn-radius-control);
+}
