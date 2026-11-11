@@ -13,6 +13,7 @@
   },
   "include": [
     "src",
+    "../../../tests/web",
     "vite.config.ts",
     "vite.plugin.config.ts",
     "review",

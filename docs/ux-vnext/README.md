@@ -1,5 +1,7 @@
 # Acornary Frontend vNext — 设计与组件审阅
 
+> **当前执行：** 用户已授权执行 CF 上线方案，完整回归和工作分支 CI 已恢复。L0 检查基础与 L1 首批共享任务已实施，见 [执行记录](cf-launch-execution.md) 和 [草稿 PR #22](https://github.com/Cabbyte/Acornary/pull/22)。真实业务接线、阶段验收和部署尚未完成；下方测试暂停文字为历史记录，不再是当前执行限制。
+
 > **2026-11-11 CF 上线规划：** [完整执行方案](cf-product-launch-plan.md)已形成。用户已确认：CF 独立试用、执行方案时恢复完整验收与 CI、GitHub 审核后发布、保留现有 CF 数据并另建专用验收家庭。当前只更新方案与决策记录，未恢复测试、推送或部署；下方“回归暂停”等记录保留其历史执行范围。
 
 > **2026-11-11 当前工程基线：** `/Users/timli/workspace/Acornary-cf-frontend-vnext`，分支 `codex/cf-frontend-vnext`。新前端在 CF 派生分支继续开发；现有非 CF 应用和旧 CF 入口未切换。见 [本轮报告](phase2-cf-report.md)、[合并基线](cf-integration-baseline.md)、[功能对等清单](feature-parity-matrix.md)、[接口兼容矩阵](backend-compatibility-matrix.md)、[Android 切换设计](android-environment-switching.md)。下方批准记录按历史范围保留，不代表当前工程验收。

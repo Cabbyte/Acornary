@@ -1,6 +1,17 @@
 import { trialToday, trialInstant } from '../trial/clock';
 // Isolated review controller. All reading, filtering and mutation simulation stays here.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useOperationSessions } from '../../src/app-vnext/operation-context';
+import { getFixtureScope } from '../trial/application';
+import {
+  freezeManagementAttempt,
+  isSharedManagementTask,
+  managementTaskView,
+} from '../../src/app-vnext/management-task';
+import {
+  createManagementFixtureSession,
+  executeManagementFixtureAttempt,
+} from './management-task-adapter';
 import type { AttributeFieldEdit } from '../../src/ui/patterns/attribute-fields';
 import type { ItemView } from '../../src/ui/patterns/types';
 import type { TreeViewNode } from '../../src/ui/components/ui/tree-view';
@@ -26,6 +37,7 @@ import { flushReviewStorage, runReviewTransaction } from '../trial/storage';
 import { getTrialScope, isTrial } from '../trial/session';
 import { readManagementState, writeManagementState } from './management-storage';
 import { managementItemFromFacts } from './management-item-projection';
+import { bindingFromFacts, projectLifecycle } from './management-lifecycle-projection';
 import {
   catalogFixtures,
   locationFixtures,
@@ -92,7 +104,8 @@ type LocalState = {
   editId: string | null;
   templateRemoved: string[];
 };
-const persisted = new Map<string, LocalState>();
+const noOperationSubscription = () => () => {};
+const noOperationSnapshot = () => null;
 const specialLimit = (scenario: string) =>
   ['limit', 'over-limit', '100-items', 'selection-limit'].includes(scenario);
 function makeInitial(scenario: string, items: readonly ItemView[]): LocalState {
@@ -216,103 +229,6 @@ function describe(value: unknown): string {
         : JSON.stringify(value);
 }
 
-function bindingFromFacts(facts: DailyItemFacts | undefined): typeof lifecycleBinding {
-  const values: Record<string, unknown> = {};
-  if (facts?.date?.dueOn)
-    values.expiry = {
-      date: facts.date.dueOn,
-      ...(facts.date.dateKind ? { date_kind: facts.date.dateKind } : {}),
-    };
-  if (facts?.item.status.label === '已开封') values.opening = { state: 'OPENED' };
-  else if (facts?.item.status.label === '未开封') values.opening = { state: 'SEALED' };
-  return { ...lifecycleBinding, values };
-}
-function projectLifecycle(
-  facts: DailyItemFacts,
-  binding: typeof lifecycleBinding | null,
-): DailyItemFacts {
-  const values = binding?.values || {};
-  const expiry = atPath(values, 'expiry.date');
-  const dateKind = atPath(values, 'expiry.date_kind');
-  const opening = atPath(values, 'opening.state');
-  const acquired = atPath(values, 'acquisition.acquired_on');
-  const condition = atPath(values, 'condition');
-  const result: DailyItemFacts = {
-    ...facts,
-    item: {
-      ...facts.item,
-      revision: facts.item.revision + 1,
-      facts: facts.item.facts.filter(
-        (f) => f.source?.templateId !== 'lifecycle' && f.kind !== 'opening' && f.kind !== 'expiry',
-      ),
-    },
-  };
-  if (typeof expiry === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(expiry))
-    result.date = {
-      kind: 'EXPIRY',
-      dateKind:
-        dateKind === 'BEST_BEFORE' || dateKind === 'USE_BY' || dateKind === 'ESTIMATED'
-          ? dateKind
-          : null,
-      dueOn: expiry,
-      basis: facts.date?.basis || null,
-      state: expiry < trialToday() ? 'OVERDUE' : expiry === trialToday() ? 'DUE' : 'UPCOMING',
-      source: 'LIFECYCLE',
-      label:
-        dateKind === 'BEST_BEFORE'
-          ? '最佳食用期'
-          : dateKind === 'USE_BY'
-            ? '使用期限'
-            : dateKind === 'ESTIMATED'
-              ? '估计日期'
-              : '标注日期',
-    };
-  else if (!facts.date?.source || facts.date.source === 'LIFECYCLE') result.date = undefined;
-  if (opening === 'OPENED' || opening === 'SEALED') {
-    const label = opening === 'OPENED' ? '已开封' : '未开封';
-    result.item.facts.push({
-      kind: 'opening',
-      label: '开封',
-      value: label,
-      priority: 2,
-      source: {
-        templateId: 'lifecycle',
-        version: binding!.template_version,
-        path: 'opening.state',
-      },
-    });
-    if (!['已用完', '已处置', '已拆包'].includes(result.item.status.label))
-      result.item.status = { label, tone: 'neutral' };
-  } else if (['已开封', '未开封'].includes(result.item.status.label))
-    result.item.status = { label: '开封状态未记录', tone: 'neutral' };
-  if (typeof acquired === 'string')
-    result.item.facts.push({
-      kind: 'custom',
-      label: '取得日期',
-      value: acquired,
-      priority: 4,
-      source: {
-        templateId: 'lifecycle',
-        version: binding!.template_version,
-        path: 'acquisition.acquired_on',
-      },
-    });
-  if (typeof condition === 'string')
-    result.item.facts.push({
-      kind: 'condition',
-      label: '成色',
-      value:
-        (
-          { NEW: '全新', GOOD: '良好', WORN: '磨损', DAMAGED: '损坏', BROKEN: '故障' } as Record<
-            string,
-            string
-          >
-        )[condition] || condition,
-      priority: 3,
-      source: { templateId: 'lifecycle', version: binding!.template_version, path: 'condition' },
-    });
-  return result;
-}
 function hasAncestor(
   rows: readonly ManagedLocation[],
   candidateId: string,
@@ -350,7 +266,7 @@ export function ManagementJourney({
   const load = (): LocalState => {
     const initial = makeInitial(scenario, availableItems);
     try {
-      const stored = isTrial() ? readManagementState<LocalState>() : persisted.get(scopeKey);
+      const stored = readManagementState<LocalState>(scopeKey);
       if (!stored) return initial;
       const recover = (task: ManagementTask | null) => {
         if (task && ['submitting', 'networkUnknown'].includes(task.phase))
@@ -384,7 +300,40 @@ export function ManagementJourney({
     }
   };
   const [storedLocal, setLocal] = useState(() => ({ key: scopeKey, value: load() }));
-  const local = storedLocal.key === scopeKey ? storedLocal.value : load();
+  const rawLocal = storedLocal.key === scopeKey ? storedLocal.value : load();
+  const sessions = useOperationSessions();
+  const sessionFor = (task: ManagementTask) =>
+    sessions.get(getFixtureScope(), task.taskId!, () =>
+      createManagementFixtureSession({
+        task,
+        bindings: Object.fromEntries(
+          task.targetIds.map((id) => [
+            id,
+            rawLocal.bindings[id] === undefined
+              ? bindingFromFacts(world.items.find((row) => row.item.id === id))
+              : rawLocal.bindings[id],
+          ]),
+        ),
+      }),
+    );
+  const activeTask = rawLocal.task || rawLocal.retainedTask;
+  const operation =
+    activeTask && isSharedManagementTask(activeTask) && activeTask.taskId
+      ? sessionFor(activeTask)
+      : null;
+  const operationRecord = useSyncExternalStore(
+    operation?.subscribe || noOperationSubscription,
+    operation?.getSnapshot || noOperationSnapshot,
+  );
+  const projectedTask = operationRecord ? managementTaskView(operationRecord) : null;
+  const local = projectedTask
+    ? {
+        ...rawLocal,
+        task: rawLocal.task ? projectedTask : null,
+        retainedTask:
+          rawLocal.retainedTask && !rawLocal.task ? projectedTask : rawLocal.retainedTask,
+      }
+    : rawLocal;
   const localRef = useRef(local);
   localRef.current = local;
   const inFlight = useRef(false);
@@ -398,7 +347,8 @@ export function ManagementJourney({
       )
         return false;
     }
-    let next = updater(localRef.current);
+    const previous = localRef.current;
+    let next = updater(previous);
     if (next.editId)
       next = {
         ...next,
@@ -412,8 +362,47 @@ export function ManagementJourney({
         },
       };
     try {
-      writeManagementState(next);
-      persisted.set(scopeKey, next);
+      if (
+        next.task &&
+        next.task !== previous.task &&
+        isSharedManagementTask(next.task) &&
+        next.task.taskId
+      ) {
+        const session = sessionFor(next.task);
+        const record = session.getSnapshot();
+        // View phase and messages are projected from the root session; only changed
+        // reviewed inputs replace its draft. Frozen uncertain requests reject edits.
+        const input = (task: ManagementTask) => ({
+          ...task,
+          phase: 'draft',
+          error: undefined,
+          receipt: undefined,
+        });
+        if (JSON.stringify(input(next.task)) !== JSON.stringify(input(record.draft.task)))
+          void session.update({
+            draft: {
+              ...record.draft,
+              task: next.task,
+              ...(record.attemptStatus === 'rejected' ? { requestKey: crypto.randomUUID() } : {}),
+            },
+            state: 'draft',
+            error: next.task.error || '',
+          });
+        else if (
+          ![
+            'submitting',
+            'networkUnknown',
+            'success',
+            'revisionConflict',
+            'sessionChanged',
+          ].includes(record.state)
+        )
+          void session.update({
+            reviewing: next.task.phase === 'review',
+            error: next.task.error || '',
+          });
+      }
+      writeManagementState(next, scopeKey);
     } catch (error) {
       const message = error instanceof Error ? error.message : '草稿持久化失败，当前输入仍保留。';
       next = { ...next, storageError: message, feedback: message };
@@ -428,6 +417,12 @@ export function ManagementJourney({
   useEffect(() => {
     if (storedLocal.key !== scopeKey) setLocal({ key: scopeKey, value: load() });
   }, [scopeKey]);
+  useEffect(() => {
+    if (operationRecord && ['success', 'networkUnknown'].includes(operationRecord.state)) {
+      const saved = readManagementState<LocalState>(scopeKey);
+      if (saved) setLocal({ key: scopeKey, value: saved });
+    }
+  }, [operationRecord?.state, operationRecord?.taskId]);
   const state: ManagementModel['state'] = local.recovered
     ? 'ready'
     : scenario === 'loading'
@@ -1253,6 +1248,8 @@ export function ManagementJourney({
     return null;
   }
   function onChange(key: string, value: unknown) {
+    if (operation?.getSnapshot().state === 'revisionConflict' && !key.startsWith('conflict.'))
+      return;
     if (localRef.current.task?.phase === 'submitting' || localRef.current.task?.phase === 'unknown')
       return;
     if (key.startsWith('task.')) {
@@ -1322,11 +1319,31 @@ export function ManagementJourney({
       return;
     }
     if (key === 'nameMode' || key === 'nameValue') {
-      set((current) => ({
-        ...current,
-        nameDraft: { ...current.nameDraft, [key === 'nameMode' ? 'mode' : 'value']: value },
-        task: null,
-      }));
+      set((current) => {
+        const nameDraft = { ...current.nameDraft, [key === 'nameMode' ? 'mode' : 'value']: value };
+        const active =
+          operation && operation.getSnapshot().state !== 'success' ? current.task : null;
+        const task =
+          active?.kind === 'item-save' && active.targetIds[0] === itemId && active.draft
+            ? {
+                ...active,
+                phase: 'draft' as const,
+                draft: { ...active.draft, name: nameDraft },
+                impact: [
+                  {
+                    label: '此件显示名称',
+                    before: item?.name || '未知',
+                    after:
+                      nameDraft.mode === 'clear'
+                        ? dynamicCatalogs.find((row) => row.id === item?.skuId)?.name ||
+                          '商品名称未读取'
+                        : nameDraft.value,
+                  },
+                ],
+              }
+            : active;
+        return { ...current, nameDraft, task };
+      });
       return;
     }
     set((current) => ({
@@ -1342,27 +1359,74 @@ export function ManagementJourney({
     if (
       edit.kind !== 'value' ||
       !itemBinding ||
+      operation?.getSnapshot().state === 'revisionConflict' ||
       localRef.current.task?.phase === 'unknown' ||
       localRef.current.task?.phase === 'submitting'
     )
       return;
-    set((current) => ({
-      ...current,
-      attributeDraft: {
+    set((current) => {
+      const attributeDraft = {
         ...itemBinding,
         values: patchAt(
           itemBinding.values,
           edit.path,
           edit.value === null ? undefined : edit.value,
         ),
-      },
-      changedAttributes: [...new Set([...current.changedAttributes, edit.path])],
-      task: null,
-    }));
+      };
+      const changedAttributes = [...new Set([...current.changedAttributes, edit.path])];
+      const active = operation && operation.getSnapshot().state !== 'success' ? current.task : null;
+      const task =
+        active?.kind === 'attribute-save' && active.targetIds[0] === itemId && active.draft
+          ? {
+              ...active,
+              phase: 'draft' as const,
+              draft: { ...active.draft, binding: attributeDraft, changedAttributes },
+              impact: changedAttributes.map((path) => ({
+                label: path,
+                before: describe(
+                  atPath(operation!.getSnapshot().original.task.draft?.binding?.values || {}, path),
+                ),
+                after: describe(atPath(attributeDraft.values, path)),
+              })),
+            }
+          : active;
+      return { ...current, attributeDraft, changedAttributes, task };
+    });
   }
   async function onIntent(kind: string, id?: string) {
     if (inFlight.current || localRef.current.task?.phase === 'submitting') return;
+    if (
+      operation &&
+      ['networkUnknown', 'sessionChanged', 'revisionConflict'].includes(
+        operation.getSnapshot().state,
+      ) &&
+      [
+        'refresh-selection',
+        'bulk-only-eligible',
+        'review-task',
+        'approve-task',
+        'revise-task',
+      ].includes(kind)
+    ) {
+      set((current) => ({
+        ...current,
+        feedback: '请先恢复或核对原任务；原输入和选择版本已保留。',
+      }));
+      return;
+    }
     if (kind === 'approve-task' && !available) return;
+    if (kind === 'recover-task' && operation) {
+      await operation.recover((attempt) =>
+        executeManagementFixtureAttempt(
+          operation.getSnapshot().scope,
+          attempt,
+          scopeKey,
+          scenario,
+          true,
+        ),
+      );
+      return;
+    }
     if (kind === 'recover-task') {
       const pending = localRef.current.task;
       if (!pending?.taskId) return;
@@ -1429,6 +1493,7 @@ export function ManagementJourney({
       return;
     }
     if (kind === 'close-task') {
+      if (operation && !(await operation.retain())) return;
       set((current) => ({
         ...current,
         retainedTask: current.task?.phase === 'receipt' ? null : current.task,
@@ -1540,6 +1605,67 @@ export function ManagementJourney({
       set((current) => ({ ...current, feedback: '已重读隔离预览中的最新版本，请逐字段核对。' }));
       return;
     }
+    if (kind === 'resolve-conflict' && operation?.getSnapshot().state === 'revisionConflict') {
+      const record = operation.getSnapshot();
+      const snapshots = record.draft.task.targetIds.map((id) => items.find((row) => row.id === id));
+      if (snapshots.some((row) => !row)) return;
+      const snapshot = snapshots.map((row) => ({
+        id: row!.id,
+        name: row!.name,
+        path: row!.location.path.join(' › ') || '位置未记录',
+        revision: row!.revision,
+      }));
+      const task = { ...record.draft.task, snapshot, phase: 'draft' as const, error: undefined };
+      task.impact = impactFor(task);
+      if (task.kind === 'item-save')
+        task.impact = [
+          {
+            label: '此件显示名称',
+            before: snapshots[0]!.name,
+            after:
+              task.draft?.name.mode === 'clear'
+                ? dynamicCatalogs.find((row) => row.id === snapshots[0]!.skuId)?.name ||
+                  '商品名称未读取'
+                : task.draft?.name.value || '',
+          },
+        ];
+      const bindings = Object.fromEntries(
+        task.targetIds.map((id) => [
+          id,
+          local.bindings[id] === undefined
+            ? bindingFromFacts(world.items.find((row) => row.item.id === id))
+            : local.bindings[id],
+        ]),
+      );
+      const draft = { ...record.draft, task, bindings, requestKey: crypto.randomUUID() };
+      const original = {
+        ...draft,
+        task: {
+          ...task,
+          draft: task.draft
+            ? {
+                ...task.draft,
+                name: { mode: 'unchanged' as const, value: snapshots[0]!.name },
+                binding: bindings[task.targetIds[0]],
+                changedAttributes: [],
+              }
+            : undefined,
+        },
+      };
+      await operation.reconcile(
+        draft,
+        Object.fromEntries(snapshot.map((row) => [row.id, row.revision])),
+        original,
+      );
+      set((current) => ({
+        ...current,
+        task: managementTaskView(operation.getSnapshot()),
+        conflict: null,
+        recovered: true,
+        feedback: '已读取最新版本并保留输入，请再次核对后提交。',
+      }));
+      return;
+    }
     if (kind === 'resolve-conflict') {
       set((current) => ({
         ...current,
@@ -1558,6 +1684,13 @@ export function ManagementJourney({
       return;
     }
     if (kind !== 'submit-task') {
+      if (operation && operation.getSnapshot().state !== 'success') {
+        set((current) => ({
+          ...current,
+          feedback: '请先继续、核对或完成保留的管理任务，未替换原任务。',
+        }));
+        return;
+      }
       if (localRef.current.task?.phase === 'unknown') {
         set((current) => ({ ...current, feedback: '请先保留或核对原任务，再开始另一项操作。' }));
         return;
@@ -1577,6 +1710,15 @@ export function ManagementJourney({
       return;
     const error = validate(task);
     if (error) {
+      if (
+        isSharedManagementTask(task) &&
+        task.snapshot.some(
+          (row) => items.find((item) => item.id === row.id)?.revision !== row.revision,
+        )
+      ) {
+        await sessionFor(task).update({ state: 'revisionConflict', error });
+        return;
+      }
       set((current) => ({ ...current, task: { ...task, error } }));
       return;
     }
@@ -1588,7 +1730,8 @@ export function ManagementJourney({
       scenario === 'conflict' &&
       !local.conflict &&
       !local.recovered &&
-      task.kind === 'item-save'
+      task.kind === 'item-save' &&
+      !isSharedManagementTask(task)
     ) {
       set((current) => ({
         ...current,
@@ -1613,9 +1756,28 @@ export function ManagementJourney({
       }));
       return;
     }
+    if (isSharedManagementTask(task)) {
+      const session = sessionFor(task);
+      try {
+        if (scenario === 'conflict' && !local.recovered && task.kind === 'item-save') {
+          await session.update({
+            state: 'revisionConflict',
+            error: '隔离冲突样例：请核对当前资料后保留输入。',
+          });
+          return;
+        }
+        const record = session.getSnapshot();
+        const attempt = record.attempt || freezeManagementAttempt(record.draft, record.revisions);
+        await session.submit(attempt, (frozen) =>
+          executeManagementFixtureAttempt(record.scope, frozen, scopeKey, scenario),
+        );
+      } catch (error) {
+        await session.update({ state: 'validationError', error: String(error) });
+      }
+      return;
+    }
     const v = withValues(task);
     const targetItemId = task.targetIds[0];
-    const frozenName = task.draft?.name || local.nameDraft;
     const frozenBinding = task.draft?.binding === undefined ? itemBinding : task.draft.binding;
     let receipt = '隔离样例已更新。正式家庭未发生写入。';
     inFlight.current = true;
@@ -1644,43 +1806,7 @@ export function ManagementJourney({
           throw Error('记录版本已变化；整个操作未执行，请保留输入重新核对。');
       }
       runReviewTransaction(() => {
-        if (task.kind === 'item-save') {
-          const name =
-            frozenName.mode === 'clear'
-              ? dynamicCatalogs.find(
-                  (row) =>
-                    row.id === world.items.find((row) => row.item.id === targetItemId)?.item.skuId,
-                )?.name || world.items.find((row) => row.item.id === targetItemId)!.item.name
-              : frozenName.value;
-          patchWorld(task.targetIds, (row) => ({ ...row, name }));
-          set((current) => ({
-            ...current,
-            explicitNames: {
-              ...current.explicitNames,
-              [task.targetIds[0]]: frozenName.mode !== 'clear',
-            },
-            itemDrafts: {
-              ...current.itemDrafts,
-              [targetItemId]: {
-                nameDraft: { mode: 'unchanged', value: name },
-                attributeDraft: current.itemDrafts[targetItemId]?.attributeDraft || null,
-                changedAttributes: [],
-              },
-            },
-            nameDraft:
-              current.editId === targetItemId
-                ? { mode: 'unchanged', value: name }
-                : current.nameDraft,
-          }));
-        } else if (task.kind === 'item-move' || task.kind === 'bulk-move') {
-          const location = local.locations.find((row) => row.id === v.destination);
-          patchWorld(task.targetIds, (row) => ({
-            ...row,
-            location: location
-              ? { id: location.id, path: [...location.path], label: location.name }
-              : { id: null, path: [], label: '位置未记录' },
-          }));
-        } else if (task.kind === 'void' || task.kind === 'restore') {
+        if (task.kind === 'void' || task.kind === 'restore') {
           patchWorld(task.targetIds, (row) => ({
             ...row,
             recordState: task.kind === 'void' ? 'VOID' : 'VALID',
@@ -1690,64 +1816,6 @@ export function ManagementJourney({
           patchWorld(task.targetIds, (row) => ({
             ...row,
             status: { label: '已处置', tone: 'neutral' },
-          }));
-        } else if (task.kind === 'bulk-consume') {
-          const changed = world.items
-            .filter((row) => task.targetIds.includes(row.item.id))
-            .map((row) => ({
-              ...row,
-              quantity: { ...row.quantity, value: '0' },
-              item: {
-                ...row.item,
-                revision: row.item.revision + 1,
-                status: { label: '已用完', tone: 'neutral' as const },
-              },
-            }));
-          if (changed.length !== task.targetIds.length)
-            throw Error('部分对象不可访问，全部未执行。');
-          updateReviewItems(changed, {
-            requestKey: local.task?.taskId,
-            operationLabel: local.task?.title,
-            reason: local.task
-              ? withValues(local.task).reason || withValues(local.task).note || '隔离预览操作'
-              : '隔离预览操作',
-            eventType:
-              local.task?.kind === 'history-correct' ||
-              local.task?.kind === 'reassign' ||
-              local.task?.kind === 'restore'
-                ? 'ITEM_CORRECTED'
-                : local.task?.kind.includes('move')
-                  ? 'ITEM_MOVED'
-                  : 'ITEM_UPDATED',
-          });
-        } else if (task.kind === 'attribute-save' || task.kind === 'bulk-lifecycle') {
-          const bindings = { ...local.bindings };
-          for (const id of task.targetIds) {
-            const current = world.items.find((row) => row.item.id === id)!;
-            const base = bindings[id] || bindingFromFacts(current);
-            bindings[id] =
-              task.kind === 'attribute-save'
-                ? structuredClone(frozenBinding)
-                : {
-                    ...base,
-                    values: patchAt(
-                      base.values,
-                      'acquisition.acquired_on',
-                      v.mode === 'clear' ? undefined : v.date,
-                    ),
-                  };
-          }
-          updateReviewItems(
-            world.items
-              .filter((row) => task.targetIds.includes(row.item.id))
-              .map((row) => projectLifecycle(row, bindings[row.item.id])),
-            { requestKey: task.taskId, operationLabel: task.title, reason: '隔离模板属性修改' },
-          );
-          set((current) => ({
-            ...current,
-            bindings,
-            changedAttributes: [],
-            attributeDraft: bindings[itemId] || null,
           }));
         } else if (
           task.kind === 'template-upgrade' ||
@@ -2098,8 +2166,9 @@ export function ManagementJourney({
       inFlight.current = false;
     }
   }
-  const go = (next: string) => {
+  const go = async (next: string) => {
     if (inFlight.current || localRef.current.task?.phase === 'submitting') return;
+    if (operation && !(await operation.retain())) return;
     if (!set((current) => current)) return;
     navigate(next);
   };
@@ -2119,6 +2188,36 @@ export function ManagementJourney({
   return (
     <>
       <Page {...props} />
+      {operationRecord?.state === 'revisionConflict' && (
+        <section className="management-card" aria-label="管理任务版本冲突">
+          <h2>版本已变化，原输入已保留</h2>
+          <p>{operationRecord.error}</p>
+          <ul>
+            {operationRecord.draft.task.snapshot.map((before) => {
+              const current = items.find((row) => row.id === before.id);
+              return (
+                <li key={before.id}>
+                  {before.id} · 原版本 {before.revision} → 当前 {current?.revision ?? '不可读取'}
+                  {current
+                    ? ` · ${current.name} · ${current.location.path.join(' › ') || '位置未记录'}`
+                    : ''}
+                </li>
+              );
+            })}
+          </ul>
+          <button
+            type="button"
+            className="vn-button"
+            disabled={
+              !available ||
+              operationRecord.targetIds.some((id) => !items.some((row) => row.id === id))
+            }
+            onClick={() => void onIntent('resolve-conflict')}
+          >
+            保留输入并按当前版本重新核对
+          </button>
+        </section>
+      )}
       {local.storageError && (
         <div role="alert" className="management-card">
           <p>{local.storageError} 当前输入仍保留；保存前不能提交。</p>

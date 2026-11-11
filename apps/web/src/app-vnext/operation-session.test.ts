@@ -69,6 +69,47 @@ describe('root operation session', () => {
     expect(sends).toBe(0);
     expect(saved.taskId).toBe('consume:other');
   });
+  it('adopts a reread before a request but never replaces an uncertain attempt', async () => {
+    const session = new OperationSession(
+      initial(),
+      { load: () => null, save: () => {} },
+      () => scope,
+      valid,
+    );
+    expect(await session.refreshDraft({ amount: '2' }, { 'item:1': 4 }, { amount: '3' })).toBe(
+      true,
+    );
+    expect(session.getSnapshot().revisions['item:1']).toBe(4);
+    expect(session.getSnapshot().draft.amount).toBe('2');
+    await session.submit(attempt, async () => {
+      throw Error('lost response');
+    });
+    expect(await session.refreshDraft({ amount: '9' }, { 'item:1': 5 }, { amount: '9' })).toBe(
+      false,
+    );
+    expect(session.getSnapshot().attempt).toEqual(attempt);
+    expect(session.getSnapshot().revisions['item:1']).toBe(4);
+  });
+
+  it('keeps the original baseline if saving a reread fails', async () => {
+    const session = new OperationSession(
+      initial(),
+      {
+        load: () => null,
+        save: () => {
+          throw Error('disk full');
+        },
+      },
+      () => scope,
+      valid,
+    );
+    expect(await session.refreshDraft({ amount: '2' }, { 'item:1': 4 }, { amount: '3' })).toBe(
+      false,
+    );
+    expect(session.getSnapshot().revisions['item:1']).toBe(1);
+    expect(session.getSnapshot().draft.amount).toBe('1');
+  });
+
   it('does not send when durable persistence fails', async () => {
     let sends = 0;
     const session = new OperationSession(

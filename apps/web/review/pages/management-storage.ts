@@ -4,6 +4,8 @@ import { reviewStorage } from '../trial/storage';
 import { getTrialScope, isTrial } from '../trial/session';
 
 export const managementStorageKey = 'management-state-v1';
+const reviewStates = new Map<string, unknown>();
+let currentReviewKey = 'default';
 export interface ManagementEnvelope<T> {
   schemaVersion: 1;
   dataset: 'trial-rc1';
@@ -12,8 +14,8 @@ export interface ManagementEnvelope<T> {
   generation: number;
   state: T;
 }
-export function readManagementState<T>(): T | null {
-  if (!isTrial()) return null;
+export function readManagementState<T>(reviewKey?: string): T | null {
+  if (!isTrial()) return (reviewStates.get(reviewKey ?? currentReviewKey) as T) ?? null;
   const raw = reviewStorage.getItem(managementStorageKey);
   if (!raw) return null;
   const envelope = JSON.parse(raw) as ManagementEnvelope<T>;
@@ -24,8 +26,12 @@ export function readManagementState<T>(): T | null {
     return null;
   return envelope.state;
 }
-export function writeManagementState<T>(state: T) {
-  if (!isTrial()) return;
+export function writeManagementState<T>(state: T, reviewKey = currentReviewKey) {
+  if (!isTrial()) {
+    currentReviewKey = reviewKey;
+    reviewStates.set(reviewKey, structuredClone(state));
+    return;
+  }
   const existing = reviewStorage.getItem(managementStorageKey);
   if (existing) {
     const stored = JSON.parse(existing);
@@ -50,6 +56,32 @@ export function getManagementCatalogs(): readonly ManagedCatalog[] {
   } catch {
     return [];
   }
+}
+/** Private fixture mutation used inside the caller's review transaction. */
+export function updateManagementCatalogRevision(
+  id: string,
+  expectedRevision: number,
+  afterRevision: number,
+) {
+  const state = readManagementState<{ catalogs: ManagedCatalog[] }>();
+  const catalog = state?.catalogs.find((row) => row.id === id && row.kind === 'SKU');
+  if (!catalog) throw Object.assign(Error('商品资料未读取，未推断版本。'), { code: 'NOT_FOUND' });
+  if (
+    !Number.isInteger(expectedRevision) ||
+    expectedRevision < 1 ||
+    catalog.revision !== expectedRevision
+  )
+    throw Object.assign(Error('商品资料版本已变化，整个操作未执行。'), {
+      code: 'REVISION_CONFLICT',
+    });
+  if (!Number.isInteger(afterRevision) || afterRevision !== expectedRevision + 1)
+    throw Object.assign(Error('回执版本无效，未更新商品资料。'), { code: 'STATE_CONFLICT' });
+  writeManagementState({
+    ...state,
+    catalogs: state!.catalogs.map((row) =>
+      row.id === id ? { ...row, revision: afterRevision } : row,
+    ),
+  });
 }
 /** Root recovery surface may link directly to the original management route. */
 export function getManagementTask(): ManagementTask | null {

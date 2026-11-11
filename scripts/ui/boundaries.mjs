@@ -82,7 +82,17 @@ for (const file of candidateFiles) {
       '../features/writes/note-command',
     ]);
     for (const [, name] of content.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
-      if (name.includes('features/') && !reusablePureModules.has(name))
+      // Shared management presentation contract: type-only dependency, never a
+      // runtime page/controller import. Keep the narrow exception explicit.
+      const managementTypes =
+        name === '../features/management/pages/models' &&
+        /^import type \{[^}]*\} from ['"]\.\.\/features\/management\/pages\/models['"];$/m.test(
+          content,
+        ) &&
+        !/import\s+(?!type\b)[^;]*from ['"]\.\.\/features\/management\/pages\/models['"]/.test(
+          content,
+        );
+      if (name.includes('features/') && !reusablePureModules.has(name) && !managementTypes)
         throw Error(`Unreviewed application dependency: ${file} -> ${name}`);
     }
   }

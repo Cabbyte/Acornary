@@ -1,3 +1,4 @@
+import { dailyJournalProjection } from '../pages/daily-extras-journal';
 import { getTrialScope, isTrial, setTrialNavigationGuard } from './session';
 interface Envelope {
   version: 1;
@@ -189,7 +190,15 @@ export function trialSubmitting() {
     const key = reviewStorage.key(i)!;
     try {
       if (
-        includesState(JSON.parse(reviewStorage.getItem(key) || 'null'), ['submitting', 'sending'])
+        includesState(
+          dailyJournalProjection(
+            key,
+            JSON.parse(reviewStorage.getItem(key) || 'null'),
+            (candidate) => reviewStorage.getItem(candidate),
+            getTrialScope(),
+          ),
+          ['submitting', 'sending'],
+        )
       )
         return true;
     } catch {}
@@ -203,10 +212,15 @@ export function pendingTrialTasks() {
     const key = reviewStorage.key(i)!;
     try {
       if (
-        includesState(JSON.parse(reviewStorage.getItem(key) || 'null'), [
-          'networkUnknown',
-          'unknown',
-        ])
+        includesState(
+          dailyJournalProjection(
+            key,
+            JSON.parse(reviewStorage.getItem(key) || 'null'),
+            (candidate) => reviewStorage.getItem(candidate),
+            getTrialScope(),
+          ),
+          ['networkUnknown', 'unknown'],
+        )
       ) {
         const route = reviewStorage.getItem('__route:' + key);
         if (route) tasks.push({ key, route });

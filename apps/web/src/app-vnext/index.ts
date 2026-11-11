@@ -5,3 +5,5 @@ export * from './platform';
 export * from './dispatch';
 export * from './operation-session';
 export * from './operation-context';
+export * from './daily-tasks';
+export * from './management-task';

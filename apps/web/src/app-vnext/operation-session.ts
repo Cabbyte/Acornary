@@ -288,6 +288,41 @@ export class OperationSession<Draft, Attempt, Result> {
     if (!this.record.attempt) return;
     await this.dispatch(this.record.attempt, execute);
   }
+  /** Explicit read baseline adoption before any request has been prepared/sent.
+   * Conflicts and uncertain requests must use reconcile/recover instead. */
+  async refreshDraft(draft: Draft, revisions: Record<string, number>, currentOriginal: Draft) {
+    if (
+      this.busy ||
+      !this.durable ||
+      this.record.attempt ||
+      !['draft', 'validationError'].includes(this.record.state)
+    )
+      return false;
+    this.busy = true;
+    try {
+      this.assertScope();
+      const next = {
+        ...this.record,
+        draft: structuredClone(draft),
+        original: structuredClone(currentOriginal),
+        revisions: structuredClone(revisions),
+        state: 'draft' as const,
+        reviewing: false,
+        approval: null,
+        error: '',
+      };
+      await this.save(next);
+      this.assertScope();
+      this.publish(next);
+      this.dirty = false;
+      return true;
+    } catch (error) {
+      this.publish({ ...this.record, error: String(error) });
+      return false;
+    } finally {
+      this.busy = false;
+    }
+  }
   /** Called only after authoritative re-read and explicit user reconciliation. */
   async reconcile(draft: Draft, revisions: Record<string, number>, currentOriginal: Draft) {
     if (this.busy || this.record.state !== 'revisionConflict') return;

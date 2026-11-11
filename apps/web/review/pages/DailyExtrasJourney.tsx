@@ -7,27 +7,14 @@ import {
   type DailyExtraSurface,
   type DailyExtraReadState,
   type ExtraMutation,
-  type OpeningDraft,
-  type ExtraNote,
 } from '../../src/features/daily/pages/daily-extras';
 import { Button } from '../../src/ui/components/ui/button';
 import { RadioGroup } from '../../src/ui/components/ui/radio-group';
 import { InlineNotice } from '../../src/ui/components/ui/inline-notice';
-import type { NoteDraft } from '../../src/ui/patterns/note-editor';
-import type { PendingAttachment } from '../../src/ui/patterns/attachment-field';
 import type { ScanResult, ScanCandidate } from '../../src/ui/patterns/scan-input';
-import type { PrintPagePresentation } from '../../src/ui/patterns/label-print-panel';
-import type {
-  ActionAvailability,
-  AttachmentView,
-  DateFactPresentation,
-  NoteView,
-  OperationState,
-} from '../../src/ui/patterns/types';
-import { isPlainDate } from '../../src/ui/components/ui/calendar';
+import type { ActionAvailability, AttachmentView } from '../../src/ui/patterns/types';
 import { itemLabelURL, expandItemId } from '../../src/lib/labels';
-import type { DailyItemFacts } from '../../src/features/daily/pages/models';
-import { notes as initialNotes, firstItemId, history as baseHistory } from './fixtures';
+import { firstItemId, history as baseHistory } from './fixtures';
 import {
   useReviewWorld,
   updateReviewItems,
@@ -37,471 +24,44 @@ import {
 import { reviewStorage, flushReviewStorage, runReviewTransaction } from '../trial/storage';
 import { getTrialScope, subscribeTrialScope, isTrial } from '../trial/session';
 
-const available: ActionAvailability = { kind: 'available' };
-const blankDate: DateFactPresentation = {
-  kind: 'EXPIRY',
-  dateKind: null,
-  dueOn: null,
-  basis: null,
-  state: 'UNKNOWN',
-  source: 'LIFECYCLE',
-  label: '包装日期',
-};
-const dateKindLabels = { USE_BY: '限用日期', BEST_BEFORE: '最佳食用期', ESTIMATED: '估计日期' };
-const dateLabels: Record<DateFactPresentation['kind'], string> = {
-  EXPIRY: '包装日期',
-  WARRANTY_END: '保修结束',
-  SERVICE_DUE: '保养日期',
-  RETURN_BY: '归还期限',
-  RENEWAL: '续期日期',
-  REORDER_BY: '补货日期',
-};
-const uniqueId = (prefix: string) => `${prefix}_${crypto.randomUUID()}`;
-const dateSummary = (fact: DateFactPresentation) =>
-  `${fact.kind === 'EXPIRY' ? (fact.dateKind ? dateKindLabels[fact.dateKind] : '类型未记录') : dateLabels[fact.kind]} · ${fact.dueOn || '日期未记录'} · ${fact.basis || '依据未记录'}`;
-type EditSurface = 'opening' | 'dates' | 'notes';
-interface NoteRecord extends ExtraNote {
-  body?: string;
-  revision: number;
-}
-interface Transfer {
-  scope: 'item' | 'product';
-  id: string;
-  localId: string;
-  name: string;
-  size: number;
-  mime: string;
-  sampleId?: string;
-  state: 'uploaded' | 'unknown';
-}
-interface RequestSnapshot {
-  key: string;
-  accountId?: string;
-  householdId?: string;
-  revision: number;
-  targetRevision: number;
-  summary: string[];
-  opening?: OpeningDraft;
-  date?: DateFactPresentation;
-  dateIndex?: number;
-  completing?: boolean;
-  completedOn?: string;
-  note?: NoteDraft;
-  noteId?: string;
-  scope?: 'item' | 'product';
-}
-interface MutationState {
-  baseRevision?: number;
-  open: boolean;
-  state: OperationState;
-  error: string;
-  receipt: string;
-  request: RequestSnapshot | null;
-  resolved?: boolean;
-  choice?: 'current' | 'input';
-}
-interface ReviewState {
-  opening: OpeningDraft;
-  openingState: string;
-  openedAt: string | null;
-  facts: DateFactPresentation[];
-  dateDraft: DateFactPresentation;
-  dateIndex: number;
-  month: string;
-  completing: boolean;
-  completedOn: string;
-  notes: NoteRecord[];
-  noteDrafts: Record<string, NoteDraft>;
-  selectedNotes: Record<'item' | 'product', string>;
-  scope: 'item' | 'product';
-  noteMode: 'edit' | 'preview';
-  mutations: Record<EditSurface, MutationState>;
-  attachments: AttachmentView[];
-  attachmentNames: Record<string, string>;
-  attachmentLocalIds: Record<string, string>;
-  pending: Array<PendingAttachment & { scope?: 'item' | 'product'; sampleId?: string }>;
-  transfers: Transfer[];
-  attachmentMessage: string;
-  scanText: string;
-  scanResult: ScanResult;
-  scanSelected: string | null;
-  cameraMessage: string;
-  selectedLabels: string[];
-  pages: PrintPagePresentation[];
-  queue: string[];
-  paper: string;
-  connection: 'disconnected' | 'connected';
-  printFailure: boolean;
-}
-const noteStoreKey = 'acornary-review-extra-notes-v1';
-let noteStore: Record<string, NoteView[]> | null = null;
-let noteStoreScope = '';
-let noteStoreRaw: string | null = null;
-const scopeKey = () => {
-  const scope = getTrialScope();
-  return `${scope.accountId}:${scope.householdId}:${scope.generation}`;
-};
-const noteListeners = new Set<() => void>();
-function readNoteStore() {
-  const currentScope = scopeKey();
-  let raw: string | null = null;
-  try {
-    raw = reviewStorage.getItem(noteStoreKey);
-  } catch {
-    /* reading initial examples remains possible */
-  }
-  if (!noteStore || noteStoreScope !== currentScope || noteStoreRaw !== raw) {
-    try {
-      noteStore = JSON.parse(raw || '{}');
-    } catch {
-      noteStore = {};
-    }
-    noteStoreScope = currentScope;
-    noteStoreRaw = raw;
-  }
-  return noteStore!;
-}
-export function getExtraReviewNotes(targetId: string): NoteView[] | undefined {
-  return readNoteStore()[targetId];
-}
-export function useExtraReviewNotes(targetId: string): NoteView[] | undefined {
-  return useSyncExternalStore(
-    (listener) => {
-      noteListeners.add(listener);
-      const unsubscribe = subscribeTrialScope(listener);
-      window.addEventListener('storage', listener);
-      return () => {
-        noteListeners.delete(listener);
-        unsubscribe();
-        window.removeEventListener('storage', listener);
-      };
-    },
-    () => getExtraReviewNotes(targetId),
-    () => undefined,
-  );
-}
-function publishNotes(
-  targetId: string,
-  notes: NoteRecord[],
-  scope: 'item' | 'product',
-  modifiedId?: string,
-) {
-  const ownNotes: NoteView[] = notes
-    .filter((note) => note.scope === scope)
-    .map((note) => ({
-      id: note.id,
-      itemId: targetId,
-      title: note.title,
-      excerpt: note.redacted ? '已隐藏' : note.excerpt,
-      body: note.redacted ? undefined : note.body,
-      updatedAt: trialInstant(),
-      sensitivity: 'NORMAL',
-    }));
-  const current = readNoteStore()[targetId] || ownNotes;
-  const merged = modifiedId
-    ? [
-        ...current.filter((note) => note.id !== modifiedId),
-        ...ownNotes.filter((note) => note.id === modifiedId),
-      ]
-    : ownNotes;
-  const next = { ...readNoteStore(), [targetId]: merged };
-  reviewStorage.setItem(noteStoreKey, JSON.stringify(next));
-  noteStore = next;
-  noteStoreScope = scopeKey();
-  noteStoreRaw = JSON.stringify(next);
-  noteListeners.forEach((listener) => listener());
-}
-interface StoredAttachment extends AttachmentView {
-  name: string;
-  localId: string;
-  sampleId?: string;
-}
-const attachmentStoreKey = 'acornary-review-extra-attachments-v1';
-let attachmentStore: Record<string, StoredAttachment[]> | null = null;
-let attachmentStoreScope = '';
-let attachmentStoreRaw: string | null = null;
-function readAttachmentStore() {
-  const currentScope = scopeKey();
-  let raw: string | null = null;
-  try {
-    raw = reviewStorage.getItem(attachmentStoreKey);
-  } catch {
-    /* initial metadata stays readable */
-  }
-  if (!attachmentStore || attachmentStoreScope !== currentScope || attachmentStoreRaw !== raw) {
-    try {
-      attachmentStore = JSON.parse(raw || '{}');
-    } catch {
-      attachmentStore = {};
-    }
-    attachmentStoreScope = currentScope;
-    attachmentStoreRaw = raw;
-  }
-  return attachmentStore!;
-}
-export function getExtraReviewAttachments(targetId: string): StoredAttachment[] | undefined {
-  return readAttachmentStore()[targetId];
-}
-export function useExtraReviewAttachments(targetId: string): StoredAttachment[] | undefined {
-  return useSyncExternalStore(
-    (listener) => {
-      noteListeners.add(listener);
-      const unsubscribe = subscribeTrialScope(listener);
-      window.addEventListener('storage', listener);
-      return () => {
-        noteListeners.delete(listener);
-        unsubscribe();
-        window.removeEventListener('storage', listener);
-      };
-    },
-    () => getExtraReviewAttachments(targetId),
-    () => undefined,
-  );
-}
-function publishAttachments(targetId: string, records: StoredAttachment[]) {
-  const next = { ...readAttachmentStore(), [targetId]: records };
-  reviewStorage.setItem(attachmentStoreKey, JSON.stringify(next));
-  attachmentStore = next;
-  attachmentStoreScope = scopeKey();
-  attachmentStoreRaw = JSON.stringify(next);
-  noteListeners.forEach((listener) => listener());
-}
-const samples = [
-  {
-    id: 'sample-label-photo',
-    label: '包装标签样例 · PNG',
-    description: '本地生成的示例包装标签，用于体验附件预览。',
-  },
-  {
-    id: 'sample-guide-pdf',
-    label: '使用说明样例 · PDF',
-    description: '内置的一页 PDF，仅供试用下载。',
-  },
-];
-function sampleFile(id: string): File {
-  if (id === 'sample-label-photo') {
-    const canvas = document.createElement('canvas');
-    canvas.width = 480;
-    canvas.height = 300;
-    const context = canvas.getContext('2d')!;
-    context.fillStyle = '#f1f4ed';
-    context.fillRect(0, 0, 480, 300);
-    context.fillStyle = '#fff';
-    context.fillRect(28, 26, 424, 248);
-    context.fillStyle = '#365645';
-    context.font = 'bold 28px sans-serif';
-    context.fillText('ACORNARY / SAMPLE', 50, 78);
-    context.font = '20px sans-serif';
-    context.fillText('Oat drink - Original 1 L', 50, 126);
-    context.font = '16px sans-serif';
-    context.fillText('Best before: 2026-11-10', 50, 166);
-    context.fillText('Review attachment only', 50, 206);
-    const bytes = Uint8Array.from(atob(canvas.toDataURL('image/png').split(',')[1]), (character) =>
-      character.charCodeAt(0),
-    );
-    return new File([bytes], '包装标签样例.png', { type: 'image/png' });
-  }
-  const stream =
-    'BT /F1 18 Tf 48 760 Td (Acornary trial - sample guide) Tj 0 -36 Td /F1 12 Tf (This document is a local sample. No upload or external request.) Tj 0 -24 Td (Use, save, preview and remove it within the trial household.) Tj ET';
-  const objects = [
-    '<< /Type /Catalog /Pages 2 0 R >>',
-    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
-    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
-  ];
-  let content = '%PDF-1.4\n';
-  const offsets = [0];
-  objects.forEach((object, index) => {
-    offsets.push(content.length);
-    content += `${index + 1} 0 obj\n${object}\nendobj\n`;
-  });
-  const xref = content.length;
-  content += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets
-    .slice(1)
-    .map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`)
-    .join('')}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
-  return new File([content], '使用说明样例.pdf', { type: 'application/pdf' });
-}
-const freshMutation = (baseRevision?: number): MutationState => ({
-  baseRevision,
-  open: false,
-  state: 'draft',
-  error: '',
-  receipt: '',
-  request: null,
-});
-function createState(
-  facts: DailyItemFacts | undefined,
-  scenario: string,
-  scope: 'item' | 'product',
-): ReviewState {
-  const item = facts?.item;
-  const savedAttachments = [
-    ...(getExtraReviewAttachments(item?.id || '') || []),
-    ...(getExtraReviewAttachments(item?.skuId || '') || []),
-  ];
-  const dates =
-    scenario === 'empty'
-      ? []
-      : facts?.dates
-        ? structuredClone(facts.dates)
-        : facts?.date
-          ? [structuredClone(facts.date)]
-          : [];
-  if (scenario !== 'empty' && !facts?.dates && !isTrial())
-    dates.push({
-      kind: 'SERVICE_DUE',
-      dateKind: null,
-      dueOn: '2026-11-16',
-      basis: '已记录的每 30 天检查计划',
-      state: 'UPCOMING',
-      source: 'DEADLINE',
-      label: '检查存放状态',
-    });
-  const ownNotes: NoteRecord[] =
-    scenario === 'empty'
-      ? []
-      : (
-          getExtraReviewNotes(item?.id || '') ||
-          initialNotes.filter((note) => note.itemId === item?.id)
-        ).map((note) => ({
-          id: note.id,
-          title: note.title,
-          excerpt: note.excerpt,
-          body: note.body,
-          scope: 'item',
-          revision: item?.revision || 1,
-        }));
-  if (scenario !== 'empty') {
-    const productNotes = getExtraReviewNotes(item?.skuId || '');
-    if (productNotes)
-      ownNotes.push(
-        ...productNotes.map((note) => ({
-          id: note.id,
-          title: note.title,
-          excerpt: note.excerpt,
-          body: note.body,
-          scope: 'product' as const,
-          revision: 2,
-        })),
-      );
-    else
-      ownNotes.push({
-        id: 'review-product-note',
-        title: '商品使用说明',
-        excerpt: '公共说明供这款商品参考。',
-        body: '使用前请阅读包装说明。\n个人使用体验请写在单件笔记里。',
-        scope: 'product',
-        revision: 2,
-      });
-  }
-  if (scenario === 'redacted')
-    ownNotes.unshift({
-      id: 'review-hidden-note',
-      title: '私密记录',
-      excerpt: '',
-      scope: 'item',
-      revision: 2,
-      redacted: true,
-    });
-  const opened = scenario === 'already-opened' || item?.status.label === '已开封';
-  return {
-    opening: {
-      intent: opened ? 'correct' : 'now',
-      localTime: opened
-        ? item?.facts.find((fact) => fact.kind === 'opening')?.value?.includes('T')
-          ? item.facts.find((fact) => fact.kind === 'opening')!.value.slice(0, 16)
-          : ''
-        : '',
-      timezone: 'Asia/Shanghai',
-    },
-    openingState: opened ? '已开封' : item?.status.label === '未开封' ? '未开封' : '开封状态未记录',
-    openedAt: opened
-      ? item?.facts.find((fact) => fact.kind === 'opening')?.value === '未记录'
-        ? null
-        : item?.facts.find((fact) => fact.kind === 'opening')?.value || null
-      : null,
-    facts: dates,
-    dateDraft: structuredClone(dates[0] || blankDate),
-    dateIndex: dates.length ? 0 : -1,
-    month: '2026-11',
-    completing: false,
-    completedOn: '',
-    notes: ownNotes,
-    noteDrafts: {},
-    selectedNotes: { item: 'new-item', product: 'new-product' },
-    scope,
-    noteMode: 'edit',
-    mutations: {
-      opening: freshMutation(item?.revision),
-      dates: freshMutation(item?.revision),
-      notes: freshMutation(item?.revision),
-    },
-    attachments: savedAttachments,
-    attachmentNames: Object.fromEntries(savedAttachments.map((record) => [record.id, record.name])),
-    attachmentLocalIds: Object.fromEntries(
-      savedAttachments.map((record) => [record.id, record.localId]),
-    ),
-    pending: [],
-    transfers: [],
-    attachmentMessage: '',
-    scanText: '',
-    scanResult: { kind: 'idle' },
-    scanSelected: null,
-    cameraMessage: '',
-    selectedLabels: item ? [item.id] : [],
-    pages: item ? [{ pageId: uniqueId('print'), itemId: item.id, status: 'not-sent' }] : [],
-    queue: [],
-    paper: '30x12',
-    connection: 'disconnected',
-    printFailure: scenario === 'unknown' || scenario === 'print-unknown',
-  };
-}
-function loadState(key: string, initial: ReviewState): ReviewState {
-  try {
-    const raw = reviewStorage.getItem(key);
-    if (!raw) return initial;
-    const parsed = JSON.parse(raw) as ReviewState;
-    if (
-      !parsed.mutations ||
-      !Array.isArray(parsed.notes) ||
-      !Array.isArray(parsed.pages) ||
-      !parsed.noteDrafts
-    )
-      return initial;
-    // A page that was sending when its adapter closed has an uncertain physical outcome.
-    return {
-      ...parsed,
-      attachments: initial.attachments,
-      attachmentNames: initial.attachmentNames,
-      attachmentLocalIds: initial.attachmentLocalIds,
-      mutations: Object.fromEntries(
-        Object.entries(parsed.mutations).map(([kind, mutation]) => [
-          kind,
-          mutation.state === 'submitting' || mutation.state === 'validating'
-            ? { ...mutation, state: 'networkUnknown' }
-            : mutation,
-        ]),
-      ) as ReviewState['mutations'],
-      notes: [
-        ...initial.notes,
-        ...parsed.notes.filter(
-          (note) => !initial.notes.some((canonical) => canonical.id === note.id),
-        ),
-      ],
-      connection: 'disconnected',
-      queue: [],
-      pages: parsed.pages.map((page) =>
-        page.status === 'sending'
-          ? { ...page, status: 'unknown', detail: '上次离开时仍在发送，请先核对纸张。' }
-          : page,
-      ),
-    };
-  } catch {
-    return initial;
-  }
-}
+import {
+  available,
+  blankDate,
+  dateLabels,
+  uniqueId,
+  dateSummary,
+  samples,
+  sampleFile,
+  freshMutation,
+  createState,
+  loadState,
+  saveDailyView,
+  scopeKey,
+  publishAttachments,
+  readAttachmentStore,
+  getExtraReviewAttachments,
+  useExtraReviewAttachments,
+  createDailyFixtureTask,
+  projectDailyState,
+  normalizeDailyDraft,
+  dailyFixtureDraftChanged,
+  dailyFixtureRequest,
+  fixtureDailyRevisions,
+  type EditSurface,
+  type ReviewState,
+  type RequestSnapshot,
+  type MutationState,
+  type Transfer,
+  type StoredAttachment,
+} from './daily-extras-fixture';
+export {
+  useExtraReviewNotes,
+  getExtraReviewNotes,
+  useExtraReviewAttachments,
+  getExtraReviewAttachments,
+} from './daily-extras-fixture';
+import { useOperationSessions } from '../../src/app-vnext/operation-context';
+import { getFixtureScope } from '../trial/application';
 function QRPreview({ id, label, text }: { id: string; label: string; text: string }) {
   const qr = QRCode.create(itemLabelURL(id, 'https://example.test'), { errorCorrectionLevel: 'M' });
   const size = qr.modules.size;
@@ -549,7 +109,7 @@ function ReviewSession({
   const facts = world.items.find((entry) => entry.item.id === target);
   const item = facts?.item;
   const storageKey = `acornary-review-daily-extras-v1:${target}:${isTrial() ? 'trial' : scenario}`;
-  const [state, setState] = useState(() => {
+  const [viewState, setState] = useState(() => {
     const initial = createState(
       facts,
       scenario,
@@ -573,6 +133,24 @@ function ReviewSession({
       ? { ...loaded, selectedLabels: initial.selectedLabels, pages: initial.pages, queue: [] }
       : loaded;
   });
+  const registry = useOperationSessions();
+  const scope = getFixtureScope();
+  const openingTask = registry.get(scope, `${storageKey}:task:opening`, () =>
+    createDailyFixtureTask('opening', target, storageKey, viewState, scenario),
+  );
+  const datesTask = registry.get(scope, `${storageKey}:task:dates`, () =>
+    createDailyFixtureTask('dates', target, storageKey, viewState, scenario),
+  );
+  const notesTask = registry.get(scope, `${storageKey}:task:notes`, () =>
+    createDailyFixtureTask('notes', target, storageKey, viewState, scenario),
+  );
+  const records = {
+    opening: useSyncExternalStore(openingTask.subscribe, openingTask.getSnapshot),
+    dates: useSyncExternalStore(datesTask.subscribe, datesTask.getSnapshot),
+    notes: useSyncExternalStore(notesTask.subscribe, notesTask.getSnapshot),
+  };
+  const tasks = { opening: openingTask, dates: datesTask, notes: notesTask };
+  const state = projectDailyState(viewState, records);
   const [storageError, setStorageError] = useState('');
   const [readRecovered, setReadRecovered] = useState(false);
   const [inspectPage, setInspectPage] = useState<string | null>(null);
@@ -604,19 +182,27 @@ function ReviewSession({
           },
     );
   }, [savedItemAttachments, savedProductAttachments]);
-  const change = (update: (current: ReviewState) => ReviewState) => setState(update);
+  const change = (update: (current: ReviewState) => ReviewState) => {
+    const next = update(state);
+    for (const kind of ['opening', 'dates', 'notes'] as const) {
+      if (dailyFixtureDraftChanged(kind, state, next)) {
+        void tasks[kind].updateInput(normalizeDailyDraft(next));
+      }
+    }
+    setState(next);
+  };
   useEffect(() => {
     try {
-      reviewStorage.setItem(storageKey, JSON.stringify(state));
+      saveDailyView(storageKey, viewState);
       setStorageError('');
     } catch {
       setStorageError('浏览器未允许保存本地草稿，发送操作已暂停。');
     }
-  }, [state, storageKey]);
+  }, [viewState, storageKey]);
   useEffect(() => {
     const scope = route.searchParams.get('scope');
     if (scope === 'item' || scope === 'product')
-      setState((current) => (current.scope === scope ? current : { ...current, scope }));
+      if (state.scope !== scope) change((current) => ({ ...current, scope }));
   }, [route.searchParams.get('scope')]);
   useEffect(() => {
     const sending = state.pages.find((page) => page.status === 'sending');
@@ -718,444 +304,35 @@ function ReviewSession({
       mutations: { ...current.mutations, [kind]: { ...current.mutations[kind], ...changes } },
     }));
   function buildRequest(kind: EditSurface): RequestSnapshot {
-    const boundRevision = state.mutations[kind].baseRevision || context.revision;
-    const base = {
-      key: uniqueId('review-request'),
-      accountId: trialScope.accountId,
-      householdId: trialScope.householdId,
-      targetRevision: boundRevision,
-      revision: kind === 'notes' ? selectedNote?.revision || boundRevision : boundRevision,
-    };
-    if (kind === 'opening')
-      return {
-        ...base,
-        opening: structuredClone(state.opening),
-        summary: [
-          `作用对象：${context.itemLabel} · ${target}`,
-          `原记录：${state.openingState} · ${state.openedAt || '时间未记录'}`,
-          `将记录：已开封 · ${state.opening.intent === 'unknown' ? '开封时间未记录' : state.opening.intent === 'now' ? nowLabel : state.opening.localTime ? `${state.opening.localTime} · ${state.opening.timezone}` : '明确清除开封时间'}`,
-        ],
-      };
-    if (kind === 'dates')
-      return {
-        ...base,
-        date: structuredClone(state.dateDraft),
-        dateIndex: state.dateIndex,
-        completing: state.completing,
-        completedOn: state.completedOn,
-        summary: [
-          `作用对象：${context.itemLabel} · ${target}`,
-          `原日期：${state.facts[state.dateIndex] ? dateSummary(state.facts[state.dateIndex]) : '未记录'}`,
-          state.completing
-            ? `本次完成日：${state.completedOn || '未填写'}；保留历史，下一日期以回执为准。`
-            : `新日期：${dateSummary(state.dateDraft)}`,
-          `家庭时区：${context.timezone || '未设置，不计算日期状态'}`,
-        ],
-      };
-    return {
-      ...base,
-      note: structuredClone(draftNote),
-      noteId: selectedNoteId,
-      scope: state.scope,
-      summary: [
-        `作用对象：${state.scope === 'item' ? '仅此件' : '商品共有'} · ${context.itemLabel}`,
-        `笔记：${draftNote.title || '无标题'} · ${draftNote.body?.length || 0} 字`,
-        `原笔记：${selectedNoteId.startsWith('new-') ? '新建' : selectedNoteId} · 原版本 ${base.revision}`,
-        draftNote.body || '正文未填写',
-      ],
-    };
-  }
-  function validate(kind: EditSurface, request: RequestSnapshot) {
-    if (availability.kind !== 'available') return availability.reason;
-    if (kind === 'opening') {
-      if (
-        item?.profile !== 'CONSUMABLE' ||
-        item.recordState !== 'VALID' ||
-        item.status.label === '已用完'
-      )
-        return '此件当前不支持开封操作；已有输入已保留。';
-      const opening = request.opening!;
-      if (opening.intent === 'backdate' && !opening.localTime) return '请填写实际开封日期与时间。';
-      const offset =
-        opening.timezone === 'UTC'
-          ? '+00:00'
-          : opening.timezone === 'Asia/Tokyo'
-            ? '+09:00'
-            : '+08:00';
-      if (
-        opening.localTime &&
-        (!isPlainDate(opening.localTime.slice(0, 10)) ||
-          !Number.isFinite(Date.parse(`${opening.localTime}:00${offset}`)) ||
-          Date.parse(`${opening.localTime}:00${offset}`) > Date.parse(currentInstant))
-      )
-        return '开封时间需是有效日期，按所选时区换算后不能晚于示例当前时间。';
-      if ((opening.intent === 'backdate' || opening.intent === 'correct') && !opening.timezone)
-        return '请明确所填时间的时区。';
-    }
-    if (kind === 'dates') {
-      if (
-        request.completing &&
-        (!request.completedOn || !isPlainDate(request.completedOn) || request.completedOn > today)
-      )
-        return '请填写不晚于今天的有效完成日期。';
-      if (request.date?.dueOn && !isPlainDate(request.date.dueOn)) return '请填写有效日期。';
-      if (
-        !request.completing &&
-        request.date?.dateKind === 'ESTIMATED' &&
-        request.date.dueOn &&
-        !request.date.basis?.trim()
-      )
-        return '请补充估计依据，保留日期的估计性质。';
-    }
-    if (kind === 'notes' && !request.note?.body?.trim()) return '请填写笔记正文；标题可以留空。';
-    return '';
-  }
-  function mergeResult(current: ReviewState, result: ReviewState, kind: EditSurface): ReviewState {
-    const merged = {
-      ...current,
-      mutations: { ...current.mutations, [kind]: result.mutations[kind] },
-    };
-    if (kind === 'opening')
-      return {
-        ...merged,
-        opening: result.opening,
-        openingState: result.openingState,
-        openedAt: result.openedAt,
-      };
-    if (kind === 'dates')
-      return {
-        ...merged,
-        facts: result.facts,
-        dateDraft: result.dateDraft,
-        dateIndex: result.dateIndex,
-        completing: result.completing,
-      };
-    const noteScope = result.mutations.notes.request?.scope || current.scope;
-    return {
-      ...merged,
-      notes: [
-        ...current.notes.filter((note) => note.scope !== noteScope),
-        ...result.notes.filter((note) => note.scope === noteScope),
-      ],
-      selectedNotes: { ...current.selectedNotes, [noteScope]: result.selectedNotes[noteScope] },
-      noteDrafts: { ...current.noteDrafts, ...result.noteDrafts },
-    };
-  }
-  function recordNoteHistory(request: RequestSnapshot, result: ReviewState) {
-    // New single-item notes already have the shared note-count event.
-    if (request.scope !== 'product' && request.noteId?.startsWith('new-')) return;
-    const id = result.selectedNotes[request.scope!];
-    appendReviewEvent(
-      {
-        ...baseHistory[0],
-        operationLabel: request.noteId?.startsWith('new-') ? '新建商品公共说明' : '编辑笔记',
-        objectLabel: context.itemLabel,
-        event: {
-          ...baseHistory[0].event!,
-          id: `event_${request.key.replace(/^review-request_/, '')}`,
-          operation_id: `operation_${request.key.replace(/^review-request_/, '')}`,
-          target_kind: request.scope === 'product' ? 'CATALOG_NODE' : 'ITEM',
-          target_id: request.scope === 'product' ? item!.skuId : target,
-          event_type: request.noteId?.startsWith('new-') ? 'NOTE_CREATE' : 'NOTE_UPDATE',
-          before_revision: request.revision,
-          after_revision: request.revision + 1,
-          occurred_at: currentInstant,
-          recorded_at: currentInstant,
-          reason: '隔离试用笔记操作；正文保留在笔记中，历史仅记录引用。',
-          changes: [
-            {
-              path: 'notes',
-              before_present: !request.noteId?.startsWith('new-'),
-              after_present: true,
-              before: request.noteId?.startsWith('new-') ? undefined : { note_id: request.noteId },
-              after: { note_id: id, scope: request.scope },
-            },
-          ],
-        },
-      },
-      `${request.key}:history`,
+    return dailyFixtureRequest(
+      kind,
+      target,
+      state,
+      records[kind].revisions,
+      `review-${kind}-${target}`,
     );
-  }
-  async function applyRequest(kind: EditSurface, request: RequestSnapshot, loseReceipt = false) {
-    if (availability.kind !== 'available') return;
-    if (
-      request.accountId &&
-      (request.accountId !== trialScope.accountId || request.householdId !== trialScope.householdId)
-    )
-      return;
-    const operationScope = scopeKey();
-    const receiptKey = `acornary-review-extra-receipt:${request.key}`;
-    type SavedReceipt = {
-      kind: EditSurface;
-      result: ReviewState;
-      patches: DailyItemFacts[];
-      phase: 'prepared' | 'committed';
-    };
-    let saved: SavedReceipt | null = null;
-    try {
-      const raw = reviewStorage.getItem(receiptKey);
-      saved = raw ? JSON.parse(raw) : null;
-    } catch {
-      /* original frozen request remains the source */
-    }
-    if (saved) {
-      try {
-        runReviewTransaction(() => {
-          if (!getReviewWorld().receipts[request.key])
-            updateReviewItems(saved.patches, {
-              requestKey: request.key,
-              operationLabel:
-                kind === 'notes' ? '保存笔记' : kind === 'dates' ? '保存日期事实' : '记录开封',
-            });
-          if (kind === 'notes')
-            publishNotes(
-              request.scope === 'product' ? item!.skuId : target,
-              saved.result.notes,
-              request.scope!,
-              saved.result.selectedNotes[request.scope!],
-            );
-          if (kind === 'notes') recordNoteHistory(request, saved.result);
-          reviewStorage.setItem(receiptKey, JSON.stringify({ ...saved, phase: 'committed' }));
-        });
-        const restored = mergeResult(state, saved.result, kind);
-        reviewStorage.setItem(storageKey, JSON.stringify(restored));
-        await flushReviewStorage();
-        if (scopeKey() !== operationScope) return;
-        setState(restored);
-      } catch {
-        if (scopeKey() === operationScope)
-          setStorageError('原请求仍保留；当前无法完成持久化或读取原回执。');
-      }
-      return;
-    }
-    const next = structuredClone(state);
-    let receipt = '';
-    if (kind === 'opening') {
-      const opening = request.opening!;
-      next.openingState = '已开封';
-      const offset =
-        opening.timezone === 'UTC'
-          ? '+00:00'
-          : opening.timezone === 'Asia/Tokyo'
-            ? '+09:00'
-            : '+08:00';
-      next.openedAt =
-        opening.intent === 'unknown'
-          ? null
-          : opening.intent === 'now'
-            ? currentInstant
-            : opening.localTime
-              ? `${opening.localTime}:00${offset}`
-              : null;
-      next.opening = {
-        ...opening,
-        intent: 'correct',
-        localTime: next.openedAt?.slice(0, 16) || '',
-      };
-      receipt = `此件已记录为已开封；${next.openedAt ? `开封时间 ${next.openedAt}` : '开封时间仍未记录，不生成开封后期限'}。`;
-    } else if (kind === 'dates') {
-      const updated: DateFactPresentation = {
-        ...request.date!,
-        state:
-          !context.timezone ||
-          !request.date?.dueOn ||
-          (request.date.kind === 'EXPIRY' && !request.date.dateKind)
-            ? 'UNKNOWN'
-            : request.date.dueOn < today
-              ? 'OVERDUE'
-              : request.date.dueOn === today
-                ? 'DUE'
-                : 'UPCOMING',
-      };
-      if (request.completing) {
-        const completed: DateFactPresentation = {
-          ...updated,
-          state: 'COMPLETED',
-          completedOn: request.completedOn,
-        };
-        if (request.dateIndex! >= 0) next.facts[request.dateIndex!] = completed;
-        else next.facts.push(completed);
-        const recurring =
-          updated.kind === 'SERVICE_DUE' && updated.basis === '已记录的每 30 天检查计划';
-        if (recurring) {
-          const nextDay = new Date(`${request.completedOn}T00:00:00Z`);
-          nextDay.setUTCDate(nextDay.getUTCDate() + 30);
-          next.facts.push({
-            ...updated,
-            dueOn: nextDay.toISOString().slice(0, 10),
-            state: 'UPCOMING',
-            completedOn: null,
-          });
-          receipt = `已记录本次完成日 ${request.completedOn}；示例回执的下一日期为 ${nextDay.toISOString().slice(0, 10)}，依据既有每 30 天计划。`;
-        } else receipt = `已完成 ${request.completedOn}；本次记录保留在日期历史中。`;
-        next.dateDraft = completed;
-        next.completing = false;
-      } else {
-        if (request.dateIndex! >= 0) next.facts[request.dateIndex!] = updated;
-        else {
-          next.facts.push(updated);
-          next.dateIndex = next.facts.length - 1;
-        }
-        next.dateDraft = updated;
-        receipt = `已保存：${dateSummary(updated)}。按当前家庭时区与试用日期重新读取；未知日期或类型保持未知。`;
-      }
-    } else {
-      const note = request.note!;
-      const existing = next.notes.findIndex((value) => value.id === request.noteId);
-      const id =
-        existing >= 0 ? request.noteId! : `note_${request.key.replace(/^review-request_/, '')}`;
-      const record: NoteRecord = {
-        id,
-        scope: request.scope!,
-        title: note.title,
-        body: note.body,
-        excerpt: note.body!.slice(0, 70),
-        revision: request.revision + 1,
-      };
-      if (existing >= 0) next.notes[existing] = record;
-      else next.notes.push(record);
-      next.selectedNotes[request.scope!] = id;
-      next.noteDrafts[`${request.scope}:${id}`] = note;
-      if (request.noteId?.startsWith('new-'))
-        delete next.noteDrafts[`${request.scope}:${request.noteId}`];
-      receipt = `${request.scope === 'item' ? '此件笔记' : '商品公共说明'}已保存，版本 ${record.revision}；正文未转换成结构化资料。`;
-    }
-    next.mutations[kind] = {
-      ...next.mutations[kind],
-      state: 'success',
-      receipt,
-      error: '',
-      request,
-    };
-    try {
-      const updatedFacts = facts ? structuredClone(facts) : null;
-      const patches: DailyItemFacts[] = [];
-      if (updatedFacts && (kind !== 'notes' || request.scope === 'item')) {
-        updatedFacts.item.revision += 1;
-        if (kind === 'opening') {
-          updatedFacts.item.status = { label: '已开封', tone: 'neutral' };
-          updatedFacts.item.facts = [
-            ...updatedFacts.item.facts.filter((fact) => fact.kind !== 'opening'),
-            { kind: 'opening', label: '开封时间', value: next.openedAt || '未记录', priority: 3 },
-          ];
-        }
-        if (kind === 'dates') {
-          updatedFacts.dates = structuredClone(next.facts);
-          updatedFacts.date = next.facts.find((fact) => fact.kind === 'EXPIRY');
-          updatedFacts.item.facts = [
-            ...updatedFacts.item.facts.filter((fact) => fact.kind !== 'deadline'),
-            ...next.facts
-              .filter((fact) => fact.kind !== 'EXPIRY')
-              .map((fact) => ({
-                kind: 'deadline' as const,
-                label: fact.label || dateLabels[fact.kind],
-                value: `${dateSummary(fact)}${fact.state === 'COMPLETED' ? ` · 已完成 ${fact.completedOn}` : ''}`,
-                priority: 4,
-              })),
-          ];
-        }
-        if (kind === 'notes')
-          updatedFacts.item.noteCount = next.notes.filter((note) => note.scope === 'item').length;
-        patches.push(updatedFacts);
-      }
-      const prepared: SavedReceipt = { kind, result: next, patches, phase: 'prepared' };
-      reviewStorage.setItem(receiptKey, JSON.stringify(prepared));
-      await flushReviewStorage();
-      if (scopeKey() !== operationScope) return;
-      runReviewTransaction(() => {
-        updateReviewItems(patches, {
-          requestKey: request.key,
-          operationLabel:
-            kind === 'notes' ? '保存笔记' : kind === 'dates' ? '保存日期事实' : '记录开封',
-        });
-        if (kind === 'notes')
-          publishNotes(
-            request.scope === 'product' ? item!.skuId : target,
-            next.notes,
-            request.scope!,
-            next.selectedNotes[request.scope!],
-          );
-        if (kind === 'notes') recordNoteHistory(request, next);
-        reviewStorage.setItem(receiptKey, JSON.stringify({ ...prepared, phase: 'committed' }));
-      });
-      const visible = loseReceipt
-        ? {
-            ...state,
-            mutations: {
-              ...state.mutations,
-              [kind]: {
-                ...state.mutations[kind],
-                state: 'networkUnknown' as const,
-                request,
-                receipt: '',
-                error: '',
-              },
-            },
-          }
-        : mergeResult(state, next, kind);
-      reviewStorage.setItem(storageKey, JSON.stringify(visible));
-      await flushReviewStorage();
-      if (scopeKey() !== operationScope) return;
-      setState(visible);
-    } catch {
-      if (scopeKey() !== operationScope) return;
-      setStorageError('示例回执未能完整保存，请保留草稿后核对原请求。');
-      setMutation(kind, { state: 'networkUnknown', request, error: '' });
-    }
-  }
-
-  async function submit(kind: EditSurface) {
-    if (availability.kind !== 'available' || commitBusy.current) return;
-    const operationScope = scopeKey();
-    const existing = state.mutations[kind];
-    if (existing.state === 'networkUnknown' || existing.state === 'success') return;
-    const request = existing.request || buildRequest(kind);
-    const error = validate(kind, request);
-    if (error) {
-      setMutation(kind, { state: 'validationError', error, request: null });
-      return;
-    }
-    if (
-      (scenario === 'conflict' && !existing.resolved) ||
-      ((kind !== 'notes' || request.scope === 'item') &&
-        request.targetRevision !== context.revision)
-    ) {
-      setMutation(kind, { state: 'revisionConflict', request });
-      return;
-    }
-    const frozen = {
-      ...state,
-      mutations: {
-        ...state.mutations,
-        [kind]: { ...existing, request, state: 'submitting' as const },
-      },
-    };
-    commitBusy.current = true;
-    setState(frozen);
-    try {
-      reviewStorage.setItem(storageKey, JSON.stringify(frozen));
-      await flushReviewStorage();
-    } catch {
-      if (scopeKey() === operationScope) {
-        setStorageError('原请求无法保存在本地，请允许本地存储后再保存。');
-        setMutation(kind, { state: 'draft', request: null });
-      }
-      commitBusy.current = false;
-      return;
-    }
-    if (scopeKey() === operationScope)
-      await applyRequest(kind, request, scenario === 'unknown' || scenario === 'network-unknown');
-    commitBusy.current = false;
   }
   function mutation(kind: EditSurface): ExtraMutation {
     const current = state.mutations[kind];
     const request = current.request || buildRequest(kind);
+    const currentFacts = createState(
+      getReviewWorld().items.find((entry) => entry.item.id === target),
+      scenario,
+      state.scope,
+    );
+    currentFacts.selectedNotes = state.selectedNotes;
+    const currentNote = currentFacts.notes.find((note) => note.id === selectedNoteId);
+    currentFacts.noteDrafts = {
+      [noteDraftKey]: { title: currentNote?.title || null, body: currentNote?.body || '' },
+    };
+    currentFacts.dateIndex = state.dateIndex;
+    currentFacts.dateDraft = currentFacts.facts[state.dateIndex] || state.dateDraft;
     const currentText =
       kind === 'notes'
-        ? '另一位家庭成员补充的正文：取用后请放回原处。'
+        ? currentNote?.body || '尚未创建'
         : kind === 'dates'
-          ? '最佳食用期 · 2026-11-14 · 包装重新核对'
-          : '已开封 · 2026-11-06T09:00:00+08:00';
+          ? dateSummary(currentFacts.dateDraft)
+          : `${currentFacts.openingState} · ${currentFacts.openedAt || '时间未记录'}`;
     return {
       open: current.open,
       state: current.state,
@@ -1164,32 +341,57 @@ function ReviewSession({
       receipt: current.receipt,
       error: current.error,
       availability,
-      onReview: () =>
-        setMutation(kind, {
-          open: true,
-          ...(current.state === 'networkUnknown' || current.state === 'success'
-            ? {}
-            : { state: 'draft', error: '', request: null }),
-        }),
-      onClose: () => setMutation(kind, { open: false }),
-      onSubmit: () => submit(kind),
-      onRecover: async () => {
-        if (!current.request || commitBusy.current) return;
-        commitBusy.current = true;
-        try {
-          await applyRequest(kind, current.request);
-        } finally {
-          commitBusy.current = false;
+      onReview: async () => {
+        const record = tasks[kind].getSnapshot();
+        if (
+          kind === 'notes' &&
+          state.scope === 'product' &&
+          state.productId &&
+          !record.attempt &&
+          !record.revisions[state.productId]
+        ) {
+          const read = fixtureDailyRevisions(target, state.productId);
+          if (read[state.productId]) {
+            await tasks[kind].refreshDraft(
+              normalizeDailyDraft(state),
+              { ...record.revisions, [state.productId]: read[state.productId] },
+              normalizeDailyDraft(currentFacts),
+            );
+          }
         }
+        setMutation(kind, { open: true });
       },
-      onEdit: () => setMutation(kind, { ...freshMutation(context.revision), resolved: true }),
+      onClose: async () => {
+        if (await tasks[kind].retain()) setMutation(kind, { open: false });
+      },
+      onSubmit: () => {
+        if (availability.kind === 'available') void tasks[kind].submitDraft();
+      },
+      onRecover: () => {
+        if (availability.kind === 'available') void tasks[kind].recoverOriginal();
+      },
+      onEdit: () => {
+        const refreshed = createState(
+          getReviewWorld().items.find((entry) => entry.item.id === target),
+          scenario,
+          state.scope,
+        );
+        void tasks[kind]
+          .restart(normalizeDailyDraft(refreshed), fixtureDailyRevisions(target))
+          .catch((error) => setStorageError(String(error)));
+      },
       conflict:
         current.state === 'revisionConflict'
           ? {
               objectId: kind === 'notes' ? selectedNoteId : target,
               scopeLabel: kind === 'notes' && state.scope === 'product' ? '商品共有' : '仅此件',
               originalRevision: request.revision,
-              currentRevision: request.revision + 1,
+              currentRevision:
+                fixtureDailyRevisions(target, state.productId)[
+                  kind === 'notes' && request.scope === 'product'
+                    ? request.target?.id || state.productId || ''
+                    : target
+                ] || context.revision,
               fields: [
                 {
                   key: 'value',
@@ -1212,35 +414,14 @@ function ReviewSession({
               onRefresh: () => setMutation(kind, { error: '已重新读取示例当前版本，请逐项决定。' }),
               onReconfirm: () => {
                 if (!current.choice) return;
-                change((value) => {
-                  const next = structuredClone(value);
-                  if (current.choice === 'current') {
-                    if (kind === 'notes')
-                      next.noteDrafts[noteDraftKey] = { title: draftNote.title, body: currentText };
-                    if (kind === 'dates')
-                      next.dateDraft = {
-                        ...next.dateDraft,
-                        dueOn: '2026-11-14',
-                        dateKind: 'BEST_BEFORE',
-                        basis: '包装重新核对',
-                      };
-                    if (kind === 'opening')
-                      next.opening = {
-                        intent: 'correct',
-                        localTime: '2026-11-06T09:00',
-                        timezone: 'Asia/Shanghai',
-                      };
-                  }
-                  next.mutations[kind] = {
-                    ...next.mutations[kind],
-                    state: 'draft',
-                    request: null,
-                    error: '',
-                    resolved: true,
-                    baseRevision: context.revision,
-                  };
-                  return next;
-                });
+                const draft = current.choice === 'current' ? currentFacts : state;
+                void tasks[kind]
+                  .reconcile(
+                    normalizeDailyDraft(draft),
+                    fixtureDailyRevisions(target, state.productId),
+                    normalizeDailyDraft(currentFacts),
+                  )
+                  .catch((error) => setStorageError(String(error)));
               },
             }
           : undefined,
@@ -1565,7 +746,7 @@ function ReviewSession({
               state: loseReceipt ? 'networkUnknown' : 'success',
             }),
           );
-          reviewStorage.setItem(storageKey, JSON.stringify(nextState));
+          saveDailyView(storageKey, nextState);
         });
         await flushReviewStorage();
         if (operationScope === scopeKey()) setState(nextState);
@@ -1627,7 +808,7 @@ function ReviewSession({
               state: 'success',
             }),
           );
-          reviewStorage.setItem(storageKey, JSON.stringify(nextState));
+          saveDailyView(storageKey, nextState);
         });
         await flushReviewStorage();
         if (operationScope === scopeKey()) {
@@ -2018,7 +1199,7 @@ function ReviewSession({
     };
     commitBusy.current = true;
     try {
-      reviewStorage.setItem(storageKey, JSON.stringify(next));
+      saveDailyView(storageKey, next);
       await flushReviewStorage();
       if (operationScope === scopeKey()) setState(next);
     } catch {
