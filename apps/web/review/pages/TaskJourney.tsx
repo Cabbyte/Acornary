@@ -1,8 +1,14 @@
 import { trialProducts } from '../trial/products';
 import { isTrial } from '../trial/session';
-import { reviewStorage, assertTrialWrite, runReviewTransaction } from '../trial/storage';
-import { applyReviewTask, useReviewWorld } from './inventory-session';
-import { useEffect, useState } from 'react';
+import {
+  createFixtureSession,
+  executeFixtureAttempt,
+  freezeFixtureAttempt,
+  getFixtureScope,
+} from '../trial/application';
+import { useOperationSessions } from '../../src/app-vnext/operation-context';
+import { useReviewWorld } from './inventory-session';
+import { useState, useSyncExternalStore } from 'react';
 import Decimal from 'decimal.js';
 import {
   DailyTask,
@@ -54,78 +60,46 @@ export function TaskJourney({
     finish: false,
     dates: [],
   };
-  const [draft, setDraft] = useState(initial);
-  const [state, setState] = useState<OperationState>('draft');
-  const [open, setOpen] = useState(true),
-    [reviewing, setReviewing] = useState(false),
-    [error, setError] = useState('');
-  const [catalogQuery, setCatalogQuery] = useState(''),
-    [locationQuery, setLocationQuery] = useState('');
-  const [request, setRequest] = useState<{
-    key: string;
-    draft: DailyTaskDraft;
-    expectedRevision?: number;
-    reviewSummary?: string[];
-  } | null>(null);
-  const [approved, setApproved] = useState(false),
-    [revision, setRevision] = useState(item?.item.revision || 1);
-  const [choice, setChoice] = useState<'current' | 'input' | undefined>();
-  const [receipt, setReceipt] = useState<string[]>([]);
-  useEffect(() => {
-    try {
-      const raw = reviewStorage.getItem(key);
-      if (raw) {
-        const saved = JSON.parse(raw);
-        setDraft(saved.draft);
-        setRequest(saved.request);
-        setState(saved.state === 'submitting' ? 'networkUnknown' : saved.state);
-        setReviewing(saved.reviewing);
-        setReceipt(saved.receipt || []);
-        return;
-      }
-    } catch {
-      setError('本地草稿不可用；发送前必须能够保存原请求。');
-    }
-    setState(
-      (
+  const sessions = useOperationSessions();
+  const session = sessions.get(getFixtureScope(), key, () =>
+    createFixtureSession(
+      key,
+      initial,
+      item?.item.id || target,
+      item?.item.revision,
+      scenario,
+      kind,
+    ),
+  );
+  const record = useSyncExternalStore(session.subscribe, session.getSnapshot);
+  const { draft, reviewing, error } = record;
+  const state: OperationState = ['draft', 'validationError'].includes(record.state)
+    ? (
         {
           offline: 'offline',
           forbidden: 'forbidden',
           'session-changed': 'sessionChanged',
         } as Record<string, OperationState>
-      )[scenario] || 'draft',
-    );
-  }, [key, scenario]);
-  function persist(
-    nextState = state,
-    nextDraft = draft,
-    nextRequest = request,
-    nextReview = reviewing,
-    nextReceipt = receipt,
-  ) {
-    try {
-      reviewStorage.setItem(
-        key,
-        JSON.stringify({
-          draft: nextDraft,
-          request: nextRequest,
-          state: nextState,
-          reviewing: nextReview,
-          receipt: nextReceipt,
-        }),
-      );
-      return true;
-    } catch {
-      setError('无法保存任务，未发送。请恢复存储后重试。');
-      return false;
-    }
-  }
-  const patch = (next: DailyTaskDraft) => {
-    setDraft(next);
-    setRequest(null);
-    setApproved(false);
-    persist('draft', next, null, false);
-  };
+      )[scenario] || record.state
+    : record.state;
+  const request = record.attempt;
+  const receipt = record.result || [];
+  const approved = !!record.approval;
+  const revision = (item && record.revisions[item.item.id]) || item?.item.revision || 1;
+  const [open, setOpen] = useState(true);
+  const [catalogQuery, setCatalogQuery] = useState(''),
+    [locationQuery, setLocationQuery] = useState('');
+  const [choice, setChoice] = useState<'current' | 'input' | undefined>();
+  const [conflictReviewed, setConflictReviewed] = useState(false);
+  const setError = (error: string) => void session.update({ error });
+  const patch = (next: DailyTaskDraft) =>
+    void session.update({
+      draft: next,
+      approval: null,
+      reviewing: false,
+      state: 'draft',
+      error: '',
+    });
   const location =
     draft.location.kind === 'item'
       ? draft.location.path.join(' › ')
@@ -193,103 +167,52 @@ export function TaskJourney({
     }
     return '';
   }
-  function finish() {
-    if (!request) {
-      setError('原请求未保存，无法恢复。');
-      return;
-    }
-    try {
-      let result: string[] = [];
-      runReviewTransaction(() => {
-        const ids = applyReviewTask(
-          request.key,
-          kind,
-          request.draft,
-          target,
-          request.expectedRevision,
-        );
-        result = [
-          '预览结果 · 已更新隔离数据，未写入正式库存',
-          ...summary,
-          ...ids.map((id) => `示例物品：${id}`),
-        ];
-        if (!persist('success', draft, request, true, result))
-          throw Error('无法保存回执，原请求保留。');
-      });
-      setReceipt(result);
-      setState('success');
-    } catch (error) {
-      const message = String(error);
-      setError(message);
-      const next = message.includes('版本') ? 'revisionConflict' : 'networkUnknown';
-      setState(next);
-      persist(next);
-    }
-  }
-
-  useEffect(() => {
-    if (state !== 'submitting') return;
-    const timer = setTimeout(() => {
-      if (scenario === 'unknown') {
-        try {
-          assertTrialWrite();
-          if (request)
-            applyReviewTask(request.key, kind, request.draft, target, request.expectedRevision);
-        } catch (e) {
-          setError(String(e));
-          setState('validationError');
-          return;
-        }
-        setState('networkUnknown');
-        persist('networkUnknown');
-      } else finish();
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [state]);
+  const execute = (recovering: boolean) => (attempt: NonNullable<typeof request>) =>
+    executeFixtureAttempt(record.scope, kind, target, attempt, scenario, recovering);
   function action(id: string) {
     if (id === 'edit') {
-      setReviewing(false);
-      setState('draft');
+      void session.update({ reviewing: false, state: 'draft' });
       return;
     }
     if (id === 'recover') {
-      finish();
+      void session.recover(execute(true));
       return;
     }
     const invalid = validate();
     if (invalid) {
-      setError(invalid);
-      setState('validationError');
+      void session.update({ error: invalid, state: 'validationError' });
       return;
     }
-    setError('');
     if (!reviewing) {
-      setReviewing(true);
-      persist('draft', draft, request, true);
+      void session.update({ reviewing: true, error: '' });
       return;
     }
     if (kind === 'new-product' && !approved) {
-      setState('approvalRequired');
+      void session.update({ state: 'approvalRequired' });
       return;
     }
-    if (scenario === 'conflict' && revision === (item?.item.revision || 1)) {
-      setState('revisionConflict');
+    if (scenario === 'conflict' && !conflictReviewed) {
+      void session.update({ state: 'revisionConflict' });
       return;
     }
     if (scenario === 'contract-gap' && kind === 'new-product') {
       setError('当前原子入库契约无法同时声明新商品类型与能力。草稿已保留。');
-      persist();
       return;
     }
-    const original = request || {
-      key: crypto.randomUUID(),
-      draft: structuredClone(draft),
-      expectedRevision: item?.item.revision,
-      reviewSummary: structuredClone(summary),
-    };
-    if (!persist('submitting', draft, original, true)) return;
-    setRequest(original);
-    setState('submitting');
+    try {
+      const original =
+        request ||
+        freezeFixtureAttempt(
+          kind,
+          draft,
+          item?.item.id || target,
+          item ? record.revisions[item.item.id] : undefined,
+          summary,
+        );
+      void session.submit(original, execute(false));
+    } catch (error) {
+      setError(String(error));
+    }
   }
   return (
     <DailyTask
@@ -345,8 +268,8 @@ export function TaskJourney({
       onLocationQuery={setLocationQuery}
       open={open}
       onOpen={() => setOpen(true)}
-      onClose={() => {
-        if (persist()) {
+      onClose={async () => {
+        if ((await session.retain()) && state !== 'submitting') {
           setOpen(false);
           if (isTrial()) onBack();
         }
@@ -381,14 +304,9 @@ export function TaskJourney({
             <Button
               variant="quiet"
               onClick={() => {
-                setDraft(initial);
-                setState('draft');
-                setRequest(null);
-                setReceipt([]);
-                setReviewing(false);
-                setApproved(false);
-                setError('');
-                persist('draft', initial, null, false, []);
+                void session
+                  .restart(initial, item ? { [item.item.id]: item.item.revision } : {})
+                  .catch((error) => setError(String(error)));
               }}
             >
               开始新样例
@@ -398,7 +316,7 @@ export function TaskJourney({
             <Button
               variant="quiet"
               onClick={() => {
-                if (persist()) onSwitch(kind === 'intake' ? 'new-product' : 'intake');
+                onSwitch(kind === 'intake' ? 'new-product' : 'intake');
               }}
             >
               {kind === 'intake' ? '没有合适商品，创建新商品' : '选择已有商品'}
@@ -408,36 +326,7 @@ export function TaskJourney({
             <p>原请求：{request?.key || '未记录'} · 将核对原参数，不重新创建请求。</p>
           )}
 
-          {state === 'submitting' && (
-            <>
-              <p>测试适配器等待返回，不调用业务服务。</p>
-              <Button
-                onClick={() => {
-                  if (scenario === 'unknown') {
-                    try {
-                      assertTrialWrite();
-                      if (request)
-                        applyReviewTask(
-                          request.key,
-                          kind,
-                          request.draft,
-                          target,
-                          request.expectedRevision,
-                        );
-                    } catch (e) {
-                      setError(String(e));
-                      setState('validationError');
-                      return;
-                    }
-                    setState('networkUnknown');
-                    persist('networkUnknown');
-                  } else finish();
-                }}
-              >
-                接收示例响应
-              </Button>
-            </>
-          )}
+          {state === 'submitting' && <p>测试适配器等待返回，不调用业务服务。</p>}
           {state === 'approvalRequired' && (
             <ApprovalSummary
               proposal={{
@@ -454,27 +343,25 @@ export function TaskJourney({
               availability={{ kind: 'available' }}
               onRequestReview={() => {}}
               onRevise={() => {
-                setState('draft');
-                setReviewing(false);
+                void session.update({ state: 'draft', reviewing: false });
               }}
               onConfirm={() => {
-                setApproved(true);
-                setState('draft');
+                void session.update({ approval: { id: key, revision: 1 }, state: 'draft' });
               }}
             />
           )}
-          {state === 'revisionConflict' && (
+          {state === 'revisionConflict' && item && (
             <ConflictResolution
               objectId={item!.item.id}
               scopeLabel="当前记录已更新，原输入保留"
               originalRevision={revision}
-              currentRevision={revision + 1}
+              currentRevision={item.item.revision}
               fields={[
                 {
                   key: 'revision',
                   label: '记录版本',
                   original: { kind: 'known', text: String(revision) },
-                  current: { kind: 'known', text: String(revision + 1) },
+                  current: { kind: 'known', text: String(item.item.revision) },
                   input: { kind: 'known', text: summary.join('；') },
                 },
               ]}
@@ -483,12 +370,18 @@ export function TaskJourney({
               onChoose={(_, value) => setChoice(value)}
               onRefresh={() => setError('已读取示例最新版本，请核对并选择。')}
               onReconfirm={() => {
-                setRevision(revision + 1);
-                persist('draft', choice === 'current' ? initial : draft, null, false);
-                setState('draft');
-                setReviewing(false);
-                setRequest(null);
-                if (choice === 'current') setDraft(initial);
+                if (!choice) {
+                  setError('请先选择保留当前事实或原输入。');
+                  return;
+                }
+                setConflictReviewed(true);
+                void session
+                  .reconcile(
+                    choice === 'current' ? initial : draft,
+                    { [item.item.id]: item.item.revision },
+                    initial,
+                  )
+                  .catch((error) => setError(String(error)));
               }}
             />
           )}

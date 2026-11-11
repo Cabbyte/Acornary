@@ -1,3 +1,12 @@
+import {
+  applicationRoutes,
+  modeForPath,
+  updateRouteQuery,
+  safeApplicationPath,
+} from '../../src/app-vnext/routing';
+import { projectSnapshotPage } from '../../src/app-vnext/query';
+import { useOptionalOperationSessions } from '../../src/app-vnext/operation-context';
+import { FixtureApplicationProvider, getFixtureScope } from '../trial/application';
 import { OperationSupportContext } from '../../src/ui/patterns/operation-support';
 import { trialToday, trialDayOffset, dateAtTrialClock } from '../trial/clock';
 import { trialProducts } from '../trial/products';
@@ -46,7 +55,8 @@ import type { DailyBrowseProps, DailyReadState } from '../../src/features/daily/
 import { useReviewAppearance } from '../appearance-context';
 import { FeedbackPanel } from '../feedback/FeedbackPanel';
 import { ReviewNote } from '../review-frame';
-import { definitionForPath, safePagePath } from './catalog';
+import { definitionForPath } from './catalog';
+const safePagePath = safeApplicationPath;
 import {
   emptyProduct,
   firstItemId,
@@ -75,6 +85,7 @@ const links: NavigationLink[] = [
 ];
 
 function PageScreen() {
+  const operationSessions = useOptionalOperationSessions();
   const { items: storedFacts, history } = useReviewWorld();
   const itemFacts = storedFacts.map((f) => ({
     ...f,
@@ -104,14 +115,21 @@ function PageScreen() {
   const router = useRouter();
   const [navigationError, setNavigationError] = useState('');
   useBlocker({
-    shouldBlockFn: () => {
-      if (trialSubmitting()) {
+    shouldBlockFn: async () => {
+      if (operationSessions?.isSubmitting() || trialSubmitting()) {
         setNavigationError('任务正在提交，请等待结果后再离开。');
+        return true;
+      }
+      if (operationSessions && !(await operationSessions.retain(getFixtureScope()))) {
+        setNavigationError('任务尚未可靠保存，请恢复存储后再离开。');
         return true;
       }
       return false;
     },
-    enableBeforeUnload: trialSubmitting,
+    enableBeforeUnload: () =>
+      !!operationSessions?.isSubmitting() ||
+      !!operationSessions?.hasUnpersisted(getFixtureScope()) ||
+      trialSubmitting(),
   });
   const route = useLocation();
   const extraNotes = useExtraReviewNotes(
@@ -133,11 +151,7 @@ function PageScreen() {
     route.pathname.startsWith('/manage/') ||
     route.pathname.startsWith('/settings');
   const today = trialToday();
-  const mode =
-    route.pathname.startsWith('/manage/') ||
-    (route.pathname.startsWith('/settings') && params.get('mode') === 'management')
-      ? 'management'
-      : 'daily';
+  const mode = modeForPath(route.pathname, route.searchStr);
   useEffect(() => {
     if (appearance && appearance.mode !== mode) appearance.onModeChange(mode);
     if (isTrial()) {
@@ -224,12 +238,7 @@ function PageScreen() {
     path = route.pathname,
     replace = false,
   ) => {
-    const next = new URLSearchParams(route.searchStr);
-    for (const [key, value] of Object.entries(changes)) {
-      if (value === null) next.delete(key);
-      else next.set(key, value);
-    }
-    navigate(`${path}${next.size ? `?${next}` : ''}`, replace);
+    navigate(updateRouteQuery(path, route.searchStr, changes), replace);
   };
   const back = () => {
     if (router.history.canGoBack()) router.history.back();
@@ -290,17 +299,21 @@ function PageScreen() {
   const rawPage = Number(params.get('page') || 1);
   const requestedPage = Number.isSafeInteger(rawPage) && rawPage > 0 ? rawPage - 1 : 0;
   const pageData = <T,>(rows: readonly T[]) => {
-    const index = Math.min(requestedPage, Math.max(0, Math.ceil(rows.length / pageSize) - 1));
-    const data = rows.slice(index * pageSize, (index + 1) * pageSize);
+    const projected = projectSnapshotPage(
+      rows,
+      requestedPage,
+      pageSize,
+      state === 'offline-partial' ? 'partial' : 'complete',
+    );
     return {
-      data,
+      data: projected.data,
       pagination: {
-        pageIndex: index,
-        pageSize,
-        loadedCount: data.length,
-        knownTotal: state === 'offline-partial' ? null : rows.length,
-        hasPrevious: index > 0,
-        hasNext: (index + 1) * pageSize < rows.length,
+        pageIndex: projected.pageIndex,
+        pageSize: projected.pageSize,
+        loadedCount: projected.data.length,
+        knownTotal: projected.knownTotal,
+        hasPrevious: projected.hasPrevious,
+        hasNext: projected.hasNext,
         onPageChange: (value: number) => update({ page: String(value + 1) }),
       },
     };
@@ -421,7 +434,13 @@ function PageScreen() {
   try {
     for (let i = 0; i < reviewStorage.length; i++) {
       const key = reviewStorage.key(i);
-      if (!key?.startsWith('acornary-review-p03:')) continue;
+      if (
+        !key ||
+        !['acornary-review-p03:', 'acornary-candidate-p03:'].some((prefix) =>
+          key.startsWith(prefix),
+        )
+      )
+        continue;
       const saved = JSON.parse(reviewStorage.getItem(key) || 'null');
       if (!saved || !['networkUnknown', 'submitting'].includes(saved.state)) continue;
       const [, kind, target, taskScenario] = key.split(':');
@@ -673,7 +692,18 @@ function PageScreen() {
   );
 }
 
-export function PageJourney({ initialPath, scenario }: { initialPath: string; scenario: string }) {
+export function PageJourney(props: { initialPath: string; scenario: string }) {
+  const sessions = useOptionalOperationSessions();
+  return sessions ? (
+    <PageJourneyRoot {...props} />
+  ) : (
+    <FixtureApplicationProvider>
+      <PageJourneyRoot {...props} />
+    </FixtureApplicationProvider>
+  );
+}
+
+function PageJourneyRoot({ initialPath, scenario }: { initialPath: string; scenario: string }) {
   const [scroll] = useState(() => new Map<string, NavigationSnapshot>());
   const [router] = useState(() => {
     // Storybook stories may coexist; only the dedicated review iframe owns browser history.
@@ -709,19 +739,9 @@ export function PageJourney({ initialPath, scenario }: { initialPath: string; sc
             createHref: (path) => `${window.location.pathname}${window.location.search}#${path}`,
           });
     const root = createRootRoute({ component: Outlet });
-    const routes = [
-      '/items',
-      '/search',
-      '/tasks/$kind',
-      '/daily/$section',
-      '/manage/$section',
-      '/settings',
-      '/settings/$section',
-      '/attention',
-      '/activity',
-      '/items/$itemId',
-      '/products/$productId',
-    ].map((path) => createRoute({ getParentRoute: () => root, path, component: PageScreen }));
+    const routes = applicationRoutes.map((path) =>
+      createRoute({ getParentRoute: () => root, path, component: PageScreen }),
+    );
     return createRouter({
       history,
       routeTree: root.addChildren(routes),

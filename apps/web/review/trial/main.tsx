@@ -1,4 +1,5 @@
 import { trialToday, setTrialDate } from './clock';
+import { FixtureApplicationProvider } from './application';
 import { trialSubmitting } from './storage';
 import { createRoot } from 'react-dom/client';
 import { lazy, Suspense, useState, useSyncExternalStore } from 'react';
@@ -139,23 +140,25 @@ function Trial() {
             {storageNotice}
           </p>
         )}
-        <Suspense fallback={<p role="status">正在打开页面…</p>}>
-          {!scope.signedIn ? (
-            <SettingsJourney
-              path="/settings/auth?view=login"
-              scenario="login"
-              navigate={(path) => {
-                location.hash = safePagePath(path) || '/items';
-              }}
-            />
-          ) : (
-            <PageJourney
-              key={`${scope.householdId}:${scope.generation}:${scenario}:${clockRevision}`}
-              initialPath="/items"
-              scenario={scenario}
-            />
-          )}
-        </Suspense>
+        <FixtureApplicationProvider>
+          <Suspense fallback={<p role="status">正在打开页面…</p>}>
+            {!scope.signedIn ? (
+              <SettingsJourney
+                path="/settings/auth?view=login"
+                scenario="login"
+                navigate={(path) => {
+                  location.hash = safePagePath(path) || '/items';
+                }}
+              />
+            ) : (
+              <PageJourney
+                key={`${scope.householdId}:${scope.generation}:${scenario}:${clockRevision}`}
+                initialPath="/items"
+                scenario={scenario}
+              />
+            )}
+          </Suspense>
+        </FixtureApplicationProvider>
       </ReviewAppearanceProvider>
     </AcornaryThemeProvider>
   );

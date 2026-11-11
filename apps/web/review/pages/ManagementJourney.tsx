@@ -25,6 +25,7 @@ import type { DailyItemFacts } from '../../src/features/daily/pages/models';
 import { flushReviewStorage, runReviewTransaction } from '../trial/storage';
 import { getTrialScope, isTrial } from '../trial/session';
 import { readManagementState, writeManagementState } from './management-storage';
+import { managementItemFromFacts } from './management-item-projection';
 import {
   catalogFixtures,
   locationFixtures,
@@ -340,7 +341,7 @@ export function ManagementJourney({
   const world = useReviewWorld();
   const url = new URL(path, 'https://review.invalid');
   const route = url.pathname;
-  const baseItems = world.items.map((row) => row.item);
+  const baseItems = world.items.map(managementItemFromFacts);
   const availableItems = specialLimit(scenario) ? largeSelectionItems() : baseItems;
   const scope = getTrialScope();
   const scopeKey = isTrial()
