@@ -159,3 +159,56 @@ test('polling, focus and manual refresh remain read-only', async ({ page }) => {
   await page.getByRole('button', { name: '刷新数据', exact: true }).click();
   await expect.poll(() => seen.length, { timeout: 2000 }).toBeGreaterThan(manual);
 });
+
+test('a completed query preserves an unsubmitted expiry date edit', async ({ page }) => {
+  await page.goto('/inspect');
+  const panel = page.locator('main > .panel').first();
+  const rows = panel.locator('tbody tr[data-row-key]');
+  const expiry = page.getByLabel('到期日期上限');
+  await page.getByLabel('搜索名称').fill('验收牛奶 1L');
+  await expect(rows).toHaveCount(6);
+
+  let releaseQuery!: () => void;
+  const queryReleased = new Promise<void>((resolve) => {
+    releaseQuery = resolve;
+  });
+  let queryReady!: () => void;
+  const heldQuery = new Promise<void>((resolve) => {
+    queryReady = resolve;
+  });
+  let held = false;
+  await page.route('**/api/read/query_items', async (route) => {
+    const input = route.request().postDataJSON();
+    if (
+      !held &&
+      input.attribute_filters?.some(
+        (filter: any) => filter.path === 'expiry.date' && filter.value === '2026-09-30',
+      )
+    ) {
+      held = true;
+      const response = await route.fetch();
+      queryReady();
+      await queryReleased;
+      await route.fulfill({ response });
+    } else {
+      await route.continue();
+    }
+  });
+  try {
+    await expiry.fill('2026-09-30');
+    await expiry.press('Enter');
+    await heldQuery;
+    await expiry.click();
+    await expiry.fill('2026-10-01');
+    await expect(expiry).toHaveValue('2026-10-01');
+    releaseQuery();
+    await expect(panel).toContainText('matching_count: 0');
+    await expect(expiry).toHaveValue('2026-10-01');
+    await expiry.press('Enter');
+    await expect(rows).toHaveCount(6);
+    await page.getByLabel('查询条码').fill('TEST-MILK-1L');
+    await expect(rows).toHaveCount(6);
+  } finally {
+    releaseQuery();
+  }
+});
