@@ -112,3 +112,19 @@ L1 尚未全完成：正式 Web/MCP bootstrap、正式读取/缓存和宿主存�
 UI Playwright 失败产物增加 trace，便于保留后续生命周期证据。诊断记录在 `output/ci-storage-43003656925/`、`output/ci-43003644658-native-browser/`；最终修正结果及同一 head 的 GitHub checks 单独补记。
 
 修正定向检查：原关闭用例 WebKit 3/3、Chromium 1/1；任务日志 Chromium/WebKit 6/6，并在与 CI 同版本 Linux WebKit 再通过 3/3。类型和格式检查通过。未更改任务存储实现或放宽断言；所有结果仍需最终提交的完整 CI 复核。
+
+独立诊断完成：Linux 完整工作台在 UI 尚未就绪时保存并刷新，100 次中 4 次数据库重建；等待实际页面可交互后，仍在保存确认后立即刷新，100/100 通过。这不证明整个浏览器 context 被重置，也不替代真实客户端验收。
+
+`2348310` 的分支 CI 43006108328 全部通过；PR CI 43006116746 的 UI/Android 通过，旧检查器焦点刷新测试失败。trace 证明焦点事件触发时四个轮询读取仍在途，第二次 `waitForLoadState('networkidle')` 复用了已有页面 load 状态并立即返回。查询层使用 `cancelRefetch: false` 正确复用在途读取，测试要求请求数立即增加的前置条件不成立。该项按实际请求完成状态修正同步，不能将分支 CI 成功作为忽略 PR 失败的理由。
+
+焦点用例现在分别观察同一家庭查询的轮询、焦点和手动读取，并等待真实请求结束。保留原 2 秒响应要求，新增全阶段只读约束及排除 5 秒轮询代替焦点/手动动作的断言。Chromium 3/3、WebKit 1/1、类型与格式通过；将真实 workerd 响应延迟送达 2.5 秒的受控诊断中，原版复现同一 `>9 / 9` 失败，修正版通过。未改产品源码、返回假业务数据或放宽断言。诊断及临时测试副本归档 `output/playwright/inspector-delayed-*`，不进入正式测试目录。
+
+### 下一工作包：L1 正式装配
+
+独立源码复核确认，当前 `candidate.ts` 仍是库，路由工厂仍接受外部 `screen`，不能作为上线应用发布。后续按以下依赖继续：
+
+1. **正式应用根与运行时端口**：建立 QueryClient、作用域、journal hydrate、根任务、路由和离开守卫；补页面需要的详情/笔记/设置读取端口，保留分页和覆盖范围。MCP 新 journal 必须遵守宿主保存/回读，不能直接使用会忽略 v1 及非 `:draft:` 键的旧 WidgetStore。
+2. **正式页面编排与剩余任务**：从 PageJourney、ManagementJourney、SettingsJourney 分离页面选择、事实投影、任务意图、返回/焦点/滚动和模式偏好。fixture、scenario、反馈和试用时钟留在 review。P03 factory/冻结命令目前仍在 `review/trial/application.tsx`，附件关联/移除仍依赖审阅事务，均须抽取；不能仅搬文件或复用根会话就宣称任务层完成。
+3. **Web/MCP bootstrap 与隔离装配验收**：共用正式根组件，分别注入浏览器和宿主平台；独立输出正式候选 Web HTML 与 MCP 资源。隔离 driver 从测试侧注入，正式构建不含 fixture。覆盖深链、刷新、跨模式、作用域变化和存储拒绝后，再进入 Phase 2 阶段验收。
+
+正式 Session/Connection、CF 查询与命令执行在 L2 及后续接通；真实附件/设备结果与服务端事务仍有独立验收门槛。
