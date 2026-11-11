@@ -1,31 +1,27 @@
-const { GITHUB_REPOSITORY: repo, GITHUB_SHA: sha, GITHUB_TOKEN: token } = process.env;
-if (!repo || !/^[a-f0-9]{40}$/.test(sha ?? '') || !token)
-  throw new Error('Exact commit and workflow read authorization required');
-const start = Date.now();
-for (;;) {
-  const r = await fetch(
-    `https://api.github.com/repos/${repo}/actions/runs?head_sha=${sha}&per_page=100`,
-    {
-      headers: {
-        Authorization: 'Bearer ' + token,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-    },
+import { appendFile, mkdir, rm, writeFile } from 'node:fs/promises';
+import { ciGateOptionsFromEnvironment, waitForFullCi } from './ci-gate.mjs';
+
+const evidenceFile = 'output/cloudflare-release/ci-gate.json';
+// An unsuccessful recheck must not leave a previous success in the uploaded artifact.
+await rm(evidenceFile, { force: true });
+const evidence = await waitForFullCi({
+  ...ciGateOptionsFromEnvironment(process.env),
+  onWaiting: (message) => console.log(message),
+});
+await mkdir('output/cloudflare-release', { recursive: true });
+await writeFile(evidenceFile, JSON.stringify(evidence, null, 2) + '\n');
+if (process.env.GITHUB_OUTPUT)
+  await appendFile(
+    process.env.GITHUB_OUTPUT,
+    [
+      `ci_run_id=${evidence.run_id}`,
+      `ci_run_attempt=${evidence.run_attempt}`,
+      `ci_workflow_id=${evidence.workflow_id}`,
+      `ci_sha=${evidence.commit}`,
+      `ci_evidence_file=${evidenceFile}`,
+      '',
+    ].join('\n'),
   );
-  if (!r.ok) throw new Error('Cannot inspect commit CI: HTTP ' + r.status);
-  const runs = (await r.json()).workflow_runs.filter(
-    (v) => v.name === 'CI' && v.head_sha === sha && v.event === 'push',
-  );
-  if (runs.some((r) => r.status === 'completed' && r.conclusion === 'success')) {
-    console.log('Exact-commit full CI passed');
-    break;
-  }
-  if (
-    runs.some((r) => r.status === 'completed' && !['success', 'cancelled'].includes(r.conclusion))
-  )
-    throw new Error('Full CI failed; preview release blocked');
-  if (Date.now() - start > 35 * 60 * 1000) throw new Error('Full CI did not complete in time');
-  console.log('Waiting for full CI for ' + sha.slice(0, 12));
-  await new Promise((r) => setTimeout(r, 15000));
-}
+console.log(
+  `Full CI passed for ${evidence.commit}: run ${evidence.run_id}, attempt ${evidence.run_attempt} (${evidence.run_url})`,
+);

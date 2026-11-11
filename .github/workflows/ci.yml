@@ -7,6 +7,31 @@ on:
 permissions:
   contents: read
 jobs:
+  ui-review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: corepack enable && corepack prepare pnpm@11.19.0 --activate
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check:ui-tokens && pnpm check:ui-catalog
+      - run: pnpm build:ui-candidate && pnpm build:ui-preview && pnpm build:ui-trial && pnpm build:storybook
+      - run: pnpm check:ui-boundaries
+      - run: pnpm exec playwright install --with-deps chromium webkit
+      - name: Isolated component review in Chromium and WebKit
+        run: pnpm test:e2e:ui
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: ui-review-results
+          path: output/ui-tests/
+          if-no-files-found: ignore
+          retention-days: 7
   test:
     runs-on: ubuntu-24.04
     timeout-minutes: 30

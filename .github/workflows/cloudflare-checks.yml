@@ -29,6 +29,8 @@ jobs:
       - run: pnpm cf:test:snapshot
       - run: pnpm cf:test:backup
       - run: pnpm cf:test:operators
+      - name: Exact-commit CI gate rejection and rerun cases
+        run: node --test tests/cloudflare/ci-gate.test.mjs
   deploy-preview:
     needs: native-kernel
     if: github.event_name == 'push' && github.ref == 'refs/heads/codex/cloudflare-native' && vars.CF_PREVIEW_DEPLOY_ENABLED == 'true'
@@ -64,6 +66,8 @@ jobs:
         if: always()
         with:
           name: cloudflare-preview-release
-          path: output/cloudflare-release/manifest.json
+          path: |
+            output/cloudflare-release/manifest.json
+            output/cloudflare-release/ci-gate.json
           if-no-files-found: ignore
           retention-days: 30
