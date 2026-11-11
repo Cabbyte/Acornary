@@ -132,17 +132,40 @@ test('database rows, foreign keys, derived paths, APIs, notes and fixed registry
   await expect(page.locator('button').filter({ hasText: /保存|删除|上传|入库/ })).toHaveCount(0);
 });
 test('polling, focus and manual refresh remain read-only', async ({ page }) => {
-  const seen: string[] = [];
+  const pending = new Set<import('@playwright/test').Request>();
+  const reads: { started: number; finished?: number }[] = [];
+  const householdReads = new Map<import('@playwright/test').Request, (typeof reads)[number]>();
   page.on('request', (r) => {
-    if (r.url().includes('/api/')) seen.push(r.url());
+    const path = new URL(r.url()).pathname;
+    if (!path.startsWith('/api/')) return;
+    expect(path).not.toContain('/api/write/');
+    expect(['GET', 'POST']).toContain(r.method());
+    if (r.method() === 'POST') expect(path).toMatch(/^\/api\/read\//);
+    pending.add(r);
+    if (path === '/api/debug') {
+      const read = { started: performance.now() };
+      reads.push(read);
+      householdReads.set(r, read);
+    }
   });
+  page.on('requestfinished', (r) => {
+    pending.delete(r);
+    const read = householdReads.get(r);
+    if (read) read.finished = performance.now();
+  });
+  page.on('requestfailed', (r) => pending.delete(r));
+  const settleReads = () => expect.poll(() => pending.size).toBe(0);
   await page.goto('/inspect');
   await expect(page.getByTestId('records-households').locator('.record')).toHaveCount(1);
-  await page.waitForLoadState('networkidle');
-  const count = seen.length;
-  await expect.poll(() => seen.length, { timeout: 8000 }).toBeGreaterThan(count);
-  await page.waitForLoadState('networkidle');
-  const after = seen.length;
+  await settleReads();
+  const count = reads.length;
+  await expect.poll(() => reads.length, { timeout: 8000 }).toBeGreaterThan(count);
+  // networkidle is a historical load state, not a barrier for this polling batch.
+  // Focus deliberately reuses in-flight queries, so wait for their actual completion.
+  await settleReads();
+  const after = reads.length;
+  const pollFinished = reads.at(-1)!.finished;
+  expect(pollFinished).toBeDefined();
   await page.evaluate(() => {
     // Model leaving and returning to the page. A second focus event while the
     // query client is already focused is intentionally deduplicated.
@@ -153,9 +176,68 @@ test('polling, focus and manual refresh remain read-only', async ({ page }) => {
     else Reflect.deleteProperty(document, 'visibilityState');
     window.dispatchEvent(new FocusEvent('focus'));
   });
-  await expect.poll(() => seen.length, { timeout: 2000 }).toBeGreaterThan(after);
-  await page.waitForLoadState('networkidle');
-  const manual = seen.length;
+  await expect.poll(() => reads.length, { timeout: 2000 }).toBe(after + 1);
+  // The same query's next 5-second interval must not stand in for the focus event.
+  expect(reads[after]!.started - pollFinished!).toBeLessThan(5000);
+  await settleReads();
+  const manual = reads.length;
+  const focusFinished = reads.at(-1)!.finished;
+  expect(focusFinished).toBeDefined();
   await page.getByRole('button', { name: '刷新数据', exact: true }).click();
-  await expect.poll(() => seen.length, { timeout: 2000 }).toBeGreaterThan(manual);
+  await expect.poll(() => reads.length, { timeout: 2000 }).toBe(manual + 1);
+  expect(reads[manual]!.started - focusFinished!).toBeLessThan(5000);
+  await settleReads();
+});
+
+test('a completed query preserves an unsubmitted expiry date edit', async ({ page }) => {
+  await page.goto('/inspect');
+  const panel = page.locator('main > .panel').first();
+  const rows = panel.locator('tbody tr[data-row-key]');
+  const expiry = page.getByLabel('到期日期上限');
+  await page.getByLabel('搜索名称').fill('验收牛奶 1L');
+  await expect(rows).toHaveCount(6);
+
+  let releaseQuery!: () => void;
+  const queryReleased = new Promise<void>((resolve) => {
+    releaseQuery = resolve;
+  });
+  let queryReady!: () => void;
+  const heldQuery = new Promise<void>((resolve) => {
+    queryReady = resolve;
+  });
+  let held = false;
+  await page.route('**/api/read/query_items', async (route) => {
+    const input = route.request().postDataJSON();
+    if (
+      !held &&
+      input.attribute_filters?.some(
+        (filter: any) => filter.path === 'expiry.date' && filter.value === '2026-09-30',
+      )
+    ) {
+      held = true;
+      const response = await route.fetch();
+      queryReady();
+      await queryReleased;
+      await route.fulfill({ response });
+    } else {
+      await route.continue();
+    }
+  });
+  try {
+    await expiry.fill('2026-09-30');
+    await expiry.press('Enter');
+    await heldQuery;
+    await expiry.click();
+    await expiry.fill('2026-10-01');
+    await expect(expiry).toHaveValue('2026-10-01');
+    releaseQuery();
+    await expect(panel).toContainText('matching_count: 0');
+    await expect(expiry).toHaveValue('2026-10-01');
+    await expiry.press('Enter');
+    await expect(rows).toHaveCount(6);
+    await page.getByLabel('查询条码').fill('TEST-MILK-1L');
+    await expect(rows).toHaveCount(6);
+  } finally {
+    releaseQuery();
+  }
 });

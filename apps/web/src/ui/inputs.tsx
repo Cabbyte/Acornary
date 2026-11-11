@@ -1,6 +1,6 @@
 import { DatePicker, InputNumber, type DatePickerProps } from 'antd';
 import dayjs from 'dayjs';
-import type { ComponentProps } from 'react';
+import { useMemo, type ComponentProps } from 'react';
 
 /** Domain dates remain local strings; never turn a calendar date into a UTC instant. */
 export function CalendarInput({
@@ -13,10 +13,16 @@ export function CalendarInput({
   'value' | 'onChange' | 'showTime' | 'multiple' | 'defaultValue' | 'onOk'
 > & { value: string; onChange: (value: string) => void; withTime?: boolean }) {
   const format = withTime ? 'YYYY-MM-DDTHH:mm' : 'YYYY-MM-DD';
+  // rc-picker treats a new controlled value as a reset of its unsubmitted edit.
+  // Keep the date identity stable when a parent query or other field rerenders.
+  const dateValue = useMemo(() => {
+    const parsed = value ? dayjs(value) : null;
+    return parsed?.isValid() ? parsed : null;
+  }, [value]);
   return (
     <DatePicker
       {...props}
-      value={value && dayjs(value).isValid() ? dayjs(value) : null}
+      value={dateValue}
       showTime={withTime}
       format={withTime ? 'YYYY-MM-DD HH:mm' : format}
       onChange={(date) => onChange(date?.format(format) ?? '')}

@@ -2,6 +2,8 @@ package top.protium.acornary
 
 import android.app.Application
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
+import android.view.Surface as DisplaySurface
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
@@ -19,9 +21,34 @@ import org.junit.Test
 class TerminalUiTest {
     @get:Rule val compose = createAndroidComposeRule<TerminalTestActivity>()
     private val household = Household("fixture", "布局测试家庭", "Asia/Shanghai")
+    private fun landscape(reverse: Boolean = false) {
+        var targetRotation = DisplaySurface.ROTATION_0
+        compose.activityRule.scenario.onActivity { activity ->
+            val mode = checkNotNull(activity.display).mode
+            val naturalLandscape = mode.physicalWidth > mode.physicalHeight
+            targetRotation = if (reverse) {
+                if (naturalLandscape) DisplaySurface.ROTATION_180 else DisplaySurface.ROTATION_270
+            } else {
+                if (naturalLandscape) DisplaySurface.ROTATION_0 else DisplaySurface.ROTATION_90
+            }
+            activity.requestedOrientation = if (reverse) ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        }
+        // WindowManager rotation is external to Compose's idling clock. Do not
+        // inject a touch until the display and the laid-out window agree.
+        compose.waitUntil {
+            var ready = false
+            compose.activityRule.scenario.onActivity { activity ->
+                val decor = activity.window.decorView
+                ready = activity.display?.rotation == targetRotation &&
+                    activity.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE &&
+                    decor.isLaidOut && decor.width > decor.height && decor.hasWindowFocus()
+            }
+            ready
+        }
+    }
     private fun display(item: StockItem, large: Boolean = false, reverse: Boolean = false) {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as Application
-        compose.activityRule.scenario.onActivity { it.requestedOrientation = if (reverse) ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+        landscape(reverse)
         val model = TerminalViewModel(app)
         compose.setContent {
             val density = LocalDensity.current
@@ -53,7 +80,7 @@ class TerminalUiTest {
     @Test fun printerTestActionStaysVisibleInReverseLandscapeWithLargeFont() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as Application
         val model = TerminalViewModel(app)
-        compose.activityRule.scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE }
+        landscape(reverse = true)
         compose.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {

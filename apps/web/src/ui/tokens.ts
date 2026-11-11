@@ -1,4 +1,5 @@
 import type { ThemeConfig } from 'antd';
+import source from './tokens/source.json' with { type: 'json' };
 
 /**
  * The single source of truth for Acornary's visual language.
@@ -7,88 +8,7 @@ import type { ThemeConfig } from 'antd';
  * `tokens.css`) and Ant Design's ThemeConfig (`antThemeFromTokens`). Ant needs real
  * color values, not `var()`, so both consumers read from this object.
  */
-export const tokens = {
-  colors: {
-    paper: '#F6F0E6',
-    surface: '#FFFCF6',
-    surfaceRaised: '#FFFFFF',
-    ink: '#2B2420',
-    ink2: '#51463D',
-    muted: '#68615C',
-    line: '#E8DFD2',
-    lineStrong: '#D8C9B8',
-    accent: '#AB5F40',
-    accentHover: '#965136',
-    accentSoft: '#F5E5D8',
-    success: '#5F7358',
-    successSoft: '#E8EFE4',
-    warning: '#A9742A',
-    warningSoft: '#F6EAD6',
-    danger: '#A33828',
-    dangerSoft: '#F7E2DC',
-    info: '#4F6B7A',
-    infoSoft: '#E4EDF0',
-    catFood: '#F3E6D5',
-    catFoodInk: '#7A541F',
-    catClothing: '#F3E1E1',
-    catClothingInk: '#8B4A4A',
-    catDevice: '#E2ECF0',
-    catDeviceInk: '#3F5F6E',
-    catCleaning: '#E8EFE4',
-    catCleaningInk: '#526A4A',
-    catNeutral: '#EEE7DC',
-    catNeutralInk: '#6E5A3C',
-  },
-  fonts: {
-    sans: '-apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif',
-    display: '"Songti SC", "STSong", "SimSun", serif',
-  },
-  spacing: {
-    1: 4,
-    2: 8,
-    3: 12,
-    4: 16,
-    5: 24,
-    6: 32,
-    7: 48,
-  },
-  controls: {
-    sm: 28,
-    md: 36,
-    touch: 44,
-  },
-  rows: {
-    desktop: 64,
-    mobile: 72,
-  },
-  radii: {
-    control: 8,
-    panel: 12,
-    pill: 999,
-  },
-  type: {
-    display: { fontSize: 28, lineHeight: 1.25, fontWeight: 600 },
-    title: { fontSize: 20, lineHeight: 1.3, fontWeight: 600 },
-    row: { fontSize: 16, lineHeight: 1.35, fontWeight: 600 },
-    body: { fontSize: 14, lineHeight: 1.5, fontWeight: 400 },
-    micro: { fontSize: 12, lineHeight: 1.4, fontWeight: 500 },
-    eyebrow: { fontSize: 10, lineHeight: 1.2, fontWeight: 600 },
-  },
-  motion: {
-    fast: '120ms',
-    base: '180ms',
-    easing: 'cubic-bezier(.2,.8,.2,1)',
-  },
-  widths: {
-    list: 1120,
-    detail: 840,
-    settings: 720,
-  },
-  sheets: {
-    narrow: 480,
-    wide: 560,
-  },
-} as const;
+export const tokens = source.legacy.tokens;
 
 const colorVariableNames = {
   paper: 'paper',

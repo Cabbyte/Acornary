@@ -29,9 +29,29 @@ jobs:
       - run: pnpm cf:test:snapshot
       - run: pnpm cf:test:backup
       - run: pnpm cf:test:operators
-  deploy-preview:
+      - name: Exact-commit CI gate rejection and rerun cases
+        run: node --test tests/cloudflare/ci-gate.test.mjs
+  release-ready:
     needs: native-kernel
     if: github.event_name == 'push' && github.ref == 'refs/heads/codex/cloudflare-native' && vars.CF_PREVIEW_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Require full CI before requesting deployment approval
+        run: node scripts/cloudflare/wait-ci.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+  deploy-preview:
+    needs: release-ready
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     environment:
@@ -52,7 +72,7 @@ jobs:
           node-version: '24'
       - run: corepack enable && corepack prepare pnpm@11.19.0 --activate
       - run: pnpm install --frozen-lockfile
-      - name: Require full CI for this commit
+      - name: Recheck full CI after deployment approval
         run: node scripts/cloudflare/wait-ci.mjs
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -64,6 +84,8 @@ jobs:
         if: always()
         with:
           name: cloudflare-preview-release
-          path: output/cloudflare-release/manifest.json
+          path: |
+            output/cloudflare-release/manifest.json
+            output/cloudflare-release/ci-gate.json
           if-no-files-found: ignore
           retention-days: 30

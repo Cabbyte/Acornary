@@ -34,7 +34,20 @@
     "cf:deploy:preview": "node --import tsx scripts/cloudflare/release.mjs --deploy",
     "cf:test:browser": "pnpm cf:build && wrangler deploy --dry-run --config apps/cloudflare/wrangler.preview.json --outdir ../../output/cloudflare-browser && node scripts/cloudflare/browser.mjs",
     "cf:reference": "node scripts/cloudflare/reference.mjs",
-    "cf:test:operators": "node --test tests/cloudflare/operators.test.mjs"
+    "cf:test:operators": "node --test tests/cloudflare/operators.test.mjs",
+    "storybook": "storybook dev -p 6006 --host 127.0.0.1 --no-open --disable-telemetry -c apps/web/.storybook",
+    "build:storybook": "storybook build --disable-telemetry -c apps/web/.storybook -o output/storybook",
+    "dev:ui-preview": "vite --config apps/web/review/vite.config.ts",
+    "build:ui-preview": "vite build --config apps/web/review/vite.config.ts",
+    "generate:ui-tokens": "node scripts/ui/tokens.mjs",
+    "check:ui-tokens": "node scripts/ui/tokens.mjs --check",
+    "check:ui-boundaries": "node scripts/ui/boundaries.mjs",
+    "test:e2e:ui": "playwright test --config apps/web/review/playwright.config.ts",
+    "check:ui-catalog": "node scripts/ui/catalog.mjs",
+    "dev:ui-trial": "vite --config apps/web/review/trial/vite.config.ts",
+    "build:ui-trial": "vite build --config apps/web/review/trial/vite.config.ts",
+    "build:ui-candidate": "vite build --config apps/web/vite.candidate.config.ts",
+    "cf:build:candidate": "node scripts/cloudflare/build-assets.mjs --environment preview --ui candidate"
   },
   "dependencies": {
     "@ant-design/icons": "6.3.4",
@@ -61,7 +74,16 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-markdown": "^10.1.0",
-    "zod": "^4.6.5"
+    "zod": "^4.6.5",
+    "@base-ui/react": "1.9.0",
+    "@hookform/resolvers": "7.0.3",
+    "@tanstack/react-table": "9.3.1",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "date-fns": "4.4.0",
+    "react-day-picker": "10.0.2",
+    "react-hook-form": "7.91.0",
+    "tailwind-merge": "3.7.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
@@ -78,6 +100,10 @@
     "vite": "^8.3.0",
     "vitest": "^5.0.1",
     "wrangler": "4.157.0",
-    "pg": "^8.23.0"
+    "pg": "^8.23.0",
+    "@storybook/react-vite": "10.6.6",
+    "@tailwindcss/vite": "4.3.4",
+    "storybook": "10.6.6",
+    "tailwindcss": "4.3.4"
   }
 }
