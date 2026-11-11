@@ -1,5 +1,7 @@
 # Acornary Frontend vNext — 设计与组件审阅
 
+> **2026-11-11 当前工程基线：** `/Users/timli/workspace/Acornary-cf-frontend-vnext`，分支 `codex/cf-frontend-vnext`。新前端在 CF 派生分支继续开发；现有非 CF 应用和旧 CF 入口未切换。见 [本轮报告](phase2-cf-report.md)、[合并基线](cf-integration-baseline.md)、[功能对等清单](feature-parity-matrix.md)、[接口兼容矩阵](backend-compatibility-matrix.md)、[Android 切换设计](android-environment-switching.md)。下方批准记录按历史范围保留，不代表当前工程验收。
+
 > **RC6 的 70 个组件已获用户确认。** **P01-RC1：我的物品、搜索结果、商品资料、单件档案**的 4 页设计已于 2026-11-09 获用户确认。**P02-RC1：“需要留意”和“最近变化”已装配，待用户审阅。**P03-RC1 入库、使用、移动四个任务的交互候选设计已获用户确认，见 [P03 报告](p03-rc1-report.md)。继续使用隔离 fixture，回归测试暂停。
 
 2026-11-09（Asia/Shanghai） · 独立工作树 `Acornary-frontend-vnext` · 分支 `codex/frontend-vnext`。
