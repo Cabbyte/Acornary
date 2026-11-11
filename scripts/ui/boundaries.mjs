@@ -26,7 +26,12 @@ function walk(file) {
     if (found) walk(found);
   }
 }
-for (const file of ['apps/web/src/main.tsx', 'apps/web/src/plugin.tsx']) walk(file);
+for (const file of [
+  'apps/web/src/main.tsx',
+  'apps/web/src/plugin.tsx',
+  'apps/web/src/candidate.ts',
+])
+  walk(file);
 const preview =
   readFileSync('apps/web/review/vite.config.ts', 'utf8') +
   readFileSync('apps/web/review/trial/vite.config.ts', 'utf8');
@@ -38,6 +43,7 @@ for (const path of ['output/storybook/sw.js', 'output/ui-preview/sw.js', 'output
 
 // Candidate UI must remain pure even before it becomes reachable from main/plugin.
 const candidateRoots = [
+  'apps/web/src/app-vnext',
   'apps/web/src/ui/components',
   'apps/web/src/ui/patterns',
   'apps/web/src/ui/theme',
@@ -64,10 +70,43 @@ for (const file of candidateFiles) {
     )
   )
     throw Error(`Direct I/O in candidate component: ${file}`);
-  if (/from\s+['"][^'"]*(?:review|fixtures|features\/(?:api|writes))[/\\]/.test(content))
+  if (
+    /from\s+['"][^'"]*(?:review|fixtures|features\/(?:api|writes))[/\\]/.test(content) &&
+    !file.includes('/src/app-vnext/')
+  )
     throw Error(`Preview/business adapter import in component: ${file}`);
+  if (file.includes('/src/app-vnext/')) {
+    const reusablePureModules = new Set([
+      '../features/api/recovery',
+      '../features/api/query-params',
+      '../features/writes/note-command',
+    ]);
+    for (const [, name] of content.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
+      if (name.includes('features/') && !reusablePureModules.has(name))
+        throw Error(`Unreviewed application dependency: ${file} -> ${name}`);
+    }
+  }
   walk(file);
 }
 console.log(
   `Candidate boundary checked: ${candidateFiles.length} UI source files; no direct business/device I/O.`,
 );
+
+// Candidate build stays outside deployable Worker assets.
+const candidateConfig = readFileSync('apps/web/vite.candidate.config.ts', 'utf8');
+if (
+  !candidateConfig.includes("outDir: '../../output/ui-candidate'") ||
+  /reviewFeedbackServer|proxy|serviceWorker/.test(candidateConfig)
+)
+  throw Error('Candidate build must remain a source-only isolated artifact');
+for (const name of [
+  'apps/cloudflare/wrangler.preview.json',
+  'apps/cloudflare/wrangler.production.json',
+]) {
+  if (
+    existsSync(name) &&
+    /ui-candidate|ui-preview|ui-trial|storybook/.test(readFileSync(name, 'utf8'))
+  )
+    throw Error(`Development assets referenced by deployment: ${name}`);
+}
+console.log('CF candidate artifact is separate from Worker deployment assets.');
