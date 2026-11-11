@@ -1,9 +1,17 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+async function openWorkbench(page: Page) {
+  await page.goto('/');
+  // Users can save only after the page is interactive. Reloading while the lazy
+  // workbench iframe was still starting reproduced WebKit internal errors and
+  // database recreation; keep the reload immediately after the acknowledged save.
+  await expect(page.frameLocator('iframe').getByRole('heading').first()).toBeVisible();
+}
 
 test('a malformed record arriving after hydration is preserved instead of overwritten', async ({
   page,
 }) => {
-  await page.goto('/');
+  await openWorkbench(page);
   const result = await page.evaluate(async () => {
     const modulePath = '/operation-storage-harness.ts';
     const journal = await import(/* @vite-ignore */ modulePath);
@@ -25,7 +33,7 @@ test('a malformed record arriving after hydration is preserved instead of overwr
 test('browser journal retains the original request after reload and isolates accounts', async ({
   page,
 }) => {
-  await page.goto('/');
+  await openWorkbench(page);
   await page.evaluate(async () => {
     const modulePath = '/operation-storage-harness.ts';
     const journal = await import(/* @vite-ignore */ modulePath);
@@ -55,7 +63,7 @@ test('browser journal retains the original request after reload and isolates acc
 test('two browser tabs cannot replace each other’s frozen task', async ({ page, context }) => {
   const other = await context.newPage();
   for (const tab of [page, other]) {
-    await tab.goto('/');
+    await openWorkbench(tab);
     await tab.evaluate(async () => {
       const modulePath = '/operation-storage-harness.ts';
       await (await import(/* @vite-ignore */ modulePath)).open();

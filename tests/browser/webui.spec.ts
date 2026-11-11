@@ -398,7 +398,19 @@ test('Ant Design consumption validates inline and moving requires a separate pat
     await page.screenshot({ path: `output/playwright/soft-consume-${width}.png`, fullPage: true });
   }
   await page.getByRole('button', { name: '取消', exact: true }).click();
-  await page.getByRole('button', { name: '保留草稿并关闭', exact: true }).click();
+  const closeConfirmation = page.getByRole('dialog', { name: '关闭并保留草稿？', exact: true });
+  await expect(closeConfirmation).toBeVisible();
+  // WebKit can consider the initial 20% zoom frame stable before Ant's entrance starts.
+  // Wait for the actual entrance to finish before targeting the confirmation button.
+  await expect(closeConfirmation).not.toHaveClass(/ant-zoom-(?:appear|enter)(?:\s|-)/);
+  await closeConfirmation.getByRole('button', { name: '保留草稿并关闭', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname === `/items/${f.ids[0]}` &&
+      !url.searchParams.has('dialog') &&
+      !url.searchParams.has('target'),
+  );
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: '移动', exact: true }).click();
   await expect(page.getByRole('button', { name: '确认移动 1 件' })).toBeDisabled();
