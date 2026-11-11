@@ -37,7 +37,38 @@ const deferred = () => {
   return { promise, resolve };
 };
 
-describe('root operation session (authored while regression execution is paused)', () => {
+describe('root operation session', () => {
+  it('rejects a different task stored under the requested key without overwriting or sending', async () => {
+    const saved = { ...initial(), taskId: 'consume:other', targetIds: ['item:other'], attempt };
+    let writes = 0;
+    let sends = 0;
+    const session = new OperationSession(
+      initial(),
+      {
+        load: () => saved,
+        save: () => {
+          writes++;
+        },
+      },
+      () => scope,
+      valid,
+    );
+    expect(session.getSnapshot().taskId).toBe('consume:1');
+    expect(session.getSnapshot().targetIds).toEqual(['item:1']);
+    expect(session.getSnapshot().state).toBe('validationError');
+    expect(await session.update({ draft: { amount: '2' } })).toBe(false);
+    await session.submit(attempt, async () => {
+      sends++;
+      return 'receipt';
+    });
+    await session.recover(async () => {
+      sends++;
+      return 'receipt';
+    });
+    expect(writes).toBe(0);
+    expect(sends).toBe(0);
+    expect(saved.taskId).toBe('consume:other');
+  });
   it('does not send when durable persistence fails', async () => {
     let sends = 0;
     const session = new OperationSession(

@@ -56,7 +56,11 @@ export class OperationSession<Draft, Attempt, Result> {
     try {
       const saved = storage.load(initial.scope, initial.taskId);
       if (saved != null) {
-        if (!validateSaved(saved) || !sameScope(saved.scope, initial.scope))
+        if (
+          !validateSaved(saved) ||
+          !sameScope(saved.scope, initial.scope) ||
+          saved.taskId !== initial.taskId
+        )
           throw Error('保存的任务无法安全恢复，原记录已保留。');
         this.record = {
           ...saved,
