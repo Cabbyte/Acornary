@@ -34,7 +34,7 @@ export function CacheSettingsPage(props: CacheSettingsPageProps) {
         title={online ? '在线 · 当前为隔离预览' : '当前离线 · 仅可查看已有缓存'}
       >
         {online
-          ? '更新仅读取预设示例；不会请求正式库存。'
+          ? '更新读取当前家庭的数据，保留未完成任务。'
           : '缓存可能不完整，不能用于判断家庭总量。写入和身份切换需要恢复连接。'}
       </InlineNotice>
       <SettingsSection
@@ -50,8 +50,8 @@ export function CacheSettingsPage(props: CacheSettingsPageProps) {
             <SettingsFacts
               values={[
                 { label: '上次更新', value: cache.updatedAt },
-                { label: '物品范围', value: `${cache.itemCount} 件已打开的示例实物，非全家总数` },
-                { label: '商品范围', value: `${cache.catalogCount} 条已读取的示例商品资料` },
+                { label: '物品范围', value: `${cache.itemCount} 件已打开的实物，非全家总数` },
+                { label: '商品范围', value: `${cache.catalogCount} 条已读取的商品资料` },
                 {
                   label: '历史范围',
                   value: `最近已打开的 ${cache.historyCount} 条记录，未缓存更早历史`,
@@ -62,7 +62,7 @@ export function CacheSettingsPage(props: CacheSettingsPageProps) {
           )}
           <div className="vn-settings-actions">
             <Button variant="secondary" disabled={!online} onClick={props.onRefresh}>
-              更新示例缓存
+              更新读取缓存
             </Button>
             <Button
               variant="danger"
@@ -132,14 +132,14 @@ export function CacheSettingsPage(props: CacheSettingsPageProps) {
         open={props.clearOpen}
         onOpenChange={props.onClearOpen}
         title="清理本次预览的读缓存？"
-        description={`只清理 ${props.household.name} 的示例读取快照。保留全部未发送草稿、原请求与待确认结果；不会清理浏览器中其他页面、账号或正式数据。`}
+        description={`只清理 ${props.household.name} 的读取快照。保留全部未发送草稿、原请求与待确认结果；不会清理浏览器中其他页面、账号或正式数据。`}
         footer={
           <>
             <Button variant="secondary" onClick={() => props.onClearOpen(false)}>
               取消
             </Button>
             <Button variant="danger" onClick={props.onClear}>
-              确认清理示例读缓存
+              确认清理读缓存
             </Button>
           </>
         }

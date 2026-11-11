@@ -4,6 +4,7 @@ import type { ManagementDraft } from '../../apps/web/src/app-vnext/management-ta
 import {
   createManagementSession,
   freezeManagementAttempt,
+  managementTaskView,
 } from '../../apps/web/src/app-vnext/management-task';
 import {
   createManagementFixtureSession,
@@ -144,6 +145,14 @@ beforeEach(() => {
 });
 
 describe('isolated management adapter', () => {
+  it('keeps unsupported legacy uncertain tasks visibly uncertain instead of converting them into a fresh editable draft', () => {
+    const legacy = make('bulk-lifecycle');
+    legacy.task.phase = 'unknown';
+    const session = createManagementFixtureSession(legacy);
+    expect(session.getSnapshot().state).toBe('validationError');
+    expect(managementTaskView(session.getSnapshot()).phase).toBe('unknown');
+    expect(f.savedOperation).toBeNull();
+  });
   it('loads the root draft without overwriting reconciled versions and key with an older page snapshot', async () => {
     const old = make('item-save');
     const root = createManagementSession(

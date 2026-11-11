@@ -85,9 +85,9 @@ function Trial() {
               </select>
             </label>
             <label>
-              示例角色{' '}
+              授权场景{' '}
               <select
-                value={scope.role}
+                value={scope.role === 'viewer' ? 'viewer' : 'member'}
                 onChange={(e) => {
                   try {
                     setTrialRole(e.target.value as typeof scope.role);
@@ -96,9 +96,8 @@ function Trial() {
                   }
                 }}
               >
-                <option value="owner">所有者</option>
-                <option value="member">成员</option>
-                <option value="viewer">只读</option>
+                <option value="member">可读写</option>
+                <option value="viewer">只读授权</option>
               </select>
             </label>
             <label>

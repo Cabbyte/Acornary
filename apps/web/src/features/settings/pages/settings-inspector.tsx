@@ -42,7 +42,7 @@ export function SettingsInspector(props: SettingsInspectorProps) {
             label: '读取范围',
             value: `${props.household.name} · ${props.online ? '隔离样例快照' : '已缓存的样例快照'}`,
           },
-          { label: '协议', value: 'read-v2 · 示例版本' },
+          { label: '协议', value: 'read-v2' },
           { label: '脱敏策略', value: '只展示预设安全字段，敏感值替换为 [REDACTED]' },
         ]}
       />

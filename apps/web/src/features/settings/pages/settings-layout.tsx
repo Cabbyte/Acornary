@@ -12,6 +12,7 @@ export function SettingsLayout({
   household,
   navigate,
   notice,
+  task,
   children,
   back = '/settings',
   context,
@@ -30,6 +31,47 @@ export function SettingsLayout({
         backLabel={back === '/settings' ? '返回设置' : '返回上一页'}
       />
       {notice && <InlineNotice tone={notice.tone} title={notice.message} />}
+      {task?.draftLabel && (
+        <InlineNotice
+          title={`未发送的设置草稿：${task.draftLabel}`}
+          action={
+            task.onDiscardDraft ? (
+              <Button variant="quiet" onClick={task.onDiscardDraft}>
+                放弃这份未发送草稿
+              </Button>
+            ) : undefined
+          }
+        >
+          输入保留在当前账号和家庭中。
+        </InlineNotice>
+      )}
+      {task && task.state !== 'draft' && (
+        <InlineNotice
+          tone={
+            task.state === 'networkUnknown' || task.state === 'sessionChanged'
+              ? 'warning'
+              : task.state === 'validationError' || task.state === 'forbidden'
+                ? 'danger'
+                : 'info'
+          }
+          title={
+            task.state === 'submitting'
+              ? '正在保存或核对设置'
+              : task.state === 'networkUnknown'
+                ? '设置结果待核对'
+                : '设置任务记录'
+          }
+          action={
+            task.checkingAvailable ? (
+              <Button variant="secondary" onClick={task.onCheck}>
+                重新读取当前状态
+              </Button>
+            ) : undefined
+          }
+        >
+          {task.message || '任务保留在当前账号与家庭，不会因离开本页而丢失。'}
+        </InlineNotice>
+      )}
       {children}
     </section>
   );

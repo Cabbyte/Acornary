@@ -270,18 +270,44 @@ export function updateReviewItems(
     reason?: string;
     requestKey?: string;
     eventType?: NonNullable<DailyItemProps['history'][number]['event']>['event_type'];
+    /** Derived SKU/ancestor display only; these are not modified Item records. */
+    projectionOnlyIds?: readonly string[];
   } = {},
 ) {
   initialize();
   assertTrialWrite();
   if (metadata.requestKey && snapshot.receipts[metadata.requestKey]) return;
   const patches = new Map(items.map((item) => [item.item.id, structuredClone(item)]));
+  const projectionOnly = new Set(metadata.projectionOnlyIds ?? []);
+  if ([...projectionOnly].some((id) => !snapshot.items.some((row) => row.item.id === id)))
+    throw Error('不能通过派生投影创建新的实物。');
   const next = structuredClone(snapshot);
   const operationId = `operation_${crypto.randomUUID()}`;
   next.items = next.items.map((item) => {
     const patch = patches.get(item.item.id);
     patches.delete(item.item.id);
     if (!patch) return item;
+    if (projectionOnly.has(item.item.id)) {
+      // A catalog rename/profile or an ancestor move can change presentation,
+      // but cannot change the child's own parent, lifecycle, identity or revision.
+      const directFacts = {
+        ...patch,
+        item: {
+          ...patch.item,
+          name: item.item.name,
+          subtitle: item.item.subtitle,
+          profile: item.item.profile,
+          location: {
+            ...patch.item.location,
+            path: item.item.location.path,
+            label: item.item.location.label,
+          },
+        },
+      };
+      if (JSON.stringify(directFacts) !== JSON.stringify(item))
+        throw Error('派生投影不能修改实物事实或版本。');
+      return patch;
+    }
     const paths = [
       ['display_name', item.item.name, patch.item.name],
       ['parent_item_id', item.item.location.id, patch.item.location.id],

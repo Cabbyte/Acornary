@@ -1,15 +1,27 @@
-import { trialToday, trialInstant } from '../trial/clock';
+import type { BeginExport } from '../../../../packages/contracts/src/export';
+import {
+  runManagementExportStep,
+  recoverManagementExportStep,
+} from '../../src/app-vnext/management-export';
+import {
+  createManagementExportFixtureSession,
+  managementExportFixtureView,
+  managementFixtureExportPort,
+} from './management-export-adapter';
 // Isolated review controller. All reading, filtering and mutation simulation stays here.
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useOperationSessions } from '../../src/app-vnext/operation-context';
 import { getFixtureScope } from '../trial/application';
 import {
   freezeManagementAttempt,
+  isCatalogManagementTask,
+  requiresManagementApproval,
   isSharedManagementTask,
   managementTaskView,
 } from '../../src/app-vnext/management-task';
 import {
   createManagementFixtureSession,
+  approveManagementFixtureDraft,
   executeManagementFixtureAttempt,
 } from './management-task-adapter';
 import type { AttributeFieldEdit } from '../../src/ui/patterns/attribute-fields';
@@ -30,14 +42,13 @@ import type {
   ManagedCatalog,
   ManagedLocation,
 } from '../../src/features/management/pages/models';
-import { householdId, itemFacts } from './fixtures';
-import { useReviewWorld, getReviewWorld, updateReviewItems } from './inventory-session';
+import { householdId } from './fixtures';
+import { useReviewWorld, getReviewWorld } from './inventory-session';
 import type { DailyItemFacts } from '../../src/features/daily/pages/models';
-import { flushReviewStorage, runReviewTransaction } from '../trial/storage';
 import { getTrialScope, isTrial } from '../trial/session';
 import { readManagementState, writeManagementState } from './management-storage';
 import { managementItemFromFacts } from './management-item-projection';
-import { bindingFromFacts, projectLifecycle } from './management-lifecycle-projection';
+import { bindingFromFacts } from './management-lifecycle-projection';
 import {
   catalogFixtures,
   locationFixtures,
@@ -85,7 +96,9 @@ type LocalState = {
   feedback: string;
   task: ManagementTask | null;
   retainedTask: ManagementTask | null;
+  savedTasks?: ManagementTask[];
   export: ManagementModel['export'];
+  exportSession?: { taskId: string; selection: BeginExport; label: string };
   exportRows: ItemView[];
   nameDraft: ManagementModel['nameDraft'];
   bindings: Record<string, typeof lifecycleBinding | null>;
@@ -230,7 +243,7 @@ function describe(value: unknown): string {
 }
 
 function hasAncestor(
-  rows: readonly ManagedLocation[],
+  rows: readonly { id: string; parentId: string | null }[],
   candidateId: string,
   ancestorId: string,
 ): boolean {
@@ -306,6 +319,13 @@ export function ManagementJourney({
     sessions.get(getFixtureScope(), task.taskId!, () =>
       createManagementFixtureSession({
         task,
+        catalog: rawLocal.catalogs.find((row) => row.id === task.targetIds[0]) || null,
+        creationCatalogId: rawLocal.catalogs.find(
+          (row) => row.id === containerCatalog.id && row.recordState === 'VALID',
+        )?.id,
+        templateTargetVersion: 2,
+        splitContentsVersion: 2,
+        sourceQuantity: world.items.find((row) => row.item.id === task.targetIds[0])?.quantity,
         bindings: Object.fromEntries(
           task.targetIds.map((id) => [
             id,
@@ -325,6 +345,20 @@ export function ManagementJourney({
     operation?.subscribe || noOperationSubscription,
     operation?.getSnapshot || noOperationSnapshot,
   );
+  const exportPointer = rawLocal.exportSession;
+  const exportSession = exportPointer
+    ? sessions.get(getFixtureScope(), exportPointer.taskId, () =>
+        createManagementExportFixtureSession(
+          exportPointer.taskId,
+          exportPointer.selection,
+          exportPointer.label,
+        ),
+      )
+    : null;
+  const exportRecord = useSyncExternalStore(
+    exportSession?.subscribe || noOperationSubscription,
+    exportSession?.getSnapshot || noOperationSnapshot,
+  );
   const projectedTask = operationRecord ? managementTaskView(operationRecord) : null;
   const local = projectedTask
     ? {
@@ -336,7 +370,6 @@ export function ManagementJourney({
     : rawLocal;
   const localRef = useRef(local);
   localRef.current = local;
-  const inFlight = useRef(false);
   const set = (updater: (state: LocalState) => LocalState): boolean => {
     if (isTrial()) {
       const latest = getTrialScope();
@@ -378,17 +411,31 @@ export function ManagementJourney({
           error: undefined,
           receipt: undefined,
         });
-        if (JSON.stringify(input(next.task)) !== JSON.stringify(input(record.draft.task)))
-          void session.update({
-            draft: {
-              ...record.draft,
-              task: next.task,
-              ...(record.attemptStatus === 'rejected' ? { requestKey: crypto.randomUUID() } : {}),
-            },
-            state: 'draft',
-            error: next.task.error || '',
-          });
-        else if (
+        if (JSON.stringify(input(next.task)) !== JSON.stringify(input(record.draft.task))) {
+          let draft = {
+            ...record.draft,
+            task: next.task,
+            ...(record.attemptStatus === 'rejected' ? { requestKey: crypto.randomUUID() } : {}),
+          };
+          if (requiresManagementApproval(next.task.kind)) {
+            draft = { ...draft, approvalReference: undefined };
+            if (next.task.approval?.status === 'approved')
+              draft = approveManagementFixtureDraft(draft, record.revisions);
+          }
+          const reviewing = next.task.phase === 'review';
+          void session
+            .update({ draft, state: 'draft', error: next.task.error || '' })
+            .then((saved) => {
+              const latest = session.getSnapshot();
+              if (
+                saved &&
+                reviewing &&
+                !latest.attempt &&
+                JSON.stringify(latest.draft) === JSON.stringify(draft)
+              )
+                return session.update({ reviewing: true });
+            });
+        } else if (
           ![
             'submitting',
             'networkUnknown',
@@ -489,9 +536,7 @@ export function ManagementJourney({
     return {
       ...location,
       contentCount: items.filter(
-        (item) =>
-          item.location.path.join('/') === location.path.join('/') ||
-          item.location.path.join('/').startsWith(location.path.join('/') + '/'),
+        (item) => !!item.location.id && hasAncestor(local.locations, item.location.id, location.id),
       ).length,
     };
   });
@@ -603,6 +648,7 @@ export function ManagementJourney({
   );
   const model: ManagementModel = {
     ...local,
+    export: managementExportFixtureView(exportRecord),
     state,
     writeAvailability,
     items: shown,
@@ -637,32 +683,27 @@ export function ManagementJourney({
     history: scenario === 'empty' ? [] : history,
     historyTarget,
   };
-  function patchWorld(ids: readonly string[], patch: (item: ItemView) => ItemView) {
-    const changed = world.items
-      .filter((row) => ids.includes(row.item.id))
-      .map((row) => ({ ...row, item: { ...patch(row.item), revision: row.item.revision + 1 } }));
-    if (changed.length !== ids.length) throw Error('部分对象已不可访问；整批未执行。');
-    updateReviewItems(changed, {
-      requestKey: local.task?.taskId,
-      operationLabel: local.task?.title,
-      reason: local.task
-        ? withValues(local.task).reason || withValues(local.task).note || '隔离预览操作'
-        : '隔离预览操作',
-      eventType:
-        local.task?.kind === 'history-correct' ||
-        local.task?.kind === 'reassign' ||
-        local.task?.kind === 'restore'
-          ? 'ITEM_CORRECTED'
-          : local.task?.kind.includes('move')
-            ? 'ITEM_MOVED'
-            : 'ITEM_UPDATED',
-    });
-  }
   function baseTask(kind: string, id?: string): ManagementTask {
     const targets = kind.startsWith('bulk-') ? selectedIds : id ? [id] : [];
-    const rows = targets
-      .map((id) => items.find((row) => row.id === id))
-      .filter((row): row is ItemView => !!row);
+    const snapshot = targets.flatMap((id) => {
+      if (isCatalogManagementTask(kind)) {
+        const catalog = local.catalogs.find((row) => row.id === id);
+        return catalog
+          ? [{ id, name: catalog.name, path: catalog.path.join(' › '), revision: catalog.revision }]
+          : [];
+      }
+      const item = items.find((row) => row.id === id);
+      return item
+        ? [
+            {
+              id,
+              name: item.name,
+              path: item.location.path.join(' › ') || '位置未记录',
+              revision: item.revision,
+            },
+          ]
+        : [];
+    });
     return {
       kind,
       title: '核对操作',
@@ -680,12 +721,7 @@ export function ManagementJourney({
         changedAttributes: [...local.changedAttributes],
       },
       confirmLabel: '确认隔离预览',
-      snapshot: rows.map((row) => ({
-        id: row.id,
-        name: row.name,
-        path: row.location.path.join(' › ') || '位置未记录',
-        revision: row.revision,
-      })),
+      snapshot,
     };
   }
   function createTask(kind: string, id?: string) {
@@ -701,9 +737,7 @@ export function ManagementJourney({
       .map((row) => ({
         value: row.id,
         label: row.path.join(' › '),
-        disabled:
-          !!location &&
-          (row.id === location.id || row.path.join('/').startsWith(location.path.join('/') + '/')),
+        disabled: !!location && hasAncestor(dynamicLocations, row.id, location.id),
         description: '容器不能移动到自身或下级',
       }));
     const groups = local.catalogs
@@ -802,25 +836,28 @@ export function ManagementJourney({
                   { required: true },
                 ),
               ]),
-          field(
-            'parent',
-            '所属分类',
-            catalog?.parentId ||
-              local.categoryFilter ||
-              (kind === 'catalog-create-group' ? 'root' : groups[0]?.value || ''),
-            {
-              required: true,
-              options: groups.filter(
-                (row) =>
-                  row.value !== catalog?.id &&
-                  !local.catalogs
-                    .find((candidate) => candidate.id === row.value)
-                    ?.path.join('/')
-                    .startsWith((catalog?.path.join('/') || '__none__') + '/'),
-              ),
-            },
-          ),
-          ...(kind === 'catalog-create-group' || catalog?.kind === 'GROUP'
+          ...(kind === 'catalog-edit'
+            ? []
+            : [
+                field(
+                  'parent',
+                  '所属分类',
+                  catalog?.parentId ||
+                    local.categoryFilter ||
+                    (kind === 'catalog-create-group' ? 'root' : groups[0]?.value || ''),
+                  {
+                    required: true,
+                    options: groups.filter(
+                      (row) =>
+                        row.value !== catalog?.id &&
+                        !(catalog && hasAncestor(local.catalogs, row.value, catalog.id)),
+                    ),
+                  },
+                ),
+              ]),
+          ...(kind === 'catalog-move' ||
+          kind === 'catalog-create-group' ||
+          catalog?.kind === 'GROUP'
             ? []
             : [
                 field('profile', '资料类型', catalog?.profile || 'unknown', {
@@ -844,7 +881,7 @@ export function ManagementJourney({
         validity: 'valid',
         status: 'awaiting',
         impact: ['具体提案尚待核对'],
-        summary: '审批只覆盖本次提案；确认后仍需提交原领域操作。',
+        summary: '隔离审批样例，仅覆盖本次原键、参数和版本；不是后台有效审批。',
       };
     } else if (kind.startsWith('location-')) {
       task.title =
@@ -1009,7 +1046,9 @@ export function ManagementJourney({
         field('name', '当前物品名称的正确值', targetItem?.name || '', { required: true }),
         reason,
       ];
-      task.description = `已读取当前物品版本 ${targetItem?.revision ?? '未知'}。新事件追加历史；原事件不会改写。`;
+      task.description = `已读取当前物品版本 ${targetItem?.revision ?? '未知'}。保留原输入和原因。`;
+      task.blockedReason =
+        '当前 correct_item 契约不能修改显示名称，不能以普通编辑冒充历史纠正。请通过精确编辑修改名称；原因不会被虚构为纠正事件。';
       if (!targetItem) task.blockedReason = '对象已不可访问，不能从旧历史恢复其资料。';
     }
     if (
@@ -1233,15 +1272,13 @@ export function ManagementJourney({
     if (task.kind === 'catalog-move' || task.kind === 'catalog-edit') {
       const target = local.catalogs.find((row) => row.id === task.targetIds[0]);
       const parent = local.catalogs.find((row) => row.id === values.parent);
-      if (
-        target?.kind === 'GROUP' &&
-        parent &&
-        (parent.id === target.id || parent.path.join('/').startsWith(target.path.join('/') + '/'))
-      )
+      if (target?.kind === 'GROUP' && parent && hasAncestor(local.catalogs, parent.id, target.id))
         return '分类不能归属自身或下级。';
     }
     for (const snapshot of task.snapshot) {
-      const current = items.find((item) => item.id === snapshot.id);
+      const current = isCatalogManagementTask(task.kind)
+        ? dynamicCatalogs.find((row) => row.id === snapshot.id)
+        : items.find((item) => item.id === snapshot.id);
       if (!current || current.revision !== snapshot.revision)
         return '对象版本已变化或不可访问。整个批次未执行，请重新核对最新资料。';
     }
@@ -1394,7 +1431,8 @@ export function ManagementJourney({
     });
   }
   async function onIntent(kind: string, id?: string) {
-    if (inFlight.current || localRef.current.task?.phase === 'submitting') return;
+    if (localRef.current.task?.phase === 'submitting' || exportRecord?.state === 'submitting')
+      return;
     if (
       operation &&
       ['networkUnknown', 'sessionChanged', 'revisionConflict'].includes(
@@ -1501,63 +1539,59 @@ export function ManagementJourney({
       }));
       return;
     }
-    if (kind === 'export') {
-      set((current) => ({
-        ...current,
-        exportRows: structuredClone(filtered),
-        export: {
-          scope: `物品查询：${local.query || '全部名称'} · ${local.includeVoid ? '含作废' : '有效记录'} · ${skuFilter ? '指定商品' : local.categoryFilter ? dynamicCatalogs.find((row) => row.id === local.categoryFilter)?.path.join(' › ') : '全部分类'} · ${local.locationFilter ? dynamicLocations.find((row) => row.id === local.locationFilter)?.path.join(' › ') : '全部位置'}`,
-          generatedAt: `${trialToday()} 14:30 · Asia/Shanghai`,
-          total: filtered.length,
-          loaded: 0,
-          complete: false,
-        },
-        feedback: '',
-      }));
-      return;
-    }
-    if (kind === 'export-next') {
-      set((current) => {
-        if (!current.export) return current;
-        const loaded = Math.min(current.export.loaded + 6, current.exportRows.length);
-        const complete = loaded === current.exportRows.length;
-        const cell = (v: string) => `"${v.replace(/"/g, '""')}"`;
-        const csv = [
-          '隔离预览样例，非正式家庭导出',
-          'ID,名称,物理路径,记录状态,版本',
-          ...current.exportRows.map((item) =>
-            [
-              item.id,
-              item.name,
-              item.location.path.join(' › '),
-              item.recordState,
-              String(item.revision),
-            ]
-              .map(cell)
-              .join(','),
-          ),
-        ].join('\r\n');
-        return {
-          ...current,
-          export: {
-            ...current.export,
-            loaded,
-            complete,
-            href: complete
-              ? `data:text/csv;charset=utf-8,${encodeURIComponent('\uFEFF' + csv)}`
-              : undefined,
-          },
-        };
-      });
-      return;
-    }
-    if (kind === 'export-cancel') {
-      set((current) => ({
-        ...current,
-        export: null,
-        exportRows: [],
-        feedback: '隔离导出已结束，冻结快照已释放。',
-      }));
+    if (
+      kind === 'export' ||
+      kind === 'export-next' ||
+      kind === 'export-cancel' ||
+      kind === 'export-recover'
+    ) {
+      if (!available) return;
+      try {
+        if (kind === 'export') {
+          const label = `隔离物品冻结：${local.query || '全部名称'} · ${local.includeVoid ? '含作废' : '有效记录'} · 无敏感原文`;
+          const selection: BeginExport = {
+            kind: 'ITEM',
+            include_sensitive: false,
+            query: {
+              include_void: local.includeVoid,
+              include_terminal: true,
+              include_path: true,
+              sort: { field: 'name', direction: local.sorting[0]?.desc ? 'desc' : 'asc' },
+              ...(local.query ? { search: local.query } : {}),
+              ...(skuFilter
+                ? { catalog_node_ids: [skuFilter] }
+                : local.categoryFilter
+                  ? { catalog_subtree_id: local.categoryFilter }
+                  : {}),
+              ...(local.locationFilter ? { within_item_id: local.locationFilter } : {}),
+            },
+          };
+          const taskId = `management-export:${crypto.randomUUID()}`;
+          const session = sessions.get(getFixtureScope(), taskId, () =>
+            createManagementExportFixtureSession(taskId, selection, label),
+          );
+          if (
+            !set((current) => ({
+              ...current,
+              exportSession: { taskId, selection, label },
+              feedback: '',
+            }))
+          )
+            return;
+          await runManagementExportStep(session, 'begin', managementFixtureExportPort);
+        } else if (exportSession) {
+          if (kind === 'export-recover')
+            await recoverManagementExportStep(exportSession, managementFixtureExportPort);
+          else
+            await runManagementExportStep(
+              exportSession,
+              kind === 'export-next' ? 'read' : 'cancel',
+              managementFixtureExportPort,
+            );
+        }
+      } catch (error) {
+        set((current) => ({ ...current, feedback: String(error) }));
+      }
       return;
     }
     if (kind === 'history-clear') {
@@ -1607,15 +1641,28 @@ export function ManagementJourney({
     }
     if (kind === 'resolve-conflict' && operation?.getSnapshot().state === 'revisionConflict') {
       const record = operation.getSnapshot();
-      const snapshots = record.draft.task.targetIds.map((id) => items.find((row) => row.id === id));
+      const catalogTask = isCatalogManagementTask(record.draft.task.kind);
+      const snapshots = record.draft.task.targetIds.map((id) =>
+        catalogTask
+          ? dynamicCatalogs.find((row) => row.id === id)
+          : items.find((row) => row.id === id),
+      );
       if (snapshots.some((row) => !row)) return;
       const snapshot = snapshots.map((row) => ({
         id: row!.id,
         name: row!.name,
-        path: row!.location.path.join(' › ') || '位置未记录',
+        path: ('location' in row! ? row!.location.path : row!.path).join(' › ') || '位置未记录',
         revision: row!.revision,
       }));
-      const task = { ...record.draft.task, snapshot, phase: 'draft' as const, error: undefined };
+      const task = {
+        ...record.draft.task,
+        snapshot,
+        phase: 'draft' as const,
+        error: undefined,
+        approval: record.draft.task.approval
+          ? { ...record.draft.task.approval, status: 'awaiting' as const }
+          : undefined,
+      };
       task.impact = impactFor(task);
       if (task.kind === 'item-save')
         task.impact = [
@@ -1624,8 +1671,9 @@ export function ManagementJourney({
             before: snapshots[0]!.name,
             after:
               task.draft?.name.mode === 'clear'
-                ? dynamicCatalogs.find((row) => row.id === snapshots[0]!.skuId)?.name ||
-                  '商品名称未读取'
+                ? dynamicCatalogs.find(
+                    (row) => row.id === items.find((item) => item.id === snapshots[0]!.id)?.skuId,
+                  )?.name || '商品名称未读取'
                 : task.draft?.name.value || '',
           },
         ];
@@ -1637,7 +1685,16 @@ export function ManagementJourney({
             : local.bindings[id],
         ]),
       );
-      const draft = { ...record.draft, task, bindings, requestKey: crypto.randomUUID() };
+      const draft = {
+        ...record.draft,
+        task,
+        bindings,
+        requestKey: crypto.randomUUID(),
+        catalog: catalogTask
+          ? dynamicCatalogs.find((row) => row.id === task.targetIds[0]) || null
+          : record.draft.catalog,
+        approvalReference: undefined,
+      };
       const original = {
         ...draft,
         task: {
@@ -1713,7 +1770,11 @@ export function ManagementJourney({
       if (
         isSharedManagementTask(task) &&
         task.snapshot.some(
-          (row) => items.find((item) => item.id === row.id)?.revision !== row.revision,
+          (row) =>
+            (isCatalogManagementTask(task.kind)
+              ? dynamicCatalogs.find((entry) => entry.id === row.id)
+              : items.find((item) => item.id === row.id)
+            )?.revision !== row.revision,
         )
       ) {
         await sessionFor(task).update({ state: 'revisionConflict', error });
@@ -1776,399 +1837,14 @@ export function ManagementJourney({
       }
       return;
     }
-    const v = withValues(task);
-    const targetItemId = task.targetIds[0];
-    const frozenBinding = task.draft?.binding === undefined ? itemBinding : task.draft.binding;
-    let receipt = '隔离样例已更新。正式家庭未发生写入。';
-    inFlight.current = true;
-    if (
-      !set((current) => ({ ...current, task: { ...task, phase: 'submitting', error: undefined } }))
-    ) {
-      inFlight.current = false;
-      return;
-    }
-    try {
-      if (isTrial()) await flushReviewStorage();
-      const active = getTrialScope();
-      if (
-        isTrial() &&
-        (active.generation !== scope.generation ||
-          active.householdId !== scope.householdId ||
-          active.accountId !== scope.accountId ||
-          active.role === 'viewer')
-      )
-        throw Error('身份已变化，原任务尚未执行。');
-      const currentWorld = getReviewWorld();
-      for (const row of task.snapshot) {
-        if (
-          currentWorld.items.find((item) => item.item.id === row.id)?.item.revision !== row.revision
-        )
-          throw Error('记录版本已变化；整个操作未执行，请保留输入重新核对。');
-      }
-      runReviewTransaction(() => {
-        if (task.kind === 'void' || task.kind === 'restore') {
-          patchWorld(task.targetIds, (row) => ({
-            ...row,
-            recordState: task.kind === 'void' ? 'VOID' : 'VALID',
-            voidedAt: task.kind === 'void' ? trialInstant() : null,
-          }));
-        } else if (task.kind === 'dispose') {
-          patchWorld(task.targetIds, (row) => ({
-            ...row,
-            status: { label: '已处置', tone: 'neutral' },
-          }));
-        } else if (
-          task.kind === 'template-upgrade' ||
-          task.kind === 'template-remove' ||
-          task.kind === 'template-add'
-        ) {
-          const binding =
-            task.kind === 'template-remove'
-              ? null
-              : task.kind === 'template-upgrade'
-                ? {
-                    ...frozenBinding!,
-                    template_version: 2,
-                    values: Object.fromEntries(
-                      Object.entries(frozenBinding!.values).filter(
-                        ([key]) => key !== 'availability',
-                      ),
-                    ),
-                  }
-                : { ...lifecycleBinding, values: {} };
-          updateReviewItems(
-            world.items
-              .filter((row) => task.targetIds.includes(row.item.id))
-              .map((row) => projectLifecycle(row, binding)),
-            {
-              requestKey: task.taskId,
-              operationLabel: task.title,
-              reason: v.reason || '隔离模板绑定变更',
-            },
-          );
-          set((current) => ({
-            ...current,
-            bindings: { ...current.bindings, [targetItemId]: binding },
-            attributeDraft: current.editId === targetItemId ? binding : current.attributeDraft,
-            changedAttributes: current.editId === targetItemId ? [] : current.changedAttributes,
-          }));
-          receipt = '隔离样例的模板绑定已更新；未渲染字段保持原值，原历史保留。';
-        } else if (task.kind === 'history-correct') {
-          patchWorld(task.targetIds, (row) => ({ ...row, name: v.name }));
-          set((current) => ({
-            ...current,
-            explicitNames: { ...current.explicitNames, [task.targetIds[0]]: true },
-          }));
-          receipt = '已追加一条隔离纠正事件，原历史事件没有改写。';
-        } else if (task.kind === 'reassign') {
-          patchWorld(task.targetIds, (row) => ({ ...row, skuId: v.sku }));
-        } else if (task.kind === 'split') {
-          const source = world.items.find((row) => row.item.id === task.targetIds[0])!;
-          const count = Number(v.count);
-          const target = dynamicCatalogs.find((row) => row.id === v.sku)!;
-          const children = Array.from({ length: count }, () => ({
-            ...structuredClone(source),
-            item: {
-              ...source.item,
-              id: `item_${crypto.randomUUID()}`,
-              skuId: target.id,
-              name: target.name,
-              revision: 1,
-              status: { label: '开封状态未记录', tone: 'neutral' as const },
-              facts: [],
-            },
-            quantity: { value: v.quantity, unit: v.unit, accuracy: source.quantity.accuracy },
-          }));
-          updateReviewItems(
-            [
-              {
-                ...source,
-                item: {
-                  ...source.item,
-                  revision: source.item.revision + 1,
-                  status: { label: '已拆包', tone: 'neutral' },
-                },
-                quantity: { ...source.quantity, value: '0' },
-              },
-              ...children,
-            ],
-            {
-              requestKey: task.taskId,
-              operationLabel: '拆包',
-              reason: '隔离预览：数量守恒，子件独立身份',
-            },
-          );
-          receipt = `隔离源件已结束，建立 ${count} 件独立子件；内容守恒已核对，物理位置继承原位置。`;
-        } else if (task.kind.startsWith('catalog-') || task.kind === 'stock') {
-          set((current) => {
-            let catalogs = [...dynamicCatalogs];
-            const index = catalogs.findIndex((row) => row.id === task.targetIds[0]);
-            if (task.kind.startsWith('catalog-create')) {
-              const parent = catalogs.find((row) => row.id === v.parent);
-              catalogs.push({
-                ...containerCatalog,
-                id: `catalog_node_${crypto.randomUUID()}`,
-                name: v.name,
-                kind: task.kind === 'catalog-create-group' ? 'GROUP' : 'SKU',
-                parentId: v.parent === 'root' ? null : v.parent || null,
-                path: [...(parent?.path || []), v.name],
-                profile:
-                  v.profile === 'unknown'
-                    ? null
-                    : v.profile === 'CONSUMABLE'
-                      ? 'CONSUMABLE'
-                      : v.profile === 'DURABLE'
-                        ? 'DURABLE'
-                        : null,
-                effectiveCapabilities: [],
-                itemCount: 0,
-              });
-            } else if (index >= 0) {
-              const old = catalogs[index];
-              const parent = catalogs.find((row) => row.id === v.parent);
-              catalogs[index] = {
-                ...old,
-                revision: old.revision + 1,
-                ...(task.kind === 'catalog-void'
-                  ? { recordState: 'VOID', voidedAt: trialInstant() }
-                  : task.kind === 'stock'
-                    ? {
-                        attributes: [
-                          ...old.attributes.filter((b) => b.template_id !== 'stock'),
-                          {
-                            template_id: 'stock',
-                            template_version: 1,
-                            status: 'KNOWN',
-                            values: {
-                              basis: v.mode,
-                              ...(v.mode === 'CONTENT' ? { content_unit: v.unit } : {}),
-                              reorder_threshold: v.threshold,
-                              target: v.target,
-                            },
-                          },
-                        ],
-                      }
-                    : {
-                        name: v.name || old.name,
-                        parentId: v.parent === 'root' ? null : v.parent || old.parentId,
-                        path: [...(parent?.path || []), v.name || old.name],
-                        profile:
-                          v.profile === 'unknown'
-                            ? null
-                            : v.profile === 'CONSUMABLE'
-                              ? 'CONSUMABLE'
-                              : v.profile === 'DURABLE'
-                                ? 'DURABLE'
-                                : old.profile,
-                      }),
-              };
-              if (old.kind === 'GROUP') {
-                const newPath = catalogs[index].path;
-                catalogs = catalogs.map((row) =>
-                  row.id !== old.id && row.path.join('/').startsWith(old.path.join('/') + '/')
-                    ? { ...row, path: [...newPath, ...row.path.slice(old.path.length)] }
-                    : row,
-                );
-              }
-            }
-            const updated = catalogs.find((row) => row.id === task.targetIds[0]);
-            const original = dynamicCatalogs.find((row) => row.id === task.targetIds[0]);
-            if (
-              updated?.kind === 'SKU' &&
-              original &&
-              (updated.name !== original.name || updated.profile !== original.profile)
-            ) {
-              const related = world.items
-                .filter((row) => row.item.skuId === updated.id)
-                .map((row) => ({
-                  ...row,
-                  item: {
-                    ...row.item,
-                    revision: row.item.revision + 1,
-                    profile: updated.profile,
-                    name:
-                      !current.explicitNames[row.item.id] && row.item.name === original.name
-                        ? updated.name
-                        : row.item.name,
-                  },
-                }));
-              updateReviewItems(related, {
-                requestKey: task.taskId,
-                operationLabel: task.title,
-                reason: '隔离共享商品资料变更',
-              });
-            }
-            return { ...current, catalogs };
-          });
-          receipt = task.kind.startsWith('catalog-create')
-            ? '商品或分类资料已在隔离样例建立；没有增加任何实物库存。'
-            : '隔离目录提案已确认并应用；实物位置不变。';
-        } else if (task.kind.startsWith('location-')) {
-          const loc = dynamicLocations.find((row) => row.id === task.targetIds[0]);
-          const parent = dynamicLocations.find((row) => row.id === v.destination);
-          const newPath =
-            task.kind === 'location-move'
-              ? [...(parent?.path || []), loc!.name]
-              : [...(loc?.path.slice(0, -1) || parent?.path || []), v.name || loc?.name || ''];
-          const createdLocationId =
-            task.kind === 'location-create' ? `item_${crypto.randomUUID()}` : null;
-          if (createdLocationId) {
-            const prototype = world.items[0] || itemFacts[0];
-            updateReviewItems(
-              [
-                {
-                  ...structuredClone(prototype),
-                  item: {
-                    ...prototype.item,
-                    id: createdLocationId,
-                    skuId: containerCatalog.id,
-                    name: v.name,
-                    subtitle: '位置容器',
-                    profile: 'DURABLE',
-                    revision: 1,
-                    recordState: 'VALID',
-                    voidedAt: null,
-                    location: parent
-                      ? { id: parent.id, label: parent.name, path: [...parent.path] }
-                      : { id: null, label: '未指定位置', path: [] },
-                    status: { label: '容器 · 可以容纳', tone: 'neutral' },
-                    facts: [],
-                    noteCount: 0,
-                    attachmentCount: 0,
-                  },
-                  quantity: { value: null, unit: '', accuracy: 'unknown' },
-                  date: undefined,
-                },
-              ],
-              { requestKey: task.taskId, operationLabel: task.title, reason: '隔离容器创建' },
-            );
-          }
-          if (loc) {
-            const rootRecord = world.items.find((row) => row.item.id === loc.id);
-            if (!rootRecord) throw Error('此容器的具体物品记录不可访问，原任务未执行。');
-            const affected = world.items
-              .filter(
-                (row) =>
-                  row.item.id === loc.id ||
-                  ((task.kind === 'location-move' || task.kind === 'location-edit') &&
-                    (row.item.location.path.join('/') === loc.path.join('/') ||
-                      row.item.location.path.join('/').startsWith(loc.path.join('/') + '/'))),
-              )
-              .map((row) => {
-                if (row.item.id === loc.id)
-                  return {
-                    ...row,
-                    item: {
-                      ...row.item,
-                      name: v.name || row.item.name,
-                      revision: row.item.revision + 1,
-                      location:
-                        task.kind === 'location-move'
-                          ? parent
-                            ? { id: parent.id, label: parent.name, path: [...parent.path] }
-                            : { id: null, label: '未指定位置', path: [] }
-                          : row.item.location,
-                      recordState:
-                        task.kind === 'location-void'
-                          ? ('VOID' as const)
-                          : task.kind === 'location-restore'
-                            ? ('VALID' as const)
-                            : row.item.recordState,
-                      voidedAt:
-                        task.kind === 'location-void'
-                          ? trialInstant()
-                          : task.kind === 'location-restore'
-                            ? null
-                            : row.item.voidedAt,
-                    },
-                  };
-                return {
-                  ...row,
-                  item: {
-                    ...row.item,
-                    revision: row.item.revision + 1,
-                    location: {
-                      ...row.item.location,
-                      path: [...newPath, ...row.item.location.path.slice(loc.path.length)],
-                    },
-                  },
-                };
-              });
-            updateReviewItems(affected, {
-              requestKey: task.taskId,
-              operationLabel: task.title,
-              reason: v.reason || '隔离容器结构修改',
-            });
-          }
-          set((current) => {
-            let locations = [...current.locations];
-            if (task.kind === 'location-create')
-              locations.push({
-                id: createdLocationId!,
-                parentId: parent?.id || null,
-                name: v.name,
-                path: newPath,
-                revision: 1,
-                canContain: true,
-                recordState: 'VALID',
-                contentCount: 0,
-                containerCatalogId: containerCatalog.id,
-              });
-            else
-              locations = locations.map((row) =>
-                row.id === loc?.id
-                  ? {
-                      ...row,
-                      revision: row.revision + 1,
-                      name: v.name || row.name,
-                      path: newPath,
-                      ...(task.kind === 'location-move' ? { parentId: parent?.id || null } : {}),
-                      recordState:
-                        task.kind === 'location-void'
-                          ? 'VOID'
-                          : task.kind === 'location-restore'
-                            ? 'VALID'
-                            : row.recordState,
-                    }
-                  : loc && row.path.join('/').startsWith(loc.path.join('/') + '/')
-                    ? { ...row, path: [...newPath, ...row.path.slice(loc.path.length)] }
-                    : row,
-              );
-            return { ...current, locations };
-          });
-        }
-        set((current) => ({
-          ...current,
-          receipts: task.taskId
-            ? { ...current.receipts, [task.taskId]: receipt }
-            : current.receipts,
-          task: {
-            ...task,
-            phase: ['unknown', 'network-unknown'].includes(scenario) ? 'unknown' : 'receipt',
-            receipt,
-          },
-          feedback: '',
-          retainedTask: null,
-        }));
-      });
-      if (isTrial()) await flushReviewStorage();
-    } catch (error) {
-      const committed = !!task.taskId && !!getReviewWorld().receipts[task.taskId];
-      set((current) => ({
-        ...current,
-        task: {
-          ...task,
-          phase: committed ? 'unknown' : 'review',
-          error: error instanceof Error ? error.message : '保存失败，草稿已保留。',
-        },
-      }));
-    } finally {
-      inFlight.current = false;
-    }
+    set((current) => ({ ...current, feedback: '此任务尚未有可用命令映射，原草稿保留。' }));
   }
+
   const go = async (next: string) => {
-    if (inFlight.current || localRef.current.task?.phase === 'submitting') return;
+    if (localRef.current.task?.phase === 'submitting' || exportRecord?.state === 'submitting')
+      return;
     if (operation && !(await operation.retain())) return;
+    if (exportSession && !(await exportSession.retain())) return;
     if (!set((current) => current)) return;
     navigate(next);
   };
@@ -2188,18 +1864,37 @@ export function ManagementJourney({
   return (
     <>
       <Page {...props} />
+      {exportRecord?.error && (
+        <section className="management-card" role="alert">
+          <p>{exportRecord.error}</p>
+          {exportRecord.attempt?.kind === 'begin' && exportRecord.state === 'networkUnknown' ? (
+            <p>初次冻结回执未知。服务端协议没有原请求查询入口；可另建独立导出，原记录继续保留。</p>
+          ) : (
+            <button
+              type="button"
+              className="vn-button"
+              onClick={() => void onIntent('export-recover')}
+            >
+              按原导出标识与游标重试
+            </button>
+          )}
+        </section>
+      )}
+
       {operationRecord?.state === 'revisionConflict' && (
         <section className="management-card" aria-label="管理任务版本冲突">
           <h2>版本已变化，原输入已保留</h2>
           <p>{operationRecord.error}</p>
           <ul>
             {operationRecord.draft.task.snapshot.map((before) => {
-              const current = items.find((row) => row.id === before.id);
+              const current = isCatalogManagementTask(operationRecord.draft.task.kind)
+                ? dynamicCatalogs.find((row) => row.id === before.id)
+                : items.find((row) => row.id === before.id);
               return (
                 <li key={before.id}>
                   {before.id} · 原版本 {before.revision} → 当前 {current?.revision ?? '不可读取'}
                   {current
-                    ? ` · ${current.name} · ${current.location.path.join(' › ') || '位置未记录'}`
+                    ? ` · ${current.name} · ${('location' in current ? current.location.path : current.path).join(' › ') || '位置未记录'}`
                     : ''}
                 </li>
               );
@@ -2210,7 +1905,14 @@ export function ManagementJourney({
             className="vn-button"
             disabled={
               !available ||
-              operationRecord.targetIds.some((id) => !items.some((row) => row.id === id))
+              operationRecord.targetIds.some(
+                (id) =>
+                  !(
+                    isCatalogManagementTask(operationRecord.draft.task.kind)
+                      ? dynamicCatalogs
+                      : items
+                  ).some((row) => row.id === id),
+              )
             }
             onClick={() => void onIntent('resolve-conflict')}
           >
@@ -2218,6 +1920,65 @@ export function ManagementJourney({
           </button>
         </section>
       )}
+      {operation &&
+        operationRecord &&
+        !['submitting', 'networkUnknown', 'sessionChanged', 'success'].includes(
+          operationRecord.state,
+        ) &&
+        operationRecord.attemptStatus !== 'uncertain' &&
+        local.task?.phase !== 'unknown' &&
+        local.retainedTask?.phase !== 'unknown' && (
+          <div className="management-card">
+            <button
+              type="button"
+              className="vn-button"
+              onClick={() =>
+                void (async () => {
+                  if (!(await operation.retain())) return;
+                  const task = managementTaskView(operation.getSnapshot());
+                  set((current) => ({
+                    ...current,
+                    task: null,
+                    retainedTask: null,
+                    savedTasks: [
+                      ...(current.savedTasks || []).filter((row) => row.taskId !== task.taskId),
+                      task,
+                    ],
+                    feedback: '未发送的草稿已保留，可开始其他任务；原键和输入未丢弃。',
+                  }));
+                })()
+              }
+            >
+              保留未提交草稿，开始其他任务
+            </button>
+          </div>
+        )}
+      {!local.task &&
+        !local.retainedTask &&
+        local.savedTasks?.map((saved) => (
+          <div className="management-card" key={saved.taskId}>
+            <p>保留的管理草稿：{saved.title}</p>
+            <button
+              type="button"
+              className="vn-button"
+              onClick={() => {
+                if (
+                  !set((current) => ({
+                    ...current,
+                    task: saved,
+                    savedTasks: (current.savedTasks || []).filter(
+                      (row) => row.taskId !== saved.taskId,
+                    ),
+                  }))
+                )
+                  return;
+                if (saved.returnPath) void go(saved.returnPath);
+              }}
+            >
+              继续此草稿
+            </button>
+          </div>
+        ))}
       {local.storageError && (
         <div role="alert" className="management-card">
           <p>{local.storageError} 当前输入仍保留；保存前不能提交。</p>

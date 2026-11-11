@@ -1,5 +1,7 @@
 import type { AttributeBindingV2 } from '../../../../packages/contracts/src/read-v2';
-import type { ManagementTask } from '../features/management/pages/models';
+import Decimal from 'decimal.js';
+import { validateValues } from '../../../../packages/contracts/src/registry';
+import type { ManagedCatalog, ManagementTask } from '../features/management/pages/models';
 import {
   OperationSession,
   validateCommandAttempt,
@@ -16,7 +18,32 @@ const kinds = new Set([
   'bulk-move',
   'bulk-consume',
   'bulk-lifecycle',
+  'catalog-create-group',
+  'catalog-create-sku',
+  'catalog-edit',
+  'catalog-move',
+  'catalog-void',
+  'stock',
+  'location-create',
+  'location-edit',
+  'location-void',
+  'location-restore',
+  'void',
+  'restore',
+  'dispose',
+  'split',
+  'template-add',
+  'template-remove',
+  'template-upgrade',
+  'reassign',
+  'history-correct',
+  'reference',
 ]);
+const creationKinds = new Set(['catalog-create-group', 'catalog-create-sku', 'location-create']);
+export const isCatalogManagementTask = (kind: string) =>
+  kind.startsWith('catalog-') || kind === 'stock';
+export const requiresManagementApproval = (kind: string) =>
+  isCatalogManagementTask(kind) || kind === 'reassign';
 export const isSharedManagementTask = (task: ManagementTask | null | undefined) =>
   !!task && kinds.has(task.kind);
 
@@ -26,6 +53,17 @@ export interface ManagementDraft {
   bindings: Record<string, AttributeBindingV2 | null>;
   /** Changes only after an explicit reread/reconciliation of a rejected attempt. */
   requestKey?: string;
+  /** Captured read facts; absence is never interpreted as a known default version. */
+  catalog?: ManagedCatalog | null;
+  creationCatalogId?: string;
+  templateTargetVersion?: number;
+  splitContentsVersion?: number;
+  sourceQuantity?: {
+    value: string | null;
+    unit: string;
+    accuracy: 'measured' | 'estimated' | 'unknown';
+  };
+  approvalReference?: { id: string; command: CommandAttempt };
 }
 export interface ManagementAttempt {
   key: string;
@@ -57,23 +95,29 @@ export function managementValueAt(values: Record<string, unknown>, path: string)
 }
 
 /** One reviewed task becomes one schema-valid command. There is no implicit splitting. */
-export function freezeManagementAttempt(
+export function prepareManagementCommand(
   draft: ManagementDraft,
   revisions: Record<string, number>,
   key = draft.requestKey ?? draft.task.taskId,
-): ManagementAttempt {
+): CommandAttempt {
   const { task } = draft;
   if (!isSharedManagementTask(task)) throw Error('此管理任务尚未接入共享命令控制器。');
   if (!key || !task.taskId || key !== (draft.requestKey ?? task.taskId))
     throw Error('缺少原任务键，不能创建替代请求。');
   if (task.blockedReason) throw Error(task.blockedReason);
   if (
-    !task.targetIds.length ||
+    (!creationKinds.has(task.kind) && !task.targetIds.length) ||
     task.targetIds.length > 100 ||
     new Set(task.targetIds).size !== task.targetIds.length
   )
     throw Error('必须明确选择 1–100 个不同的完整物品 ID；不会隐式拆批。');
-  if (!task.kind.startsWith('bulk-') && task.targetIds.length !== 1)
+  if (creationKinds.has(task.kind) && task.targetIds.length !== 0)
+    throw Error('创建任务不能沿用已有对象作为修改目标。');
+  if (
+    !creationKinds.has(task.kind) &&
+    !task.kind.startsWith('bulk-') &&
+    task.targetIds.length !== 1
+  )
     throw Error('单件任务必须只有一个目标。');
   for (const id of task.targetIds) {
     if (!Number.isInteger(revisions[id]) || revisions[id] < 1)
@@ -86,7 +130,231 @@ export function freezeManagementAttempt(
   const values = Object.fromEntries(task.fields.map((field) => [field.key, field.value]));
   const item_id = task.targetIds[0];
   let command: CommandAttempt;
-  if (task.kind === 'item-save') {
+  if (task.kind === 'history-correct' || task.kind === 'reference') {
+    throw Error(
+      task.kind === 'history-correct'
+        ? '当前 correct_item 契约不能修改显示名称；草稿保留，不会冒充历史纠正。'
+        : '缺少已读取的可编辑引用模板和路径；不会创建任意引用字段。',
+    );
+  } else if (isCatalogManagementTask(task.kind)) {
+    const catalog = draft.catalog;
+    if (
+      !creationKinds.has(task.kind) &&
+      (!catalog || catalog.id !== item_id || catalog.revision !== revisions[item_id])
+    )
+      throw Error('缺少已读取的目录对象和版本。');
+    if (task.kind.startsWith('catalog-create')) {
+      if (!values.parent) throw Error('请选择明确分类；不会推断根级。');
+      command = {
+        operation: 'create_catalog_node',
+        payload: {
+          ...base,
+          kind: task.kind === 'catalog-create-group' ? 'GROUP' : 'SKU',
+          name: values.name,
+          parent_id: values.parent === 'root' ? null : values.parent,
+          ...(task.kind === 'catalog-create-sku'
+            ? { profile: values.profile === 'unknown' ? null : values.profile }
+            : {}),
+        },
+      };
+    } else if (task.kind === 'catalog-edit') {
+      if (
+        values.parent !== undefined &&
+        (values.parent === 'root' ? null : values.parent) !== catalog!.parentId
+      )
+        throw Error('目录编辑不能同时移动归属；请使用独立的移动任务。');
+      command = {
+        operation: 'update_catalog_node',
+        payload: {
+          ...base,
+          catalog_node_id: item_id,
+          name: values.name,
+          ...(catalog!.kind === 'SKU'
+            ? { profile: values.profile === 'unknown' ? null : values.profile }
+            : {}),
+        },
+      };
+    } else if (task.kind === 'catalog-move') {
+      if (!values.parent) throw Error('请选择明确分类或根级。');
+      command = {
+        operation: 'move_catalog_node',
+        payload: {
+          ...base,
+          catalog_node_id: item_id,
+          parent_id: values.parent === 'root' ? null : values.parent,
+        },
+      };
+    } else if (task.kind === 'catalog-void') {
+      command = {
+        operation: 'void_catalog_node',
+        payload: { ...base, catalog_node_id: item_id, reason: values.reason },
+      };
+    } else {
+      if (catalog!.kind !== 'SKU') throw Error('补货策略只能绑定具体商品。');
+      const binding = catalog!.attributes.find((row) => row.template_id === 'stock');
+      if (binding && (binding.status !== 'KNOWN' || binding.template_version !== 1))
+        throw Error('未知补货模板版本已保留，不能覆盖。');
+      const stock = validateValues(
+        'stock',
+        {
+          basis: values.mode,
+          reorder_threshold: values.threshold,
+          target: values.target,
+          ...(values.mode === 'CONTENT' ? { content_unit: values.unit } : {}),
+        },
+        1,
+      );
+      if (new Decimal(values.target).lt(values.threshold)) throw Error('补货目标不能低于阈值。');
+      command = {
+        operation: binding ? 'update_attributes' : 'bind_attributes',
+        payload: {
+          ...base,
+          target: { kind: 'CATALOG_NODE', id: item_id },
+          template_id: 'stock',
+          template_version: 1,
+          ...(binding
+            ? { set: stock, unset: values.mode === 'COUNT' ? ['content_unit'] : [] }
+            : { values: stock }),
+        },
+      };
+    }
+  } else if (task.kind === 'location-create') {
+    if (!draft.creationCatalogId || !values.destination)
+      throw Error('缺少明确容器商品或上级位置，不能推断。');
+    command = {
+      operation: 'create_items',
+      payload: {
+        ...base,
+        catalog_node_id: draft.creationCatalogId,
+        count: 1,
+        display_name: values.name,
+        parent_id: values.destination === 'root' ? null : values.destination,
+        initial_attributes: [
+          { template_id: 'container', template_version: 1, values: { can_contain: true } },
+        ],
+      },
+    };
+  } else if (task.kind === 'location-edit') {
+    command = {
+      operation: 'update_item',
+      payload: { ...base, item_id, display_name: values.name },
+    };
+  } else if (task.kind === 'void' || task.kind === 'location-void') {
+    command = { operation: 'void_item', payload: { ...base, item_id, reason: values.reason } };
+  } else if (task.kind === 'restore' || task.kind === 'location-restore') {
+    command = {
+      operation: 'correct_item',
+      payload: { ...base, item_id, record_state: 'VALID', reason: values.reason },
+    };
+  } else if (task.kind === 'dispose') {
+    command = {
+      operation: 'dispose_item',
+      payload: {
+        ...base,
+        item_id,
+        disposition: {
+          kind: values.disposition,
+          date: values.date,
+          ...(values.recipient ? { recipient_name: values.recipient } : {}),
+          ...(values.note ? { note: values.note } : {}),
+        },
+      },
+    };
+  } else if (task.kind === 'reassign') {
+    command = {
+      operation: 'correct_item',
+      payload: { ...base, item_id, reason: values.reason, core: { catalog_node_id: values.sku } },
+    };
+  } else if (task.kind === 'split') {
+    const source = draft.sourceQuantity;
+    const count = Number(values.count);
+    if (
+      !source?.value ||
+      !draft.splitContentsVersion ||
+      source.unit !== values.unit ||
+      !Number.isInteger(count) ||
+      count < 1 ||
+      count > 100 ||
+      !/^\d+(?:\.\d+)?$/.test(values.quantity) ||
+      !new Decimal(values.quantity).gt(0) ||
+      !new Decimal(source.value).eq(new Decimal(values.quantity).mul(count))
+    )
+      throw Error('拆包必须核对已知数量、原单位及 1–100 个子件的精确守恒。');
+    const contents = validateValues(
+      'contents',
+      {
+        remaining: { value: values.quantity, unit: values.unit },
+        ...(source.accuracy === 'unknown' ? {} : { accuracy: source.accuracy.toUpperCase() }),
+      },
+      draft.splitContentsVersion,
+    );
+    command = {
+      operation: 'split_item',
+      payload: {
+        ...base,
+        source_item_id: item_id,
+        target_catalog_node_id: values.sku,
+        count,
+        child_attributes: [
+          {
+            template_id: 'contents',
+            template_version: draft.splitContentsVersion,
+            values: contents,
+          },
+        ],
+        ...(values.reason ? { reason: values.reason } : {}),
+      },
+    };
+  } else if (task.kind.startsWith('template-')) {
+    const binding = task.draft?.binding;
+    if (task.kind === 'template-add') {
+      if (binding || !draft.templateTargetVersion)
+        throw Error('必须明确选择未绑定的已读取模板版本。');
+      command = {
+        operation: 'bind_attributes',
+        payload: {
+          ...base,
+          target: { kind: 'ITEM', id: item_id },
+          template_id: 'lifecycle',
+          template_version: draft.templateTargetVersion,
+          values: {},
+        },
+      };
+    } else {
+      if (!binding || binding.status !== 'KNOWN' || binding.template_id !== 'lifecycle')
+        throw Error('未知或未读取的生命周期模板不能修改。');
+      if (task.kind === 'template-remove') {
+        command = {
+          operation: 'remove_attributes',
+          payload: {
+            ...base,
+            target: { kind: 'ITEM', id: item_id },
+            template_id: binding.template_id,
+            template_version: binding.template_version,
+          },
+        };
+      } else {
+        if (binding.template_version !== 1 || draft.templateTargetVersion !== 2)
+          throw Error('仅已核对的 lifecycle 1 → 2 升级可执行；其他版本保留原记录。');
+        const upgraded = Object.fromEntries(
+          Object.entries(binding.values).filter(([key]) => key !== 'availability'),
+        );
+        // A strict target schema rejects unknown fields instead of silently dropping them.
+        validateValues('lifecycle', upgraded, 2);
+        command = {
+          operation: 'upgrade_attributes',
+          payload: {
+            ...base,
+            target: { kind: 'ITEM', id: item_id },
+            template_id: 'lifecycle',
+            from_version: 1,
+            to_version: 2,
+            values: upgraded,
+          },
+        };
+      }
+    }
+  } else if (task.kind === 'item-save') {
     const name = task.draft?.name;
     if (!name || name.mode === 'unchanged' || (name.mode === 'set' && !name.value.trim()))
       throw Error('请明确设置名称或清除名称覆盖。');
@@ -166,7 +434,36 @@ export function freezeManagementAttempt(
       },
     };
   }
-  return { key, draft: structuredClone(draft), command: validateCommandAttempt(command) };
+  return validateCommandAttempt(command);
+}
+
+/** An adapter supplies the real approval ID after approval of this exact command. */
+export function bindManagementApproval(
+  draft: ManagementDraft,
+  revisions: Record<string, number>,
+  approvalId: string,
+): ManagementDraft {
+  const command = prepareManagementCommand(draft, revisions);
+  if (!requiresManagementApproval(draft.task.kind)) throw Error('此任务没有目录审批步骤。');
+  validateCommandAttempt({ ...command, payload: { ...command.payload, approval_id: approvalId } });
+  return { ...structuredClone(draft), approvalReference: { id: approvalId, command } };
+}
+export function freezeManagementAttempt(
+  draft: ManagementDraft,
+  revisions: Record<string, number>,
+  key = draft.requestKey ?? draft.task.taskId,
+): ManagementAttempt {
+  let command = prepareManagementCommand(draft, revisions, key);
+  if (requiresManagementApproval(draft.task.kind)) {
+    const approval = draft.approvalReference;
+    if (!approval || JSON.stringify(approval.command) !== JSON.stringify(command))
+      throw Error('审批未覆盖当前确切命令、原键及版本，请重新核对提案。');
+    command = validateCommandAttempt({
+      ...command,
+      payload: { ...command.payload, approval_id: approval.id },
+    });
+  }
+  return { key: key!, draft: structuredClone(draft), command };
 }
 
 export function validManagementRecord(value: unknown): value is ManagementRecord {
@@ -260,6 +557,10 @@ export function createManagementSession(
 }
 
 export function managementTaskView(record: ManagementRecord): ManagementTask {
+  const unreadableLegacyAttempt =
+    record.state === 'validationError' &&
+    !record.attempt &&
+    ['unknown', 'submitting', 'receipt'].includes(record.original.task.phase);
   return {
     ...record.draft.task,
     phase:
@@ -267,7 +568,8 @@ export function managementTaskView(record: ManagementRecord): ManagementTask {
         ? 'receipt'
         : record.state === 'submitting'
           ? 'submitting'
-          : record.state === 'networkUnknown' ||
+          : unreadableLegacyAttempt ||
+              record.state === 'networkUnknown' ||
               (record.state === 'sessionChanged' && record.attempt)
             ? 'unknown'
             : record.reviewing

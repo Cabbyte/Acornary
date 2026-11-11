@@ -37,6 +37,10 @@ export interface AccountSettingsPageProps extends SettingsPageProps {
   onRequestedWrite: (value: boolean) => void;
   returnPath: string;
   registrationAvailable: boolean;
+  recoveryAvailable: boolean;
+  credentialsAvailable: boolean;
+  secretFlowsAvailable: boolean;
+  connectionLabel: string;
   credentialIntent: CredentialIntent;
   credentialName: string;
   onCredentialName: (name: string) => void;
@@ -67,7 +71,7 @@ const statusMessages: Partial<
   'passkey-cancelled': {
     tone: 'warning',
     title: '通行密钥验证已取消',
-    text: '账号未登录。可再次尝试，或选择密码验证。',
+    text: '身份验证尚未完成。可再次尝试，或选择密码验证。',
   },
   'password-error': {
     tone: 'danger',
@@ -77,7 +81,7 @@ const statusMessages: Partial<
   'email-waiting': {
     tone: 'info',
     title: '等待验证邮件',
-    text: '这是邮件等待状态的预览，未发送邮件。可重新发送或查看失败后的恢复入口。',
+    text: '请检查目标邮箱并按照邮件中的验证步骤继续。',
   },
   'email-failed': {
     tone: 'danger',
@@ -86,23 +90,23 @@ const statusMessages: Partial<
   },
   'recovery-complete': {
     tone: 'success',
-    title: '恢复流程样例已完成',
-    text: '实际账号与凭据未改变；请返回登录继续查看。',
+    title: '恢复流程已完成',
+    text: '请返回登录继续。',
   },
   'invite-expired': {
     tone: 'warning',
     title: '邀请已失效',
-    text: '邀请不会加入家庭。请联系家庭管理员获取新的邀请。',
+    text: '邀请不会加入家庭。请联系家庭成员获取新的邀请。',
   },
   'invite-accepted': {
     tone: 'success',
-    title: '已接受示例邀请',
-    text: '仅更新本页示例状态；没有加入真实家庭。',
+    title: '邀请已接受',
+    text: '请重新读取家庭列表确认成员关系。',
   },
   allowed: {
     tone: 'success',
-    title: '已允许本次示例授权',
-    text: '权限仅限下方列出的家庭和范围。没有建立真实连接。',
+    title: '本次授权已允许',
+    text: '权限限于下方列出的家庭和范围。',
   },
   denied: { tone: 'info', title: '已拒绝本次授权', text: '未建立连接，也未向服务提供家庭访问权。' },
   'reauthorization-required': {
@@ -130,17 +134,13 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
         ? '移除这枚通行密钥？'
         : security?.kind === 'remove-password'
           ? '移除密码登录方式？'
-          : '更新示例密码？';
+          : '更新密码？';
   const removingLastMethod =
     security?.kind === 'remove-password'
       ? identity.passkeys.length === 0
       : security?.kind === 'remove-passkey'
         ? identity.passkeys.length === 1 && !identity.passwordConfigured
         : false;
-  const duplicateKeyName =
-    security?.kind === 'rename-passkey' &&
-    props.credentialName.trim() !== security.key &&
-    identity.passkeys.includes(props.credentialName.trim());
   return (
     <SettingsLayout
       {...props}
@@ -151,6 +151,16 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
       {!online && (
         <InlineNotice tone="warning" title="当前离线，身份操作暂不可用">
           可以查看当前会话摘要。请恢复连接后验证身份或更改授权。
+        </InlineNotice>
+      )}
+      {!props.secretFlowsAvailable && (
+        <InlineNotice title="身份验证入口尚未接通">
+          通行密钥登记、密码输入、邀请链接与授权交接需要相应的安全入口，当前不能执行。
+        </InlineNotice>
+      )}
+      {!identity.fresh && view === 'account' && (
+        <InlineNotice tone="warning" title="需要重新验证身份">
+          请通过可用的登录入口重新验证，再修改登录方式。
         </InlineNotice>
       )}
       {message && (
@@ -172,26 +182,27 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
               <Button onClick={() => navigate('/settings/auth?view=login')}>前往登录</Button>
             )}
           </SettingsSection>
-          <SettingsSection
-            title="通行密钥"
-            description="优先使用设备上的通行密钥；预览不会调用系统凭据窗口。"
-          >
+          <SettingsSection title="通行密钥" description="修改登录方式前需要近期身份验证。">
             {identity.passkeys.length ? (
               identity.passkeys.map((key) => (
-                <div className="vn-settings-row" key={key}>
-                  <strong>{key}</strong>
+                <div className="vn-settings-row" key={key.id}>
+                  <strong>{key.name}</strong>
                   <div className="vn-settings-actions">
                     <Button
                       variant="quiet"
-                      disabled={!online || !identity.signedIn}
-                      onClick={() => props.onCredentialIntent({ kind: 'rename-passkey', key })}
+                      disabled={!online || !identity.signedIn || !props.credentialsAvailable}
+                      onClick={() =>
+                        props.onCredentialIntent({ kind: 'rename-passkey', key: key.id })
+                      }
                     >
                       重命名
                     </Button>
                     <Button
                       variant="quiet"
-                      disabled={!online || !identity.signedIn}
-                      onClick={() => props.onCredentialIntent({ kind: 'remove-passkey', key })}
+                      disabled={!online || !identity.signedIn || !props.credentialsAvailable}
+                      onClick={() =>
+                        props.onCredentialIntent({ kind: 'remove-passkey', key: key.id })
+                      }
                     >
                       移除
                     </Button>
@@ -203,28 +214,28 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
             )}
             <Button
               variant="secondary"
-              disabled={!online || !identity.signedIn}
+              disabled={!online || !identity.signedIn || !props.secretFlowsAvailable}
               onClick={() => onAction('add-passkey')}
             >
-              添加通行密钥样例
+              添加通行密钥
             </Button>
           </SettingsSection>
           <SettingsSection title="密码与恢复">
             <p className="vn-settings-muted">
-              {identity.passwordConfigured ? '已设置密码 · 示例状态' : '未设置密码'}
+              {identity.passwordConfigured ? '已设置密码' : '未设置密码'}
             </p>
             <div className="vn-settings-actions">
               <Button
                 variant="secondary"
-                disabled={!online || !identity.signedIn}
+                disabled={!online || !identity.signedIn || !props.secretFlowsAvailable}
                 onClick={() => props.onCredentialIntent({ kind: 'change-password' })}
               >
-                {identity.passwordConfigured ? '修改密码样例' : '添加密码样例'}
+                {identity.passwordConfigured ? '修改密码' : '添加密码'}
               </Button>
               {identity.passwordConfigured && (
                 <Button
                   variant="quiet"
-                  disabled={!online || !identity.signedIn}
+                  disabled={!online || !identity.signedIn || !props.credentialsAvailable}
                   onClick={() => props.onCredentialIntent({ kind: 'remove-password' })}
                 >
                   移除密码登录
@@ -239,7 +250,7 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
               />
               <SettingsLink
                 title="恢复账号"
-                detail="通过已验证邮箱恢复访问"
+                detail="查看当前环境的账号恢复方式"
                 onClick={() => navigate('/settings/auth?view=recovery')}
               />
             </div>
@@ -260,22 +271,26 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
       )}
       {view === 'login' && (
         <>
-          <SettingsSection
-            title="验证你的身份"
-            description="交互样例使用固定演示账号。不填写、不收集真实密码或验证码。"
-          >
+          <SettingsSection title="验证你的身份" description="通过可用的身份验证入口继续。">
             <SettingsFacts
               values={[
-                { label: '演示账号', value: identity.email },
+                { label: '账号', value: identity.email },
                 { label: '登录后返回', value: props.returnPath },
               ]}
             />
             <div className="vn-settings-stack">
-              <Button disabled={!online} onClick={() => onAction('passkey')}>
-                模拟通行密钥登录
+              <Button
+                disabled={!online || !props.secretFlowsAvailable}
+                onClick={() => onAction('passkey')}
+              >
+                使用通行密钥登录
               </Button>
-              <Button variant="secondary" disabled={!online} onClick={() => onAction('password')}>
-                模拟密码验证
+              <Button
+                variant="secondary"
+                disabled={!online || !props.secretFlowsAvailable}
+                onClick={() => onAction('password')}
+              >
+                使用密码验证
               </Button>
             </div>
           </SettingsSection>
@@ -285,7 +300,7 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
             </Button>
             {props.registrationAvailable ? (
               <Button variant="quiet" disabled={!online} onClick={() => onAction('register')}>
-                查看注册样例
+                注册账号
               </Button>
             ) : (
               <span className="vn-settings-muted">当前环境未开放注册。</span>
@@ -293,11 +308,14 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
           </div>
         </>
       )}
-      {view === 'recovery' && (
+      {view === 'recovery' && !props.recoveryAvailable && (
+        <InlineNotice title="当前环境未开放邮箱找回">请使用已有密码或通行密钥登录。</InlineNotice>
+      )}
+      {view === 'recovery' && props.recoveryAvailable && (
         <>
           <SettingsSection
             title="通过邮箱恢复访问"
-            description="目标为已验证的示例邮箱；不允许输入真实凭据。"
+            description="恢复能力由当前环境提供；邮件链接需要单独验证。"
           >
             <SettingsFacts values={[{ label: '恢复邮箱', value: identity.email }]} />
             <Button
@@ -307,16 +325,12 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
               }
             >
               {status === 'email-waiting'
-                ? '重新发送示例邮件'
+                ? '重新发送恢复邮件'
                 : status === 'email-failed'
-                  ? '重试发送示例邮件'
-                  : '模拟发送恢复邮件'}
+                  ? '重试发送恢复邮件'
+                  : '发送恢复邮件'}
             </Button>
-            {status === 'email-waiting' && (
-              <Button variant="secondary" onClick={() => onAction('recovery-complete')}>
-                模拟完成邮箱验证
-              </Button>
-            )}
+            {status === 'email-waiting' && <p>请在邮件链接中完成验证，再重新读取账号状态。</p>}
             <Button variant="quiet" onClick={() => navigate('/settings/auth?view=login')}>
               返回登录
             </Button>
@@ -327,9 +341,8 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
         <SettingsSection title="加入家庭前核对">
           <SettingsFacts
             values={[
-              { label: '邀请家庭', value: '梧桐之家 · 示例' },
-              { label: '邀请角色', value: '只读成员' },
-              { label: '邀请来源', value: '家庭管理员 · 示例' },
+              { label: '邀请家庭', value: props.household.name },
+              { label: '加入后权限', value: '与其他家庭成员相同' },
               {
                 label: '状态',
                 value:
@@ -343,10 +356,10 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
           />
           {status !== 'invite-accepted' && (
             <Button
-              disabled={!online || status === 'invite-expired'}
+              disabled={!online || !props.secretFlowsAvailable || status === 'invite-expired'}
               onClick={() => onAction('accept-invite')}
             >
-              接受示例邀请
+              接受邀请
             </Button>
           )}
           <Button variant="secondary" onClick={() => navigate('/settings/household')}>
@@ -362,7 +375,7 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
           >
             <SettingsFacts
               values={[
-                { label: '服务', value: 'ChatGPT · 连接预览' },
+                { label: '服务', value: props.connectionLabel },
                 { label: '家庭', value: props.household.name },
                 {
                   label: '请求权限',
@@ -375,20 +388,19 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
                     </ul>
                   ),
                 },
-                { label: '授权时效', value: '本次隔离预览会话' },
               ]}
             />
             {!['allowed', 'denied'].includes(status) && (
               <div className="vn-settings-actions">
                 <Button
                   variant="secondary"
-                  disabled={!online}
+                  disabled={!online || !props.secretFlowsAvailable}
                   onClick={() => onAction('oauth-deny')}
                 >
                   拒绝授权
                 </Button>
                 <Button
-                  disabled={!online || !identity.signedIn}
+                  disabled={!online || !identity.signedIn || !props.secretFlowsAvailable}
                   onClick={() => onAction('oauth-allow')}
                 >
                   允许上述权限
@@ -416,7 +428,7 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
           <SettingsSection title="当前宿主连接">
             <SettingsFacts
               values={[
-                { label: '宿主', value: 'ChatGPT · 示例连接' },
+                { label: '宿主', value: props.connectionLabel },
                 { label: '连接家庭', value: props.household.name },
                 {
                   label: '访问范围',
@@ -435,7 +447,7 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
                     status === 'reauthorization-required'
                       ? '等待重新授权'
                       : props.scopes.length
-                        ? '有效 · 预览状态'
+                        ? '当前读取的连接有效'
                         : '未连接',
                 },
               ]}
@@ -503,7 +515,7 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
               disabled={(!props.allowPendingLogout && props.pendingCount > 0) || !online}
               onClick={() => onAction('logout')}
             >
-              确认退出示例账号
+              确认退出账号
             </Button>
           </>
         }
@@ -536,7 +548,7 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
           if (!open) props.onCredentialIntent(null);
         }}
         title={securityTitle}
-        description="此操作只改变隔离预览中的凭据摘要。真实账号不会改变，页面不收集真实密码。"
+        description="操作作用于当前账号。不会移除最后一种登录方式。"
         footer={
           <>
             <Button variant="secondary" onClick={() => props.onCredentialIntent(null)}>
@@ -551,13 +563,14 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
               disabled={
                 !online ||
                 !identity.signedIn ||
+                !props.credentialsAvailable ||
+                security?.kind === 'change-password' ||
                 removingLastMethod ||
-                duplicateKeyName ||
                 (security?.kind === 'rename-passkey' && !props.credentialName.trim())
               }
               onClick={props.onConfirmCredential}
             >
-              确认更新示例设置
+              确认更新设置
             </Button>
           </>
         }
@@ -568,19 +581,21 @@ export function AccountSettingsPage(props: AccountSettingsPageProps) {
             required
             hint="仅编辑便于识别的设备名称，不涉及密钥内容。"
             hintMode="visible"
-            error={duplicateKeyName ? '已有同名通行密钥，请使用另一个名称。' : undefined}
           >
             <Input
               value={props.credentialName}
-              maxLength={60}
+              maxLength={80}
               onChange={(event) => props.onCredentialName(event.target.value)}
             />
           </FormField>
         )}
-        {security?.kind === 'change-password' && (
-          <p>此处使用预设示例验证结果演示更新成功；不要输入真实密码或验证码。</p>
+        {security?.kind === 'change-password' && <p>当前页面尚未提供密码输入与验证流程。</p>}
+        {security?.kind === 'remove-passkey' && (
+          <p>
+            将移除：
+            {identity.passkeys.find((key) => key.id === security.key)?.name || '这枚通行密钥'}
+          </p>
         )}
-        {security?.kind === 'remove-passkey' && <p>将移除：{security.key}</p>}
         {removingLastMethod && (
           <InlineNotice tone="warning" title="不能移除最后一种登录方式">
             请先添加另一枚通行密钥或设置密码，再移除当前方式。

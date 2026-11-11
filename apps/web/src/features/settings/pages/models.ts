@@ -1,24 +1,20 @@
 export type SettingsReadState = 'ready' | 'loading' | 'error' | 'forbidden';
-export type MemberRole = 'owner' | 'admin' | 'member' | 'viewer';
 export type AuthView = 'account' | 'login' | 'oauth' | 'host' | 'recovery' | 'invite';
 export interface SettingsHousehold {
   id: string;
   name: string;
-  role: MemberRole;
   memberCount: number;
 }
 export interface SettingsMember {
   id: string;
   name: string;
   email: string;
-  role: MemberRole;
   self: boolean;
 }
 export interface SettingsInvitation {
   id: string;
   label: string;
-  role: 'member' | 'viewer';
-  state: 'pending' | 'revoked' | 'expired';
+  state: 'pending' | 'revoked' | 'expired' | 'used';
 }
 export interface SettingsTask {
   id: string;
@@ -30,7 +26,8 @@ export interface SettingsIdentity {
   name: string;
   email: string;
   signedIn: boolean;
-  passkeys: readonly string[];
+  passkeys: readonly { id: string; name: string }[];
+  fresh: boolean;
   passwordConfigured: boolean;
 }
 export interface SettingsNotice {
@@ -41,6 +38,14 @@ export interface SettingsPageProps {
   household: SettingsHousehold;
   navigate: (path: string) => void;
   notice?: SettingsNotice | null;
+  task?: {
+    state: string;
+    message: string;
+    checkingAvailable: boolean;
+    onCheck: () => void;
+    draftLabel?: string;
+    onDiscardDraft?: () => void;
+  };
 }
 export interface PrinterPreferences {
   paper: '40x30' | '50x30';
@@ -62,9 +67,3 @@ export interface InspectorRecord {
   title: string;
   fields: Readonly<Record<string, unknown>>;
 }
-export const roleLabels: Record<MemberRole, string> = {
-  owner: '所有者',
-  admin: '管理员',
-  member: '成员',
-  viewer: '只读成员',
-};

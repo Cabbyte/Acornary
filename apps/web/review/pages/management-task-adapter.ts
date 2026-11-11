@@ -5,9 +5,12 @@ import type {
   ManagedCatalog,
   ManagedLocation,
   ManagementTask,
+  ManagementModel,
 } from '../../src/features/management/pages/models';
 import {
   createManagementSession,
+  bindManagementApproval,
+  isCatalogManagementTask,
   freezeManagementAttempt,
   type ManagementAttempt,
   type ManagementDraft,
@@ -22,9 +25,18 @@ import { flushReviewStorage, reviewStorage, runReviewTransaction } from '../tria
 import { getReviewWorld, updateReviewItems } from './inventory-session';
 import { readManagementState, writeManagementState } from './management-storage';
 import { bindingFromFacts, projectLifecycle } from './management-lifecycle-projection';
+import {
+  projectExtendedManagementCommand,
+  usesExtendedManagementProjection,
+} from './management-domain-adapter';
+import { projectLocationChange } from './management-tree-projection';
+import { getExtraReviewNotes, getExtraReviewAttachments } from './daily-extras-fixture';
 
-interface FixtureState {
+export interface ManagementFixtureState {
   catalogs: ManagedCatalog[];
+  extraHistory?: ManagementModel['history'];
+  dispositions?: Record<string, Record<string, unknown>>;
+  splits?: Record<string, { childItemIds: string[]; targetCatalogId: string }>;
   locations: ManagedLocation[];
   explicitNames: Record<string, boolean>;
   receipts: Record<string, string>;
@@ -69,8 +81,17 @@ export function createManagementFixtureSession(draft: ManagementDraft) {
         // never invent original bulk binding versions from today's facts.
         if (['unknown', 'submitting', 'receipt'].includes(draft.task.phase)) {
           loaded = true;
-          if (draft.task.kind === 'bulk-lifecycle')
-            throw Error('旧批量任务缺少原绑定版本；原记录保留，不能重新执行。');
+          if (
+            ![
+              'item-save',
+              'attribute-save',
+              'item-move',
+              'location-move',
+              'bulk-move',
+              'bulk-consume',
+            ].includes(draft.task.kind)
+          )
+            throw Error('旧管理任务缺少原命令、审批或绑定版本；原记录保留，不能重新执行。');
           const revisions = Object.fromEntries(
             draft.task.snapshot.map((row) => [row.id, row.revision]),
           );
@@ -109,6 +130,14 @@ export function createManagementFixtureSession(draft: ManagementDraft) {
   return session;
 }
 
+/** A UUID-shaped approval only for the isolated world; never a backend approval. */
+export function approveManagementFixtureDraft(
+  draft: ManagementDraft,
+  revisions: Record<string, number>,
+) {
+  return bindManagementApproval(draft, revisions, crypto.randomUUID());
+}
+
 function replaceAt(
   values: Record<string, unknown>,
   path: string,
@@ -137,7 +166,7 @@ export async function executeManagementFixtureAttempt(
   const projected = freezeManagementAttempt(attempt.draft, revisions, attempt.key);
   if (JSON.stringify(projected.command) !== JSON.stringify(attempt.command))
     fail('IDEMPOTENCY_CONFLICT', '原请求参数与冻结任务不一致。');
-  const state = readManagementState<FixtureState>(stateKey);
+  const state = readManagementState<ManagementFixtureState>(stateKey);
   if (!state) fail('STATE_CONFLICT', '原管理作用域不可读取，未执行。');
   const world = getReviewWorld();
   const known = state.receipts[attempt.key];
@@ -158,7 +187,8 @@ export async function executeManagementFixtureAttempt(
   }
   if (known || world.receipts[attempt.key])
     return { receipt: known || '已找到原任务回执，相关物品已更新；没有重复执行。' };
-  const targets = task.targetIds.map((id) => {
+  const catalogTask = isCatalogManagementTask(task.kind);
+  const targets = (catalogTask ? [] : task.targetIds).map((id) => {
     const facts = world.items.find((row) => row.item.id === id);
     if (!facts || facts.item.revision !== revisions[id])
       fail('REVISION_CONFLICT', '对象版本已变化或不可访问，整批未执行；输入和原版本已保留。');
@@ -167,12 +197,13 @@ export async function executeManagementFixtureAttempt(
   const values = Object.fromEntries(task.fields.map((field) => [field.key, field.value]));
   const destination = state.locations.find((row) => row.id === values.destination);
   if (
+    !catalogTask &&
     task.kind.endsWith('move') &&
     values.destination !== 'root' &&
     (!destination || !destination.canContain || destination.recordState !== 'VALID')
   )
     fail('INVALID_PARENT', '目标不是当前可访问的有效容器，不能推断为根级。');
-  if (task.kind.endsWith('move')) {
+  if (!catalogTask && task.kind.endsWith('move')) {
     let parent = destination?.id;
     const seen = new Set<string>();
     while (parent) {
@@ -197,10 +228,23 @@ export async function executeManagementFixtureAttempt(
     )
   )
     fail('INVALID_TRANSITION', '范围含非消耗品或已结束记录，整个批次未执行。');
-  const next = structuredClone(state);
+  let next = structuredClone(state);
   let changed = targets.map((facts) => structuredClone(facts));
   const payload = attempt.command.payload;
-  if (task.kind === 'item-save') {
+  let receipt = '隔离样例已更新。正式家庭未发生写入。';
+  let eventType = task.kind.endsWith('move') ? 'ITEM_MOVED' : 'ITEM_UPDATED';
+  const extended = usesExtendedManagementProjection(task.kind);
+  if (extended) {
+    const referenceId = task.targetIds[0];
+    const references =
+      !!getExtraReviewNotes(referenceId)?.length ||
+      !!getExtraReviewAttachments(referenceId)?.length;
+    const projected = projectExtendedManagementCommand(attempt, state, world, references);
+    next = projected.next;
+    changed = projected.changed;
+    receipt = projected.receipt;
+    eventType = projected.eventType;
+  } else if (task.kind === 'item-save') {
     const item = changed[0].item;
     const catalog = state.catalogs.find((row) => row.id === item.skuId);
     if (payload.display_name === null && !catalog)
@@ -214,7 +258,7 @@ export async function executeManagementFixtureAttempt(
       changedAttributes: [],
     };
     if (next.editId === item.id) next.nameDraft = nameDraft;
-  } else if (task.kind.endsWith('move')) {
+  } else if (!catalogTask && task.kind.endsWith('move')) {
     const targetLocation = destination
       ? { id: destination.id, path: [...destination.path], label: destination.name }
       : { id: null, path: [], label: '位置未记录' };
@@ -222,35 +266,11 @@ export async function executeManagementFixtureAttempt(
       row.item.location = structuredClone(targetLocation);
     });
     if (task.kind === 'location-move') {
-      const container = state.locations.find((row) => row.id === task.targetIds[0]);
-      if (!container) fail('NOT_FOUND', '容器资料不可读取。');
-      const path = [...targetLocation.path, container.name];
-      changed.push(
-        ...world.items
-          .filter(
-            (row) =>
-              row.item.id !== container.id &&
-              (row.item.location.path.join('/') === container.path.join('/') ||
-                row.item.location.path.join('/').startsWith(container.path.join('/') + '/')),
-          )
-          .map((row) => ({
-            ...structuredClone(row),
-            item: {
-              ...structuredClone(row.item),
-              location: {
-                ...row.item.location,
-                path: [...path, ...row.item.location.path.slice(container.path.length)],
-              },
-            },
-          })),
-      );
-      next.locations = next.locations.map((row) =>
-        row.id === container.id
-          ? { ...row, parentId: targetLocation.id, path, revision: row.revision + 1 }
-          : row.path.join('/').startsWith(container.path.join('/') + '/')
-            ? { ...row, path: [...path, ...row.path.slice(container.path.length)] }
-            : row,
-      );
+      const projection = projectLocationChange(next.locations, world.items, task.targetIds[0], {
+        parentId: targetLocation.id,
+      });
+      next.locations = projection.locations;
+      changed = projection.items;
     }
   } else if (task.kind === 'bulk-consume') {
     changed.forEach((row) => {
@@ -284,11 +304,19 @@ export async function executeManagementFixtureAttempt(
       return projectLifecycle(facts, binding);
     });
   }
-  changed.forEach((facts) => {
-    const before = world.items.find((row) => row.item.id === facts.item.id)!;
-    facts.item.revision = before.item.revision + 1;
-  });
-  const receipt = '隔离样例已更新。正式家庭未发生写入。';
+  if (!extended)
+    changed.forEach((facts) => {
+      const before = world.items.find((row) => row.item.id === facts.item.id)!;
+      facts.item.revision = before.item.revision + (task.targetIds.includes(facts.item.id) ? 1 : 0);
+    });
+  const projectionOnlyIds = changed
+    .filter((facts) =>
+      world.items.some(
+        (before) =>
+          before.item.id === facts.item.id && before.item.revision === facts.item.revision,
+      ),
+    )
+    .map((facts) => facts.item.id);
   next.receipts[attempt.key] = receipt;
   next.operationRequests = {
     ...next.operationRequests,
@@ -298,8 +326,9 @@ export async function executeManagementFixtureAttempt(
     updateReviewItems(changed, {
       requestKey: attempt.key,
       operationLabel: task.title,
-      reason: '隔离管理任务',
-      eventType: task.kind.endsWith('move') ? 'ITEM_MOVED' : 'ITEM_UPDATED',
+      reason: String(payload.reason || '隔离管理任务'),
+      eventType,
+      projectionOnlyIds,
     });
     writeManagementState(next, stateKey);
   });

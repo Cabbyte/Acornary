@@ -1,12 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   createManagementSession,
+  bindManagementApproval,
+  prepareManagementCommand,
   freezeManagementAttempt,
   managementTaskView,
   validManagementRecord,
   type ManagementDraft,
   type ManagementRecord,
 } from '../../apps/web/src/app-vnext/management-task';
+import { catalogFixtures } from '../../apps/web/review/pages/management-fixtures';
+import { itemFacts } from '../../apps/web/review/pages/fixtures';
 import { OperationSessions } from '../../apps/web/src/app-vnext/operation-context';
 import type { ApplicationScope } from '../../apps/web/src/app-vnext/scope';
 import type { OperationStorage } from '../../apps/web/src/app-vnext/platform';
@@ -77,6 +81,133 @@ function memoryStorage() {
 }
 
 describe('management root tasks', () => {
+  it('binds catalog approval to the exact payload, identity, revision and request key', () => {
+    const d = draft('catalog-edit');
+    const catalog = catalogFixtures(itemFacts.map((row) => row.item)).find(
+      (row) => row.kind === 'SKU',
+    )!;
+    d.catalog = catalog;
+    d.task.targetIds = [catalog.id];
+    d.task.snapshot = [
+      { id: catalog.id, revision: catalog.revision, name: catalog.name, path: '' },
+    ];
+    d.task.fields = [
+      { key: 'name', label: '', value: 'reviewed name' },
+      { key: 'profile', label: '', value: 'unknown' },
+    ];
+    expect(() => freezeManagementAttempt(d, revisions(d))).toThrow('审批');
+    const approved = bindManagementApproval(
+      d,
+      revisions(d),
+      '00000000-0000-4000-8000-000000000007',
+    );
+    expect(freezeManagementAttempt(approved, revisions(d)).command).toMatchObject({
+      operation: 'update_catalog_node',
+      payload: {
+        profile: null,
+        name: 'reviewed name',
+        catalog_node_id: catalog.id,
+        approval_id: '00000000-0000-4000-8000-000000000007',
+      },
+    });
+    approved.task.fields = [{ key: 'name', label: '', value: 'changed after approval' }];
+    expect(() => freezeManagementAttempt(approved, revisions(approved))).toThrow('审批');
+  });
+
+  it('creates directory objects with no invented target revision and refuses combined edit/move', () => {
+    const create = draft('catalog-create-group', 0);
+    create.task.fields = [
+      { key: 'name', label: '', value: 'new group' },
+      { key: 'parent', label: '', value: 'root' },
+    ];
+    expect(prepareManagementCommand(create, {})).toMatchObject({
+      operation: 'create_catalog_node',
+      payload: { kind: 'GROUP', parent_id: null, expected_revisions: {} },
+    });
+    const catalog = catalogFixtures(itemFacts.map((row) => row.item))[0];
+    const edit = draft('catalog-edit');
+    edit.catalog = catalog;
+    edit.task.targetIds = [catalog.id];
+    edit.task.snapshot = [
+      { id: catalog.id, revision: catalog.revision, name: catalog.name, path: '' },
+    ];
+    edit.task.fields = [
+      { key: 'parent', label: '', value: 'catalog_node_00000000-0000-4000-8000-000000000099' },
+    ];
+    expect(() => prepareManagementCommand(edit, revisions(edit))).toThrow('不能同时移动');
+  });
+
+  it.each([
+    ['location-create', 'create_items'],
+    ['location-edit', 'update_item'],
+    ['void', 'void_item'],
+    ['location-void', 'void_item'],
+    ['restore', 'correct_item'],
+    ['location-restore', 'correct_item'],
+    ['dispose', 'dispose_item'],
+  ])('maps %s to one supported %s command', (kind, operation) => {
+    const d = draft(kind, kind === 'location-create' ? 0 : 1);
+    d.creationCatalogId = 'catalog_node_00000000-0000-4000-8000-000000000800';
+    d.task.fields = [
+      { key: 'name', label: '', value: 'room' },
+      { key: 'destination', label: '', value: 'root' },
+      { key: 'reason', label: '', value: 'correct mistaken record' },
+      { key: 'disposition', label: '', value: 'GIFT' },
+      { key: 'date', label: '', value: '2026-11-11' },
+      { key: 'recipient', label: '', value: '' },
+    ];
+    const command = freezeManagementAttempt(d, revisions(d)).command;
+    expect(command.operation).toBe(operation);
+    if (kind === 'dispose')
+      expect(command.payload.disposition).not.toHaveProperty('recipient_name');
+    if (kind === 'location-create')
+      expect(command.payload).toMatchObject({
+        count: 1,
+        initial_attributes: [
+          { template_id: 'container', template_version: 1, values: { can_contain: true } },
+        ],
+      });
+  });
+
+  it('requires exact decimal conservation and only explicit content facts for split children', () => {
+    const d = draft('split');
+    d.splitContentsVersion = 2;
+    d.sourceQuantity = { value: '0.3', unit: 'g', accuracy: 'unknown' };
+    d.task.fields = [
+      { key: 'sku', label: '', value: 'catalog_node_00000000-0000-4000-8000-000000000100' },
+      { key: 'count', label: '', value: '3' },
+      { key: 'quantity', label: '', value: '0.1' },
+      { key: 'unit', label: '', value: 'g' },
+    ];
+    const command = freezeManagementAttempt(d, revisions(d)).command;
+    expect(command.operation).toBe('split_item');
+    expect(command.payload.child_attributes).toEqual([
+      {
+        template_id: 'contents',
+        template_version: 2,
+        values: { remaining: { value: '0.1', unit: 'g' } },
+      },
+    ]);
+    d.sourceQuantity.value = '0.31';
+    expect(() => freezeManagementAttempt(d, revisions(d))).toThrow('守恒');
+  });
+
+  it('rejects unsupported correction and preserves unknown fields by refusing a lossy template upgrade', () => {
+    expect(() => freezeManagementAttempt(draft('history-correct'), revisions(draft()))).toThrow(
+      'correct_item',
+    );
+    const d = draft('template-upgrade');
+    d.templateTargetVersion = 2;
+    d.task.draft!.binding!.template_version = 1;
+    expect(() => freezeManagementAttempt(d, revisions(d))).toThrow();
+    expect(d.task.draft!.binding!.values.legacy).toEqual({ untouched: true });
+    delete d.task.draft!.binding!.values.legacy;
+    expect(freezeManagementAttempt(d, revisions(d)).command).toMatchObject({
+      operation: 'upgrade_attributes',
+      payload: { from_version: 1, to_version: 2 },
+    });
+  });
+
   it('uses one schema-valid command for all 100 explicit UUIDs, with no hidden selection loss', () => {
     const d = draft('bulk-move', 100);
     const attempt = freezeManagementAttempt(d, revisions(d));

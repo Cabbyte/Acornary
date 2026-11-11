@@ -2,6 +2,7 @@
  * This library is deliberately not a browser bootstrap or a deployable application.
  */
 export * from './app-vnext';
+export * from './platform-vnext/indexeddb-operation-records';
 export * from './ui/theme/provider';
 export * from './features/daily/pages/daily-home';
 export * from './features/daily/pages/daily-search';

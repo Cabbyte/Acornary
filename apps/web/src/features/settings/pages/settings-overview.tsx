@@ -1,7 +1,7 @@
 import { Database, Home, KeyRound, Printer, ScanSearch, Users } from 'lucide-react';
 import { InlineNotice } from '../../../ui/components/ui/inline-notice';
 import { SettingsFacts, SettingsLayout, SettingsLink, SettingsSection } from './settings-layout';
-import { roleLabels, type SettingsIdentity, type SettingsPageProps } from './models';
+import { type SettingsIdentity, type SettingsPageProps } from './models';
 export interface SettingsOverviewProps extends SettingsPageProps {
   identity: SettingsIdentity;
   online: boolean;
@@ -21,7 +21,7 @@ export function SettingsOverview(props: SettingsOverviewProps) {
               value: identity.signedIn ? identity.email : '可使用通行密钥或密码登录',
             },
             { label: '当前家庭', value: household.name },
-            { label: '角色', value: roleLabels[household.role] },
+            { label: '成员身份', value: '家庭成员' },
           ]}
         />
       </SettingsSection>
@@ -55,13 +55,13 @@ export function SettingsOverview(props: SettingsOverviewProps) {
           />
           <SettingsLink
             title="家庭"
-            detail={`${household.name} · ${roleLabels[household.role]}`}
+            detail={`${household.name} · 家庭成员`}
             icon={<Home size={20} />}
             onClick={() => navigate('/settings/household')}
           />
           <SettingsLink
             title="成员与邀请"
-            detail={`${household.memberCount} 位成员 · 按角色管理权限`}
+            detail={`${household.memberCount} 位成员 · 成员权限相同`}
             icon={<Users size={20} />}
             onClick={() => navigate('/settings/members')}
           />

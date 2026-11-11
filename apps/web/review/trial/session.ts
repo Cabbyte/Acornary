@@ -1,6 +1,8 @@
 export interface TrialScope {
   accountId: string;
   householdId: string;
+  // Legacy fixture key retained for saved trial worlds. It simulates capability
+  // scenarios only; the real account contract has no member role hierarchy.
   role: 'owner' | 'member' | 'viewer';
   generation: number;
   signedIn: boolean;

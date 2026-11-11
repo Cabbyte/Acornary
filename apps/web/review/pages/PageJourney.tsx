@@ -1,9 +1,5 @@
-import {
-  applicationRoutes,
-  modeForPath,
-  updateRouteQuery,
-  safeApplicationPath,
-} from '../../src/app-vnext/routing';
+import { modeForPath, updateRouteQuery, safeApplicationPath } from '../../src/app-vnext/routing';
+import { createApplicationRouter } from '../../src/app-vnext/router';
 import { projectSnapshotPage } from '../../src/app-vnext/query';
 import { useOptionalOperationSessions } from '../../src/app-vnext/operation-context';
 import { FixtureApplicationProvider, getFixtureScope } from '../trial/application';
@@ -30,10 +26,6 @@ import {
   createBrowserHistory,
   createHashHistory,
   createMemoryHistory,
-  createRootRoute,
-  createRoute,
-  createRouter,
-  Outlet,
   RouterProvider,
   useLocation,
   useRouter,
@@ -738,14 +730,10 @@ function PageJourneyRoot({ initialPath, scenario }: { initialPath: string; scena
             },
             createHref: (path) => `${window.location.pathname}${window.location.search}#${path}`,
           });
-    const root = createRootRoute({ component: Outlet });
-    const routes = applicationRoutes.map((path) =>
-      createRoute({ getParentRoute: () => root, path, component: PageScreen }),
-    );
-    return createRouter({
+    return createApplicationRouter({
       history,
-      routeTree: root.addChildren(routes),
-      defaultNotFoundComponent: () => (
+      screen: PageScreen,
+      notFound: () => (
         <p>
           页面不存在。<a href="#/items">返回我的物品</a>
         </p>

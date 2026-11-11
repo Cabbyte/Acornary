@@ -7,3 +7,8 @@ export * from './operation-session';
 export * from './operation-context';
 export * from './daily-tasks';
 export * from './management-task';
+export * from './operation-journal';
+export * from './compatibility-routing';
+export * from './router';
+export * from './settings-task';
+export * from './management-export';

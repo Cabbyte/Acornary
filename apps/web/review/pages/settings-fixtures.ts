@@ -13,8 +13,8 @@ import type {
 
 // Private P08 fixtures. No service client, production identifiers, credentials or persistent stores.
 export const settingsHouseholds: readonly SettingsHousehold[] = [
-  { id: 'preview-home-wutong', name: '梧桐之家 · 示例', role: 'owner', memberCount: 3 },
-  { id: 'preview-home-weekend', name: '周末小屋 · 示例', role: 'viewer', memberCount: 2 },
+  { id: 'preview-home-wutong', name: '梧桐之家 · 示例', memberCount: 3 },
+  { id: 'preview-home-weekend', name: '周末小屋 · 示例', memberCount: 2 },
 ];
 export function membersFor(householdId: string): SettingsMember[] {
   return householdId === 'preview-home-wutong'
@@ -23,21 +23,18 @@ export function membersFor(householdId: string): SettingsMember[] {
           id: 'preview-member-self',
           name: '林晓',
           email: 'lin@example.invalid',
-          role: 'owner',
           self: true,
         },
         {
           id: 'preview-member-chen',
           name: '陈禾',
           email: 'chen@example.invalid',
-          role: 'member',
           self: false,
         },
         {
           id: 'preview-member-guest',
           name: '访客',
           email: 'guest@example.invalid',
-          role: 'viewer',
           self: false,
         },
       ]
@@ -46,14 +43,12 @@ export function membersFor(householdId: string): SettingsMember[] {
           id: 'preview-member-owner',
           name: '小屋主人',
           email: 'owner@example.invalid',
-          role: 'owner',
           self: false,
         },
         {
           id: 'preview-member-self',
           name: '林晓',
           email: 'lin@example.invalid',
-          role: 'viewer',
           self: true,
         },
       ];
@@ -62,7 +57,8 @@ export const settingsIdentity: SettingsIdentity = {
   name: '林晓 · 示例账号',
   email: 'lin@example.invalid',
   signedIn: true,
-  passkeys: ['这台设备的通行密钥'],
+  passkeys: [{ id: 'preview-passkey-device', name: '这台设备的通行密钥' }],
+  fresh: true,
   passwordConfigured: true,
 };
 export const printerDefaults: PrinterPreferences = { paper: '40x30', density: '2', copies: '1' };
@@ -80,7 +76,6 @@ export function invitationsFor(): SettingsInvitation[] {
     {
       id: 'preview-invitation-expired',
       label: '访客邀请 · 示例',
-      role: 'viewer',
       state: 'expired',
     },
   ];
@@ -137,7 +132,7 @@ export function inspectorRecords(
       email: '[REDACTED]',
       session_token: '[REDACTED]',
       host_state: '[REDACTED]',
-      effective_role: household.role,
+      membership: 'active',
       scope: scopes,
       protocol_version: 'read-v2 (preview)',
       cache_scope: {

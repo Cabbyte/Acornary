@@ -29,7 +29,7 @@ export function PrintingSettingsPage(props: PrintingSettingsPageProps) {
               value: {
                 disconnected: '未连接',
                 unavailable: '当前环境不支持设备连接',
-                connected: '已连接 · 模拟状态',
+                connected: '已连接',
               }[device],
             },
             { label: '连接方式', value: '支持 Web Bluetooth 的环境，需由用户主动连接' },
@@ -44,7 +44,7 @@ export function PrintingSettingsPage(props: PrintingSettingsPageProps) {
             disabled={device === 'unavailable'}
             onClick={device === 'connected' ? props.onDisconnect : props.onConnect}
           >
-            {device === 'connected' ? '断开示例连接' : '模拟连接设备'}
+            {device === 'connected' ? '断开设备连接' : '连接设备'}
           </Button>
           {device === 'unavailable' && (
             <Button variant="secondary" onClick={() => props.navigate('/settings/auth?view=host')}>
@@ -113,7 +113,7 @@ export function PrintingSettingsPage(props: PrintingSettingsPageProps) {
         <div className="vn-settings-label-preview">
           <Printer size={22} aria-hidden="true" />
           <strong>松仓 · 测试标签</strong>
-          <span>示例标签 · 无实物绑定</span>
+          <span>测试标签 · 无实物绑定</span>
           <small>
             {draft.paper.replace('x', ' × ')} mm · {draft.copies} 张 · 浓度 {draft.density}
           </small>
@@ -122,11 +122,11 @@ export function PrintingSettingsPage(props: PrintingSettingsPageProps) {
           disabled={device !== 'connected' || dirty || printState === 'sent'}
           onClick={props.onPrint}
         >
-          模拟试打 {saved.copies} 张
+          试打 {saved.copies} 张
         </Button>
         {dirty && <p className="vn-settings-muted">先保存当前设置，再开始试打。</p>}
         {device === 'disconnected' && (
-          <p className="vn-settings-muted">先连接示例设备再查看试打状态。</p>
+          <p className="vn-settings-muted">先连接设备再查看试打状态。</p>
         )}
         {printState === 'sent' && (
           <InlineNotice
@@ -135,10 +135,10 @@ export function PrintingSettingsPage(props: PrintingSettingsPageProps) {
             action={
               <div className="vn-settings-actions">
                 <Button variant="secondary" onClick={() => props.onPrintResult(true)}>
-                  模拟全部出纸
+                  已核对全部出纸
                 </Button>
                 <Button variant="secondary" onClick={() => props.onPrintResult(false)}>
-                  模拟未出纸
+                  尚未全部出纸
                 </Button>
               </div>
             }
@@ -147,12 +147,12 @@ export function PrintingSettingsPage(props: PrintingSettingsPageProps) {
           </InlineNotice>
         )}
         {printState === 'confirmed' && (
-          <InlineNotice tone="success" title={`已确认 ${saved.copies} 张示例标签完成`}>
+          <InlineNotice tone="success" title={`已确认 ${saved.copies} 张测试标签完成`}>
             这是状态演示，不代表真实打印机已出纸。
           </InlineNotice>
         )}
         {printState === 'failed' && (
-          <InlineNotice tone="warning" title="示例试打未出纸">
+          <InlineNotice tone="warning" title="试打未完成">
             请检查纸张和连接，然后可以重新试打。真实任务需先核对已出纸数量。
           </InlineNotice>
         )}

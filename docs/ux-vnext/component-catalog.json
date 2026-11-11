@@ -723,7 +723,7 @@
       "kind": "page",
       "name": "页面 · 开封记录",
       "group": "完整页面 · 全产品候选",
-      "version": "Pages-RC1",
+      "version": "CF-L1-RC1",
       "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/../../daily/pages/daily-extras.tsx",
       "storyId": "pages-daily--opening",
@@ -770,17 +770,24 @@
         }
       ],
       "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
-      "status": "待审阅",
+      "status": "变更后待复审",
       "review": {
-        "version": "Pages-RC1",
-        "status": "待审阅",
+        "version": "CF-L1-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
           "operation-sheet"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [],
+        "changeRecords": [
+          {
+            "date": "2026-11-11",
+            "version": "CF-L1-RC1",
+            "summary": "按真实命令、身份与恢复协议修订应用层；保留隔离数据和意见入口，尚未正式接线。"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-daily-opening&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--opening"
@@ -790,7 +797,7 @@
       "kind": "page",
       "name": "页面 · 日期事项",
       "group": "完整页面 · 全产品候选",
-      "version": "Pages-RC1",
+      "version": "CF-L1-RC1",
       "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/../../daily/pages/daily-extras.tsx",
       "storyId": "pages-daily--dates",
@@ -837,17 +844,24 @@
         }
       ],
       "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
-      "status": "待审阅",
+      "status": "变更后待复审",
       "review": {
-        "version": "Pages-RC1",
-        "status": "待审阅",
+        "version": "CF-L1-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
           "operation-sheet"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [],
+        "changeRecords": [
+          {
+            "date": "2026-11-11",
+            "version": "CF-L1-RC1",
+            "summary": "按真实命令、身份与恢复协议修订应用层；保留隔离数据和意见入口，尚未正式接线。"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-daily-dates&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--dates"
@@ -857,7 +871,7 @@
       "kind": "page",
       "name": "页面 · 笔记",
       "group": "完整页面 · 全产品候选",
-      "version": "Pages-RC1",
+      "version": "CF-L1-RC1",
       "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/../../daily/pages/daily-extras.tsx",
       "storyId": "pages-daily--notes",
@@ -904,17 +918,24 @@
         }
       ],
       "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
-      "status": "待审阅",
+      "status": "变更后待复审",
       "review": {
-        "version": "Pages-RC1",
-        "status": "待审阅",
+        "version": "CF-L1-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
           "operation-sheet"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [],
+        "changeRecords": [
+          {
+            "date": "2026-11-11",
+            "version": "CF-L1-RC1",
+            "summary": "按真实命令、身份与恢复协议修订应用层；保留隔离数据和意见入口，尚未正式接线。"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-daily-notes&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--notes"
@@ -1133,7 +1154,7 @@
       "kind": "page",
       "name": "页面 · 物品管理",
       "group": "完整页面 · 全产品候选",
-      "version": "Pages-RC1",
+      "version": "CF-L1-RC1",
       "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/../../management/pages/management-pages.tsx",
       "storyId": "pages-daily--manage-items",
@@ -1196,17 +1217,24 @@
         }
       ],
       "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
-      "status": "待审阅",
+      "status": "变更后待复审",
       "review": {
-        "version": "Pages-RC1",
-        "status": "待审阅",
+        "version": "CF-L1-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
           "operation-sheet"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [],
+        "changeRecords": [
+          {
+            "date": "2026-11-11",
+            "version": "CF-L1-RC1",
+            "summary": "按真实命令、身份与恢复协议修订应用层；保留隔离数据和意见入口，尚未正式接线。"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-manage-items&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--manage-items"
@@ -1216,7 +1244,7 @@
       "kind": "page",
       "name": "页面 · 商品目录",
       "group": "完整页面 · 全产品候选",
-      "version": "Pages-RC1",
+      "version": "CF-L1-RC1",
       "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/../../management/pages/management-pages.tsx",
       "storyId": "pages-daily--manage-catalog",
@@ -1279,17 +1307,24 @@
         }
       ],
       "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
-      "status": "待审阅",
+      "status": "变更后待复审",
       "review": {
-        "version": "Pages-RC1",
-        "status": "待审阅",
+        "version": "CF-L1-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
           "operation-sheet"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [],
+        "changeRecords": [
+          {
+            "date": "2026-11-11",
+            "version": "CF-L1-RC1",
+            "summary": "按真实命令、身份与恢复协议修订应用层；保留隔离数据和意见入口，尚未正式接线。"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-manage-catalog&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--manage-catalog"
@@ -1299,7 +1334,7 @@
       "kind": "page",
       "name": "页面 · 位置与容器",
       "group": "完整页面 · 全产品候选",
-      "version": "Pages-RC1",
+      "version": "CF-L1-RC1",
       "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/../../management/pages/management-pages.tsx",
       "storyId": "pages-daily--manage-locations",
@@ -1362,17 +1397,24 @@
         }
       ],
       "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
-      "status": "待审阅",
+      "status": "变更后待复审",
       "review": {
-        "version": "Pages-RC1",
-        "status": "待审阅",
+        "version": "CF-L1-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
           "operation-sheet"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [],
+        "changeRecords": [
+          {
+            "date": "2026-11-11",
+            "version": "CF-L1-RC1",
+            "summary": "按真实命令、身份与恢复协议修订应用层；保留隔离数据和意见入口，尚未正式接线。"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-manage-locations&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--manage-locations"
@@ -1382,7 +1424,7 @@
       "kind": "page",
       "name": "页面 · 精确编辑",
       "group": "完整页面 · 全产品候选",
-      "version": "Pages-RC1",
+      "version": "CF-L1-RC1",
       "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/../../management/pages/management-pages.tsx",
       "storyId": "pages-daily--manage-edit",
@@ -1445,17 +1487,24 @@
         }
       ],
       "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
-      "status": "待审阅",
+      "status": "变更后待复审",
       "review": {
-        "version": "Pages-RC1",
-        "status": "待审阅",
+        "version": "CF-L1-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
           "operation-sheet"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [],
+        "changeRecords": [
+          {
+            "date": "2026-11-11",
+            "version": "CF-L1-RC1",
+            "summary": "按真实命令、身份与恢复协议修订应用层；保留隔离数据和意见入口，尚未正式接线。"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-manage-edit&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--manage-edit"
@@ -1465,7 +1514,7 @@
       "kind": "page",
       "name": "页面 · 批量管理",
       "group": "完整页面 · 全产品候选",
-      "version": "Pages-RC1",
+      "version": "CF-L1-RC1",
       "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/../../management/pages/management-pages.tsx",
       "storyId": "pages-daily--manage-bulk",
@@ -1528,17 +1577,24 @@
         }
       ],
       "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
-      "status": "待审阅",
+      "status": "变更后待复审",
       "review": {
-        "version": "Pages-RC1",
-        "status": "待审阅",
+        "version": "CF-L1-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
           "operation-sheet"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [],
+        "changeRecords": [
+          {
+            "date": "2026-11-11",
+            "version": "CF-L1-RC1",
+            "summary": "按真实命令、身份与恢复协议修订应用层；保留隔离数据和意见入口，尚未正式接线。"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-manage-bulk&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--manage-bulk"
@@ -1548,7 +1604,7 @@
       "kind": "page",
       "name": "页面 · 历史与纠错",
       "group": "完整页面 · 全产品候选",
-      "version": "Pages-RC1",
+      "version": "CF-L1-RC1",
       "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/../../management/pages/management-pages.tsx",
       "storyId": "pages-daily--manage-history",
@@ -1611,17 +1667,24 @@
         }
       ],
       "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
-      "status": "待审阅",
+      "status": "变更后待复审",
       "review": {
-        "version": "Pages-RC1",
-        "status": "待审阅",
+        "version": "CF-L1-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
           "operation-sheet"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [],
+        "changeRecords": [
+          {
+            "date": "2026-11-11",
+            "version": "CF-L1-RC1",
+            "summary": "按真实命令、身份与恢复协议修订应用层；保留隔离数据和意见入口，尚未正式接线。"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-manage-history&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--manage-history"
@@ -1631,7 +1694,7 @@
       "kind": "page",
       "name": "页面 · 设置",
       "group": "完整页面 · 全产品候选",
-      "version": "Pages-RC1",
+      "version": "CF-L1-RC1",
       "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/../../settings/pages/settings-pages.tsx",
       "storyId": "pages-daily--settings",
@@ -1678,17 +1741,24 @@
         }
       ],
       "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
-      "status": "待审阅",
+      "status": "变更后待复审",
       "review": {
-        "version": "Pages-RC1",
-        "status": "待审阅",
+        "version": "CF-L1-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
           "operation-sheet"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [],
+        "changeRecords": [
+          {
+            "date": "2026-11-11",
+            "version": "CF-L1-RC1",
+            "summary": "按真实命令、身份与恢复协议修订应用层；保留隔离数据和意见入口，尚未正式接线。"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-settings&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--settings"
@@ -1698,7 +1768,7 @@
       "kind": "page",
       "name": "页面 · 账号与家庭",
       "group": "完整页面 · 全产品候选",
-      "version": "Pages-RC1",
+      "version": "CF-L1-RC1",
       "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/../../settings/pages/settings-pages.tsx",
       "storyId": "pages-daily--settings-household",
@@ -1745,17 +1815,24 @@
         }
       ],
       "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
-      "status": "待审阅",
+      "status": "变更后待复审",
       "review": {
-        "version": "Pages-RC1",
-        "status": "待审阅",
+        "version": "CF-L1-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
           "operation-sheet"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [],
+        "changeRecords": [
+          {
+            "date": "2026-11-11",
+            "version": "CF-L1-RC1",
+            "summary": "按真实命令、身份与恢复协议修订应用层；保留隔离数据和意见入口，尚未正式接线。"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-settings-household&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--settings-household"
@@ -1765,7 +1842,7 @@
       "kind": "page",
       "name": "页面 · 成员权限",
       "group": "完整页面 · 全产品候选",
-      "version": "Pages-RC1",
+      "version": "CF-L1-RC1",
       "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/../../settings/pages/settings-pages.tsx",
       "storyId": "pages-daily--settings-members",
@@ -1812,17 +1889,24 @@
         }
       ],
       "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
-      "status": "待审阅",
+      "status": "变更后待复审",
       "review": {
-        "version": "Pages-RC1",
-        "status": "待审阅",
+        "version": "CF-L1-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
           "operation-sheet"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [],
+        "changeRecords": [
+          {
+            "date": "2026-11-11",
+            "version": "CF-L1-RC1",
+            "summary": "按真实命令、身份与恢复协议修订应用层；保留隔离数据和意见入口，尚未正式接线。"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-settings-members&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--settings-members"
@@ -1832,7 +1916,7 @@
       "kind": "page",
       "name": "页面 · 登录与授权",
       "group": "完整页面 · 全产品候选",
-      "version": "Pages-RC1",
+      "version": "CF-L1-RC1",
       "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/../../settings/pages/settings-pages.tsx",
       "storyId": "pages-daily--settings-auth",
@@ -1895,17 +1979,24 @@
         }
       ],
       "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
-      "status": "待审阅",
+      "status": "变更后待复审",
       "review": {
-        "version": "Pages-RC1",
-        "status": "待审阅",
+        "version": "CF-L1-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
           "operation-sheet"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [],
+        "changeRecords": [
+          {
+            "date": "2026-11-11",
+            "version": "CF-L1-RC1",
+            "summary": "按真实命令、身份与恢复协议修订应用层；保留隔离数据和意见入口，尚未正式接线。"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-settings-auth&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--settings-auth"
@@ -1915,7 +2006,7 @@
       "kind": "page",
       "name": "页面 · 打印设置",
       "group": "完整页面 · 全产品候选",
-      "version": "Pages-RC1",
+      "version": "CF-L1-RC1",
       "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/../../settings/pages/settings-pages.tsx",
       "storyId": "pages-daily--settings-printing",
@@ -1962,17 +2053,24 @@
         }
       ],
       "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
-      "status": "待审阅",
+      "status": "变更后待复审",
       "review": {
-        "version": "Pages-RC1",
-        "status": "待审阅",
+        "version": "CF-L1-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
           "operation-sheet"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [],
+        "changeRecords": [
+          {
+            "date": "2026-11-11",
+            "version": "CF-L1-RC1",
+            "summary": "按真实命令、身份与恢复协议修订应用层；保留隔离数据和意见入口，尚未正式接线。"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-settings-printing&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--settings-printing"
@@ -1982,7 +2080,7 @@
       "kind": "page",
       "name": "页面 · 缓存与离线",
       "group": "完整页面 · 全产品候选",
-      "version": "Pages-RC1",
+      "version": "CF-L1-RC1",
       "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/../../settings/pages/settings-pages.tsx",
       "storyId": "pages-daily--settings-cache",
@@ -2037,17 +2135,24 @@
         }
       ],
       "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
-      "status": "待审阅",
+      "status": "变更后待复审",
       "review": {
-        "version": "Pages-RC1",
-        "status": "待审阅",
+        "version": "CF-L1-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
           "operation-sheet"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [],
+        "changeRecords": [
+          {
+            "date": "2026-11-11",
+            "version": "CF-L1-RC1",
+            "summary": "按真实命令、身份与恢复协议修订应用层；保留隔离数据和意见入口，尚未正式接线。"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-settings-cache&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--settings-cache"
@@ -2057,7 +2162,7 @@
       "kind": "page",
       "name": "页面 · 只读检查器",
       "group": "完整页面 · 全产品候选",
-      "version": "Pages-RC1",
+      "version": "CF-L1-RC1",
       "description": "日常、管理与设置页面 · 隔离数据，逐页审阅。",
       "source": "apps/web/src/features/daily/pages/../../settings/pages/settings-pages.tsx",
       "storyId": "pages-daily--settings-inspector",
@@ -2104,17 +2209,24 @@
         }
       ],
       "limitations": "读写均使用隔离 fixture；真实服务、权限、缓存、MCP 与设备验收尚未执行。",
-      "status": "待审阅",
+      "status": "变更后待复审",
       "review": {
-        "version": "Pages-RC1",
-        "status": "待审阅",
+        "version": "CF-L1-RC1",
+        "status": "变更后待复审",
         "dependencies": [
           "app-shell",
           "page-header",
           "operation-sheet"
         ],
         "feedback": [],
-        "approvalRecords": []
+        "approvalRecords": [],
+        "changeRecords": [
+          {
+            "date": "2026-11-11",
+            "version": "CF-L1-RC1",
+            "summary": "按真实命令、身份与恢复协议修订应用层；保留隔离数据和意见入口，尚未正式接线。"
+          }
+        ]
       },
       "preview": "http://127.0.0.1:6007/?component=page-settings-inspector&preset=sage&mode=daily&viewport=390&scenario=normal",
       "storybook": "http://127.0.0.1:6006/?path=/story/pages-daily--settings-inspector"

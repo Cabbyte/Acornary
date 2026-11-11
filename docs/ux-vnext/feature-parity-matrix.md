@@ -1,5 +1,7 @@
 # 旧能力到新入口的功能对等清单
 
+> 执行补记（2026-11-11）：回归与 CI 已恢复；共享任务、账号语义、导出和持久化的最新进度见 [执行记录](cf-launch-execution.md)。下方 C2 是规划起点，任何隔离结果均不等于真实业务对等验收。
+
 核对日期：2026-11-11。C2 文档候选；**未进行回归、真实接线、远端写入或用户验收，没有任何行可据此宣称端到端对等通过**。与 [接口兼容矩阵](backend-compatibility-matrix.md) 的 B 编号验收用例互相引用。页面存在、操作 schema 存在、历史测试通过是三种不同证据。
 
 ## 基线与证据索引
@@ -38,8 +40,8 @@
 | F14 | 拆包、处置、作废；公共 API；纠错 S0 correct | `/manage/items`、`/manage/edit`、`/manage/history` | `split_item`、`dispose_item`、`void_item`、`correct_item`；恢复作废用 `correct_item.record_state=VALID` | U：恢复需原因/revision/相关审批与终结状态检查；拆包源不可借纠错复活；B13 |
 | F15 | 明确选择的批量入库/移动/生命周期；公共 API，S0 批量 move/finish | `/manage/bulk`、入库任务 | `create_items_batch`、`move_items`、`update_items_lifecycle`、`consume_items` | U：跨页选集 UUID/revision 冻结、任一失败零部分提交；B05/B08/B12 |
 | F16 | 历史、操作关联、反向引用与纠错原因；旧 activity/档案 + API | `/activity`、`/manage/history`、单件历史 | `get_history`、`query_references`、`correct_item` | U：operation 完整性不能由当前页事件数推断；B14 |
-| F17 | 冻结导出；公共 API，不宣称旧 Web 按钮已覆盖 | 管理物品/目录导出 | `begin_export/read_export/cancel_export`；冻结 JSON 行，默认脱敏 | U/G：S5 当前 CSV 来自本地 filtered 行，不能替代服务端全量冻结导出；B15 |
-| F18 | 登录、Passkey、凭证管理、授权、邀请、家庭切换；S0 authentication/accounts/settings | `/settings`、`/settings/household`、`/settings/auth`、`/settings/members` | `/api/auth/*`、`/api/session`、`get_connection_context`；OAuth scopes 与家庭成员身份分开 | U/N/G：新 owner/admin/member/viewer 展示模型未发现对应角色变更后端；B01/B16 |
+| F17 | 冻结导出；公共 API，不宣称旧 Web 按钮已覆盖 | 管理物品/目录导出 | `begin_export/read_export/cancel_export`；冻结 JSON 行，默认脱敏 | U/G：现已提供冻结导出端口与隔离快照，真实服务端签名游标仍待接通；B15 |
+| F18 | 登录、Passkey、凭证管理、授权、邀请、家庭切换；S0 authentication/accounts/settings | `/settings`、`/settings/household`、`/settings/auth`、`/settings/members` | `/api/auth/*`、`/api/session`、`get_connection_context`；OAuth scopes 与家庭成员身份分开 | U/N/G：候选已移除无契约角色分配，真实平等成员/账号接口仍待接通；B01/B16 |
 | F19 | 离线缓存、草稿、冲突、丢回执恢复；S0 lib/session/storage/draft + features/api/recovery | 根任务会话、`/settings/cache`、任务冲突/恢复面板 | 身份隔离持久化、原键原参数重放、入库回执；不能假造通用 REST operation lookup | U：本地日志不是正式持久化验收；B17 |
 | F20 | 标签生成、打印设置、旧二维码/深链；S0 lib/labels、label-print、printer-settings、workspace `/i/:short` | `/daily/scan`、`/daily/labels`、`/settings/printing` | 客户端相机/二维码/蓝牙与打印日志；无公共“print”库存命令 | U/R：旧路径转换、设备权限、打印未知回执与不重打；B18 |
 | F21 | 只读检查器；旧 `/api/debug` 与 Inspector | `/settings/inspector` | `/api/debug`；CF 为 SQLite 元数据，旧端 PostgreSQL | U/R：表结构不是字节相等目标；仍脱敏/只读/家庭隔离；B19 |

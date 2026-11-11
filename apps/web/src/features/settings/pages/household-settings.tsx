@@ -1,10 +1,11 @@
+import { Input } from '../../../ui/components/ui/input';
+import { FormField } from '../../../ui/components/ui/form-field';
 import { Button } from '../../../ui/components/ui/button';
 import { RadioGroup } from '../../../ui/components/ui/radio-group';
 import { InlineNotice } from '../../../ui/components/ui/inline-notice';
 import { AlertDialog } from '../../../ui/components/ui/alert-dialog';
 import { SettingsLayout, SettingsReadBoundary, SettingsSection } from './settings-layout';
 import {
-  roleLabels,
   type SettingsHousehold,
   type SettingsPageProps,
   type SettingsReadState,
@@ -25,6 +26,10 @@ export interface HouseholdSettingsPageProps extends SettingsPageProps {
   onRetry: () => void;
   allowPendingSwitch?: boolean;
   externalDraftsRetained?: boolean;
+  nameDraft: string;
+  onNameDraft: (value: string) => void;
+  renameAvailable: boolean;
+  onRename: () => void;
 }
 export function HouseholdSettingsPage(props: HouseholdSettingsPageProps) {
   const {
@@ -51,6 +56,24 @@ export function HouseholdSettingsPage(props: HouseholdSettingsPageProps) {
     <SettingsLayout {...props} title="家庭">
       <p className="vn-settings-muted">日常与管理使用同一家庭；切换模式不会增加权限。</p>
       <SettingsReadBoundary state={props.readState} onRetry={props.onRetry}>
+        <SettingsSection title="当前家庭名称">
+          <FormField label="家庭名称">
+            <Input
+              value={props.nameDraft}
+              placeholder={household.name}
+              maxLength={80}
+              disabled={!props.renameAvailable}
+              onChange={(event) => props.onNameDraft(event.target.value)}
+            />
+          </FormField>
+          <Button
+            variant="secondary"
+            disabled={!props.renameAvailable || !props.nameDraft.trim()}
+            onClick={props.onRename}
+          >
+            保存家庭名称
+          </Button>
+        </SettingsSection>
         <SettingsSection title="可访问的家庭">
           {households.length === 0 ? (
             <InlineNotice title="目前没有可访问的家庭">请在账号与安全中查看邀请状态。</InlineNotice>
@@ -60,7 +83,7 @@ export function HouseholdSettingsPage(props: HouseholdSettingsPageProps) {
                 <div>
                   <h3>{entry.name}</h3>
                   <p className="vn-settings-muted">
-                    {roleLabels[entry.role]} · {entry.memberCount} 位成员
+                    {entry.memberCount} 位成员
                     {entry.id === household.id ? ' · 当前家庭' : ''}
                   </p>
                 </div>
@@ -157,7 +180,7 @@ export function HouseholdSettingsPage(props: HouseholdSettingsPageProps) {
                 {
                   value: 'discard',
                   label: '丢弃这些未发送草稿',
-                  description: '仅移除此预览中的草稿，不包括已发送请求',
+                  description: '仅移除当前范围的草稿，不包括已发送请求',
                 },
               ]}
             />
